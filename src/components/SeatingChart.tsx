@@ -167,14 +167,11 @@ export default function SeatingChart({ students }: SeatingChartProps) {
                 </div>
             )}
             {seatingChart && (
-                <div className="grid gap-y-2">
+                <div className="grid gap-y-4">
                     {seatingChart.map((row, rowIndex) => (
-                        <div key={rowIndex} className="flex items-center justify-around">
+                        <div key={rowIndex} className="flex flex-wrap justify-center gap-x-4 gap-y-4">
                             {row.map((desk, deskIndex) => (
-                                <div key={deskIndex} className={cn(
-                                    "flex",
-                                    { "gap-1": groupSize > 1 }
-                                )}>
+                                <div key={deskIndex} className="flex gap-1">
                                     {Array.from({ length: groupSize }).map((_, studentIndex) => {
                                         const studentName = desk?.[studentIndex];
                                         return (
