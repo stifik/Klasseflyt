@@ -18,11 +18,18 @@ import { CSS } from "@dnd-kit/utilities";
 
 type SeatingChartData = (string[] | null)[][];
 type AvoidPair = [string, string];
+type SeatingChartSettings = {
+    rows: number;
+    cols: number;
+    groupSize: number;
+};
 
 interface SeatingChartProps {
   students: Student[];
   seatingChart: SeatingChartData | null;
   onSeatingChartChange: (chart: SeatingChartData | null) => void;
+  settings: SeatingChartSettings;
+  onSettingsChange: (settings: SeatingChartSettings) => void;
 }
 
 interface DeskProps {
@@ -69,10 +76,8 @@ const DroppableDesk = ({ studentName, id, children }: DeskProps & { children: Re
 };
 
 
-export default function SeatingChart({ students, seatingChart, onSeatingChartChange }: SeatingChartProps) {
-  const [rows, setRows] = useState(4);
-  const [cols, setCols] = useState(5);
-  const [groupSize, setGroupSize] = useState(2);
+export default function SeatingChart({ students, seatingChart, onSeatingChartChange, settings, onSettingsChange }: SeatingChartProps) {
+  const { rows, cols, groupSize } = settings;
   const [avoidPairs, setAvoidPairs] = useState<AvoidPair[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -223,16 +228,16 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="rows">Rader</Label>
-                <Input id="rows" type="number" value={rows} onChange={(e) => setRows(Math.max(1, Number(e.target.value)))} min="1" />
+                <Input id="rows" type="number" value={rows} onChange={(e) => onSettingsChange({ ...settings, rows: Math.max(1, Number(e.target.value))})} min="1" />
               </div>
               <div>
                 <Label htmlFor="cols">Grupper pr. rad</Label>
-                <Input id="cols" type="number" value={cols} onChange={(e) => setCols(Math.max(1, Number(e.target.value)))} min="1" />
+                <Input id="cols" type="number" value={cols} onChange={(e) => onSettingsChange({ ...settings, cols: Math.max(1, Number(e.target.value))})} min="1" />
               </div>
             </div>
             <div>
               <Label htmlFor="groupSize">Elever pr. gruppe</Label>
-              <Select value={String(groupSize)} onValueChange={(v) => setGroupSize(Number(v))}>
+              <Select value={String(groupSize)} onValueChange={(v) => onSettingsChange({ ...settings, groupSize: Number(v) })}>
                 <SelectTrigger id="groupSize">
                   <SelectValue placeholder="Velg gruppestørrelse" />
                 </SelectTrigger>

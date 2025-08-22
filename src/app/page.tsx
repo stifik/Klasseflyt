@@ -20,6 +20,11 @@ export default function Home() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [dailyChecks, setDailyChecks] = useState<DailyCheck[]>([]);
   const [seatingChart, setSeatingChart] = useState<SeatingChartData | null>(null);
+  const [seatingChartSettings, setSeatingChartSettings] = useState({
+    rows: 4,
+    cols: 5,
+    groupSize: 2,
+  });
   const [initialLoading, setInitialLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
@@ -146,6 +151,8 @@ export default function Home() {
               students={students}
               seatingChart={seatingChart}
               onSeatingChartChange={handleSeatingChartChange}
+              settings={seatingChartSettings}
+              onSettingsChange={setSeatingChartSettings}
             />
           </TabsContent>
           <TabsContent value="admin">
