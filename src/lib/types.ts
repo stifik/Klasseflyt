@@ -53,3 +53,13 @@ export type SeatingChartRecord = {
   groupSize: number;
   createdAt: Date;
 };
+
+export type AppSettings = {
+  tabs: {
+    overview: boolean;
+    dailyCheck: boolean;
+    remarks: boolean;
+    reports: boolean;
+    seatingChart: boolean;
+  };
+};

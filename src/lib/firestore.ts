@@ -243,6 +243,7 @@ export async function resetAndSeedDatabase(userId: string) {
   await clearUserCollection(userId, 'dailyChecks');
   await clearUserCollection(userId, 'seatingCharts');
   await clearUserCollection(userId, 'remarks');
+  await clearUserCollection(userId, 'settings');
   await seedDatabase(userId);
 }
 

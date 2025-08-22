@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import HomeworkOverview from "@/components/HomeworkOverview";
 import DailyChecklist from "@/components/DailyChecklist";
 import Reports from "@/components/Reports";
-import Admin from "@/components/Admin";
+import Settings from "@/components/Settings";
 import SeatingChart from "@/components/SeatingChart";
 import Remarks from "@/components/Remarks";
 import withAuth from '@/components/withAuth';
@@ -17,6 +17,7 @@ import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks, 
 import { useToast } from "@/hooks/use-toast";
 import { getAuth, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
+import { useSettings } from "@/hooks/useSettings";
 
 
 function Home({ userId }: { userId: string }) {
@@ -38,6 +39,7 @@ function Home({ userId }: { userId: string }) {
   const { toast } = useToast();
   const router = useRouter();
   const auth = getAuth();
+  const { settings, setSettings, loading: settingsLoading } = useSettings(userId);
 
   const loadData = async (isUpdate = false) => {
     if (!userId) return;
@@ -107,7 +109,7 @@ function Home({ userId }: { userId: string }) {
     }
   };
 
-  if (initialLoading) {
+  if (initialLoading || settingsLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-background items-center justify-center">
         <Loader2 className="w-12 h-12 animate-spin mb-4" />
@@ -142,6 +144,23 @@ function Home({ userId }: { userId: string }) {
      // Settings are only saved when a chart is saved.
   }
 
+  const visibleTabs = Object.entries(settings.tabs)
+    .filter(([, isVisible]) => isVisible)
+    .map(([key]) => key);
+
+  const tabGridCols = {
+    1: 'grid-cols-1',
+    2: 'grid-cols-2',
+    3: 'sm:grid-cols-3',
+    4: 'sm:grid-cols-4',
+    5: 'sm:grid-cols-5',
+    6: 'sm:grid-cols-3 md:grid-cols-6',
+  };
+  
+  const numVisibleTabs = visibleTabs.length + 1; // +1 for settings tab
+  const gridClass = tabGridCols[numVisibleTabs] || 'sm:grid-cols-3 md:grid-cols-6';
+
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 border-b bg-background sm:px-6">
@@ -154,71 +173,83 @@ function Home({ userId }: { userId: string }) {
         </Button>
       </header>
       <main className="flex-1 p-4 sm:p-6">
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4 sm:grid-cols-3 md:grid-cols-6">
-            <TabsTrigger value="overview">Lekseoversikt</TabsTrigger>
-            <TabsTrigger value="daily">Daglig Sjekk</TabsTrigger>
-            <TabsTrigger value="remarks">Anmerkninger</TabsTrigger>
-            <TabsTrigger value="reports">Rapporter</TabsTrigger>
-            <TabsTrigger value="seating-chart">Klassekart</TabsTrigger>
-            <TabsTrigger value="admin">Admin</TabsTrigger>
+        <Tabs defaultValue={visibleTabs[0] || 'settings'} className="w-full">
+          <TabsList className={`grid w-full mb-4 ${gridClass}`}>
+            {settings.tabs.overview && <TabsTrigger value="overview">Lekseoversikt</TabsTrigger>}
+            {settings.tabs.dailyCheck && <TabsTrigger value="daily">Daglig Sjekk</TabsTrigger>}
+            {settings.tabs.remarks && <TabsTrigger value="remarks">Anmerkninger</TabsTrigger>}
+            {settings.tabs.reports && <TabsTrigger value="reports">Rapporter</TabsTrigger>}
+            {settings.tabs.seatingChart && <TabsTrigger value="seating-chart">Klassekart</TabsTrigger>}
+            <TabsTrigger value="settings">Innstillinger</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview">
-            <HomeworkOverview
-              userId={userId}
-              students={students}
-              subjects={subjects}
-              homeworkList={homework}
-              submissions={submissions}
-              onUpdate={handleDataUpdate}
-            />
-          </TabsContent>
-          <TabsContent value="daily">
-            <DailyChecklist
-              userId={userId}
-              students={students}
-              initialChecks={dailyChecks}
-              onUpdate={handleDataUpdate}
-              seatingChart={seatingChart}
-            />
-          </TabsContent>
-           <TabsContent value="remarks">
-            <Remarks
-              userId={userId}
-              students={students}
-              initialRemarks={remarks}
-              onUpdate={handleDataUpdate}
-              seatingChart={seatingChart}
-            />
-          </TabsContent>
-          <TabsContent value="reports">
-             <Reports
+          {settings.tabs.overview && (
+            <TabsContent value="overview">
+              <HomeworkOverview
+                userId={userId}
                 students={students}
                 subjects={subjects}
-                homework={homework}
+                homeworkList={homework}
                 submissions={submissions}
-                dailyChecks={dailyChecks}
-                remarks={remarks}
-             />
-          </TabsContent>
-           <TabsContent value="seating-chart">
-            <SeatingChart
-              userId={userId}
-              students={students}
-              seatingChart={seatingChart}
-              onSeatingChartChange={handleSeatingChartChange}
-              settings={seatingChartSettings}
-              onSettingsChange={handleSettingsChange}
-              history={seatingChartHistory}
-            />
-          </TabsContent>
-          <TabsContent value="admin">
-            <Admin
+                onUpdate={handleDataUpdate}
+              />
+            </TabsContent>
+          )}
+          {settings.tabs.dailyCheck && (
+            <TabsContent value="daily">
+              <DailyChecklist
+                userId={userId}
+                students={students}
+                initialChecks={dailyChecks}
+                onUpdate={handleDataUpdate}
+                seatingChart={seatingChart}
+              />
+            </TabsContent>
+          )}
+           {settings.tabs.remarks && (
+            <TabsContent value="remarks">
+              <Remarks
+                userId={userId}
+                students={students}
+                initialRemarks={remarks}
+                onUpdate={handleDataUpdate}
+                seatingChart={seatingChart}
+              />
+            </TabsContent>
+           )}
+          {settings.tabs.reports && (
+            <TabsContent value="reports">
+              <Reports
+                  students={students}
+                  subjects={subjects}
+                  homework={homework}
+                  submissions={submissions}
+                  dailyChecks={dailyChecks}
+                  remarks={remarks}
+              />
+            </TabsContent>
+          )}
+           {settings.tabs.seatingChart && (
+            <TabsContent value="seating-chart">
+              <SeatingChart
+                userId={userId}
+                students={students}
+                seatingChart={seatingChart}
+                onSeatingChartChange={handleSeatingChartChange}
+                settings={seatingChartSettings}
+                onSettingsChange={handleSettingsChange}
+                history={seatingChartHistory}
+              />
+            </TabsContent>
+           )}
+          <TabsContent value="settings">
+            <Settings
               userId={userId}
               initialStudents={students}
               initialSubjects={subjects}
               onUpdate={handleDataUpdate}
+              settings={settings}
+              onSettingsChange={setSettings}
             />
           </TabsContent>
         </Tabs>
