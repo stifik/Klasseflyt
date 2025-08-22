@@ -10,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Users, Shuffle } from "lucide-react";
+import { Loader2, Users, Shuffle, Hand } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateSeatingChart } from "@/ai/flows/generate-seating-chart";
+import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 
 type SeatingChartData = (string[] | null)[][];
 type AvoidPair = [string, string];
@@ -21,6 +23,50 @@ interface SeatingChartProps {
   students: Student[];
 }
 
+interface DeskProps {
+  studentName: string | null;
+  id: string;
+}
+
+const DraggableStudent = ({ studentName, id }: DeskProps) => {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: id,
+    data: { studentName },
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+  };
+  
+  if (!studentName) return null;
+
+  return (
+    <Card 
+      ref={setNodeRef} 
+      style={style} 
+      {...listeners} 
+      {...attributes}
+      className={`flex items-center justify-center w-24 h-16 text-center bg-secondary touch-none cursor-grab ${isDragging ? 'opacity-50' : ''}`}
+    >
+      <p className="text-xs font-medium">{studentName}</p>
+    </Card>
+  );
+};
+
+const DroppableDesk = ({ studentName, id, children }: DeskProps & { children: React.ReactNode }) => {
+  const { setNodeRef, isOver } = useDroppable({ id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex items-center justify-center w-24 h-16 border rounded-lg ${isOver ? 'bg-primary/20' : 'bg-transparent'} ${!studentName ? 'border-dashed' : ''}`}
+    >
+      {children}
+    </div>
+  );
+};
+
+
 export default function SeatingChart({ students }: SeatingChartProps) {
   const [rows, setRows] = useState(4);
   const [cols, setCols] = useState(5);
@@ -28,6 +74,7 @@ export default function SeatingChart({ students }: SeatingChartProps) {
   const [avoidPairs, setAvoidPairs] = useState<AvoidPair[]>([]);
   const [seatingChart, setSeatingChart] = useState<SeatingChartData | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleAvoidPairChange = (student1Id: string, student2Id: string) => {
@@ -77,7 +124,6 @@ export default function SeatingChart({ students }: SeatingChartProps) {
         temporaryAvoidPairs = [...new Set([...temporaryAvoidPairs, ...previousNeighbors])];
     }
     
-    // Clear previous chart for better UX
     setSeatingChart(null); 
 
     try {
@@ -113,6 +159,48 @@ export default function SeatingChart({ students }: SeatingChartProps) {
         setIsGenerating(false);
     }
   };
+  
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDragId(null);
+    const { active, over } = event;
+    if (!over || !seatingChart) return;
+    
+    const [startRow, startCol, startStudentIdx] = active.id.toString().split('-').map(Number);
+    const [endRow, endCol, endStudentIdx] = over.id.toString().split('-').map(Number);
+    
+    if (startRow === endRow && startCol === endCol && startStudentIdx === endStudentIdx) return;
+    
+    const newChart = JSON.parse(JSON.stringify(seatingChart));
+    
+    const studentToMove = newChart[startRow]?.[startCol]?.[startStudentIdx];
+    const studentToSwap = newChart[endRow]?.[endCol]?.[endStudentIdx];
+    
+    if (newChart[endRow] && newChart[endRow][endCol]) {
+       newChart[endRow][endCol][endStudentIdx] = studentToMove || null;
+    } else if (newChart[endRow]) {
+        // Handle case where desk is null
+        newChart[endRow][endCol] = Array(groupSize).fill(null);
+        newChart[endRow][endCol][endStudentIdx] = studentToMove || null;
+    }
+    
+    if (newChart[startRow] && newChart[startRow][startCol]) {
+        newChart[startRow][startCol][startStudentIdx] = studentToSwap || null;
+    }
+
+    // Clean up empty desks (desks that are all nulls should be just null)
+    for (let r=0; r < newChart.length; r++) {
+      for (let c=0; c < newChart[r].length; c++) {
+        const desk = newChart[r][c];
+        if (Array.isArray(desk) && desk.every(s => s === null)) {
+            newChart[r][c] = null;
+        }
+      }
+    }
+
+    setSeatingChart(newChart);
+  };
+  
+  const draggedStudentName = activeDragId ? seatingChart?.at(parseInt(activeDragId.split('-')[0]))?.at(parseInt(activeDragId.split('-')[1]))?.at(parseInt(activeDragId.split('-')[2])) : null;
 
   return (
     <div className="grid gap-6 md:grid-cols-3">
@@ -197,43 +285,51 @@ export default function SeatingChart({ students }: SeatingChartProps) {
       </div>
 
       <div className="md:col-span-2">
-        <Card className="min-h-[600px]">
-          <CardHeader>
-            <CardTitle>Generert Klassekart</CardTitle>
-             <CardDescription>Resultatet av genereringen vil vises her.</CardDescription>
-          </CardHeader>
-          <CardContent>
-             {isGenerating && (
-                <div className="flex items-center justify-center h-96">
-                    <Loader2 className="w-12 h-12 animate-spin text-primary" />
-                </div>
-            )}
-            {seatingChart && (
-                <div className="grid gap-y-4">
-                    {seatingChart.map((row, rowIndex) => (
-                        <div key={rowIndex} className="flex flex-wrap justify-center gap-x-4 gap-y-4">
-                            {row.map((desk, deskIndex) => (
-                                <div key={deskIndex} className="flex gap-1">
-                                    {Array.from({ length: groupSize }).map((_, studentIndex) => {
-                                        const studentName = desk?.[studentIndex];
-                                        return (
-                                            <Card key={studentIndex} className="flex items-center justify-center w-24 h-16 text-center bg-secondary">
-                                                {studentName ? (
-                                                    <p className="text-xs font-medium">{studentName}</p>
-                                                ) : (
-                                                    <p className="text-sm text-muted-foreground">-</p>
-                                                )}
-                                            </Card>
-                                        );
-                                    })}
-                                </div>
-                            ))}
-                        </div>
-                    ))}
-                </div>
-            )}
-          </CardContent>
-        </Card>
+        <DndContext onDragStart={(e) => setActiveDragId(e.active.id.toString())} onDragEnd={handleDragEnd}>
+            <Card className="min-h-[600px]">
+              <CardHeader>
+                <CardTitle>Generert Klassekart</CardTitle>
+                 <CardDescription>
+                    {seatingChart ? "Dra og slipp elever for å bytte plass." : "Resultatet av genereringen vil vises her."}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                 {isGenerating && (
+                    <div className="flex items-center justify-center h-96">
+                        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+                    </div>
+                )}
+                {seatingChart && (
+                    <div className="grid gap-y-4">
+                        {seatingChart.map((row, rowIndex) => (
+                            <div key={rowIndex} className="flex flex-wrap justify-center gap-x-4 gap-y-4">
+                                {row.map((desk, deskIndex) => (
+                                    <div key={deskIndex} className="flex gap-1">
+                                        {Array.from({ length: groupSize }).map((_, studentIndex) => {
+                                            const studentName = desk?.[studentIndex] ?? null;
+                                            const id = `${rowIndex}-${deskIndex}-${studentIndex}`;
+                                            return (
+                                                <DroppableDesk key={id} id={id} studentName={studentName}>
+                                                    {studentName && activeDragId !== id && <DraggableStudent id={id} studentName={studentName} />}
+                                                </DroppableDesk>
+                                            );
+                                        })}
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                )}
+              </CardContent>
+            </Card>
+            <DragOverlay>
+              {activeDragId && draggedStudentName ? (
+                <Card className="flex items-center justify-center w-24 h-16 text-center bg-secondary cursor-grabbing">
+                  <p className="text-xs font-medium">{draggedStudentName}</p>
+                </Card>
+              ) : null}
+            </DragOverlay>
+        </DndContext>
       </div>
     </div>
   );
