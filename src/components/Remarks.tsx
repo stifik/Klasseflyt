@@ -41,31 +41,42 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
 
   const handleAddRemark = async (studentId: string) => {
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
+    const tempId = `temp-${Date.now()}`;
+    const newRemarkOptimistic: Remark = { id: tempId, studentId, date };
+
+    // Optimistic update
+    setRemarks(prev => [...prev, newRemarkOptimistic]);
     
     try {
       const newRemark = await addRemark(userId, { studentId, date });
-      setRemarks(prev => [...prev, newRemark]);
-      onUpdate();
+      // Replace optimistic remark with real one from Firestore
+      setRemarks(prev => prev.map(r => r.id === tempId ? newRemark : r));
     } catch (error) {
       console.error(error);
+      // Revert optimistic update
+      setRemarks(prev => prev.filter(r => r.id !== tempId));
       toast({ title: "Feil", description: `Kunne ikke legge til anmerkning for ${studentName}.`, variant: "destructive" });
     }
   };
 
   const handleRemoveLastRemark = async (studentId: string) => {
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
-    const studentRemarksToday = getRemarksForDate(studentId, date).sort((a,b) => b.date.getTime() - a.date.getTime());
+    const studentRemarksToday = getRemarksForDate(studentId, date).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
     if (studentRemarksToday.length === 0) return;
 
     const lastRemark = studentRemarksToday[0];
+    
+    // Optimistic update
+    const previousRemarks = [...remarks];
+    setRemarks(prev => prev.filter(r => r.id !== lastRemark.id));
 
     try {
       await deleteRemark(userId, lastRemark.id);
-      setRemarks(prev => prev.filter(r => r.id !== lastRemark.id));
-      onUpdate();
     } catch (error) {
       console.error(error);
+      // Revert optimistic update
+      setRemarks(previousRemarks);
       toast({ title: "Feil", description: `Kunne ikke fjerne anmerkning for ${studentName}.`, variant: "destructive" });
     }
   };
