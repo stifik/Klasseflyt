@@ -18,11 +18,17 @@ export default function Home() {
   const [homework, setHomework] = useState<Homework[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [dailyChecks, setDailyChecks] = useState<DailyCheck[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (isUpdate = false) => {
+    if (isUpdate) {
+      setIsUpdating(true);
+    } else {
+      setInitialLoading(true);
+    }
+
     try {
       const [studentsData, subjectsData, homeworkData, submissionsData, dailyChecksData] = await Promise.all([
         getStudents(),
@@ -42,15 +48,19 @@ export default function Home() {
       console.error(error);
       toast({ title: "Feil", description: "Kunne ikke laste data fra databasen.", variant: "destructive" });
     } finally {
-      setLoading(false);
+      if (isUpdate) {
+        setIsUpdating(false);
+      } else {
+        setInitialLoading(false);
+      }
     }
   }
 
   useEffect(() => {
-    loadData();
+    loadData(false);
   }, []);
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-background items-center justify-center">
         <Loader2 className="w-12 h-12 animate-spin mb-4" />
@@ -58,6 +68,8 @@ export default function Home() {
       </div>
     );
   }
+
+  const handleDataUpdate = () => loadData(true);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -82,14 +94,14 @@ export default function Home() {
               subjects={subjects}
               homeworkList={homework}
               submissions={submissions}
-              onUpdate={loadData}
+              onUpdate={handleDataUpdate}
             />
           </TabsContent>
           <TabsContent value="daily">
             <DailyChecklist
               students={students}
               initialChecks={dailyChecks}
-              onUpdate={loadData}
+              onUpdate={handleDataUpdate}
             />
           </TabsContent>
           <TabsContent value="reports">
@@ -105,7 +117,7 @@ export default function Home() {
             <Admin
               initialStudents={students}
               initialSubjects={subjects}
-              onUpdate={loadData}
+              onUpdate={handleDataUpdate}
             />
           </TabsContent>
         </Tabs>
