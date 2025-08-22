@@ -183,21 +183,17 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     
     if (studentToMove === undefined && studentToMove !== null) return;
 
-    // Create end desk if it doesn't exist (is null)
     if (!newChart[endRow][endCol]) {
       newChart[endRow][endCol] = Array(groupSize).fill(null);
     }
      const endDesk = newChart[endRow]?.[endCol];
     const studentToSwap = endDesk?.[endStudentIdx];
     
-    // Swap or move
     newChart[endRow][endCol][endStudentIdx] = studentToMove;
     if (startDesk) {
       startDesk[startStudentIdx] = studentToSwap || null;
     }
     
-
-    // Clean up empty desks (desks that are all nulls should be just null)
     for (let r=0; r < newChart.length; r++) {
       for (let c=0; c < newChart[r].length; c++) {
         const desk = newChart[r][c];
@@ -348,5 +344,3 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     </div>
   );
 }
-
-    
