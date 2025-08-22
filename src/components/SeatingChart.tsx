@@ -8,9 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Users, Shuffle } from "lucide-react";
+import { Loader2, Users, Shuffle, Plus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateSeatingChart } from "@/ai/flows/generate-seating-chart";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay } from "@dnd-kit/core";
@@ -81,19 +80,23 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
   const [avoidPairs, setAvoidPairs] = useState<AvoidPair[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [selectedStudent1, setSelectedStudent1] = useState<string>("");
+  const [selectedStudent2, setSelectedStudent2] = useState<string>("");
   const { toast } = useToast();
-
-  const handleAvoidPairChange = (student1Id: string, student2Id: string) => {
-    const newPair: AvoidPair = [student1Id, student2Id].sort() as AvoidPair;
-    const existingPairIndex = avoidPairs.findIndex(
-      (p) => p[0] === newPair[0] && p[1] === newPair[1]
-    );
-
-    if (existingPairIndex > -1) {
-      setAvoidPairs(avoidPairs.filter((_, index) => index !== existingPairIndex));
-    } else {
-      setAvoidPairs([...avoidPairs, newPair]);
+  
+  const handleAddAvoidPair = () => {
+    if (selectedStudent1 && selectedStudent2 && selectedStudent1 !== selectedStudent2) {
+      const newPair: AvoidPair = [selectedStudent1, selectedStudent2].sort() as AvoidPair;
+      if (!avoidPairs.some(p => p[0] === newPair[0] && p[1] === newPair[1])) {
+        setAvoidPairs([...avoidPairs, newPair]);
+      }
+      setSelectedStudent1("");
+      setSelectedStudent2("");
     }
+  };
+
+  const handleRemoveAvoidPair = (pairToRemove: AvoidPair) => {
+    setAvoidPairs(avoidPairs.filter(p => p[0] !== pairToRemove[0] || p[1] !== pairToRemove[1]));
   };
   
   const getAdjacentPairsFromChart = (chart: SeatingChartData): AvoidPair[] => {
@@ -181,8 +184,10 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     const startDesk = newChart[startRow]?.[startCol];
     const studentToMove = startDesk?.[startStudentIdx];
     
-    // Ensure we don't drag from an empty spot
-    if (studentToMove === null) return;
+    if (!studentToMove) {
+      // Prevents crash from dragging from an empty spot, which could happen in a weird state
+      return;
+    }
     
     if (!newChart[endRow][endCol]) {
       newChart[endRow][endCol] = Array(groupSize).fill(null);
@@ -267,30 +272,48 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                 <CardDescription>Velg elever som aldri skal sitte sammen.</CardDescription>
             </CardHeader>
             <CardContent>
-                <ScrollArea className="h-48">
-                    <div className="space-y-2">
-                        {students.map((s1, i) => (
-                            <div key={s1.id}>
-                                {students.slice(i + 1).map((s2) => {
-                                    const pair: AvoidPair = [s1.id, s2.id].sort() as AvoidPair;
-                                    const isChecked = avoidPairs.some(p => p[0] === pair[0] && p[1] === pair[1]);
-                                    return (
-                                        <div key={`${s1.id}-${s2.id}`} className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id={`avoid-${s1.id}-${s2.id}`}
-                                                checked={isChecked}
-                                                onCheckedChange={() => handleAvoidPairChange(s1.id, s2.id)}
-                                            />
-                                            <label htmlFor={`avoid-${s1.id}-${s2.id}`} className="text-sm">
-                                                {s1.name} & {s2.name}
-                                            </label>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ))}
+                <div className="flex items-end gap-2 mb-4">
+                    <div className="flex-1">
+                        <Label htmlFor="student1" className="sr-only">Elev 1</Label>
+                        <Select value={selectedStudent1} onValueChange={setSelectedStudent1}>
+                            <SelectTrigger id="student1"><SelectValue placeholder="Velg elev 1" /></SelectTrigger>
+                            <SelectContent>
+                                {students.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
                     </div>
-                </ScrollArea>
+                    <div className="flex-1">
+                        <Label htmlFor="student2" className="sr-only">Elev 2</Label>
+                        <Select value={selectedStudent2} onValueChange={setSelectedStudent2}>
+                             <SelectTrigger id="student2"><SelectValue placeholder="Velg elev 2" /></SelectTrigger>
+                            <SelectContent>
+                                {students.filter(s => s.id !== selectedStudent1).map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <Button onClick={handleAddAvoidPair} disabled={!selectedStudent1 || !selectedStudent2 || selectedStudent1 === selectedStudent2} size="icon">
+                        <Plus className="w-4 h-4" />
+                    </Button>
+                </div>
+
+                {avoidPairs.length > 0 && (
+                    <ScrollArea className="h-32">
+                        <div className="space-y-2">
+                            {avoidPairs.map(pair => {
+                                const s1 = students.find(s => s.id === pair[0]);
+                                const s2 = students.find(s => s.id === pair[1]);
+                                return (
+                                    <div key={`${pair[0]}-${pair[1]}`} className="flex items-center justify-between p-2 text-sm rounded-md bg-secondary">
+                                        <span>{s1?.name} & {s2?.name}</span>
+                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveAvoidPair(pair)} className="h-6 w-6">
+                                            <X className="w-4 h-4 text-destructive" />
+                                        </Button>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </ScrollArea>
+                )}
             </CardContent>
         </Card>
       </div>
