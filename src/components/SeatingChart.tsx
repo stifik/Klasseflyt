@@ -10,10 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Users } from "lucide-react";
+import { Loader2, Users, Shuffle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateSeatingChart } from "@/ai/flows/generate-seating-chart";
-import { cn } from "@/lib/utils";
 
 type SeatingChartData = (string[] | null)[][];
 type AvoidPair = [string, string];
@@ -44,15 +43,50 @@ export default function SeatingChart({ students }: SeatingChartProps) {
     }
   };
   
-  const handleGenerateClick = async () => {
+  const getAdjacentPairsFromChart = (chart: SeatingChartData): AvoidPair[] => {
+    const pairs: AvoidPair[] = [];
+    chart.forEach(row => {
+        row.forEach(desk => {
+            if (desk && desk.length > 1) {
+                for (let i = 0; i < desk.length - 1; i++) {
+                    const student1Name = desk[i];
+                    const student2Name = desk[i+1];
+                    if (student1Name && student2Name) {
+                        const s1 = students.find(s => s.name === student1Name);
+                        const s2 = students.find(s => s.name === student2Name);
+                        if (s1 && s2) {
+                           const newPair = [s1.id, s2.id].sort() as AvoidPair;
+                           if(!pairs.some(p => p[0] === newPair[0] && p[1] === newPair[1])) {
+                               pairs.push(newPair);
+                           }
+                        }
+                    }
+                }
+            }
+        });
+    });
+    return pairs;
+  }
+
+  const handleGenerateClick = async (avoidPreviousNeighbors = false) => {
     setIsGenerating(true);
-    setSeatingChart(null);
+    
+    let temporaryAvoidPairs: AvoidPair[] = [...avoidPairs];
+    if (avoidPreviousNeighbors && seatingChart) {
+        const previousNeighbors = getAdjacentPairsFromChart(seatingChart);
+        temporaryAvoidPairs = [...new Set([...temporaryAvoidPairs, ...previousNeighbors])];
+    }
+    
+    // Clear previous chart for better UX
+    setSeatingChart(null); 
+
     try {
       const studentNames = students.map(s => s.name);
-      const avoidPairNames = avoidPairs.map(([s1, s2]) => [
-          students.find(st => st.id === s1)?.name || '',
-          students.find(st => st.id === s2)?.name || ''
-      ]);
+      const avoidPairNames = temporaryAvoidPairs.map(([s1Id, s2Id]) => {
+          const s1Name = students.find(st => st.id === s1Id)?.name || '';
+          const s2Name = students.find(st => st.id === s2Id)?.name || '';
+          return [s1Name, s2Name];
+      });
 
       const result = await generateSeatingChart({
         studentNames,
@@ -113,17 +147,25 @@ export default function SeatingChart({ students }: SeatingChartProps) {
                 </SelectContent>
               </Select>
             </div>
-             <Button onClick={handleGenerateClick} disabled={isGenerating} className="w-full">
-              {isGenerating ? <Loader2 className="mr-2 animate-spin" /> : <Users className="mr-2" />}
-              Generer nytt klassekart
-            </Button>
+             <div className="flex flex-col gap-2">
+                <Button onClick={() => handleGenerateClick(false)} disabled={isGenerating}>
+                    {isGenerating ? <Loader2 className="mr-2 animate-spin" /> : <Users className="mr-2" />}
+                    {seatingChart ? 'Generer nytt fra bunnen av' : 'Generer klassekart'}
+                </Button>
+                {seatingChart && (
+                    <Button onClick={() => handleGenerateClick(true)} disabled={isGenerating} variant="outline">
+                        {isGenerating ? <Loader2 className="mr-2 animate-spin" /> : <Shuffle className="mr-2" />}
+                        Generer nytt (unngå naboer)
+                    </Button>
+                )}
+             </div>
           </CardContent>
         </Card>
         
         <Card>
             <CardHeader>
-                <CardTitle>Unngå par</CardTitle>
-                <CardDescription>Velg elever som ikke skal sitte sammen.</CardDescription>
+                <CardTitle>Permanente unngå-par</CardTitle>
+                <CardDescription>Velg elever som aldri skal sitte sammen.</CardDescription>
             </CardHeader>
             <CardContent>
                 <ScrollArea className="h-48">

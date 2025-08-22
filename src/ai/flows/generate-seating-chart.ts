@@ -19,7 +19,9 @@ const GenerateSeatingChartInputSchema = z.object({
   groupSize: z.number().describe('The number of students that can sit at a single desk/table.'),
   avoidPairs: z
     .array(z.tuple([z.string(), z.string()]))
-    .describe('A list of pairs of student names who should not be seated next to each other.'),
+    .describe(
+      'A list of pairs of student names who should not be seated at the same desk, or directly next to each other in the same group.'
+    ),
 });
 
 export type GenerateSeatingChartInput = z.infer<typeof GenerateSeatingChartInputSchema>;
@@ -44,18 +46,18 @@ const prompt = ai.definePrompt({
   name: 'generateSeatingChartPrompt',
   input: { schema: GenerateSeatingChartInputSchema },
   output: { schema: GenerateSeatingChartOutputSchema },
-  prompt: `You are a helpful assistant for a teacher. Your task is to create a new seating chart for a classroom.
+  prompt: `You are a helpful assistant for a teacher. Your task is to create a new, random seating chart for a classroom. It is crucial that the seating chart is different and random each time this prompt is called.
 
 Class details:
 - Total students: {{studentNames.length}}
 - Student names: {{#each studentNames}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
-- Classroom layout: {{rows}} rows by {{cols}} columns.
-- Group size per desk: {{groupSize}} students.
+- Classroom layout: {{rows}} rows by {{cols}} columns of desks/tables.
+- Group size per desk/table: {{groupSize}} students.
 
 Constraints:
 - The total number of desks is {{rows}} * {{cols}}.
 - The total capacity is ({{rows}} * {{cols}}) * {{groupSize}}.
-- The following pairs of students must NOT be seated at the same desk:
+- The following pairs of students must NOT be seated directly next to each other at the same desk/table:
 {{#if avoidPairs}}
 {{#each avoidPairs}}
   - {{this.[0]}} and {{this.[1]}}
@@ -64,10 +66,10 @@ Constraints:
   - No specific pairs to avoid.
 {{/if}}
 
-Please generate a random seating chart based on these details.
+Please generate a completely new and random seating chart based on these details.
 - Place all students from the list into the seating chart.
-- If the total capacity is greater than the number of students, some desks or spots at desks will be empty. Represent empty desks with 'null'.
-- It is very important that you respect the 'avoidPairs' constraints. Students in those pairs cannot be in the same group.
+- If the total capacity is greater than the number of students, some desks or spots at desks will be empty. Represent empty desks with 'null' in the array, and empty spots at a desk with 'null' inside that desk's array.
+- It is very important that you respect the 'avoidPairs' constraints. Students in those pairs cannot be in the same group if it means they sit next to each other. For example, in a group of 3 (A, B, C), if (A, B) is an avoid pair, A and B cannot sit next to each other, but A and C could be in the same group if B is not between them. The students are seated in the order they appear in the array.
 - The final output must be a 2D array of size {{rows}} x {{cols}}, where each cell contains an array of student names (up to groupSize) or is null if the desk is empty.
 `,
 });
