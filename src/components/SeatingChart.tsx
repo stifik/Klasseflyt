@@ -62,7 +62,6 @@ export default function SeatingChart({ students }: SeatingChartProps) {
         avoidPairs: avoidPairNames as [string, string][],
       });
       
-      // Ensure the output is a 2D array
       const chart = result.seatingChart || [];
       const validatedChart: SeatingChartData = Array.from({ length: rows }, (_, r) =>
         Array.from({ length: cols }, (_, c) => chart[r]?.[c] || null)
@@ -96,12 +95,12 @@ export default function SeatingChart({ students }: SeatingChartProps) {
                 <Input id="rows" type="number" value={rows} onChange={(e) => setRows(Math.max(1, Number(e.target.value)))} min="1" />
               </div>
               <div>
-                <Label htmlFor="cols">Kolonner</Label>
+                <Label htmlFor="cols">Grupper pr. rad</Label>
                 <Input id="cols" type="number" value={cols} onChange={(e) => setCols(Math.max(1, Number(e.target.value)))} min="1" />
               </div>
             </div>
             <div>
-              <Label htmlFor="groupSize">Gruppestørrelse</Label>
+              <Label htmlFor="groupSize">Elever pr. gruppe</Label>
               <Select value={String(groupSize)} onValueChange={(v) => setGroupSize(Number(v))}>
                 <SelectTrigger id="groupSize">
                   <SelectValue placeholder="Velg gruppestørrelse" />
@@ -168,21 +167,29 @@ export default function SeatingChart({ students }: SeatingChartProps) {
                 </div>
             )}
             {seatingChart && (
-                <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
-                    {seatingChart.flat().map((desk, index) => (
-                        <Card key={index} className="flex flex-col items-center justify-center p-2 text-center min-h-[8rem] bg-secondary">
-                           {desk ? (
-                                <div className="flex flex-row items-center justify-around w-full h-full space-x-1">
-                                {desk.map(studentName => (
-                                    <p key={studentName} className="text-sm font-medium leading-tight basis-1/3">
-                                        {studentName}
-                                    </p>
-                                ))}
-                               </div>
-                           ) : (
-                                <p className="text-sm text-muted-foreground">-</p>
-                           )}
-                        </Card>
+                <div className="grid gap-y-2">
+                    {seatingChart.map((row, rowIndex) => (
+                        <div key={rowIndex} className="flex items-center justify-around">
+                            {row.map((desk, deskIndex) => (
+                                <div key={deskIndex} className={cn(
+                                    "flex",
+                                    { "gap-1": groupSize > 1 }
+                                )}>
+                                    {Array.from({ length: groupSize }).map((_, studentIndex) => {
+                                        const studentName = desk?.[studentIndex];
+                                        return (
+                                            <Card key={studentIndex} className="flex items-center justify-center w-24 h-16 text-center bg-secondary">
+                                                {studentName ? (
+                                                    <p className="text-xs font-medium">{studentName}</p>
+                                                ) : (
+                                                    <p className="text-sm text-muted-foreground">-</p>
+                                                )}
+                                            </Card>
+                                        );
+                                    })}
+                                </div>
+                            ))}
+                        </div>
                     ))}
                 </div>
             )}
