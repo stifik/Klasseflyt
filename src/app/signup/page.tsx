@@ -6,16 +6,18 @@ import { useRouter } from "next/navigation";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import AuthForm from "@/components/AuthForm";
+import { getDb } from "@/lib/firebase";
 
 export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
-  const auth = getAuth();
+  getDb(); // Ensure Firebase is initialized
 
   const handleSignup = async (email: string, password: string) => {
     setError(null);
     try {
+      const auth = getAuth();
       await createUserWithEmailAndPassword(auth, email, password);
       toast({ title: "Registrering vellykket", description: "Velkommen! Du blir nå sendt til innloggingssiden." });
       router.push("/login");
