@@ -70,6 +70,10 @@ async function seedDatabase() {
   console.log('Database seeded successfully.');
 };
 
+(async () => {
+  await seedDatabase();
+})();
+
 
 // Generic fetch function
 async function fetchCollection<T>(collectionName: string): Promise<T[]> {
@@ -98,7 +102,6 @@ async function deleteDocument(collectionName: string, id: string): Promise<void>
 
 // Student functions
 export async function getStudents(): Promise<Student[]> { 
-  await seedDatabase(); // Check and seed if necessary before fetching
   return fetchCollection<Student>('students'); 
 }
 export async function addStudent(student: Omit<Student, 'id'>) { return addDocument('students', student); }
@@ -191,3 +194,4 @@ export async function deleteDailyCheckByStudentAndDate(studentId: string, date: 
         await deleteDocument('dailyChecks', docId);
     }
 }
+
