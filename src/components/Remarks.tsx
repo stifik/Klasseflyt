@@ -1,12 +1,12 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import type { Student, Remark, SeatingChartData } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Megaphone } from "lucide-react";
+import { Calendar as CalendarIcon, Megaphone, ListChecks } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -55,23 +55,19 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
     const newRemarkData = { studentId, date, period: currentPeriod };
     const optimisticRemark: Remark = { id: tempId, ...newRemarkData };
 
-    // Optimistic update
     setRemarks(prev => [...prev, optimisticRemark]);
     
     try {
       const savedRemark = await addRemark(userId, newRemarkData);
-      // Replace temporary remark with the one from the database
       setRemarks(prev => prev.map(r => r.id === tempId ? savedRemark : r));
     } catch (error) {
       console.error(error);
-      // Revert on error
       setRemarks(prev => prev.filter(r => r.id !== tempId));
       toast({ title: "Feil", description: `Kunne ikke legge til anmerkning for ${studentName}.`, variant: "destructive" });
     }
   };
 
   const handleRemoveLastRemark = async (studentId: string) => {
-    const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
     const studentRemarksThisPeriod = getRemarksForStudent(studentId, date, currentPeriod)
       .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
@@ -79,18 +75,15 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
 
     const lastRemark = studentRemarksThisPeriod[0];
     
-    // Optimistic update
     setRemarks(prev => prev.filter(r => r.id !== lastRemark.id));
 
     try {
       await deleteRemark(userId, lastRemark.id);
-      // Refresh from DB to confirm and ensure sync
       onUpdate(); 
     } catch (error) {
       console.error(error);
-      // Revert on error
       setRemarks(prev => [...prev, lastRemark]);
-      toast({ title: "Feil", description: `Kunne ikke fjerne anmerkning for ${studentName}.`, variant: "destructive" });
+      toast({ title: "Feil", description: `Kunne ikke fjerne anmerkning.`, variant: "destructive" });
     }
   };
 
@@ -98,7 +91,7 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
   const handlePressStart = (studentId: string) => {
     pressTimer.current = setTimeout(() => {
       handleRemoveLastRemark(studentId);
-    }, 500); // 500ms for long press
+    }, 500); 
   };
 
   const handlePressEnd = () => {
@@ -107,6 +100,19 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
       pressTimer.current = null;
     }
   };
+
+  const dailyTotals = useMemo(() => {
+    const totals = students.map(student => {
+      const studentRemarks = getRemarksForStudent(student.id, date);
+      return {
+        studentId: student.id,
+        studentName: student.name,
+        count: studentRemarks.length,
+      };
+    }).filter(s => s.count > 0);
+    
+    return totals.sort((a, b) => b.count - a.count);
+  }, [remarks, date, students]);
 
   const StudentButton = ({ student }: { student: Student }) => {
     const remarksForPeriod = getRemarksForStudent(student.id, date, currentPeriod);
@@ -150,64 +156,90 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle>Registrer anmerkninger</CardTitle>
-            <CardDescription>
-              Kort trykk for å legge til. Langt trykk eller høyreklikk for å fjerne siste.
-            </CardDescription>
-          </div>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className="w-full mt-2 sm:mt-0 sm:w-[280px] justify-start text-left font-normal"
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "PPP", { locale: nb }) : <span>Velg en dato</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
-            </PopoverContent>
-          </Popover>
-        </div>
-        <div className="flex flex-wrap gap-2 pt-4">
-            {Array.from({ length: NUMBER_OF_PERIODS }, (_, i) => i + 1).map(period => (
-                <Button 
-                    key={period} 
-                    variant={currentPeriod === period ? "default" : "outline"}
-                    onClick={() => setCurrentPeriod(period)}
-                >
-                    Time {period}
-                </Button>
-            ))}
-        </div>
-      </CardHeader>
-      <CardContent>
-        {seatingChart ? (
-            <div className="grid gap-y-4">
-                {seatingChart.map((row, rowIndex) => (
-                    <div key={rowIndex} className="flex flex-wrap justify-start gap-x-4 gap-y-4">
-                        {row.map((desk, deskIndex) => (
-                           <div key={deskIndex} className="flex gap-1">
-                                {desk ? desk.map((studentName) => {
-                                    const student = students.find(s => s.name === studentName);
-                                    return student ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={student?.id || deskIndex} />;
-                                }) : <EmptyDesk />}
-                           </div>
-                        ))}
-                    </div>
-                ))}
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle>Registrer anmerkninger</CardTitle>
+              <CardDescription>
+                Kort trykk for å legge til. Langt trykk eller høyreklikk for å fjerne siste.
+              </CardDescription>
             </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {students.map((student) => <StudentButton key={student.id} student={student} />)}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className="w-full mt-2 sm:mt-0 sm:w-[280px] justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(date, "PPP", { locale: nb }) : <span>Velg en dato</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
+              </PopoverContent>
+            </Popover>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          <div className="flex flex-wrap gap-2 pt-4">
+              {Array.from({ length: NUMBER_OF_PERIODS }, (_, i) => i + 1).map(period => (
+                  <Button 
+                      key={period} 
+                      variant={currentPeriod === period ? "default" : "outline"}
+                      onClick={() => setCurrentPeriod(period)}
+                  >
+                      Time {period}
+                  </Button>
+              ))}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {seatingChart ? (
+              <div className="grid gap-y-4">
+                  {seatingChart.map((row, rowIndex) => (
+                      <div key={rowIndex} className="flex flex-wrap justify-start gap-x-4 gap-y-4">
+                          {row.map((desk, deskIndex) => (
+                             <div key={deskIndex} className="flex gap-1">
+                                  {desk ? desk.map((studentName) => {
+                                      const student = students.find(s => s.name === studentName);
+                                      return student ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={student?.id || deskIndex} />;
+                                  }) : <EmptyDesk />}
+                             </div>
+                          ))}
+                      </div>
+                  ))}
+              </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {students.map((student) => <StudentButton key={student.id} student={student} />)}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      {dailyTotals.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+                <ListChecks className="mr-2" />
+                Daglig Oppsummering
+            </CardTitle>
+            <CardDescription>
+              Totalt antall anmerkninger for {format(date, "PPP", { locale: nb })}.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {dailyTotals.map(item => (
+                <li key={item.studentId} className="flex items-center justify-between p-2 rounded-md bg-secondary">
+                  <span className="font-medium">{item.studentName}</span>
+                  <span className="font-bold text-lg">{item.count}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }
