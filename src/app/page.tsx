@@ -11,6 +11,7 @@ import { BookOpenCheck, Loader2 } from "lucide-react";
 import type { Student, Subject, Homework, Submission, DailyCheck } from "@/lib/types";
 import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { students as mockStudents, subjects as mockSubjects, homework as mockHomework, submissions as mockSubmissions, dailyChecks as mockDailyChecks } from "@/lib/mock-data";
 
 export default function Home() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -21,51 +22,49 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      try {
-        const [studentsData, subjectsData, homeworkData, submissionsData, dailyChecksData] = await Promise.all([
-          getStudents(),
-          getSubjects(),
-          getHomework(),
-          getSubmissions(),
-          getDailyChecks()
-        ]);
-        setStudents(studentsData);
-        setSubjects(subjectsData);
-        setHomework(homeworkData);
-        setSubmissions(submissionsData);
-        setDailyChecks(dailyChecksData);
-      } catch (error) {
-        console.error(error);
-        toast({ title: "Feil", description: "Kunne ikke laste data.", variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, [toast]);
-
-  const refreshData = async () => {
-    // This function can be passed down to children to allow them to refresh data
+  const loadData = async () => {
+    setLoading(true);
     try {
-      const [studentsData, subjectsData, homeworkData, submissionsData, dailyChecksData] = await Promise.all([
+      let [studentsData, subjectsData, homeworkData, submissionsData, dailyChecksData] = await Promise.all([
         getStudents(),
         getSubjects(),
         getHomework(),
         getSubmissions(),
         getDailyChecks()
       ]);
-      setStudents(studentsData);
-      setSubjects(subjectsData);
-      setHomework(homeworkData);
-      setSubmissions(submissionsData);
-      setDailyChecks(dailyChecksData);
+
+      // If there are no students, assume the database is empty and use mock data
+      if (studentsData.length === 0) {
+        toast({ title: "Bruker demodata", description: "Databasen er tom, viser innebygd demodata." });
+        setStudents(mockStudents);
+        setSubjects(mockSubjects);
+        setHomework(mockHomework);
+        setSubmissions(mockSubmissions);
+        setDailyChecks(mockDailyChecks);
+      } else {
+        setStudents(studentsData);
+        setSubjects(subjectsData);
+        setHomework(homeworkData);
+        setSubmissions(submissionsData);
+        setDailyChecks(dailyChecksData);
+      }
     } catch (error) {
-      toast({ title: "Feil", description: "Kunne ikke oppdatere data.", variant: "destructive" });
+      console.error(error);
+      toast({ title: "Feil", description: "Kunne ikke laste data. Viser demodata.", variant: "destructive" });
+      // Fallback to mock data on error
+      setStudents(mockStudents);
+      setSubjects(mockSubjects);
+      setHomework(mockHomework);
+      setSubmissions(mockSubmissions);
+      setDailyChecks(mockDailyChecks);
+    } finally {
+      setLoading(false);
     }
-  };
+  }
+
+  useEffect(() => {
+    loadData();
+  }, [toast]);
   
   if (loading) {
     return (
@@ -99,7 +98,7 @@ export default function Home() {
               subjects={subjects}
               homeworkList={homework}
               submissions={submissions}
-              onUpdate={refreshData}
+              onUpdate={loadData}
             />
           </TabsContent>
           <TabsContent value="daily">
@@ -121,7 +120,7 @@ export default function Home() {
             <Admin
               initialStudents={students}
               initialSubjects={subjects}
-              onUpdate={refreshData}
+              onUpdate={loadData}
             />
           </TabsContent>
         </Tabs>

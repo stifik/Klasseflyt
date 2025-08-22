@@ -6,9 +6,9 @@ import type { Student, Subject } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Database } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { addStudent, deleteStudent, addSubject, deleteSubject, seedDatabase } from "@/lib/firestore";
+import { addStudent, deleteStudent, addSubject, deleteSubject } from "@/lib/firestore";
 
 interface AdminProps {
   initialStudents: Student[];
@@ -21,7 +21,6 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
   const [subjects, setSubjects] = useState<Subject[]>(initialSubjects);
   const [newStudent, setNewStudent] = useState("");
   const [newSubject, setNewSubject] = useState("");
-  const [isSeeding, setIsSeeding] = useState(false);
   const { toast } = useToast();
 
   // Update local state when props change
@@ -78,43 +77,8 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
     }
   };
 
-  const handleSeedDatabase = async () => {
-    setIsSeeding(true);
-    try {
-      await seedDatabase();
-      toast({
-        title: "Database fylt!",
-        description: "Demodata er lagt til i databasen.",
-      });
-      onUpdate();
-    } catch (error) {
-      console.error("Seeding failed", error);
-      toast({
-        title: "Feil ved fylling av database",
-        description: "Kunne ikke legge til demodata.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSeeding(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {initialStudents.length === 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Start med demodata</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="mb-4 text-sm text-muted-foreground">Databasen er tom. Klikk her for å fylle den med eksempel-elever, fag og lekser for å komme i gang.</p>
-              <Button onClick={handleSeedDatabase} disabled={isSeeding}>
-                <Database className="mr-2" />
-                {isSeeding ? "Fyller database..." : "Fyll database med demodata"}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
