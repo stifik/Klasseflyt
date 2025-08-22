@@ -2,7 +2,7 @@
 "use server";
 
 import { db } from './firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, writeBatch, query, where, getDoc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, writeBatch, query, where, getDoc, Timestamp, setDoc } from 'firebase/firestore';
 import type { Student, Subject, Homework, Submission, DailyCheck } from './types';
 import { students, subjects, homework, submissions, dailyChecks } from '@/lib/mock-data';
 
@@ -26,61 +26,44 @@ async function seedDatabase() {
   console.log('Seeding database...');
   const batch = writeBatch(db);
 
-  // Use maps to track new IDs
-  const studentIdMap = new Map<string, string>();
-  const subjectIdMap = new Map<string, string>();
-  const homeworkIdMap = new Map<string, string>();
-
   students.forEach(s => {
-    const docRef = doc(collection(db, 'students'));
-    studentIdMap.set(s.id, docRef.id);
+    const docRef = doc(db, 'students', s.id);
     batch.set(docRef, { name: s.name });
   });
+
   subjects.forEach(s => {
-    const docRef = doc(collection(db, 'subjects'));
-    subjectIdMap.set(s.id, docRef.id);
+    const docRef = doc(db, 'subjects', s.id);
     batch.set(docRef, { name: s.name });
   });
 
   homework.forEach(h => {
-    const docRef = doc(collection(db, 'homework'));
-    homeworkIdMap.set(h.id, docRef.id);
-    const newSubjectId = subjectIdMap.get(h.subjectId);
-    if (newSubjectId) {
-       batch.set(docRef, {
-        title: h.title,
-        subjectId: newSubjectId,
-        week: h.week,
-        date: Timestamp.fromDate(h.date)
-      });
-    }
+    const docRef = doc(db, 'homework', h.id);
+    batch.set(docRef, {
+      title: h.title,
+      subjectId: h.subjectId,
+      week: h.week,
+      date: Timestamp.fromDate(h.date)
+    });
   });
 
   submissions.forEach(s => {
-    const docRef = doc(collection(db, 'submissions'));
-    const newStudentId = studentIdMap.get(s.studentId);
-    const newHomeworkId = homeworkIdMap.get(s.homeworkId);
-    if (newStudentId && newHomeworkId) {
-      batch.set(docRef, {
-        studentId: newStudentId,
-        homeworkId: newHomeworkId,
-        status: s.status,
-        comment: s.comment || ""
-      });
-    }
+    const docRef = doc(db, 'submissions', s.id);
+    batch.set(docRef, {
+      studentId: s.studentId,
+      homeworkId: s.homeworkId,
+      status: s.status,
+      comment: s.comment || ""
+    });
   });
   
   dailyChecks.forEach(c => {
-    const docRef = doc(collection(db, 'dailyChecks'));
-    const newStudentId = studentIdMap.get(c.studentId);
-    if (newStudentId) {
-      batch.set(docRef, {
-        studentId: newStudentId,
-        date: Timestamp.fromDate(c.date),
-        ipadCharged: c.ipadCharged,
-        ipadBrought: c.ipadBrought
-      });
-    }
+    const docRef = doc(db, 'dailyChecks', c.id);
+    batch.set(docRef, {
+      studentId: c.studentId,
+      date: Timestamp.fromDate(c.date),
+      ipadCharged: c.ipadCharged,
+      ipadBrought: c.ipadBrought
+    });
   });
   
   await batch.commit();
