@@ -134,12 +134,6 @@ export async function deleteDailyCheckByStudentAndDate(studentId: string, date: 
 
 // Function to seed database if it's empty
 export async function seedDatabase() {
-  const studentsSnapshot = await getDocs(collection(db, 'students'));
-  if (!studentsSnapshot.empty) {
-    console.log('Database already seeded.');
-    throw new Error("Database already contains data. Seeding aborted.");
-  }
-
   console.log('Seeding database...');
   const { students, subjects, homework, submissions, dailyChecks } = await import('@/lib/mock-data');
   const batch = writeBatch(db);

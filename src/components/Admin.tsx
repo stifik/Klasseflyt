@@ -90,12 +90,9 @@ export default function Admin() {
       await seedDatabase();
       toast({ title: "Database fylt", description: "Startdata har blitt lagt til i databasen."});
       await loadData();
-    } catch(error: any) {
-        if (error.message.includes("already contains data")) {
-             toast({ title: "Info", description: "Databasen inneholder allerede data.", variant: "default" });
-        } else {
-            toast({ title: "Feil", description: "Kunne ikke legge til startdata.", variant: "destructive" });
-        }
+    } catch(error) {
+      console.error("Seeding error:", error);
+      toast({ title: "Feil", description: "Kunne ikke legge til startdata.", variant: "destructive" });
     } finally {
       setIsSeeding(false);
     }
