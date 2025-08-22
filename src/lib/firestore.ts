@@ -81,17 +81,31 @@ export async function addHomework(homework: Omit<Homework, 'id'>) { return addDo
 
 // Submission functions
 export async function getSubmissions(): Promise<Submission[]> { return fetchCollection<Submission>('submissions'); }
-export async function setSubmission(submission: Omit<Submission, 'id'>): Promise<Submission> {
+export async function setSubmission(submission: Partial<Submission>): Promise<Submission> {
     const { studentId, homeworkId, ...rest } = submission;
+    if (!studentId || !homeworkId) {
+        throw new Error("studentId and homeworkId are required.");
+    }
+
     const q = query(
         collection(db, 'submissions'),
         where('studentId', '==', studentId),
         where('homeworkId', '==', homeworkId)
     );
     const querySnapshot = await getDocs(q);
+
     if (querySnapshot.empty) {
-        return addDocument('submissions', submission);
+        // Document doesn't exist, create it.
+        const newSubmissionData = {
+            studentId,
+            homeworkId,
+            status: rest.status || 'Godkjent', // Provide a default status
+            comment: rest.comment || "",
+            ...rest,
+        };
+        return addDocument('submissions', newSubmissionData);
     } else {
+        // Document exists, update it.
         const docId = querySnapshot.docs[0].id;
         await updateDocument('submissions', docId, rest);
         const docSnap = await getDoc(doc(db, 'submissions', docId));
