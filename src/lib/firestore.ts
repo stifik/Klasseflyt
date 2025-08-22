@@ -112,24 +112,24 @@ export async function setDailyCheck(check: Omit<DailyCheck, 'id'>): Promise<Dail
 export async function deleteDailyCheckByStudentAndDate(studentId: string, date: Date) {
      const dateOnly = new Date(date);
      dateOnly.setHours(0, 0, 0, 0);
-
-     const startOfDay = Timestamp.fromDate(dateOnly);
-     
-     const nextDay = new Date(dateOnly);
-     nextDay.setDate(dateOnly.getDate() + 1);
-     const endOfDay = Timestamp.fromDate(nextDay);
      
      const q = query(
         collection(db, 'dailyChecks'),
-        where('studentId', '==', studentId),
-        where('date', '>=', startOfDay),
-        where('date', '<', endOfDay)
+        where('studentId', '==', studentId)
     );
     const querySnapshot = await getDocs(q);
     
     if (!querySnapshot.empty) {
-        const docId = querySnapshot.docs[0].id;
-        await deleteDocument('dailyChecks', docId);
+        const docToDelete = querySnapshot.docs.find(doc => {
+            const check = convertTimestamps(doc.data()) as DailyCheck;
+            const checkDate = new Date(check.date);
+            checkDate.setHours(0, 0, 0, 0);
+            return checkDate.getTime() === dateOnly.getTime();
+        });
+
+        if (docToDelete) {
+            await deleteDocument('dailyChecks', docToDelete.id);
+        }
     }
 }
 
@@ -178,9 +178,6 @@ export async function seedDatabase() {
   const studentIds = studentDocs.map(doc => doc.id);
   const subjectIds = subjectDocs.map(doc => doc.id);
   
-  const homework: Homework[] = [];
-  const submissions: Submission[] = [];
-  const dailyChecks: DailyCheck[] = [];
   const today = new Date();
   
   const dataBatch = writeBatch(db);
