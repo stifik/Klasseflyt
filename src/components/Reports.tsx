@@ -10,14 +10,9 @@ import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { useToast } from "@/hooks/use-toast";
 import { generateWeeklySummary, GenerateWeeklySummaryInput } from '@/ai/flows/generate-weekly-summary';
 import { Printer, Copy, Loader2 } from 'lucide-react';
+import useLocalStorage from '@/hooks/useLocalStorage';
+import { students as initialStudents, subjects as initialSubjects, homework as initialHomework, submissions as initialSubmissions, dailyChecks as initialDailyChecks } from "@/lib/mock-data";
 
-interface ReportsProps {
-  students: Student[];
-  subjects: Subject[];
-  homework: Homework[];
-  submissions: Submission[];
-  dailyChecks: DailyCheck[];
-}
 
 const statusColors: Record<HomeworkStatus, string> = {
   "Godkjent": "#22c55e",
@@ -27,8 +22,14 @@ const statusColors: Record<HomeworkStatus, string> = {
   "Glemt bok": "#f97316",
 };
 
-export default function Reports({ students, subjects, homework, submissions, dailyChecks }: ReportsProps) {
+export default function Reports() {
   const { toast } = useToast();
+  const [students] = useLocalStorage<Student[]>("students", initialStudents);
+  const [subjects] = useLocalStorage<Subject[]>("subjects", initialSubjects);
+  const [homework] = useLocalStorage<Homework[]>("homework", initialHomework);
+  const [submissions] = useLocalStorage<Submission[]>("submissions", initialSubmissions);
+  const [dailyChecks] = useLocalStorage<DailyCheck[]>("dailyChecks", initialDailyChecks);
+
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   const [generatedMessages, setGeneratedMessages] = useState<Array<{ studentName: string; message: string }>>([]);
   const [isGenerating, setIsGenerating] = useState(false);

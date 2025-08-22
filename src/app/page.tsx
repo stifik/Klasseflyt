@@ -36,13 +36,7 @@ export default function Home() {
             <DailyChecklist students={students} initialChecks={dailyChecks} />
           </TabsContent>
           <TabsContent value="reports">
-             <Reports 
-                students={students} 
-                subjects={subjects} 
-                homework={homework} 
-                submissions={submissions}
-                dailyChecks={dailyChecks}
-             />
+             <Reports />
           </TabsContent>
           <TabsContent value="admin">
             <Admin initialStudents={students} initialSubjects={subjects} />

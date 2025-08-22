@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import useLocalStorage from "@/hooks/useLocalStorage";
 
 interface HomeworkOverviewProps {
   students: Student[];
@@ -122,9 +123,12 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
   );
 };
 
-export default function HomeworkOverview({ students, subjects, homework, initialSubmissions }: HomeworkOverviewProps) {
-  const [submissions, setSubmissions] = useState<Submission[]>(initialSubmissions);
-  const [homeworkList, setHomeworkList] = useState<Homework[]>(homework);
+export default function HomeworkOverview({ students: initialStudents, subjects: initialSubjects, homework: initialHomework, initialSubmissions }: HomeworkProps) {
+  const [students] = useLocalStorage<Student[]>("students", initialStudents);
+  const [subjects] = useLocalStorage<Subject[]>("subjects", initialSubjects);
+  const [submissions, setSubmissions] = useLocalStorage<Submission[]>("submissions", initialSubmissions);
+  const [homeworkList, setHomeworkList] = useLocalStorage<Homework[]>("homework", initialHomework);
+  
   const [commentModal, setCommentModal] = useState<{ open: boolean; studentId?: string; homeworkId?: string; }>({ open: false });
   const [currentComment, setCurrentComment] = useState("");
   const [filters, setFilters] = useState<{ subject: string; week: string; showProblems: boolean }>({ subject: "all", week: "all", showProblems: false });
@@ -181,7 +185,7 @@ export default function HomeworkOverview({ students, subjects, homework, initial
   const handleCopyHomework = (homeworkId: string) => {
     const hwToCopy = homeworkList.find(h => h.id === homeworkId);
     if(hwToCopy) {
-      const newHw = { ...hwToCopy, id: `hw${homeworkList.length + 1}`, week: new Date().getWeek() };
+      const newHw = { ...hwToCopy, id: `hw${homeworkList.length + 1}`, week: new Date().getWeek(), date: new Date() };
       setHomeworkList([...homeworkList, newHw]);
       toast({ title: "Lekse kopiert", description: `En ny versjon av "${hwToCopy.title}" er opprettet for denne uken.`});
     }
@@ -215,7 +219,7 @@ export default function HomeworkOverview({ students, subjects, homework, initial
     return filters.showProblems ? students.filter(s => problemStudentIds.has(s.id)) : students;
   }, [students, filters.showProblems, problemStudentIds]);
   
-  const uniqueWeeks = [...new Set(homework.map(h => h.week))].sort((a,b) => b-a);
+  const uniqueWeeks = [...new Set(homeworkList.map(h => h.week))].sort((a,b) => b-a);
   
   return (
     <div className="space-y-4">

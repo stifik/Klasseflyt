@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import type { Student, Subject } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import useLocalStorage from "@/hooks/useLocalStorage";
+import { useState } from "react";
 
 interface AdminProps {
   initialStudents: Student[];
@@ -14,8 +15,8 @@ interface AdminProps {
 }
 
 export default function Admin({ initialStudents, initialSubjects }: AdminProps) {
-  const [students, setStudents] = useState<Student[]>(initialStudents);
-  const [subjects, setSubjects] = useState<Subject[]>(initialSubjects);
+  const [students, setStudents] = useLocalStorage<Student[]>("students", initialStudents);
+  const [subjects, setSubjects] = useLocalStorage<Subject[]>("subjects", initialSubjects);
   const [newStudent, setNewStudent] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const { toast } = useToast();

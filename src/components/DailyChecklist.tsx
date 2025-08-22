@@ -10,6 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import useLocalStorage from "@/hooks/useLocalStorage";
 
 interface DailyChecklistProps {
   students: Student[];
@@ -18,14 +19,15 @@ interface DailyChecklistProps {
 
 type IpadStatus = "OK" | "NotCharged" | "NotBrought";
 
-export default function DailyChecklist({ students, initialChecks }: DailyChecklistProps) {
+export default function DailyChecklist({ students: initialStudents, initialChecks }: DailyChecklistProps) {
   const [date, setDate] = useState<Date>(new Date());
-  const [checks, setChecks] = useState<DailyCheck[]>(initialChecks);
+  const [students] = useLocalStorage<Student[]>("students", initialStudents);
+  const [checks, setChecks] = useLocalStorage<DailyCheck[]>("dailyChecks", initialChecks);
 
   const getCheckForDate = (studentId: string, checkDate: Date) => {
     const dateString = checkDate.toISOString().split("T")[0];
     return checks.find(
-      (c) => c.studentId === studentId && c.date.toISOString().split("T")[0] === dateString
+      (c) => c.studentId === studentId && new Date(c.date).toISOString().split("T")[0] === dateString
     );
   };
   
