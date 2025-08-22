@@ -125,6 +125,17 @@ export default function Reports({ students, subjects, homework, submissions, dai
         };
       });
 
+      const remarksByDate = studentRemarks
+        .sort((a, b) => b.date.getTime() - a.date.getTime())
+        .reduce((acc, remark) => {
+          const dateString = format(remark.date, 'PPP', { locale: nb });
+          if (!acc[dateString]) {
+            acc[dateString] = 0;
+          }
+          acc[dateString]++;
+          return acc;
+        }, {} as Record<string, number>);
+
       return {
         studentId: student.id,
         studentName: student.name,
@@ -132,7 +143,7 @@ export default function Reports({ students, subjects, homework, submissions, dai
         ipadNotCharged,
         ipadNotBrought,
         totalRemarks: studentRemarks.length,
-        remarks: studentRemarks.sort((a,b) => b.date.getTime() - a.date.getTime()),
+        remarksByDate,
         statsBySubject,
       };
     });
@@ -267,9 +278,13 @@ export default function Reports({ students, subjects, homework, submissions, dai
                        <Card>
                         <CardHeader><CardTitle>Anmerkninger ({stat.totalRemarks} totalt)</CardTitle></CardHeader>
                         <CardContent className="text-sm">
-                           {stat.remarks.length > 0 ? (
+                           {Object.keys(stat.remarksByDate).length > 0 ? (
                                 <ul className="list-disc list-inside">
-                                    {stat.remarks.map(r => <li key={r.id}>{format(r.date, "PPP", {locale: nb})}</li>)}
+                                    {Object.entries(stat.remarksByDate).map(([date, count]) => (
+                                      <li key={date}>
+                                        {date} {count > 1 && `(${count})`}
+                                      </li>
+                                    ))}
                                 </ul>
                            ) : <p>Ingen anmerkninger registrert.</p>}
                         </CardContent>
