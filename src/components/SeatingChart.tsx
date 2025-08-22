@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Users, Shuffle, Hand } from "lucide-react";
+import { Loader2, Users, Shuffle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateSeatingChart } from "@/ai/flows/generate-seating-chart";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay } from "@dnd-kit/core";
@@ -21,6 +21,8 @@ type AvoidPair = [string, string];
 
 interface SeatingChartProps {
   students: Student[];
+  seatingChart: SeatingChartData | null;
+  onSeatingChartChange: (chart: SeatingChartData | null) => void;
 }
 
 interface DeskProps {
@@ -67,12 +69,11 @@ const DroppableDesk = ({ studentName, id, children }: DeskProps & { children: Re
 };
 
 
-export default function SeatingChart({ students }: SeatingChartProps) {
+export default function SeatingChart({ students, seatingChart, onSeatingChartChange }: SeatingChartProps) {
   const [rows, setRows] = useState(4);
   const [cols, setCols] = useState(5);
   const [groupSize, setGroupSize] = useState(2);
   const [avoidPairs, setAvoidPairs] = useState<AvoidPair[]>([]);
-  const [seatingChart, setSeatingChart] = useState<SeatingChartData | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -124,7 +125,7 @@ export default function SeatingChart({ students }: SeatingChartProps) {
         temporaryAvoidPairs = [...new Set([...temporaryAvoidPairs, ...previousNeighbors])];
     }
     
-    setSeatingChart(null); 
+    onSeatingChartChange(null); 
 
     try {
       const studentNames = students.map(s => s.name);
@@ -146,7 +147,7 @@ export default function SeatingChart({ students }: SeatingChartProps) {
       const validatedChart: SeatingChartData = Array.from({ length: rows }, (_, r) =>
         Array.from({ length: cols }, (_, c) => chart[r]?.[c] || null)
       );
-      setSeatingChart(validatedChart);
+      onSeatingChartChange(validatedChart);
 
     } catch (error) {
         console.error(error);
@@ -177,13 +178,12 @@ export default function SeatingChart({ students }: SeatingChartProps) {
     
     if (studentToMove === undefined) return;
 
-    const endDesk = newChart[endRow]?.[endCol];
-    const studentToSwap = endDesk?.[endStudentIdx];
-
     // Create end desk if it doesn't exist (is null)
     if (!newChart[endRow][endCol]) {
       newChart[endRow][endCol] = Array(groupSize).fill(null);
     }
+     const endDesk = newChart[endRow]?.[endCol];
+    const studentToSwap = endDesk?.[endStudentIdx];
     
     // Swap or move
     newChart[endRow][endCol][endStudentIdx] = studentToMove;
@@ -202,11 +202,11 @@ export default function SeatingChart({ students }: SeatingChartProps) {
       }
     }
 
-    setSeatingChart(newChart);
+    onSeatingChartChange(newChart);
   };
   
-  const draggedStudentName = activeDragId 
-      ? seatingChart?.at(parseInt(activeDragId.split('-')[0]))
+  const draggedStudentName = activeDragId && seatingChart
+      ? seatingChart.at(parseInt(activeDragId.split('-')[0]))
           ?.at(parseInt(activeDragId.split('-')[1]))
           ?.at(parseInt(activeDragId.split('-')[2])) 
       : null;

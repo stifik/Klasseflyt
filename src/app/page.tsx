@@ -13,12 +13,15 @@ import type { Student, Subject, Homework, Submission, DailyCheck } from "@/lib/t
 import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 
+type SeatingChartData = (string[] | null)[][];
+
 export default function Home() {
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [homework, setHomework] = useState<Homework[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [dailyChecks, setDailyChecks] = useState<DailyCheck[]>([]);
+  const [seatingChart, setSeatingChart] = useState<SeatingChartData | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
@@ -116,7 +119,11 @@ export default function Home() {
              />
           </TabsContent>
            <TabsContent value="seating-chart">
-            <SeatingChart students={students} />
+            <SeatingChart
+              students={students}
+              seatingChart={seatingChart}
+              onSeatingChartChange={setSeatingChart}
+            />
           </TabsContent>
           <TabsContent value="admin">
             <Admin
