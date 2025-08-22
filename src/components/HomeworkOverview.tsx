@@ -34,13 +34,13 @@ const StatusPopover: FC<{ submission?: Submission; onStatusChange: (status: Home
   
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild onMouseEnter={() => setIsOpen(true)}>
+      <PopoverTrigger asChild>
           <button className="flex items-center justify-center w-full h-full p-2 relative min-h-[58px]">
             {submission ? statusIcons[submission.status] : <span className="text-muted-foreground">-</span>}
             {hasComment && <FileText className="absolute w-3 h-3 text-blue-600 bottom-1 right-1" />}
           </button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-1" onMouseLeave={() => setIsOpen(false)}>
+      <PopoverContent className="w-auto p-1">
         <div className="flex flex-col gap-1">
           {Object.keys(statusIcons).map((status) => (
             <Button 
