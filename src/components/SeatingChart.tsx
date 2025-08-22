@@ -170,9 +170,9 @@ export default function SeatingChart({ students }: SeatingChartProps) {
             {seatingChart && (
                 <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
                     {seatingChart.flat().map((desk, index) => (
-                        <Card key={index} className="flex flex-col items-center justify-center p-2 text-center aspect-square bg-secondary">
+                        <Card key={index} className="flex flex-col items-center justify-center p-2 text-center h-32 bg-secondary">
                            {desk ? (
-                               <div className={cn("flex w-full h-full items-center justify-around", groupSize > 1 ? "flex-row" : "flex-col")}>
+                                <div className="flex flex-col items-center justify-center w-full h-full space-y-1">
                                 {desk.map(studentName => (
                                     <p key={studentName} className="text-sm font-medium">{studentName}</p>
                                 ))}
