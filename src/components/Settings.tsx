@@ -1,6 +1,7 @@
 
 "use client";
 
+import * as React from "react";
 import { useState } from "react";
 import type { Student, Subject, AppSettings, TabKey } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
