@@ -1,11 +1,81 @@
+
+'use client'
+
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import HomeworkOverview from "@/components/HomeworkOverview";
 import DailyChecklist from "@/components/DailyChecklist";
 import Reports from "@/components/Reports";
 import Admin from "@/components/Admin";
-import { BookOpenCheck } from "lucide-react";
+import { BookOpenCheck, Loader2 } from "lucide-react";
+import type { Student, Subject, Homework, Submission, DailyCheck } from "@/lib/types";
+import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks } from "@/lib/firestore";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
+  const [students, setStudents] = useState<Student[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [homework, setHomework] = useState<Homework[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [dailyChecks, setDailyChecks] = useState<DailyCheck[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true);
+      try {
+        const [studentsData, subjectsData, homeworkData, submissionsData, dailyChecksData] = await Promise.all([
+          getStudents(),
+          getSubjects(),
+          getHomework(),
+          getSubmissions(),
+          getDailyChecks()
+        ]);
+        setStudents(studentsData);
+        setSubjects(subjectsData);
+        setHomework(homeworkData);
+        setSubmissions(submissionsData);
+        setDailyChecks(dailyChecksData);
+      } catch (error) {
+        console.error(error);
+        toast({ title: "Feil", description: "Kunne ikke laste data.", variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [toast]);
+
+  const refreshData = async () => {
+    // This function can be passed down to children to allow them to refresh data
+    try {
+      const [studentsData, subjectsData, homeworkData, submissionsData, dailyChecksData] = await Promise.all([
+        getStudents(),
+        getSubjects(),
+        getHomework(),
+        getSubmissions(),
+        getDailyChecks()
+      ]);
+      setStudents(studentsData);
+      setSubjects(subjectsData);
+      setHomework(homeworkData);
+      setSubmissions(submissionsData);
+      setDailyChecks(dailyChecksData);
+    } catch (error) {
+      toast({ title: "Feil", description: "Kunne ikke oppdatere data.", variant: "destructive" });
+    }
+  };
+  
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-background items-center justify-center">
+        <Loader2 className="w-12 h-12 animate-spin mb-4" />
+        <p>Laster data fra databasen...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <header className="sticky top-0 z-10 flex items-center h-16 px-4 border-b bg-background sm:px-6">
@@ -24,16 +94,35 @@ export default function Home() {
           </TabsList>
 
           <TabsContent value="overview">
-            <HomeworkOverview />
+            <HomeworkOverview
+              students={students}
+              subjects={subjects}
+              homeworkList={homework}
+              submissions={submissions}
+              onUpdate={refreshData}
+            />
           </TabsContent>
           <TabsContent value="daily">
-            <DailyChecklist />
+            <DailyChecklist
+              students={students}
+              initialChecks={dailyChecks}
+            />
           </TabsContent>
           <TabsContent value="reports">
-             <Reports />
+             <Reports
+                students={students}
+                subjects={subjects}
+                homework={homework}
+                submissions={submissions}
+                dailyChecks={dailyChecks}
+             />
           </TabsContent>
           <TabsContent value="admin">
-            <Admin />
+            <Admin
+              initialStudents={students}
+              initialSubjects={subjects}
+              onUpdate={refreshData}
+            />
           </TabsContent>
         </Tabs>
       </main>

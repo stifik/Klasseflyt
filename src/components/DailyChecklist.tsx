@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -5,38 +6,29 @@ import type { Student, DailyCheck } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, BatteryWarning, TabletSmartphone, Loader2 } from "lucide-react";
+import { Calendar as CalendarIcon, BatteryWarning, TabletSmartphone } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { getStudents, getDailyChecks, setDailyCheck, deleteDailyCheckByStudentAndDate } from "@/lib/firestore";
+import { setDailyCheck, deleteDailyCheckByStudentAndDate } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 type IpadStatus = "OK" | "NotCharged" | "NotBrought";
 
-export default function DailyChecklist() {
+interface DailyChecklistProps {
+  students: Student[];
+  initialChecks: DailyCheck[];
+}
+
+export default function DailyChecklist({ students, initialChecks }: DailyChecklistProps) {
   const [date, setDate] = useState<Date>(new Date());
-  const [students, setStudents] = useState<Student[]>([]);
-  const [checks, setChecks] = useState<DailyCheck[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [checks, setChecks] = useState<DailyCheck[]>(initialChecks);
   const { toast } = useToast();
 
   useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      try {
-        const [studentsData, checksData] = await Promise.all([getStudents(), getDailyChecks()]);
-        setStudents(studentsData);
-        setChecks(checksData);
-      } catch (error) {
-        toast({ title: "Feil", description: "Kunne ikke laste data.", variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, [toast]);
+    setChecks(initialChecks);
+  }, [initialChecks]);
 
   const getCheckForDate = (studentId: string, checkDate: Date) => {
     const dateString = checkDate.toISOString().split("T")[0];
@@ -100,10 +92,6 @@ export default function DailyChecklist() {
     NotCharged: { variant: "outline", icon: <BatteryWarning className="mr-2" />, label: "Ikke ladet" },
     NotBrought: { variant: "destructive", icon: <TabletSmartphone className="mr-2" />, label: "Ikke medbrakt" },
   };
-  
-  if (loading) {
-    return <div className="flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin" /> Laster data...</div>;
-  }
 
   return (
     <Card>

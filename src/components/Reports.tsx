@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -10,8 +11,14 @@ import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { useToast } from "@/hooks/use-toast";
 import { generateWeeklySummary, GenerateWeeklySummaryInput } from '@/ai/flows/generate-weekly-summary';
 import { Printer, Copy, Loader2 } from 'lucide-react';
-import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks } from '@/lib/firestore';
 
+interface ReportsProps {
+  students: Student[];
+  subjects: Subject[];
+  homework: Homework[];
+  submissions: Submission[];
+  dailyChecks: DailyCheck[];
+}
 
 const statusColors: Record<HomeworkStatus, string> = {
   "Godkjent": "#22c55e",
@@ -21,43 +28,11 @@ const statusColors: Record<HomeworkStatus, string> = {
   "Glemt bok": "#f97316",
 };
 
-export default function Reports() {
+export default function Reports({ students, subjects, homework, submissions, dailyChecks }: ReportsProps) {
   const { toast } = useToast();
-  const [students, setStudents] = useState<Student[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [homework, setHomework] = useState<Homework[]>([]);
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [dailyChecks, setDailyChecks] = useState<DailyCheck[]>([]);
-  const [loading, setLoading] = useState(true);
-
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   const [generatedMessages, setGeneratedMessages] = useState<Array<{ studentName: string; message: string }>>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  
-  useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      try {
-        const [studentsData, subjectsData, homeworkData, submissionsData, dailyChecksData] = await Promise.all([
-          getStudents(),
-          getSubjects(),
-          getHomework(),
-          getSubmissions(),
-          getDailyChecks()
-        ]);
-        setStudents(studentsData);
-        setSubjects(subjectsData);
-        setHomework(homeworkData);
-        setSubmissions(submissionsData);
-        setDailyChecks(dailyChecksData);
-      } catch (error) {
-        toast({ title: "Feil", description: "Kunne ikke laste data.", variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, [toast]);
 
   const studentStats = useMemo(() => {
     return students.map(student => {
@@ -159,10 +134,6 @@ export default function Reports() {
   
   const handlePrint = () => {
     window.print();
-  }
-  
-  if (loading) {
-    return <div className="flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin" /> Laster data...</div>;
   }
 
   return (

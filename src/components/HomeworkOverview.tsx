@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, type FC, useEffect } from "react";
@@ -10,13 +11,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX, Plus, Loader2 } from "lucide-react";
+import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getStudents, getSubjects, getHomework, getSubmissions, addHomework, setSubmission } from "@/lib/firestore";
+import { addHomework, setSubmission } from "@/lib/firestore";
 import { Input } from "./ui/input";
 
 
-interface HomeworkOverviewProps {}
+interface HomeworkOverviewProps {
+  students: Student[];
+  subjects: Subject[];
+  homeworkList: Homework[];
+  submissions: Submission[];
+  onUpdate: () => void;
+}
 
 const statusIcons: Record<HomeworkStatus, React.ReactElement> = {
   "Godkjent": <CheckCircle className="text-green-500" />,
@@ -119,40 +126,11 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
   );
 };
 
-export default function HomeworkOverview({}: HomeworkOverviewProps) {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [homeworkList, setHomeworkList] = useState<Homework[]>([]);
-  const [loading, setLoading] = useState(true);
-  
+export default function HomeworkOverview({ students, subjects, homeworkList, submissions, onUpdate }: HomeworkOverviewProps) {
   const [commentModal, setCommentModal] = useState<{ open: boolean; studentId?: string; homeworkId?: string; }>({ open: false });
   const [currentComment, setCurrentComment] = useState("");
   const [filters, setFilters] = useState<{ subject: string; week: string; showProblems: boolean }>({ subject: "all", week: "all", showProblems: false });
   const { toast } = useToast();
-
-  useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      try {
-        const [studentsData, subjectsData, homeworkData, submissionsData] = await Promise.all([
-          getStudents(),
-          getSubjects(),
-          getHomework(),
-          getSubmissions()
-        ]);
-        setStudents(studentsData);
-        setSubjects(subjectsData);
-        setHomeworkList(homeworkData);
-        setSubmissions(submissionsData);
-      } catch (error) {
-        toast({ title: "Feil", description: "Kunne ikke laste data.", variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, [toast]);
   
   const getSubmission = (studentId: string, homeworkId: string) => submissions.find(s => s.studentId === studentId && s.homeworkId === homeworkId);
 
@@ -166,14 +144,8 @@ export default function HomeworkOverview({}: HomeworkOverviewProps) {
     };
 
     try {
-        const updatedSubmission = await setSubmission(submissionData);
-        setSubmissions(prev => {
-            const index = prev.findIndex(s => s.id === updatedSubmission.id);
-            if (index > -1) {
-                return prev.map((s, i) => i === index ? updatedSubmission : s);
-            }
-            return [...prev, updatedSubmission];
-        });
+        await setSubmission(submissionData);
+        onUpdate();
     } catch (error) {
         toast({ title: "Feil", description: "Kunne ikke lagre status.", variant: "destructive" });
     }
@@ -192,14 +164,8 @@ export default function HomeworkOverview({}: HomeworkOverviewProps) {
     };
     
     try {
-        const updatedSubmission = await setSubmission(submissionData);
-         setSubmissions(prev => {
-            const index = prev.findIndex(s => s.id === updatedSubmission.id);
-            if (index > -1) {
-                return prev.map((s, i) => i === index ? updatedSubmission : s);
-            }
-            return [...prev, updatedSubmission];
-        });
+        await setSubmission(submissionData);
+        onUpdate();
         setCommentModal({ open: false });
         setCurrentComment("");
         toast({ title: "Kommentar lagret" });
@@ -223,8 +189,8 @@ export default function HomeworkOverview({}: HomeworkOverviewProps) {
       week: newDate.getWeek(),
     };
     try {
-        const newHomework = await addHomework(newHomeworkData);
-        setHomeworkList([...homeworkList, newHomework]);
+        await addHomework(newHomeworkData);
+        onUpdate();
         toast({ title: "Lekse lagt til", description: `"${title}" er lagt til i oversikten.` });
     } catch(error) {
         toast({ title: "Feil", description: "Kunne ikke legge til lekse.", variant: "destructive" });
@@ -237,8 +203,8 @@ export default function HomeworkOverview({}: HomeworkOverviewProps) {
       const { id, ...hwData } = hwToCopy;
       const newHwData = { ...hwData, week: new Date().getWeek(), date: new Date() };
       try {
-        const newHomework = await addHomework(newHwData);
-        setHomeworkList([...homeworkList, newHomework]);
+        await addHomework(newHwData);
+        onUpdate();
         toast({ title: "Lekse kopiert", description: `En ny versjon av "${hwToCopy.title}" er opprettet for denne uken.`});
       } catch(error) {
         toast({ title: "Feil", description: "Kunne ikke kopiere lekse.", variant: "destructive" });
@@ -274,10 +240,6 @@ export default function HomeworkOverview({}: HomeworkOverviewProps) {
   }, [students, filters.showProblems, problemStudentIds]);
   
   const uniqueWeeks = [...new Set(homeworkList.map(h => h.week))].sort((a,b) => b-a);
-  
-  if (loading) {
-    return <div className="flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin" /> Laster data...</div>;
-  }
   
   return (
     <div className="space-y-4">
