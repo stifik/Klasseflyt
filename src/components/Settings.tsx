@@ -2,11 +2,11 @@
 "use client";
 
 import { useState } from "react";
-import type { Student, Subject, AppSettings } from "@/lib/types";
+import type { Student, Subject, AppSettings, TabKey } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Database, AlertTriangle, SettingsIcon } from "lucide-react";
+import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { addStudent, deleteStudent, addSubject, deleteSubject, resetAndSeedDatabase } from "@/lib/firestore";
 import {
@@ -22,6 +22,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface SettingsProps {
   userId: string;
@@ -32,7 +47,7 @@ interface SettingsProps {
   onSettingsChange: (newSettings: AppSettings) => void;
 }
 
-const tabLabels: Record<keyof AppSettings['tabs'], string> = {
+const tabLabels: Record<TabKey, string> = {
   overview: "Lekseoversikt",
   dailyCheck: "Daglig Sjekk",
   remarks: "Anmerkninger",
@@ -40,11 +55,60 @@ const tabLabels: Record<keyof AppSettings['tabs'], string> = {
   seatingChart: "Klassekart",
 };
 
+const SortableTabItem = ({ id, onToggle }: { id: TabKey, onToggle: (tab: TabKey) => void }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+  
+  const { settings } = useSettingsContext();
+  
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center justify-between p-3 border rounded-lg bg-background touch-none">
+      <div className="flex items-center">
+        <button {...attributes} {...listeners} className="p-2 cursor-grab">
+          <GripVertical className="w-5 h-5 text-muted-foreground" />
+        </button>
+        <Label htmlFor={`tab-${id}`} className="font-medium">
+          {tabLabels[id]}
+        </Label>
+      </div>
+      <Switch
+        id={`tab-${id}`}
+        checked={settings.tabs[id]}
+        onCheckedChange={() => onToggle(id)}
+      />
+    </div>
+  );
+};
+
+
+// Create a context to pass settings down to SortableTabItem
+const SettingsContext = React.createContext<{ settings: AppSettings } | null>(null);
+const useSettingsContext = () => {
+    const context = React.useContext(SettingsContext);
+    if (!context) {
+        throw new Error("useSettingsContext must be used within a SettingsProvider");
+    }
+    return context;
+};
+
+
 export default function Settings({ userId, initialStudents, initialSubjects, onUpdate, settings, onSettingsChange }: SettingsProps) {
   const [newStudent, setNewStudent] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [isSeeding, setIsSeeding] = useState(false);
   const { toast } = useToast();
+  const sensors = useSensors(useSensor(PointerSensor));
+
 
   const handleAddStudent = async () => {
     if (newStudent.trim()) {
@@ -115,32 +179,46 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
     }
   };
 
-  const handleTabToggle = (tab: keyof AppSettings['tabs']) => {
+  const handleTabToggle = (tab: TabKey) => {
     const newTabs = { ...settings.tabs, [tab]: !settings.tabs[tab] };
     onSettingsChange({ ...settings, tabs: newTabs });
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const oldIndex = settings.tabOrder.indexOf(active.id as TabKey);
+      const newIndex = settings.tabOrder.indexOf(over!.id as TabKey);
+      const newTabOrder = arrayMove(settings.tabOrder, oldIndex, newIndex);
+      onSettingsChange({ ...settings, tabOrder: newTabOrder });
+    }
+  };
 
   return (
     <div className="space-y-6">
       <Card>
           <CardHeader>
               <CardTitle className="flex items-center"><SettingsIcon className="mr-2" />Faneinnstillinger</CardTitle>
-              <CardDescription>Velg hvilke faner og verktøy du vil ha synlig i appen.</CardDescription>
+              <CardDescription>Velg hvilke faner du vil ha synlig, og dra for å endre rekkefølgen.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
-              {Object.keys(tabLabels).map((tabKey) => (
-                  <div key={tabKey} className="flex items-center justify-between p-3 border rounded-lg">
-                      <Label htmlFor={`tab-${tabKey}`} className="font-medium">
-                          {tabLabels[tabKey as keyof typeof tabLabels]}
-                      </Label>
-                      <Switch
-                          id={`tab-${tabKey}`}
-                          checked={settings.tabs[tabKey as keyof typeof tabLabels]}
-                          onCheckedChange={() => handleTabToggle(tabKey as keyof typeof tabLabels)}
-                      />
-                  </div>
-              ))}
+          <CardContent className="space-y-2">
+            <SettingsContext.Provider value={{ settings }}>
+              <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+              >
+                  <SortableContext
+                      items={settings.tabOrder}
+                      strategy={verticalListSortingStrategy}
+                  >
+                      {settings.tabOrder.map((tabKey) => (
+                           <SortableTabItem key={tabKey} id={tabKey} onToggle={handleTabToggle} />
+                      ))}
+                  </SortableContext>
+              </DndContext>
+             </SettingsContext.Provider>
           </CardContent>
       </Card>
 

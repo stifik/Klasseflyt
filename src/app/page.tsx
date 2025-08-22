@@ -12,13 +12,29 @@ import Remarks from "@/components/Remarks";
 import withAuth from '@/components/withAuth';
 import { Button } from "@/components/ui/button";
 import { BookOpenCheck, Loader2, LogOut } from "lucide-react";
-import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark } from "@/lib/types";
+import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark, TabKey } from "@/lib/types";
 import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks, getLatestSeatingChart, saveSeatingChart, getSeatingChartHistory, getRemarks } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { getAuth, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useSettings } from "@/hooks/useSettings";
 
+
+const tabComponents: Record<TabKey, React.FC<any>> = {
+  overview: HomeworkOverview,
+  dailyCheck: DailyChecklist,
+  remarks: Remarks,
+  reports: Reports,
+  seatingChart: SeatingChart,
+};
+
+const tabLabels: Record<TabKey, string> = {
+  overview: "Lekseoversikt",
+  dailyCheck: "Daglig Sjekk",
+  remarks: "Anmerkninger",
+  reports: "Rapporter",
+  seatingChart: "Klassekart",
+};
 
 function Home({ userId }: { userId: string }) {
   const [students, setStudents] = useState<Student[]>([]);
@@ -144,9 +160,7 @@ function Home({ userId }: { userId: string }) {
      // Settings are only saved when a chart is saved.
   }
 
-  const visibleTabs = Object.entries(settings.tabs)
-    .filter(([, isVisible]) => isVisible)
-    .map(([key]) => key);
+  const visibleTabs = settings.tabOrder.filter(tabKey => settings.tabs[tabKey]);
 
   const tabGridCols = {
     1: 'grid-cols-1',
@@ -160,6 +174,13 @@ function Home({ userId }: { userId: string }) {
   const numVisibleTabs = visibleTabs.length + 1; // +1 for settings tab
   const gridClass = tabGridCols[numVisibleTabs] || 'sm:grid-cols-3 md:grid-cols-6';
 
+  const componentProps = {
+    overview: { userId, students, subjects, homeworkList: homework, submissions, onUpdate: handleDataUpdate },
+    dailyCheck: { userId, students, initialChecks: dailyChecks, onUpdate: handleDataUpdate, seatingChart },
+    remarks: { userId, students, initialRemarks: remarks, onUpdate: handleDataUpdate, seatingChart },
+    reports: { students, subjects, homework, submissions, dailyChecks, remarks },
+    seatingChart: { userId, students, seatingChart, onSeatingChartChange: handleSeatingChartChange, settings: seatingChartSettings, onSettingsChange: handleSettingsChange, history: seatingChartHistory },
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -175,73 +196,22 @@ function Home({ userId }: { userId: string }) {
       <main className="flex-1 p-4 sm:p-6">
         <Tabs defaultValue={visibleTabs[0] || 'settings'} className="w-full">
           <TabsList className={`grid w-full mb-4 ${gridClass}`}>
-            {settings.tabs.overview && <TabsTrigger value="overview">Lekseoversikt</TabsTrigger>}
-            {settings.tabs.dailyCheck && <TabsTrigger value="daily">Daglig Sjekk</TabsTrigger>}
-            {settings.tabs.remarks && <TabsTrigger value="remarks">Anmerkninger</TabsTrigger>}
-            {settings.tabs.reports && <TabsTrigger value="reports">Rapporter</TabsTrigger>}
-            {settings.tabs.seatingChart && <TabsTrigger value="seating-chart">Klassekart</TabsTrigger>}
+            {visibleTabs.map(tabKey => (
+              <TabsTrigger key={tabKey} value={tabKey}>{tabLabels[tabKey]}</TabsTrigger>
+            ))}
             <TabsTrigger value="settings">Innstillinger</TabsTrigger>
           </TabsList>
 
-          {settings.tabs.overview && (
-            <TabsContent value="overview">
-              <HomeworkOverview
-                userId={userId}
-                students={students}
-                subjects={subjects}
-                homeworkList={homework}
-                submissions={submissions}
-                onUpdate={handleDataUpdate}
-              />
-            </TabsContent>
-          )}
-          {settings.tabs.dailyCheck && (
-            <TabsContent value="daily">
-              <DailyChecklist
-                userId={userId}
-                students={students}
-                initialChecks={dailyChecks}
-                onUpdate={handleDataUpdate}
-                seatingChart={seatingChart}
-              />
-            </TabsContent>
-          )}
-           {settings.tabs.remarks && (
-            <TabsContent value="remarks">
-              <Remarks
-                userId={userId}
-                students={students}
-                initialRemarks={remarks}
-                onUpdate={handleDataUpdate}
-                seatingChart={seatingChart}
-              />
-            </TabsContent>
-           )}
-          {settings.tabs.reports && (
-            <TabsContent value="reports">
-              <Reports
-                  students={students}
-                  subjects={subjects}
-                  homework={homework}
-                  submissions={submissions}
-                  dailyChecks={dailyChecks}
-                  remarks={remarks}
-              />
-            </TabsContent>
-          )}
-           {settings.tabs.seatingChart && (
-            <TabsContent value="seating-chart">
-              <SeatingChart
-                userId={userId}
-                students={students}
-                seatingChart={seatingChart}
-                onSeatingChartChange={handleSeatingChartChange}
-                settings={seatingChartSettings}
-                onSettingsChange={handleSettingsChange}
-                history={seatingChartHistory}
-              />
-            </TabsContent>
-           )}
+          {visibleTabs.map(tabKey => {
+              const Component = tabComponents[tabKey];
+              const props = componentProps[tabKey];
+              return (
+                  <TabsContent key={tabKey} value={tabKey}>
+                      <Component {...props} />
+                  </TabsContent>
+              );
+          })}
+
           <TabsContent value="settings">
             <Settings
               userId={userId}

@@ -54,12 +54,9 @@ export type SeatingChartRecord = {
   createdAt: Date;
 };
 
+export type TabKey = 'overview' | 'dailyCheck' | 'remarks' | 'reports' | 'seatingChart';
+
 export type AppSettings = {
-  tabs: {
-    overview: boolean;
-    dailyCheck: boolean;
-    remarks: boolean;
-    reports: boolean;
-    seatingChart: boolean;
-  };
+  tabs: Record<TabKey, boolean>;
+  tabOrder: TabKey[];
 };

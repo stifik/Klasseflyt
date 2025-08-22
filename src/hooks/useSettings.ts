@@ -2,8 +2,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { AppSettings } from '@/lib/types';
+import type { AppSettings, TabKey } from '@/lib/types';
 import { useToast } from './use-toast';
+
+const defaultTabOrder: TabKey[] = ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart'];
 
 const defaultSettings: AppSettings = {
   tabs: {
@@ -13,6 +15,7 @@ const defaultSettings: AppSettings = {
     reports: true,
     seatingChart: true,
   },
+  tabOrder: defaultTabOrder,
 };
 
 export function useSettings(userId: string) {
@@ -27,16 +30,16 @@ export function useSettings(userId: string) {
     try {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        const data = docSnap.data();
-        // Merge with defaults to ensure all keys are present
-        setSettings(prev => ({
-          ...prev,
-          ...data,
+        const data = docSnap.data() as Partial<AppSettings>;
+        // Merge with defaults to ensure all keys are present, especially for users with old settings
+        const mergedSettings: AppSettings = {
           tabs: {
-            ...prev.tabs,
-            ...data.tabs,
-          }
-        }));
+            ...defaultSettings.tabs,
+            ...(data.tabs || {}),
+          },
+          tabOrder: data.tabOrder && data.tabOrder.length > 0 ? data.tabOrder : defaultTabOrder,
+        };
+        setSettings(mergedSettings);
       } else {
         // No settings found, so we create them with defaults
         await setDoc(docRef, defaultSettings);
@@ -58,6 +61,7 @@ export function useSettings(userId: string) {
     if (!userId) return;
     const docRef = doc(db, 'users', userId, 'settings', 'appSettings');
     try {
+      // Use setDoc with merge: true to avoid overwriting fields if the object is partial
       await setDoc(docRef, newSettings, { merge: true });
       setSettings(newSettings);
     } catch (error) {
