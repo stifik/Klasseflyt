@@ -36,8 +36,9 @@ export type DailyCheck = {
 
 export type SeatingChartData = (string[] | null)[][];
 
+// The chart is stored as a JSON string in Firestore to avoid nested array issues.
 export type SeatingChartRecord = {
   id: string;
-  chart: SeatingChartData;
+  chartJson: string; // Stored as a JSON string
   createdAt: Date;
 };

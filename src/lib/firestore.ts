@@ -163,17 +163,25 @@ export async function getSeatingChart(): Promise<SeatingChartData | null> {
     if (querySnapshot.empty) {
         return null;
     }
-    const latestChart = docToData<SeatingChartRecord>(querySnapshot.docs[0]);
-    return latestChart.chart;
+    const latestChartRecord = docToData<SeatingChartRecord>(querySnapshot.docs[0]);
+    try {
+        // Parse the JSON string back into the nested array structure
+        return JSON.parse(latestChartRecord.chartJson);
+    } catch (error) {
+        console.error("Error parsing seating chart JSON:", error);
+        return null;
+    }
 }
 
 export async function saveSeatingChart(chart: SeatingChartData): Promise<void> {
     const newChartRecord = {
-        chart,
+        // Convert the nested array into a JSON string
+        chartJson: JSON.stringify(chart),
         createdAt: Timestamp.now(),
     };
     await addDocument('seatingCharts', newChartRecord);
 }
+
 
 async function clearCollection(collectionName: string) {
     const querySnapshot = await getDocs(collection(db, collectionName));
@@ -207,44 +215,39 @@ async function seedDatabase() {
     { name: 'Norsk' }, { name: 'Matematikk' }, { name: 'Engelsk' }, { name: 'Naturfag' },
   ];
 
-  const initialBatch = writeBatch(db);
-
-  const studentRefs = students.map(s => doc(collection(db, "students")));
-  const subjectRefs = subjects.map(s => doc(collection(db, "subjects")));
-
-  studentRefs.forEach((ref, index) => initialBatch.set(ref, students[index]));
-  subjectRefs.forEach((ref, index) => initialBatch.set(ref, subjects[index]));
+  const studentDocs = students.map(() => doc(collection(db, "students")));
+  const subjectDocs = subjects.map(() => doc(collection(db, "subjects")));
   
-  await initialBatch.commit();
+  const batch = writeBatch(db);
 
-  const studentIds = studentRefs.map(ref => ref.id);
-  const subjectIds = subjectRefs.map(ref => ref.id);
+  studentDocs.forEach((docRef, index) => batch.set(docRef, students[index]));
+  subjectDocs.forEach((docRef, index) => batch.set(docRef, subjects[index]));
   
+  await batch.commit();
+
+  const studentIds = studentDocs.map(doc => doc.id);
+  const subjectIds = subjectDocs.map(doc => doc.id);
+
   const today = new Date();
-  
   const dataBatch = writeBatch(db);
 
-  // Generate 6 months of demo data
   for (let i = 180; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(today.getDate() - i);
     const week = getWeekNumber(date);
 
-    // Create homework with a ~40% chance each day
     if (Math.random() < 0.4) {
       const subjectId = subjectIds[Math.floor(Math.random() * subjectIds.length)];
       
       const hwRef = doc(collection(db, 'homework'));
-      
       const newHomework = {
-        title: `Leselekse dag ${180-i}`,
+        title: `Leselekse dag ${180 - i}`,
         subjectId: subjectId,
         week,
         date: Timestamp.fromDate(date),
       };
-      dataBatch.set(hwRef, newHomework);
+      batch.set(hwRef, newHomework);
 
-      // Create submissions for this homework for each student
       studentIds.forEach(studentId => {
         const randomStatus = Math.random();
         let status: HomeworkStatus = 'Godkjent';
@@ -254,7 +257,6 @@ async function seedDatabase() {
         else if (randomStatus < 0.16) status = 'Glemt bok';
         
         const subRef = doc(collection(db, 'submissions'));
-        
         const newSubmission: Omit<Submission, 'id' | 'comment'> & { comment?: string } = {
           studentId: studentId,
           homeworkId: hwRef.id,
@@ -264,16 +266,15 @@ async function seedDatabase() {
         if (status !== 'Godkjent' && Math.random() < 0.5) {
           newSubmission.comment = `Gjorde en god innsats, men trenger å se over ${Math.floor(Math.random() * 3) + 1} oppgaver.`;
         }
-        dataBatch.set(subRef, newSubmission);
+        batch.set(subRef, newSubmission);
       });
     }
 
-    // Create daily iPad checks with a ~10% chance each day
     studentIds.forEach(studentId => {
       const randomCheck = Math.random();
       if (randomCheck < 0.1) {
           const checkRef = doc(collection(db, 'dailyChecks'));
-          dataBatch.set(checkRef, {
+          batch.set(checkRef, {
               studentId: studentId,
               date: Timestamp.fromDate(date),
               ipadCharged: randomCheck > 0.05,
@@ -283,5 +284,5 @@ async function seedDatabase() {
     });
   }
 
-  await dataBatch.commit();
+  await batch.commit();
 }
