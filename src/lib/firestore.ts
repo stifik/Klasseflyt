@@ -101,7 +101,8 @@ export async function setDailyCheck(check: Omit<DailyCheck, 'id'>): Promise<Dail
         return addDocument('dailyChecks', checkWithTimestamp);
     } else {
         const docId = querySnapshot.docs[0].id;
-        await updateDocument('dailyChecks', docId, rest);
+        const updateData = { ...rest, date: Timestamp.fromDate(new Date(date)) };
+        await updateDocument('dailyChecks', docId, updateData);
         const docSnap = await getDoc(doc(db, 'dailyChecks', docId));
         return {id: docId, ...(convertTimestamps(docSnap.data()) as Omit<DailyCheck, 'id'>)} as DailyCheck;
     }
