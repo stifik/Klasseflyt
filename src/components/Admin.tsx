@@ -17,17 +17,10 @@ interface AdminProps {
 }
 
 export default function Admin({ initialStudents, initialSubjects, onUpdate }: AdminProps) {
-  const [students, setStudents] = useState<Student[]>(initialStudents);
-  const [subjects, setSubjects] = useState<Subject[]>(initialSubjects);
   const [newStudent, setNewStudent] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [isSeeding, setIsSeeding] = useState(false);
   const { toast } = useToast();
-
-  useEffect(() => {
-    setStudents(initialStudents);
-    setSubjects(initialSubjects);
-  }, [initialStudents, initialSubjects]);
 
   const handleAddStudent = async () => {
     if (newStudent.trim()) {
@@ -56,7 +49,7 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
   };
 
   const handleDeleteStudent = async (id: string) => {
-    const studentName = students.find(s => s.id === id)?.name;
+    const studentName = initialStudents.find(s => s.id === id)?.name;
     try {
       await deleteStudent(id);
       onUpdate();
@@ -67,7 +60,7 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
   };
 
   const handleDeleteSubject = async (id: string) => {
-    const subjectName = subjects.find(s => s.id === id)?.name;
+    const subjectName = initialSubjects.find(s => s.id === id)?.name;
     try {
       await deleteSubject(id);
       onUpdate();
@@ -101,7 +94,7 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
 
   return (
     <div className="space-y-6">
-       {students.length === 0 && (
+       {initialStudents.length === 0 && (
          <Card>
           <CardHeader>
             <CardTitle>Start med Demodata</CardTitle>
@@ -132,7 +125,7 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
               <Button onClick={handleAddStudent}><Plus className="mr-2"/> Legg til</Button>
             </div>
             <ul className="space-y-2">
-              {students.map((student) => (
+              {initialStudents.map((student) => (
                 <li key={student.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
                   <span>{student.name}</span>
                   <Button variant="ghost" size="icon" onClick={() => handleDeleteStudent(student.id)}>
@@ -159,7 +152,7 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
               <Button onClick={handleAddSubject}><Plus className="mr-2"/> Legg til</Button>
             </div>
             <ul className="space-y-2">
-              {subjects.map((subject) => (
+              {initialSubjects.map((subject) => (
                 <li key={subject.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
                   <span>{subject.name}</span>
                   <Button variant="ghost" size="icon" onClick={() => handleDeleteSubject(subject.id)}>
