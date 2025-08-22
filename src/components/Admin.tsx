@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Student, Subject } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,23 +14,31 @@ interface AdminProps {
   initialStudents: Student[];
   initialSubjects: Subject[];
   onUpdate: () => void;
+  usingMockData?: boolean;
+  onLocalUpdate?: (data: { students?: Student[], subjects?: Subject[] }) => void;
 }
 
-export default function Admin({ initialStudents, initialSubjects, onUpdate }: AdminProps) {
+export default function Admin({ initialStudents, initialSubjects, onUpdate, usingMockData, onLocalUpdate }: AdminProps) {
   const [students, setStudents] = useState<Student[]>(initialStudents);
   const [subjects, setSubjects] = useState<Subject[]>(initialSubjects);
   const [newStudent, setNewStudent] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const { toast } = useToast();
 
-  // Update local state when props change
-  useState(() => {
+  useEffect(() => {
     setStudents(initialStudents);
     setSubjects(initialSubjects);
-  });
+  }, [initialStudents, initialSubjects]);
 
   const handleAddStudent = async () => {
     if (newStudent.trim()) {
+      if (usingMockData && onLocalUpdate) {
+        const newStudentObj = { id: `s${students.length + 1}`, name: newStudent.trim() };
+        onLocalUpdate({ students: [...students, newStudentObj] });
+        setNewStudent("");
+        toast({ title: "Elev lagt til (Demo)", description: `${newStudent.trim()} er lagt til i listen.` });
+        return;
+      }
       try {
         await addStudent({ name: newStudent.trim() });
         setNewStudent("");
@@ -44,6 +52,13 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
 
   const handleAddSubject = async () => {
     if (newSubject.trim()) {
+      if (usingMockData && onLocalUpdate) {
+        const newSubjectObj = { id: `sub${subjects.length + 1}`, name: newSubject.trim() };
+        onLocalUpdate({ subjects: [...subjects, newSubjectObj] });
+        setNewSubject("");
+        toast({ title: "Fag lagt til (Demo)", description: `${newSubject.trim()} er lagt til i listen.` });
+        return;
+      }
       try {
         await addSubject({ name: newSubject.trim() });
         setNewSubject("");
@@ -57,6 +72,11 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
 
   const handleDeleteStudent = async (id: string) => {
     const studentName = students.find(s => s.id === id)?.name;
+     if (usingMockData && onLocalUpdate) {
+        onLocalUpdate({ students: students.filter(s => s.id !== id) });
+        toast({ title: "Elev slettet (Demo)", description: `${studentName} er fjernet.`, variant: "destructive" });
+        return;
+      }
     try {
       await deleteStudent(id);
       onUpdate();
@@ -68,6 +88,11 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
 
   const handleDeleteSubject = async (id: string) => {
     const subjectName = subjects.find(s => s.id === id)?.name;
+    if (usingMockData && onLocalUpdate) {
+        onLocalUpdate({ subjects: subjects.filter(s => s.id !== id) });
+        toast({ title: "Fag slettet (Demo)", description: `${subjectName} er fjernet.`, variant: "destructive" });
+        return;
+    }
     try {
       await deleteSubject(id);
       onUpdate();

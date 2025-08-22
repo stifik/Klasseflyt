@@ -16,13 +16,14 @@ import { useToast } from "@/hooks/use-toast";
 import { addHomework, setSubmission } from "@/lib/firestore";
 import { Input } from "./ui/input";
 
-
 interface HomeworkOverviewProps {
   students: Student[];
   subjects: Subject[];
   homeworkList: Homework[];
   submissions: Submission[];
   onUpdate: () => void;
+  usingMockData?: boolean;
+  onLocalUpdate?: (data: { homework?: Homework[], submissions?: Submission[] }) => void;
 }
 
 const statusIcons: Record<HomeworkStatus, React.ReactElement> = {
@@ -126,7 +127,7 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
   );
 };
 
-export default function HomeworkOverview({ students, subjects, homeworkList, submissions, onUpdate }: HomeworkOverviewProps) {
+export default function HomeworkOverview({ students, subjects, homeworkList, submissions, onUpdate, usingMockData, onLocalUpdate }: HomeworkOverviewProps) {
   const [commentModal, setCommentModal] = useState<{ open: boolean; studentId?: string; homeworkId?: string; }>({ open: false });
   const [currentComment, setCurrentComment] = useState("");
   const [filters, setFilters] = useState<{ subject: string; week: string; showProblems: boolean }>({ subject: "all", week: "all", showProblems: false });
@@ -135,6 +136,22 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
   const getSubmission = (studentId: string, homeworkId: string) => submissions.find(s => s.studentId === studentId && s.homeworkId === homeworkId);
 
   const handleStatusChange = async (studentId: string, homeworkId: string, status: HomeworkStatus) => {
+    if (usingMockData && onLocalUpdate) {
+        let submissionUpdated = false;
+        const newSubmissions = submissions.map(s => {
+            if (s.studentId === studentId && s.homeworkId === homeworkId) {
+                submissionUpdated = true;
+                return { ...s, status };
+            }
+            return s;
+        });
+        if (!submissionUpdated) {
+            newSubmissions.push({ id: `sub${submissions.length + 1}`, studentId, homeworkId, status });
+        }
+        onLocalUpdate({ submissions: newSubmissions });
+        return;
+    }
+
     const existingSubmission = getSubmission(studentId, homeworkId);
     const submissionData = {
         studentId,
@@ -154,6 +171,25 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
   const handleCommentSave = async () => {
     if (!commentModal.studentId || !commentModal.homeworkId) return;
     const { studentId, homeworkId } = commentModal;
+
+    if (usingMockData && onLocalUpdate) {
+        let submissionUpdated = false;
+        const newSubmissions = submissions.map(s => {
+            if (s.studentId === studentId && s.homeworkId === homeworkId) {
+                submissionUpdated = true;
+                return { ...s, comment: currentComment };
+            }
+            return s;
+        });
+        if (!submissionUpdated) {
+            newSubmissions.push({ id: `sub${submissions.length + 1}`, studentId, homeworkId, status: "Godkjent", comment: currentComment });
+        }
+        onLocalUpdate({ submissions: newSubmissions });
+        setCommentModal({ open: false });
+        setCurrentComment("");
+        toast({ title: "Kommentar lagret (Demo)" });
+        return;
+    }
 
     const existingSubmission = getSubmission(studentId, homeworkId);
     const submissionData = {
@@ -182,12 +218,27 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
 
   const handleAddHomework = async (title: string, subjectId: string) => {
     const newDate = new Date();
+    if (!('getWeek' in Date.prototype)) {
+        Date.prototype.getWeek = function() {
+            var d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
+            var dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+            return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1)/7)
+        };
+    }
     const newHomeworkData: Omit<Homework, 'id'> = {
       title,
       subjectId,
       date: newDate,
       week: newDate.getWeek(),
     };
+    if (usingMockData && onLocalUpdate) {
+        const newHomework: Homework = { id: `hw${homeworkList.length + 1}`, ...newHomeworkData };
+        onLocalUpdate({ homework: [...homeworkList, newHomework] });
+        toast({ title: "Lekse lagt til (Demo)", description: `"${title}" er lagt til i oversikten.` });
+        return;
+    }
     try {
         await addHomework(newHomeworkData);
         onUpdate();
@@ -202,6 +253,14 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
     if(hwToCopy) {
       const { id, ...hwData } = hwToCopy;
       const newHwData = { ...hwData, week: new Date().getWeek(), date: new Date() };
+      
+      if (usingMockData && onLocalUpdate) {
+          const newHomework: Homework = { id: `hw${homeworkList.length + 1}`, ...newHwData };
+          onLocalUpdate({ homework: [...homeworkList, newHomework] });
+          toast({ title: "Lekse kopiert (Demo)", description: `En ny versjon av "${hwToCopy.title}" er opprettet for denne uken.`});
+          return;
+      }
+
       try {
         await addHomework(newHwData);
         onUpdate();
@@ -212,15 +271,17 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
     }
   };
 
-  if (!('getWeek' in Date.prototype)) {
-    Date.prototype.getWeek = function() {
-        var d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
-        var dayNum = d.getUTCDay() || 7;
-        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-        var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-        return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1)/7)
-    };
-  }
+  useEffect(() => {
+    if (!('getWeek' in Date.prototype)) {
+        Date.prototype.getWeek = function() {
+            var d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
+            var dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+            return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1)/7)
+        };
+    }
+  }, []);
 
   const filteredHomework = useMemo(() => {
     return homeworkList

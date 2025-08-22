@@ -20,6 +20,7 @@ export default function Home() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [dailyChecks, setDailyChecks] = useState<DailyCheck[]>([]);
   const [loading, setLoading] = useState(true);
+  const [usingMockData, setUsingMockData] = useState(false);
   const { toast } = useToast();
 
   const loadData = async () => {
@@ -33,7 +34,6 @@ export default function Home() {
         getDailyChecks()
       ]);
 
-      // If there are no students, assume the database is empty and use mock data
       if (studentsData.length === 0) {
         toast({ title: "Bruker demodata", description: "Databasen er tom, viser innebygd demodata." });
         setStudents(mockStudents);
@@ -41,22 +41,24 @@ export default function Home() {
         setHomework(mockHomework);
         setSubmissions(mockSubmissions);
         setDailyChecks(mockDailyChecks);
+        setUsingMockData(true);
       } else {
         setStudents(studentsData);
         setSubjects(subjectsData);
         setHomework(homeworkData);
         setSubmissions(submissionsData);
         setDailyChecks(dailyChecksData);
+        setUsingMockData(false);
       }
     } catch (error) {
       console.error(error);
       toast({ title: "Feil", description: "Kunne ikke laste data. Viser demodata.", variant: "destructive" });
-      // Fallback to mock data on error
       setStudents(mockStudents);
       setSubjects(mockSubjects);
       setHomework(mockHomework);
       setSubmissions(mockSubmissions);
       setDailyChecks(mockDailyChecks);
+      setUsingMockData(true);
     } finally {
       setLoading(false);
     }
@@ -65,6 +67,20 @@ export default function Home() {
   useEffect(() => {
     loadData();
   }, [toast]);
+
+  const handleLocalUpdate = (updatedData: {
+      students?: Student[];
+      subjects?: Subject[];
+      homework?: Homework[];
+      submissions?: Submission[];
+      dailyChecks?: DailyCheck[];
+  }) => {
+      if (updatedData.students) setStudents(updatedData.students);
+      if (updatedData.subjects) setSubjects(updatedData.subjects);
+      if (updatedData.homework) setHomework(updatedData.homework);
+      if (updatedData.submissions) setSubmissions(updatedData.submissions);
+      if (updatedData.dailyChecks) setDailyChecks(updatedData.dailyChecks);
+  };
   
   if (loading) {
     return (
@@ -99,12 +115,16 @@ export default function Home() {
               homeworkList={homework}
               submissions={submissions}
               onUpdate={loadData}
+              usingMockData={usingMockData}
+              onLocalUpdate={handleLocalUpdate}
             />
           </TabsContent>
           <TabsContent value="daily">
             <DailyChecklist
               students={students}
               initialChecks={dailyChecks}
+              usingMockData={usingMockData}
+              onLocalUpdate={handleLocalUpdate}
             />
           </TabsContent>
           <TabsContent value="reports">
@@ -121,6 +141,8 @@ export default function Home() {
               initialStudents={students}
               initialSubjects={subjects}
               onUpdate={loadData}
+              usingMockData={usingMockData}
+              onLocalUpdate={handleLocalUpdate}
             />
           </TabsContent>
         </Tabs>

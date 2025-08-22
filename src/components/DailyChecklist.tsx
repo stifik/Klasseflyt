@@ -19,9 +19,11 @@ type IpadStatus = "OK" | "NotCharged" | "NotBrought";
 interface DailyChecklistProps {
   students: Student[];
   initialChecks: DailyCheck[];
+  usingMockData?: boolean;
+  onLocalUpdate?: (data: { dailyChecks?: DailyCheck[] }) => void;
 }
 
-export default function DailyChecklist({ students, initialChecks }: DailyChecklistProps) {
+export default function DailyChecklist({ students, initialChecks, usingMockData, onLocalUpdate }: DailyChecklistProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [checks, setChecks] = useState<DailyCheck[]>(initialChecks);
   const { toast } = useToast();
@@ -66,6 +68,15 @@ export default function DailyChecklist({ students, initialChecks }: DailyCheckli
         newStatus = "OK";
         newCheckState = { studentId, date, ipadCharged: true, ipadBrought: true };
         break;
+    }
+
+    if (usingMockData && onLocalUpdate) {
+        let updatedChecks = checks.filter(c => !(c.studentId === studentId && new Date(c.date).toISOString().split('T')[0] === dateString));
+        if (newStatus !== 'OK') {
+            updatedChecks.push({ id: `dc${checks.length + 1}`, ...newCheckState } as DailyCheck);
+        }
+        onLocalUpdate({ dailyChecks: updatedChecks });
+        return;
     }
 
     try {
