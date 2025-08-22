@@ -5,12 +5,12 @@ import { students, subjects } from "@/lib/mock-data";
 
 // Manually insert your Firebase config details here for the script
 const firebaseConfig = {
-  apiKey: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-  authDomain: "dev-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.firebaseapp.com",
-  projectId: "dev-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  storageBucket: "dev-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.appspot.com",
-  messagingSenderId: "xxxxxxxxxxxx",
-  appId: "x:xxxxxxxxxxxx:web:xxxxxxxxxxxxxxxxxxxxxx"
+  apiKey: "AIzaSyAc84hVWcY8zY2JpUVQP90k6SylmyoryKQ",
+  authDomain: "leksehjelperen.firebaseapp.com",
+  projectId: "leksehjelperen",
+  storageBucket: "leksehjelperen.firebasestorage.app",
+  messagingSenderId: "921278946270",
+  appId: "1:921278946270:web:e33466e16e07e626b71b4f"
 };
 
 
