@@ -2,8 +2,9 @@
 "use server";
 
 import { db } from './firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, Timestamp, setDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, Timestamp, writeBatch } from 'firebase/firestore';
 import type { Student, Subject, Homework, Submission, DailyCheck } from './types';
+import { students, subjects, homework, submissions, dailyChecks } from './mock-data';
 
 // Helper to convert Firestore Timestamps to JS Dates
 const convertTimestamps = (data: any) => {
@@ -131,4 +132,45 @@ export async function deleteDailyCheckByStudentAndDate(studentId: string, date: 
         const docId = querySnapshot.docs[0].id;
         await deleteDocument('dailyChecks', docId);
     }
+}
+
+export async function seedDatabase() {
+  console.log("Starting to seed database...");
+  const batch = writeBatch(db);
+
+  students.forEach(student => {
+    const docRef = doc(db, "students", student.id);
+    batch.set(docRef, { name: student.name });
+  });
+
+  subjects.forEach(subject => {
+    const docRef = doc(db, "subjects", subject.id);
+    batch.set(docRef, { name: subject.name });
+  });
+
+  homework.forEach(hw => {
+    const { id, ...hwData } = hw;
+    const docRef = doc(db, "homework", id);
+    batch.set(docRef, { ...hwData, date: Timestamp.fromDate(hw.date) });
+  });
+
+  submissions.forEach(sub => {
+    const { id, ...subData } = sub;
+    const docRef = doc(db, "submissions", id);
+    batch.set(docRef, subData);
+  });
+
+  dailyChecks.forEach(check => {
+    const { id, ...checkData } = check;
+    const docRef = doc(db, "dailyChecks", id);
+    batch.set(docRef, { ...checkData, date: Timestamp.fromDate(check.date) });
+  });
+
+  try {
+    await batch.commit();
+    console.log("Database seeded successfully!");
+  } catch (error) {
+    console.error("Error seeding database:", error);
+    throw error;
+  }
 }
