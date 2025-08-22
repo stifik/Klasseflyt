@@ -50,15 +50,15 @@ const DraggableStudent = ({ studentName, id }: DeskProps) => {
   if (!studentName) return null;
 
   return (
-    <Card 
+    <div
       ref={setNodeRef} 
       style={style} 
       {...listeners} 
       {...attributes}
-      className={`flex items-center justify-center w-24 h-16 text-center bg-secondary touch-none cursor-grab ${isDragging ? 'opacity-50' : ''}`}
+      className={`flex items-center justify-center w-24 h-16 text-center bg-secondary touch-none cursor-grab rounded-lg ${isDragging ? 'opacity-50' : ''}`}
     >
       <p className="text-xs font-medium">{studentName}</p>
-    </Card>
+    </div>
   );
 };
 
@@ -181,7 +181,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     const startDesk = newChart[startRow]?.[startCol];
     const studentToMove = startDesk?.[startStudentIdx];
     
-    if (studentToMove === undefined) return;
+    if (studentToMove === undefined && studentToMove !== null) return;
 
     // Create end desk if it doesn't exist (is null)
     if (!newChart[endRow][endCol]) {
@@ -316,9 +316,9 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                 {seatingChart && (
                     <div className="grid gap-y-4">
                         {seatingChart.map((row, rowIndex) => (
-                            <div key={rowIndex} className="flex flex-wrap justify-center gap-x-4 gap-y-4">
+                            <div key={rowIndex} className="flex flex-wrap justify-start gap-x-4 gap-y-4">
                                 {row.map((desk, deskIndex) => (
-                                    <div key={deskIndex} className="flex gap-1">
+                                   <div key={deskIndex} className="flex gap-1">
                                         {Array.from({ length: groupSize }).map((_, studentIndex) => {
                                             const studentName = desk?.[studentIndex] ?? null;
                                             const id = `${rowIndex}-${deskIndex}-${studentIndex}`;
@@ -328,7 +328,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                                                 </DroppableDesk>
                                             );
                                         })}
-                                    </div>
+                                   </div>
                                 ))}
                             </div>
                         ))}
@@ -338,9 +338,9 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
             </Card>
             <DragOverlay>
               {activeDragId && draggedStudentName ? (
-                <Card className="flex items-center justify-center w-24 h-16 text-center bg-secondary cursor-grabbing">
+                <div className="flex items-center justify-center w-24 h-16 text-center bg-secondary cursor-grabbing rounded-lg">
                   <p className="text-xs font-medium">{draggedStudentName}</p>
-                </Card>
+                </div>
               ) : null}
             </DragOverlay>
         </DndContext>
@@ -348,3 +348,5 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     </div>
   );
 }
+
+    
