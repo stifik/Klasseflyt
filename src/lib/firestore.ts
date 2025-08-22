@@ -155,21 +155,21 @@ export async function seedDatabase() {
     { name: 'Norsk' }, { name: 'Matematikk' }, { name: 'Engelsk' }, { name: 'Naturfag' },
   ];
 
-  const batch = writeBatch(db);
+  const initialBatch = writeBatch(db);
 
   // Add students and subjects, and keep track of their new IDs
   const studentRefs = students.map(s => {
       const ref = doc(collection(db, "students"));
-      batch.set(ref, s);
+      initialBatch.set(ref, s);
       return ref;
   });
   const subjectRefs = subjects.map(s => {
       const ref = doc(collection(db, "subjects"));
-      batch.set(ref, s);
+      initialBatch.set(ref, s);
       return ref;
   });
 
-  await batch.commit();
+  await initialBatch.commit();
 
   // We need to get the documents back to get their IDs
   const studentDocs = await Promise.all(studentRefs.map(ref => getDoc(ref)));
@@ -182,6 +182,8 @@ export async function seedDatabase() {
   const submissions: Submission[] = [];
   const dailyChecks: DailyCheck[] = [];
   const today = new Date();
+  
+  const dataBatch = writeBatch(db);
 
   // Generate 6 months of demo data
   for (let i = 180; i >= 0; i--) {
@@ -198,7 +200,7 @@ export async function seedDatabase() {
         week,
         date: Timestamp.fromDate(date),
       };
-      batch.set(hwRef, newHomework);
+      dataBatch.set(hwRef, newHomework);
 
       studentIds.forEach(studentId => {
         const randomStatus = Math.random();
@@ -218,7 +220,7 @@ export async function seedDatabase() {
         if (status !== 'Godkjent' && Math.random() < 0.5) {
           newSubmission.comment = `Gjorde en god innsats, men trenger å se over ${Math.floor(Math.random() * 3) + 1} oppgaver.`;
         }
-        batch.set(subRef, newSubmission);
+        dataBatch.set(subRef, newSubmission);
       });
     }
 
@@ -226,7 +228,7 @@ export async function seedDatabase() {
       const randomCheck = Math.random();
       if (randomCheck < 0.1) {
           const checkRef = doc(collection(db, 'dailyChecks'));
-          batch.set(checkRef, {
+          dataBatch.set(checkRef, {
               studentId: studentId,
               date: Timestamp.fromDate(date),
               ipadCharged: randomCheck > 0.05,
@@ -237,5 +239,5 @@ export async function seedDatabase() {
   }
 
   // Commit all the generated data
-  await batch.commit();
+  await dataBatch.commit();
 }
