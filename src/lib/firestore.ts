@@ -4,6 +4,7 @@
 import { db } from './firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, writeBatch, query, where, getDoc, Timestamp } from 'firebase/firestore';
 import type { Student, Subject, Homework, Submission, DailyCheck } from './types';
+import { students, subjects, homework, submissions, dailyChecks } from '@/lib/mock-data';
 
 // Helper to convert Firestore Timestamps to JS Dates
 const convertTimestamps = (data: any) => {
@@ -12,6 +13,80 @@ const convertTimestamps = (data: any) => {
   }
   return data;
 };
+
+// Function to seed database if it's empty
+async function seedDatabase() {
+  console.log('Checking if database needs seeding...');
+  const studentsSnapshot = await getDocs(collection(db, 'students'));
+  if (!studentsSnapshot.empty) {
+    console.log('Database already contains data. Skipping seed.');
+    return;
+  }
+  
+  console.log('Seeding database...');
+  const batch = writeBatch(db);
+
+  // Use maps to track new IDs
+  const studentIdMap = new Map<string, string>();
+  const subjectIdMap = new Map<string, string>();
+  const homeworkIdMap = new Map<string, string>();
+
+  students.forEach(s => {
+    const docRef = doc(collection(db, 'students'));
+    studentIdMap.set(s.id, docRef.id);
+    batch.set(docRef, { name: s.name });
+  });
+  subjects.forEach(s => {
+    const docRef = doc(collection(db, 'subjects'));
+    subjectIdMap.set(s.id, docRef.id);
+    batch.set(docRef, { name: s.name });
+  });
+
+  homework.forEach(h => {
+    const docRef = doc(collection(db, 'homework'));
+    homeworkIdMap.set(h.id, docRef.id);
+    const newSubjectId = subjectIdMap.get(h.subjectId);
+    if (newSubjectId) {
+       batch.set(docRef, {
+        title: h.title,
+        subjectId: newSubjectId,
+        week: h.week,
+        date: Timestamp.fromDate(h.date)
+      });
+    }
+  });
+
+  submissions.forEach(s => {
+    const docRef = doc(collection(db, 'submissions'));
+    const newStudentId = studentIdMap.get(s.studentId);
+    const newHomeworkId = homeworkIdMap.get(s.homeworkId);
+    if (newStudentId && newHomeworkId) {
+      batch.set(docRef, {
+        studentId: newStudentId,
+        homeworkId: newHomeworkId,
+        status: s.status,
+        comment: s.comment || ""
+      });
+    }
+  });
+  
+  dailyChecks.forEach(c => {
+    const docRef = doc(collection(db, 'dailyChecks'));
+    const newStudentId = studentIdMap.get(c.studentId);
+    if (newStudentId) {
+      batch.set(docRef, {
+        studentId: newStudentId,
+        date: Timestamp.fromDate(c.date),
+        ipadCharged: c.ipadCharged,
+        ipadBrought: c.ipadBrought
+      });
+    }
+  });
+  
+  await batch.commit();
+  console.log('Database seeded successfully.');
+};
+
 
 // Generic fetch function
 async function fetchCollection<T>(collectionName: string): Promise<T[]> {
@@ -39,7 +114,10 @@ async function deleteDocument(collectionName: string, id: string): Promise<void>
 }
 
 // Student functions
-export async function getStudents(): Promise<Student[]> { return fetchCollection<Student>('students'); }
+export async function getStudents(): Promise<Student[]> { 
+  await seedDatabase(); // Check and seed if necessary before fetching
+  return fetchCollection<Student>('students'); 
+}
 export async function addStudent(student: Omit<Student, 'id'>) { return addDocument('students', student); }
 export async function deleteStudent(id: string) { return deleteDocument('students', id); }
 
@@ -130,71 +208,3 @@ export async function deleteDailyCheckByStudentAndDate(studentId: string, date: 
         await deleteDocument('dailyChecks', docId);
     }
 }
-
-
-// Function to seed database if it's empty
-export async function seedDatabase() {
-  console.log('Seeding database...');
-  const { students, subjects, homework, submissions, dailyChecks } = await import('@/lib/mock-data');
-  const batch = writeBatch(db);
-
-  // Use maps to track new IDs
-  const studentIdMap = new Map<string, string>();
-  const subjectIdMap = new Map<string, string>();
-  const homeworkIdMap = new Map<string, string>();
-
-  students.forEach(s => {
-    const docRef = doc(collection(db, 'students'));
-    studentIdMap.set(s.id, docRef.id);
-    batch.set(docRef, { name: s.name });
-  });
-  subjects.forEach(s => {
-    const docRef = doc(collection(db, 'subjects'));
-    subjectIdMap.set(s.id, docRef.id);
-    batch.set(docRef, { name: s.name });
-  });
-
-  homework.forEach(h => {
-    const docRef = doc(collection(db, 'homework'));
-    homeworkIdMap.set(h.id, docRef.id);
-    const newSubjectId = subjectIdMap.get(h.subjectId);
-    if (newSubjectId) {
-       batch.set(docRef, {
-        title: h.title,
-        subjectId: newSubjectId,
-        week: h.week,
-        date: Timestamp.fromDate(h.date)
-      });
-    }
-  });
-
-  submissions.forEach(s => {
-    const docRef = doc(collection(db, 'submissions'));
-    const newStudentId = studentIdMap.get(s.studentId);
-    const newHomeworkId = homeworkIdMap.get(s.homeworkId);
-    if (newStudentId && newHomeworkId) {
-      batch.set(docRef, {
-        studentId: newStudentId,
-        homeworkId: newHomeworkId,
-        status: s.status,
-        comment: s.comment || ""
-      });
-    }
-  });
-  
-  dailyChecks.forEach(c => {
-    const docRef = doc(collection(db, 'dailyChecks'));
-    const newStudentId = studentIdMap.get(c.studentId);
-    if (newStudentId) {
-      batch.set(docRef, {
-        studentId: newStudentId,
-        date: Timestamp.fromDate(c.date),
-        ipadCharged: c.ipadCharged,
-        ipadBrought: c.ipadBrought
-      });
-    }
-  });
-  
-  await batch.commit();
-  console.log('Database seeded successfully.');
-};
