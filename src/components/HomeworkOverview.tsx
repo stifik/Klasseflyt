@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, type FC, useEffect } from "react";
+import { useState, useMemo, type FC } from "react";
 import type { Student, Subject, Homework, Submission, HomeworkStatus } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCi
 import { useToast } from "@/hooks/use-toast";
 import { addHomework, setSubmission } from "@/lib/firestore";
 import { Input } from "./ui/input";
+import { getWeekNumber } from "@/lib/utils";
 
 interface HomeworkOverviewProps {
   students: Student[];
@@ -181,20 +182,11 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
 
   const handleAddHomework = async (title: string, subjectId: string) => {
     const newDate = new Date();
-    if (!('getWeek' in Date.prototype)) {
-        Date.prototype.getWeek = function() {
-            var d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
-            var dayNum = d.getUTCDay() || 7;
-            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-            var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-            return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1)/7)
-        };
-    }
     const newHomeworkData: Omit<Homework, 'id'> = {
       title,
       subjectId,
       date: newDate,
-      week: newDate.getWeek(),
+      week: getWeekNumber(newDate),
     };
     
     try {
@@ -210,7 +202,8 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
     const hwToCopy = homeworkList.find(h => h.id === homeworkId);
     if(hwToCopy) {
       const { id, ...hwData } = hwToCopy;
-      const newHwData = { ...hwData, week: new Date().getWeek(), date: new Date() };
+      const newDate = new Date();
+      const newHwData = { ...hwData, week: getWeekNumber(newDate), date: newDate };
       
       try {
         await addHomework(newHwData);
@@ -222,23 +215,16 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
     }
   };
 
-  useEffect(() => {
-    if (!('getWeek' in Date.prototype)) {
-        Date.prototype.getWeek = function() {
-            var d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
-            var dayNum = d.getUTCDay() || 7;
-            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-            var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-            return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1)/7)
-        };
-    }
-  }, []);
-
   const filteredHomework = useMemo(() => {
+    if (!Array.isArray(homeworkList)) return [];
     return homeworkList
       .filter(hw => filters.subject === "all" || hw.subjectId === filters.subject)
       .filter(hw => filters.week === "all" || hw.week === parseInt(filters.week))
-      .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort((a,b) => {
+          const dateA = a.date instanceof Date ? a.date.getTime() : new Date(a.date).getTime();
+          const dateB = b.date instanceof Date ? b.date.getTime() : new Date(b.date).getTime();
+          return dateB - dateA;
+      });
   }, [homeworkList, filters]);
 
   const problemStudentIds = useMemo(() => {

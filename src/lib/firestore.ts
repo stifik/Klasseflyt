@@ -4,14 +4,31 @@
 import { db } from './firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, Timestamp, writeBatch } from 'firebase/firestore';
 import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus } from './types';
+import { getWeekNumber } from './utils';
 
-// Helper to convert Firestore Timestamps to JS Dates
-const convertTimestamps = (data: any) => {
-  if (data?.date && data.date instanceof Timestamp) {
-    return { ...data, date: data.date.toDate() };
-  }
-  return data;
+// Helper to convert Firestore Timestamps to JS Dates in nested objects
+const convertTimestamps = (data: any): any => {
+    if (data === null || typeof data !== 'object') {
+        return data;
+    }
+
+    if (data instanceof Timestamp) {
+        return data.toDate();
+    }
+
+    if (Array.isArray(data)) {
+        return data.map(convertTimestamps);
+    }
+
+    const convertedData: { [key: string]: any } = {};
+    for (const key in data) {
+        if (Object.prototype.hasOwnProperty.call(data, key)) {
+            convertedData[key] = convertTimestamps(data[key]);
+        }
+    }
+    return convertedData;
 };
+
 
 const docToData = <T>(doc: any): T => {
     return { id: doc.id, ...convertTimestamps(doc.data()) } as T;
@@ -95,7 +112,7 @@ export async function setDailyCheck(check: Omit<DailyCheck, 'id'>): Promise<Dail
     const checkWithTimestamp = { ...check, date: Timestamp.fromDate(new Date(date)) };
     
     const existingDoc = querySnapshot.docs.find(doc => {
-        const checkData = convertTimestamps(doc.data()) as DailyCheck;
+        const checkData = docToData<DailyCheck>(doc);
         const checkDate = new Date(checkData.date);
         checkDate.setHours(0,0,0,0);
         return checkDate.getTime() === dateOnly.getTime();
@@ -123,7 +140,7 @@ export async function deleteDailyCheckByStudentAndDate(studentId: string, date: 
     
     if (!querySnapshot.empty) {
         const docToDelete = querySnapshot.docs.find(doc => {
-            const check = convertTimestamps(doc.data()) as DailyCheck;
+            const check = docToData<DailyCheck>(doc);
             const checkDate = new Date(check.date);
             checkDate.setHours(0, 0, 0, 0);
             return checkDate.getTime() === dateOnly.getTime();
@@ -136,17 +153,6 @@ export async function deleteDailyCheckByStudentAndDate(studentId: string, date: 
 }
 
 export async function seedDatabase() {
-    
-  if (!('getWeek' in Date.prototype)) {
-    Date.prototype.getWeek = function() {
-        const d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
-        const dayNum = d.getUTCDay() || 7;
-        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-        const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-        return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1)/7);
-    };
-  }
-
   const students: Omit<Student, 'id'>[] = [
     { name: 'Liam Jensen' }, { name: 'Olivia Nguyen' }, { name: 'Noah Olsen' },
     { name: 'Emma Johansen' }, { name: 'Lucas Andersen' }, { name: 'Mia Hansen' },
@@ -188,7 +194,7 @@ export async function seedDatabase() {
   for (let i = 180; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(today.getDate() - i);
-    const week = date.getWeek();
+    const week = getWeekNumber(date);
 
     if (Math.random() < 0.4) {
       const subjectId = subjectIds[Math.floor(Math.random() * subjectIds.length)];

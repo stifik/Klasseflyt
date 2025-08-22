@@ -33,9 +33,3 @@ export type DailyCheck = {
   ipadCharged: boolean;
   ipadBrought: boolean;
 };
-
-declare global {
-  interface Date {
-    getWeek(): number;
-  }
-}
