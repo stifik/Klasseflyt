@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus } from '@/lib/types';
+import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,8 @@ import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { useToast } from "@/hooks/use-toast";
 import { Printer, Copy, Loader2 } from 'lucide-react';
 import { getWeekNumber } from '@/lib/utils';
+import { format } from 'date-fns';
+import { nb } from 'date-fns/locale';
 
 interface ReportsProps {
   students: Student[];
@@ -18,6 +20,7 @@ interface ReportsProps {
   homework: Homework[];
   submissions: Submission[];
   dailyChecks: DailyCheck[];
+  remarks: Remark[];
 }
 
 const statusColors: Record<HomeworkStatus, string> = {
@@ -36,7 +39,8 @@ const generateSummaryMessage = (
     incompleteAssignments: string[],
     forgottenBooks: string[],
     ipadNotChargedCount: number,
-    ipadNotBroughtCount: number
+    ipadNotBroughtCount: number,
+    remarksCount: number,
 ): string => {
     let message = `Hei,\nEn liten oppsummering for ${studentName} i uke ${week}.\n\n`;
     let hasIssues = false;
@@ -70,6 +74,11 @@ const generateSummaryMessage = (
         hasIssues = true;
     }
 
+    if (remarksCount > 0) {
+        message += `Anmerkninger: ${remarksCount} stk\n\n`;
+        hasIssues = true;
+    }
+
     if (!hasIssues) return "";
 
     message += "Vennlig hilsen,\nLæreren";
@@ -77,7 +86,7 @@ const generateSummaryMessage = (
 };
 
 
-export default function Reports({ students, subjects, homework, submissions, dailyChecks }: ReportsProps) {
+export default function Reports({ students, subjects, homework, submissions, dailyChecks, remarks }: ReportsProps) {
   const { toast } = useToast();
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   const [generatedMessages, setGeneratedMessages] = useState<Array<{ studentName: string; message: string }>>([]);
@@ -87,6 +96,7 @@ export default function Reports({ students, subjects, homework, submissions, dai
     return students.map(student => {
       const studentSubmissions = submissions.filter(s => s.studentId === student.id);
       const studentChecks = dailyChecks.filter(c => c.studentId === student.id);
+      const studentRemarks = remarks.filter(r => r.studentId === student.id);
 
       const delays = studentSubmissions.filter(s => s.status === 'Ikke levert' || s.status === 'Må rettes').length;
       const ipadNotCharged = studentChecks.filter(c => !c.ipadCharged).length;
@@ -121,10 +131,12 @@ export default function Reports({ students, subjects, homework, submissions, dai
         totalDelays: delays,
         ipadNotCharged,
         ipadNotBrought,
+        totalRemarks: studentRemarks.length,
+        remarks: studentRemarks.sort((a,b) => b.date.getTime() - a.date.getTime()),
         statsBySubject,
       };
     });
-  }, [students, subjects, homework, submissions, dailyChecks]);
+  }, [students, subjects, homework, submissions, dailyChecks, remarks]);
 
   const uniqueWeeks = [...new Set(homework.map(h => h.week))].sort((a,b) => b-a);
   
@@ -141,12 +153,16 @@ export default function Reports({ students, subjects, homework, submissions, dai
     const studentsWithIssues = students.filter(student => {
       const studentWeekSubmissions = submissions.filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
       const studentWeekChecks = dailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
+      const studentWeekRemarks = remarks.filter(r => r.studentId === student.id && getWeekNumber(new Date(r.date)) === selectedWeek);
+
       const hasHomeworkIssues = studentWeekSubmissions.some(s => 
         s.status === 'Ikke levert' || s.status === 'Må rettes' || s.status === 'Glemt bok'
       );
       const hasIpadIssues = studentWeekChecks.some(c => !c.ipadBrought || !c.ipadCharged);
-      const onlyAbsence = studentWeekSubmissions.length > 0 && studentWeekSubmissions.every(s => s.status === 'Syk/Fravær') && !hasIpadIssues;
-      return (hasHomeworkIssues || hasIpadIssues) && !onlyAbsence;
+      const hasRemarks = studentWeekRemarks.length > 0;
+      const onlyAbsence = studentWeekSubmissions.length > 0 && studentWeekSubmissions.every(s => s.status === 'Syk/Fravær') && !hasIpadIssues && !hasRemarks;
+      
+      return (hasHomeworkIssues || hasIpadIssues || hasRemarks) && !onlyAbsence;
     });
 
     if (studentsWithIssues.length === 0) {
@@ -158,6 +174,7 @@ export default function Reports({ students, subjects, homework, submissions, dai
     const messages = studentsWithIssues.map(student => {
         const studentWeekSubmissions = submissions.filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
         const studentWeekChecks = dailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
+        const studentWeekRemarks = remarks.filter(r => r.studentId === student.id && getWeekNumber(new Date(r.date)) === selectedWeek);
 
         const message = generateSummaryMessage(
             student.name,
@@ -166,7 +183,8 @@ export default function Reports({ students, subjects, homework, submissions, dai
             studentWeekSubmissions.filter(s => s.status === 'Må rettes').map(s => homework.find(h => h.id === s.homeworkId)?.title || ''),
             studentWeekSubmissions.filter(s => s.status === 'Glemt bok').map(s => subjects.find(sub => sub.id === homework.find(h => h.id === s.homeworkId)?.subjectId)?.name || ''),
             studentWeekChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
-            studentWeekChecks.filter(c => !c.ipadBrought).length
+            studentWeekChecks.filter(c => !c.ipadBrought).length,
+            studentWeekRemarks.length
         );
         return { studentName: student.name, message };
     }).filter(item => item.message); // Filtrer bort tomme meldinger
@@ -188,8 +206,8 @@ export default function Reports({ students, subjects, homework, submissions, dai
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Elevstatistikk</CardTitle>
-          <CardDescription>Oversikt over hver enkelt elevs fremgang og ansvarsområder.</CardDescription>
+          <CardTitle>Elevrapporter</CardTitle>
+          <CardDescription>Oversikt over hver enkelt elevs fremgang og ansvarsområder. Åpne en elev for detaljer.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex justify-end mb-4 no-print">
@@ -201,7 +219,10 @@ export default function Reports({ students, subjects, homework, submissions, dai
                 <AccordionTrigger>
                     <div className="flex justify-between w-full pr-4">
                         <span className="font-bold">{stat.studentName}</span>
-                        <span className="text-sm text-muted-foreground">Forsinkelser: {stat.totalDelays}</span>
+                        <div className="flex gap-4 text-sm text-muted-foreground">
+                          <span>Leksemangler: {stat.totalDelays}</span>
+                          <span>Anmerkninger: {stat.totalRemarks}</span>
+                        </div>
                     </div>
                 </AccordionTrigger>
                 <AccordionContent className="p-4 space-y-4">
@@ -235,13 +256,25 @@ export default function Reports({ students, subjects, homework, submissions, dai
                       </Card>
                     ))}
                   </div>
-                  <Card>
-                    <CardHeader><CardTitle>iPad-ansvar</CardTitle></CardHeader>
-                    <CardContent className="text-sm">
-                      <p>Glemt å lade: <strong>{stat.ipadNotCharged}</strong> gang(er)</p>
-                      <p>Glemt å ta med: <strong>{stat.ipadNotBrought}</strong> gang(er)</p>
-                    </CardContent>
-                  </Card>
+                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <Card>
+                        <CardHeader><CardTitle>iPad-ansvar</CardTitle></CardHeader>
+                        <CardContent className="text-sm">
+                          <p>Glemt å lade: <strong>{stat.ipadNotCharged}</strong> gang(er)</p>
+                          <p>Glemt å ta med: <strong>{stat.ipadNotBrought}</strong> gang(er)</p>
+                        </CardContent>
+                      </Card>
+                       <Card>
+                        <CardHeader><CardTitle>Anmerkninger ({stat.totalRemarks} totalt)</CardTitle></CardHeader>
+                        <CardContent className="text-sm">
+                           {stat.remarks.length > 0 ? (
+                                <ul className="list-disc list-inside">
+                                    {stat.remarks.map(r => <li key={r.id}>{format(r.date, "PPP", {locale: nb})}</li>)}
+                                </ul>
+                           ) : <p>Ingen anmerkninger registrert.</p>}
+                        </CardContent>
+                      </Card>
+                  </div>
                   <div className="pt-4 text-xs text-center text-muted-foreground">
                     Tegnforklaring: 
                     {Object.entries(statusColors).map(([name, color]) => <span key={name} className="inline-flex items-center ml-4"><span className="w-3 h-3 mr-1 rounded-full" style={{backgroundColor: color}}></span>{name}</span>)}

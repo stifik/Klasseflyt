@@ -9,7 +9,6 @@ import Reports from "@/components/Reports";
 import Admin from "@/components/Admin";
 import SeatingChart from "@/components/SeatingChart";
 import Remarks from "@/components/Remarks";
-import StudentLookup from "@/components/StudentLookup";
 import withAuth from '@/components/withAuth';
 import { Button } from "@/components/ui/button";
 import { BookOpenCheck, Loader2, LogOut } from "lucide-react";
@@ -156,11 +155,10 @@ function Home({ userId }: { userId: string }) {
       </header>
       <main className="flex-1 p-4 sm:p-6">
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4 sm:grid-cols-4 md:grid-cols-7">
+          <TabsList className="grid w-full grid-cols-2 mb-4 sm:grid-cols-3 md:grid-cols-6">
             <TabsTrigger value="overview">Lekseoversikt</TabsTrigger>
             <TabsTrigger value="daily">Daglig Sjekk</TabsTrigger>
             <TabsTrigger value="remarks">Anmerkninger</TabsTrigger>
-            <TabsTrigger value="student-lookup">Elevsøk</TabsTrigger>
             <TabsTrigger value="reports">Rapporter</TabsTrigger>
             <TabsTrigger value="seating-chart">Klassekart</TabsTrigger>
             <TabsTrigger value="admin">Admin</TabsTrigger>
@@ -194,16 +192,6 @@ function Home({ userId }: { userId: string }) {
               seatingChart={seatingChart}
             />
           </TabsContent>
-          <TabsContent value="student-lookup">
-            <StudentLookup
-              students={students}
-              subjects={subjects}
-              homework={homework}
-              submissions={submissions}
-              dailyChecks={dailyChecks}
-              remarks={remarks}
-            />
-          </TabsContent>
           <TabsContent value="reports">
              <Reports
                 students={students}
@@ -211,6 +199,7 @@ function Home({ userId }: { userId: string }) {
                 homework={homework}
                 submissions={submissions}
                 dailyChecks={dailyChecks}
+                remarks={remarks}
              />
           </TabsContent>
            <TabsContent value="seating-chart">
