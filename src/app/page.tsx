@@ -129,6 +129,7 @@ export default function Home() {
               students={students}
               initialChecks={dailyChecks}
               onUpdate={handleDataUpdate}
+              seatingChart={seatingChart}
             />
           </TabsContent>
           <TabsContent value="reports">

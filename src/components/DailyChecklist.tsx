@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { Student, DailyCheck } from "@/lib/types";
+import type { Student, DailyCheck, SeatingChartData } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -20,9 +20,10 @@ interface DailyChecklistProps {
   students: Student[];
   initialChecks: DailyCheck[];
   onUpdate: () => void;
+  seatingChart: SeatingChartData | null;
 }
 
-export default function DailyChecklist({ students, initialChecks, onUpdate }: DailyChecklistProps) {
+export default function DailyChecklist({ students, initialChecks, onUpdate, seatingChart }: DailyChecklistProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [checks, setChecks] = useState<DailyCheck[]>(initialChecks);
   const { toast } = useToast();
@@ -69,14 +70,11 @@ export default function DailyChecklist({ students, initialChecks, onUpdate }: Da
         break;
     }
     
-    // Optimistic UI Update
     const previousChecks = [...checks];
     if (newCheckData) {
-        // Remove old check for this student and date, and add new one
         const otherChecks = checks.filter(c => !(c.studentId === studentId && new Date(c.date).toISOString().split('T')[0] === dateString));
         setChecks([...otherChecks, newCheckData]);
     } else {
-        // Remove the check (status is OK)
         setChecks(checks.filter(c => !(c.studentId === studentId && new Date(c.date).toISOString().split('T')[0] === dateString)));
     }
 
@@ -84,13 +82,10 @@ export default function DailyChecklist({ students, initialChecks, onUpdate }: Da
         if (newStatus === 'OK') {
             await deleteDailyCheckByStudentAndDate(studentId, date);
         } else {
-            // newCheckData will not be null here
             await setDailyCheck(newCheckData!);
         }
-        // onUpdate(); // This was causing the race condition and is no longer needed for optimistic updates.
     } catch (error) {
         console.error(error);
-        // Revert UI on error
         setChecks(previousChecks);
         toast({title: "Feil", description: `Kunne ikke lagre endring for ${studentName}.`, variant: "destructive"});
     }
@@ -102,13 +97,41 @@ export default function DailyChecklist({ students, initialChecks, onUpdate }: Da
     NotBrought: { variant: "destructive", icon: <TabletSmartphone className="mr-2" />, label: "Ikke medbrakt" },
   };
 
+  const StudentButton = ({ student }: { student: Student }) => {
+    const status = getStatus(student.id);
+    const config = statusConfig[status];
+    return (
+        <Button
+            key={student.id}
+            variant={config.variant}
+            onClick={() => handleStatusChange(student.id)}
+            className={cn("justify-center h-auto py-2 flex-col w-28 h-20", {
+               "bg-green-600 hover:bg-green-700 text-white": status === "OK",
+               "bg-yellow-400 hover:bg-yellow-500 text-yellow-900 border-yellow-500": status === "NotCharged",
+            })}
+        >
+            <span className="font-semibold text-xs">{student.name}</span>
+            <div className="flex items-center text-xs opacity-80">
+               {config.icon}
+               <span>{config.label}</span>
+            </div>
+        </Button>
+    );
+  };
+
+  const EmptyDesk = () => (
+    <div className="w-28 h-20" />
+  );
+
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle>Daglig iPad-sjekk</CardTitle>
-            <CardDescription>Registrer status for hver elevs iPad.</CardDescription>
+            <CardDescription>
+              {seatingChart ? "Visningen matcher klassekartet." : "Registrer status for hver elevs iPad."}
+            </CardDescription>
           </div>
           <Popover>
             <PopoverTrigger asChild>
@@ -127,29 +150,26 @@ export default function DailyChecklist({ students, initialChecks, onUpdate }: Da
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {students.map((student) => {
-                const status = getStatus(student.id);
-                const config = statusConfig[status];
-                return (
-                    <Button
-                        key={student.id}
-                        variant={config.variant}
-                        onClick={() => handleStatusChange(student.id)}
-                        className={cn("justify-center h-auto py-2 flex-col", {
-                           "bg-green-600 hover:bg-green-700 text-white": status === "OK",
-                           "bg-yellow-400 hover:bg-yellow-500 text-yellow-900 border-yellow-500": status === "NotCharged",
-                        })}
-                    >
-                        <span className="font-semibold">{student.name}</span>
-                        <div className="flex items-center text-xs opacity-80">
-                           {config.icon}
-                           <span>{config.label}</span>
-                        </div>
-                    </Button>
-                )
-            })}
-        </div>
+        {seatingChart ? (
+            <div className="grid gap-y-4">
+                {seatingChart.map((row, rowIndex) => (
+                    <div key={rowIndex} className="flex flex-wrap justify-center gap-x-4 gap-y-4">
+                        {row.map((desk, deskIndex) => (
+                           <div key={deskIndex} className="flex gap-1">
+                                {desk ? desk.map((studentName, studentIndex) => {
+                                    const student = students.find(s => s.name === studentName);
+                                    return student ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={studentIndex} />;
+                                }) : <EmptyDesk />}
+                           </div>
+                        ))}
+                    </div>
+                ))}
+            </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              {students.map((student) => <StudentButton key={student.id} student={student} />)}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
