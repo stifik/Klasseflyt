@@ -1,0 +1,234 @@
+"use client";
+
+import { useState, useMemo, type FC } from "react";
+import type { Student, Subject, Homework, Submission, HomeworkStatus } from "@/lib/types";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+interface HomeworkOverviewProps {
+  students: Student[];
+  subjects: Subject[];
+  homework: Homework[];
+  initialSubmissions: Submission[];
+}
+
+const statusIcons: Record<HomeworkStatus, React.ReactElement> = {
+  "Godkjent": <CheckCircle className="text-green-500" />,
+  "Ikke levert": <XCircle className="text-red-500" />,
+  "Må rettes": <AlertTriangle className="text-yellow-500" />,
+  "Syk/Fravær": <Thermometer className="text-blue-500" />,
+  "Glemt bok": <BookX className="text-orange-500" />,
+};
+
+const StatusPopover: FC<{ submission?: Submission; onStatusChange: (status: HomeworkStatus) => void; onComment: () => void; hasComment: boolean; }> = ({ submission, onStatusChange, onComment, hasComment }) => {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="icon" className="w-full h-full rounded-none">
+          {submission ? statusIcons[submission.status] : <span className="text-muted-foreground">-</span>}
+           {hasComment && <FileText className="absolute w-3 h-3 text-blue-600 bottom-1 right-1" />}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-1">
+        <div className="flex flex-col gap-1">
+          {Object.keys(statusIcons).map((status) => (
+            <Button key={status} variant="ghost" className="justify-start gap-2 px-2" onClick={() => onStatusChange(status as HomeworkStatus)}>
+              {statusIcons[status as HomeworkStatus]}
+              <span>{status}</span>
+            </Button>
+          ))}
+          <Button variant="ghost" className="justify-start gap-2 px-2" onClick={onComment}>
+            <Edit2 className="w-4 h-4" />
+            <span>{hasComment ? "Rediger" : "Legg til"} kommentar</span>
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+export default function HomeworkOverview({ students, subjects, homework, initialSubmissions }: HomeworkOverviewProps) {
+  const [submissions, setSubmissions] = useState<Submission[]>(initialSubmissions);
+  const [homeworkList, setHomeworkList] = useState<Homework[]>(homework);
+  const [commentModal, setCommentModal] = useState<{ open: boolean; studentId?: string; homeworkId?: string; }>({ open: false });
+  const [currentComment, setCurrentComment] = useState("");
+  const [filters, setFilters] = useState<{ subject: string; week: string; showProblems: boolean }>({ subject: "all", week: "all", showProblems: false });
+  const { toast } = useToast();
+
+  const getSubmission = (studentId: string, homeworkId: string) => submissions.find(s => s.studentId === studentId && s.homeworkId === homeworkId);
+
+  const handleStatusChange = (studentId: string, homeworkId: string, status: HomeworkStatus) => {
+    const existingIndex = submissions.findIndex(s => s.studentId === studentId && s.homeworkId === homeworkId);
+    let newSubmissions = [...submissions];
+    if (existingIndex > -1) {
+      newSubmissions[existingIndex] = { ...newSubmissions[existingIndex], status };
+    } else {
+      newSubmissions.push({ id: `sub${submissions.length + 1}`, studentId, homeworkId, status });
+    }
+    setSubmissions(newSubmissions);
+  };
+  
+  const handleCommentSave = () => {
+    if (!commentModal.studentId || !commentModal.homeworkId) return;
+    const { studentId, homeworkId } = commentModal;
+    const existingIndex = submissions.findIndex(s => s.studentId === studentId && s.homeworkId === homeworkId);
+    let newSubmissions = [...submissions];
+    if (existingIndex > -1) {
+      newSubmissions[existingIndex] = { ...newSubmissions[existingIndex], comment: currentComment };
+    } else {
+      newSubmissions.push({ id: `sub${submissions.length + 1}`, studentId, homeworkId, status: "Godkjent", comment: currentComment });
+    }
+    setSubmissions(newSubmissions);
+    setCommentModal({ open: false });
+    setCurrentComment("");
+    toast({ title: "Kommentar lagret" });
+  };
+  
+  const openCommentModal = (studentId: string, homeworkId: string) => {
+    const submission = getSubmission(studentId, homeworkId);
+    setCurrentComment(submission?.comment || "");
+    setCommentModal({ open: true, studentId, homeworkId });
+  };
+
+  const handleCopyHomework = (homeworkId: string) => {
+    const hwToCopy = homeworkList.find(h => h.id === homeworkId);
+    if(hwToCopy) {
+      const newHw = { ...hwToCopy, id: `hw${homeworkList.length + 1}`, week: new Date().getWeek() };
+      setHomeworkList([...homeworkList, newHw]);
+      toast({ title: "Lekse kopiert", description: `En ny versjon av "${hwToCopy.title}" er opprettet for denne uken.`});
+    }
+  };
+
+  // Extend Date prototype for week number
+  if (!('getWeek' in Date.prototype)) {
+    Date.prototype.getWeek = function() {
+        var d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
+        var dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+        return Math.ceil((((d - yearStart) / 86400000) + 1)/7)
+    };
+  }
+
+  const filteredHomework = useMemo(() => {
+    return homeworkList
+      .filter(hw => filters.subject === "all" || hw.subjectId === filters.subject)
+      .filter(hw => filters.week === "all" || hw.week === parseInt(filters.week))
+      .sort((a,b) => a.date.getTime() - b.date.getTime());
+  }, [homeworkList, filters]);
+
+  const problemStudentIds = useMemo(() => {
+    return new Set(submissions
+      .filter(s => s.status === 'Ikke levert' || s.status === 'Må rettes')
+      .map(s => s.studentId));
+  }, [submissions]);
+
+  const filteredStudents = useMemo(() => {
+    return filters.showProblems ? students.filter(s => problemStudentIds.has(s.id)) : students;
+  }, [students, filters.showProblems, problemStudentIds]);
+  
+  const uniqueWeeks = [...new Set(homework.map(h => h.week))].sort((a,b) => a-b);
+  
+  return (
+    <div className="space-y-4">
+      <Collapsible>
+        <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold">Lekseoversikt</h2>
+            <CollapsibleTrigger asChild>
+                <Button variant="outline" size="sm">
+                    <Filter className="mr-2 h-4 w-4" />
+                    Vis/Skjul Filter
+                    <ChevronDown className="ml-2 h-4 w-4"/>
+                </Button>
+            </CollapsibleTrigger>
+        </div>
+        <CollapsibleContent className="p-4 mt-4 border rounded-md">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Select value={filters.subject} onValueChange={v => setFilters({...filters, subject: v})}>
+                <SelectTrigger><SelectValue placeholder="Filtrer på fag..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Fag</SelectItem>
+                  {subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+               <Select value={filters.week} onValueChange={v => setFilters({...filters, week: v})}>
+                <SelectTrigger><SelectValue placeholder="Filtrer på uke..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Uker</SelectItem>
+                  {uniqueWeeks.map(w => <SelectItem key={w} value={String(w)}>Uke {w}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <div className="flex items-center space-x-2">
+                <Checkbox id="showProblems" checked={filters.showProblems} onCheckedChange={c => setFilters({...filters, showProblems: !!c})} />
+                <label htmlFor="showProblems" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Vis kun elever med mangler</label>
+              </div>
+              <Button onClick={() => setFilters({ subject: "all", week: "all", showProblems: false})} variant="ghost">
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Nullstill filter
+              </Button>
+            </div>
+        </CollapsibleContent>
+      </Collapsible>
+      
+      <div className="overflow-x-auto border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="sticky left-0 z-10 font-bold bg-background">Elev</TableHead>
+              {filteredHomework.map(hw => (
+                <TableHead key={hw.id} className="text-center group">
+                  <div>{subjects.find(s => s.id === hw.subjectId)?.name}</div>
+                  <div className="font-normal">{hw.title}</div>
+                  <div className="text-xs font-light text-muted-foreground">Uke {hw.week}</div>
+                  <Button variant="ghost" size="icon" className="absolute top-0 right-0 invisible h-6 w-6 group-hover:visible" onClick={() => handleCopyHomework(hw.id)}>
+                    <Copy className="h-4 w-4"/>
+                  </Button>
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredStudents.map(student => (
+              <TableRow key={student.id}>
+                <TableCell className="sticky left-0 z-10 font-medium bg-background">{student.name}</TableCell>
+                {filteredHomework.map(hw => {
+                  const submission = getSubmission(student.id, hw.id);
+                  return (
+                    <TableCell key={hw.id} className="p-0 text-center">
+                      <StatusPopover 
+                        submission={submission}
+                        hasComment={!!submission?.comment}
+                        onStatusChange={(status) => handleStatusChange(student.id, hw.id, status)}
+                        onComment={() => openCommentModal(student.id, hw.id)}
+                      />
+                    </TableCell>
+                  )
+                })}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <Dialog open={commentModal.open} onOpenChange={(open) => setCommentModal({ ...commentModal, open })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Kommentar</DialogTitle>
+          </DialogHeader>
+          <Textarea value={currentComment} onChange={e => setCurrentComment(e.target.value)} placeholder="Skriv en kommentar..." />
+          <DialogFooter>
+            <Button onClick={handleCommentSave}>Lagre</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
