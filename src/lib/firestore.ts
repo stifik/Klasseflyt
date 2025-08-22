@@ -28,21 +28,21 @@ async function deleteDocument(collectionName: string, id: string): Promise<void>
 }
 
 // Student functions
-export const getStudents = () => fetchCollection<Student>('students');
-export const addStudent = (student: Omit<Student, 'id'>) => addDocument('students', student);
-export const deleteStudent = (id: string) => deleteDocument('students', id);
+export const getStudents = async () => fetchCollection<Student>('students');
+export const addStudent = async (student: Omit<Student, 'id'>) => addDocument('students', student);
+export const deleteStudent = async (id: string) => deleteDocument('students', id);
 
 // Subject functions
-export const getSubjects = () => fetchCollection<Subject>('subjects');
-export const addSubject = (subject: Omit<Subject, 'id'>) => addDocument('subjects', subject);
-export const deleteSubject = (id: string) => deleteDocument('subjects', id);
+export const getSubjects = async () => fetchCollection<Subject>('subjects');
+export const addSubject = async (subject: Omit<Subject, 'id'>) => addDocument('subjects', subject);
+export const deleteSubject = async (id: string) => deleteDocument('subjects', id);
 
 // Homework functions
-export const getHomework = () => fetchCollection<Homework>('homework');
-export const addHomework = (homework: Omit<Homework, 'id'>) => addDocument('homework', homework);
+export const getHomework = async () => fetchCollection<Homework>('homework');
+export const addHomework = async (homework: Omit<Homework, 'id'>) => addDocument('homework', homework);
 
 // Submission functions
-export const getSubmissions = () => fetchCollection<Submission>('submissions');
+export const getSubmissions = async () => fetchCollection<Submission>('submissions');
 export const setSubmission = async (submission: Omit<Submission, 'id'>) => {
     const { studentId, homeworkId, ...rest } = submission;
     const q = query(
@@ -63,7 +63,7 @@ export const setSubmission = async (submission: Omit<Submission, 'id'>) => {
 
 
 // DailyCheck functions
-export const getDailyChecks = () => fetchCollection<DailyCheck>('dailyChecks');
+export const getDailyChecks = async () => fetchCollection<DailyCheck>('dailyChecks');
 export const setDailyCheck = async (check: Omit<DailyCheck, 'id'>) => {
     const { studentId, date, ...rest } = check;
     const dateString = new Date(date).toISOString().split('T')[0];
