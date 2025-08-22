@@ -52,14 +52,16 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
   const handleAddRemark = async (studentId: string) => {
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
     const tempId = `temp-${Date.now()}`;
-    const newRemark: Remark = { id: tempId, studentId, date, period: currentPeriod };
+    const newRemarkData = { studentId, date, period: currentPeriod };
+    const optimisticRemark: Remark = { id: tempId, ...newRemarkData };
 
     // Optimistic update
-    setRemarks(prev => [...prev, newRemark]);
+    setRemarks(prev => [...prev, optimisticRemark]);
     
     try {
-      await addRemark(userId, { studentId, date, period: currentPeriod });
-      onUpdate(); // Refresh from DB to get the real ID and confirm
+      const savedRemark = await addRemark(userId, newRemarkData);
+      // Replace temporary remark with the one from the database
+      setRemarks(prev => prev.map(r => r.id === tempId ? savedRemark : r));
     } catch (error) {
       console.error(error);
       // Revert on error
@@ -82,7 +84,8 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
 
     try {
       await deleteRemark(userId, lastRemark.id);
-      onUpdate(); // Refresh from DB to confirm
+      // Refresh from DB to confirm and ensure sync
+      onUpdate(); 
     } catch (error) {
       console.error(error);
       // Revert on error
