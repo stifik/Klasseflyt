@@ -251,7 +251,9 @@ async function seedDatabase(userId: string) {
   const students: Omit<Student, 'id'>[] = [
     { name: 'Liam Jensen' }, { name: 'Olivia Nguyen' }, { name: 'Noah Olsen' },
     { name: 'Emma Johansen' }, { name: 'Lucas Andersen' }, { name: 'Mia Hansen' },
-    { name: 'Aksel Kristiansen' }, { name: 'Frida Pedersen' },
+    { name: 'Aksel Kristiansen' }, { name: 'Frida Pedersen' }, { name: 'Filip Eriksen' },
+    { name: 'Astrid Larsen' }, { name: 'Oskar Nilsen' }, { name: 'Ingrid Berg' },
+    { name: 'Jakob Dahl' }, { name: 'Linnea Solberg' }, { name: 'Henrik Pettersen' },
   ];
   
   const subjects: Omit<Subject, 'id'>[] = [
@@ -334,3 +336,5 @@ async function seedDatabase(userId: string) {
 
   await dataBatch.commit();
 }
+
+    
