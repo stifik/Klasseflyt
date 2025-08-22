@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Student, Remark, SeatingChartData } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -25,6 +25,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
   const [date, setDate] = useState<Date>(new Date());
   const [remarks, setRemarks] = useState<Remark[]>(initialRemarks);
   const { toast } = useToast();
+  const pressTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setRemarks(initialRemarks);
@@ -66,6 +67,19 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
     }
   };
 
+  const handlePressStart = (studentId: string) => {
+    pressTimer.current = setTimeout(() => {
+      handleRemoveLastRemark(studentId);
+    }, 500); // 500ms for long press
+  };
+
+  const handlePressEnd = () => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  };
+
   const StudentButton = ({ student }: { student: Student }) => {
     const remarksToday = getRemarksForDate(student.id, date);
     const count = remarksToday.length;
@@ -78,7 +92,12 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
           e.preventDefault();
           handleRemoveLastRemark(student.id);
         }}
-        className="justify-center h-auto py-2 flex-col w-28 h-20 relative"
+        onTouchStart={() => handlePressStart(student.id)}
+        onTouchEnd={handlePressEnd}
+        onMouseDown={() => handlePressStart(student.id)}
+        onMouseUp={handlePressEnd}
+        onMouseLeave={handlePressEnd}
+        className="justify-center h-auto py-2 flex-col w-28 h-20 relative touch-manipulation"
       >
         <span className="font-semibold text-xs">{student.name}</span>
         {count > 0 && (
@@ -105,7 +124,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
           <div>
             <CardTitle>Registrer anmerkninger</CardTitle>
             <CardDescription>
-              Klikk for å legge til, høyreklikk for å fjerne siste.
+              Kort trykk for å legge til. Langt trykk eller høyreklikk for å fjerne siste.
             </CardDescription>
           </div>
           <Popover>
