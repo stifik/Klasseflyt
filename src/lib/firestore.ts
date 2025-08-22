@@ -4,7 +4,7 @@
 import { db } from './firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, Timestamp, writeBatch } from 'firebase/firestore';
 import type { Student, Subject, Homework, Submission, DailyCheck } from './types';
-import { students, subjects, homework, submissions, dailyChecks } from './mock-data';
+import { homework, submissions, dailyChecks } from './mock-data';
 
 // Helper to convert Firestore Timestamps to JS Dates
 const convertTimestamps = (data: any) => {
@@ -137,6 +137,24 @@ export async function deleteDailyCheckByStudentAndDate(studentId: string, date: 
 export async function seedDatabase() {
   console.log("Starting to seed database...");
   const batch = writeBatch(db);
+
+  const students: Student[] = [
+    { id: 's1', name: 'Liam Jensen' },
+    { id: 's2', name: 'Olivia Nguyen' },
+    { id: 's3', name: 'Noah Olsen' },
+    { id: 's4', name: 'Emma Johansen' },
+    { id: 's5', name: 'Lucas Andersen' },
+    { id: 's6', name: 'Mia Hansen' },
+    { id: 's7', name: 'Aksel Kristiansen' },
+    { id: 's8', name: 'Frida Pedersen' },
+  ];
+
+  const subjects: Subject[] = [
+    { id: 'sub1', name: 'Norsk' },
+    { id: 'sub2', name: 'Matematikk' },
+    { id: 'sub3', name: 'Engelsk' },
+    { id: 'sub4', name: 'Naturfag' },
+  ];
 
   students.forEach(student => {
     const docRef = doc(db, "students", student.id);
