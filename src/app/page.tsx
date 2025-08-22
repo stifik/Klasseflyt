@@ -9,8 +9,8 @@ import Reports from "@/components/Reports";
 import Admin from "@/components/Admin";
 import SeatingChart from "@/components/SeatingChart";
 import { BookOpenCheck, Loader2 } from "lucide-react";
-import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData } from "@/lib/types";
-import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks, getSeatingChart, saveSeatingChart } from "@/lib/firestore";
+import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord } from "@/lib/types";
+import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks, getLatestSeatingChart, saveSeatingChart, getSeatingChartHistory } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
@@ -20,6 +20,7 @@ export default function Home() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [dailyChecks, setDailyChecks] = useState<DailyCheck[]>([]);
   const [seatingChart, setSeatingChart] = useState<SeatingChartData | null>(null);
+  const [seatingChartHistory, setSeatingChartHistory] = useState<SeatingChartRecord[]>([]);
   const [seatingChartSettings, setSeatingChartSettings] = useState({
     rows: 4,
     cols: 5,
@@ -43,14 +44,16 @@ export default function Home() {
         homeworkData, 
         submissionsData, 
         dailyChecksData,
-        seatingChartResult
+        seatingChartResult,
+        historyData
       ] = await Promise.all([
         getStudents(),
         getSubjects(),
         getHomework(),
         getSubmissions(),
         getDailyChecks(),
-        getSeatingChart()
+        getLatestSeatingChart(),
+        getSeatingChartHistory()
       ]);
 
       setStudents(studentsData);
@@ -58,6 +61,7 @@ export default function Home() {
       setHomework(homeworkData);
       setSubmissions(submissionsData);
       setDailyChecks(dailyChecksData);
+      setSeatingChartHistory(historyData);
       
       if (seatingChartResult) {
         setSeatingChart(seatingChartResult.chart);
@@ -91,12 +95,16 @@ export default function Home() {
 
   const handleDataUpdate = () => loadData(true);
 
-  const handleSeatingChartChange = async (newChart: SeatingChartData | null) => {
+  const handleSeatingChartChange = async (newChart: SeatingChartData | null, source: 'generation' | 'drag' | 'load') => {
     setSeatingChart(newChart);
-    if (newChart) {
+    if (newChart && (source === 'generation' || source === 'drag')) {
       try {
         await saveSeatingChart(newChart, seatingChartSettings);
-        // Optional: show a success toast, but might be too noisy.
+        if(source === 'generation') {
+           toast({ title: "Klassekart lagret", description: "Et nytt klassekart er generert og lagret i arkivet."});
+           // reload history
+           getSeatingChartHistory().then(setSeatingChartHistory);
+        }
       } catch (error) {
         console.error("Failed to save seating chart:", error);
         toast({ title: "Feil", description: "Kunne ikke lagre klassekartet.", variant: "destructive" });
@@ -108,14 +116,7 @@ export default function Home() {
   
   const handleSettingsChange = async (newSettings: {rows: number; cols: number; groupSize: number}) => {
     setSeatingChartSettings(newSettings);
-    if (seatingChart) {
-         try {
-            await saveSeatingChart(seatingChart, newSettings);
-        } catch (error) {
-            console.error("Failed to save settings with chart:", error);
-            toast({ title: "Feil", description: "Kunne ikke lagre nye innstillinger med eksisterende kart.", variant: "destructive" });
-        }
-    }
+     // Settings are only saved when a chart is saved.
   }
 
   return (
@@ -169,6 +170,7 @@ export default function Home() {
               onSeatingChartChange={handleSeatingChartChange}
               settings={seatingChartSettings}
               onSettingsChange={handleSettingsChange}
+              history={seatingChartHistory}
             />
           </TabsContent>
           <TabsContent value="admin">

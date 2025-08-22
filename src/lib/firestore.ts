@@ -191,7 +191,7 @@ export async function deleteDailyCheckByStudentAndDate(studentId: string, date: 
 
 // Seating Chart functions
 type SeatingChartSettings = { rows: number; cols: number; groupSize: number };
-export async function getSeatingChart(): Promise<{ chart: SeatingChartData; settings: SeatingChartSettings } | null> {
+export async function getLatestSeatingChart(): Promise<{ chart: SeatingChartData; settings: SeatingChartSettings } | null> {
     const q = query(collection(db, 'seatingCharts'), orderBy('createdAt', 'desc'), limit(1));
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) {
@@ -201,9 +201,9 @@ export async function getSeatingChart(): Promise<{ chart: SeatingChartData; sett
     try {
         const chart = JSON.parse(latestChartRecord.chartJson);
         const settings = {
-            rows: latestChartRecord.rows || 4,
-            cols: latestChartRecord.cols || 5,
-            groupSize: latestChartRecord.groupSize || 2,
+            rows: latestChartRecord.rows,
+            cols: latestChartRecord.cols,
+            groupSize: latestChartRecord.groupSize,
         };
         return { chart, settings };
     } catch (error) {
@@ -211,6 +211,13 @@ export async function getSeatingChart(): Promise<{ chart: SeatingChartData; sett
         return null;
     }
 }
+
+export async function getSeatingChartHistory(): Promise<SeatingChartRecord[]> {
+    const q = query(collection(db, 'seatingCharts'), orderBy('createdAt', 'desc'), limit(10));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => docToData<SeatingChartRecord>(doc));
+}
+
 
 export async function saveSeatingChart(chart: SeatingChartData, settings: SeatingChartSettings): Promise<void> {
     const newChartRecord: Omit<SeatingChartRecord, 'id' | 'createdAt'> & { createdAt: Timestamp } = {

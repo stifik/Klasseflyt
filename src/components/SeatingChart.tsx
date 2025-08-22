@@ -2,18 +2,20 @@
 "use client";
 
 import { useState } from "react";
-import type { Student } from "@/lib/types";
+import type { Student, SeatingChartRecord } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Users, Shuffle, Plus, X } from "lucide-react";
+import { Loader2, Users, Shuffle, Plus, X, Archive } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateSeatingChart } from "@/ai/flows/generate-seating-chart";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { format } from "date-fns";
+import { nb } from "date-fns/locale";
 
 type SeatingChartData = (string[] | null)[][];
 type AvoidPair = [string, string];
@@ -26,9 +28,10 @@ type SeatingChartSettings = {
 interface SeatingChartProps {
   students: Student[];
   seatingChart: SeatingChartData | null;
-  onSeatingChartChange: (chart: SeatingChartData | null) => void;
+  onSeatingChartChange: (chart: SeatingChartData | null, source: 'generation' | 'drag' | 'load') => void;
   settings: SeatingChartSettings;
   onSettingsChange: (settings: SeatingChartSettings) => void;
+  history: SeatingChartRecord[];
 }
 
 interface DeskProps {
@@ -75,7 +78,7 @@ const DroppableDesk = ({ studentName, id, children }: DeskProps & { children: Re
 };
 
 
-export default function SeatingChart({ students, seatingChart, onSeatingChartChange, settings, onSettingsChange }: SeatingChartProps) {
+export default function SeatingChart({ students, seatingChart, onSeatingChartChange, settings, onSettingsChange, history }: SeatingChartProps) {
   const { rows, cols, groupSize } = settings;
   const [avoidPairs, setAvoidPairs] = useState<AvoidPair[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -133,7 +136,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
         temporaryAvoidPairs = [...new Set([...temporaryAvoidPairs, ...previousNeighbors])];
     }
     
-    onSeatingChartChange(null); 
+    onSeatingChartChange(null, 'generation'); 
 
     try {
       const studentNames = students.map(s => s.name);
@@ -155,7 +158,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
       const validatedChart: SeatingChartData = Array.from({ length: rows }, (_, r) =>
         Array.from({ length: cols }, (_, c) => chart[r]?.[c] || null)
       );
-      onSeatingChartChange(validatedChart);
+      onSeatingChartChange(validatedChart, 'generation');
 
     } catch (error) {
         console.error(error);
@@ -209,7 +212,26 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
       }
     }
 
-    onSeatingChartChange(newChart);
+    onSeatingChartChange(newChart, 'drag');
+  };
+
+  const handleLoadFromHistory = (chartId: string) => {
+    const record = history.find(h => h.id === chartId);
+    if (record) {
+      try {
+        const chart = JSON.parse(record.chartJson);
+        const settings = {
+          rows: record.rows,
+          cols: record.cols,
+          groupSize: record.groupSize,
+        };
+        onSettingsChange(settings);
+        onSeatingChartChange(chart, 'load');
+        toast({ title: "Klassekart lastet", description: `Lastet inn kart fra ${format(record.createdAt, "PPPp", { locale: nb })}`});
+      } catch (e) {
+        toast({ title: "Feil", description: "Kunne ikke laste historisk klassekart.", variant: "destructive"});
+      }
+    }
   };
   
   const draggedStudentName = activeDragId && seatingChart
@@ -266,6 +288,31 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
           </CardContent>
         </Card>
         
+        <Card>
+          <CardHeader>
+            <CardTitle>Arkiv</CardTitle>
+            <CardDescription>Last inn et tidligere generert klassekart.</CardDescription>
+          </CardHeader>
+          <CardContent>
+             {history.length > 0 ? (
+                <Select onValueChange={handleLoadFromHistory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Velg et kart fra historikken..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {history.map(record => (
+                        <SelectItem key={record.id} value={record.id}>
+                            {format(record.createdAt, "PPP, HH:mm", { locale: nb })}
+                        </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+             ) : (
+                <p className="text-sm text-muted-foreground">Ingen historikk funnet.</p>
+             )}
+          </CardContent>
+        </Card>
+
         <Card>
             <CardHeader>
                 <CardTitle>Permanente unngå-par</CardTitle>
