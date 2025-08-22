@@ -5,12 +5,13 @@ import type { Student, Subject, Homework, Submission, HomeworkStatus } from "@/l
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX } from "lucide-react";
+import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface HomeworkOverviewProps {
@@ -52,6 +53,57 @@ const StatusPopover: FC<{ submission?: Submission; onStatusChange: (status: Home
         </div>
       </PopoverContent>
     </Popover>
+  );
+};
+
+const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string, subjectId: string) => void; }> = ({ subjects, onAddHomework }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [subjectId, setSubjectId] = useState("");
+
+  const handleAdd = () => {
+    if (title && subjectId) {
+      onAddHomework(title, subjectId);
+      setTitle("");
+      setSubjectId("");
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="mr-2" />
+          Ny Lekse
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Legg til ny lekse</DialogTitle>
+          <DialogDescription>Fyll ut detaljene for den nye leksen.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Input 
+            placeholder="Tittel på leksen" 
+            value={title} 
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <Select value={subjectId} onValueChange={setSubjectId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Velg fag" />
+            </SelectTrigger>
+            <SelectContent>
+              {subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsOpen(false)}>Avbryt</Button>
+          <Button onClick={handleAdd} disabled={!title || !subjectId}>Legg til</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -98,6 +150,19 @@ export default function HomeworkOverview({ students, subjects, homework, initial
     setCommentModal({ open: true, studentId, homeworkId });
   };
 
+  const handleAddHomework = (title: string, subjectId: string) => {
+    const newDate = new Date();
+    const newHomework: Homework = {
+      id: `hw${homeworkList.length + 1}`,
+      title,
+      subjectId,
+      date: newDate,
+      week: newDate.getWeek(),
+    };
+    setHomeworkList([...homeworkList, newHomework]);
+    toast({ title: "Lekse lagt til", description: `"${title}" er lagt til i oversikten.` });
+  };
+
   const handleCopyHomework = (homeworkId: string) => {
     const hwToCopy = homeworkList.find(h => h.id === homeworkId);
     if(hwToCopy) {
@@ -114,7 +179,7 @@ export default function HomeworkOverview({ students, subjects, homework, initial
         var dayNum = d.getUTCDay() || 7;
         d.setUTCDate(d.getUTCDate() + 4 - dayNum);
         var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-        return Math.ceil((((d - yearStart) / 86400000) + 1)/7)
+        return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1)/7)
     };
   }
 
@@ -122,7 +187,7 @@ export default function HomeworkOverview({ students, subjects, homework, initial
     return homeworkList
       .filter(hw => filters.subject === "all" || hw.subjectId === filters.subject)
       .filter(hw => filters.week === "all" || hw.week === parseInt(filters.week))
-      .sort((a,b) => a.date.getTime() - b.date.getTime());
+      .sort((a,b) => b.date.getTime() - a.date.getTime());
   }, [homeworkList, filters]);
 
   const problemStudentIds = useMemo(() => {
@@ -135,20 +200,23 @@ export default function HomeworkOverview({ students, subjects, homework, initial
     return filters.showProblems ? students.filter(s => problemStudentIds.has(s.id)) : students;
   }, [students, filters.showProblems, problemStudentIds]);
   
-  const uniqueWeeks = [...new Set(homework.map(h => h.week))].sort((a,b) => a-b);
+  const uniqueWeeks = [...new Set(homework.map(h => h.week))].sort((a,b) => b-a);
   
   return (
     <div className="space-y-4">
       <Collapsible>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-2xl font-bold">Lekseoversikt</h2>
-            <CollapsibleTrigger asChild>
-                <Button variant="outline" size="sm">
-                    <Filter className="mr-2 h-4 w-4" />
-                    Vis/Skjul Filter
-                    <ChevronDown className="ml-2 h-4 w-4"/>
-                </Button>
-            </CollapsibleTrigger>
+            <div className="flex items-center gap-2">
+                 <AddHomeworkDialog subjects={subjects} onAddHomework={handleAddHomework} />
+                <CollapsibleTrigger asChild>
+                    <Button variant="outline" size="sm">
+                        <Filter className="mr-2 h-4 w-4" />
+                        Vis/Skjul Filter
+                        <ChevronDown className="ml-2 h-4 w-4"/>
+                    </Button>
+                </CollapsibleTrigger>
+            </div>
         </div>
         <CollapsibleContent className="p-4 mt-4 border rounded-md">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
