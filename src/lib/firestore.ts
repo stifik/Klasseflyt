@@ -77,7 +77,10 @@ export async function deleteSubject(id: string) { return deleteDocument('subject
 
 // Homework functions
 export async function getHomework(): Promise<Homework[]> { return fetchCollection<Homework>('homework'); }
-export async function addHomework(homework: Omit<Homework, 'id'>) { return addDocument('homework', { ...homework, date: Timestamp.fromDate(homework.date) }); }
+export async function addHomework(homework: Omit<Homework, 'id'>) { 
+    const homeworkWithTimestamp = { ...homework, date: Timestamp.fromDate(homework.date) };
+    return addDocument('homework', homeworkWithTimestamp);
+}
 
 // Submission functions
 export async function getSubmissions(): Promise<Submission[]> { return fetchCollection<Submission>('submissions'); }
@@ -103,6 +106,10 @@ export async function setSubmission(submission: Partial<Submission>): Promise<Su
             comment: rest.comment || "",
             ...rest,
         };
+        // remove id if it was temporary
+        if ('id' in newSubmissionData) {
+            delete (newSubmissionData as any).id;
+        }
         return addDocument('submissions', newSubmissionData);
     } else {
         // Document exists, update it.
@@ -112,6 +119,18 @@ export async function setSubmission(submission: Partial<Submission>): Promise<Su
         return docToData<Submission>(docSnap);
     }
 };
+
+export async function batchAddSubmissions(submissions: Omit<Submission, 'id'>[]): Promise<void> {
+    const batch = writeBatch(db);
+    const submissionsCollection = collection(db, 'submissions');
+
+    submissions.forEach(submission => {
+        const docRef = doc(submissionsCollection); // Create a new doc with a unique ID
+        batch.set(docRef, submission);
+    });
+
+    await batch.commit();
+}
 
 
 // DailyCheck functions
@@ -229,16 +248,9 @@ async function seedDatabase() {
     { name: 'Norsk' }, { name: 'Matematikk' }, { name: 'Engelsk' }, { name: 'Naturfag' },
   ];
 
-  const studentDocs = students.map(() => doc(collection(db, "students")));
-  const subjectDocs = subjects.map(() => doc(collection(db, "subjects")));
+  const studentDocs = await Promise.all(students.map(s => addDoc(collection(db, "students"), s)));
+  const subjectDocs = await Promise.all(subjects.map(s => addDoc(collection(db, "subjects"), s)));
   
-  const batch = writeBatch(db);
-
-  studentDocs.forEach((docRef, index) => batch.set(docRef, students[index]));
-  subjectDocs.forEach((docRef, index) => batch.set(docRef, subjects[index]));
-  
-  await batch.commit();
-
   const studentIds = studentDocs.map(doc => doc.id);
   const subjectIds = subjectDocs.map(doc => doc.id);
 
@@ -260,7 +272,7 @@ async function seedDatabase() {
         week,
         date: Timestamp.fromDate(date),
       };
-      batch.set(hwRef, newHomework);
+      dataBatch.set(hwRef, newHomework);
 
       studentIds.forEach(studentId => {
         const randomStatus = Math.random();
@@ -280,7 +292,7 @@ async function seedDatabase() {
         if (status !== 'Godkjent' && Math.random() < 0.5) {
           newSubmission.comment = `Gjorde en god innsats, men trenger å se over ${Math.floor(Math.random() * 3) + 1} oppgaver.`;
         }
-        batch.set(subRef, newSubmission);
+        dataBatch.set(subRef, newSubmission);
       });
     }
 
@@ -288,7 +300,7 @@ async function seedDatabase() {
       const randomCheck = Math.random();
       if (randomCheck < 0.1) {
           const checkRef = doc(collection(db, 'dailyChecks'));
-          batch.set(checkRef, {
+          dataBatch.set(checkRef, {
               studentId: studentId,
               date: Timestamp.fromDate(date),
               ipadCharged: randomCheck > 0.05,
@@ -298,5 +310,7 @@ async function seedDatabase() {
     });
   }
 
-  await batch.commit();
+  await dataBatch.commit();
 }
+
+    

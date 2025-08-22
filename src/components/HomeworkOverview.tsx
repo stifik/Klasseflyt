@@ -13,8 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { addHomework, setSubmission } from "@/lib/firestore";
+import { addHomework, setSubmission, batchAddSubmissions } from "@/lib/firestore";
 import { Input } from "./ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { getWeekNumber } from "@/lib/utils";
 
 interface HomeworkOverviewProps {
@@ -75,22 +77,33 @@ const StatusPopover: FC<{ submission?: Submission; onStatusChange: (status: Home
   );
 };
 
-const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string, subjectId: string) => void; }> = ({ subjects, onAddHomework }) => {
+const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string, subjectId: string, defaultStatus: HomeworkStatus | "none") => void; }> = ({ subjects, onAddHomework }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState("");
+  const [defaultStatus, setDefaultStatus] = useState<HomeworkStatus | "none">("none");
 
   const handleAdd = () => {
     if (title && subjectId) {
-      onAddHomework(title, subjectId);
+      onAddHomework(title, subjectId, defaultStatus);
       setTitle("");
       setSubjectId("");
+      setDefaultStatus("none");
       setIsOpen(false);
     }
   };
+  
+  const resetState = () => {
+      setTitle("");
+      setSubjectId("");
+      setDefaultStatus("none");
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+        if(!open) resetState();
+        setIsOpen(open);
+    }}>
       <DialogTrigger asChild>
         <Button>
           <Plus className="mr-2" />
@@ -116,6 +129,23 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
               {subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
             </SelectContent>
           </Select>
+           <div>
+            <Label className="mb-2 block">Standardstatus for alle elever</Label>
+             <RadioGroup value={defaultStatus} onValueChange={(v) => setDefaultStatus(v as HomeworkStatus | "none")}>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="none" id="status-none" />
+                <Label htmlFor="status-none">Ikke sett status (standard)</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="Godkjent" id="status-godkjent" />
+                <Label htmlFor="status-godkjent">Sett alle til Godkjent</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="Ikke levert" id="status-ikke-levert" />
+                <Label htmlFor="status-ikke-levert">Sett alle til Ikke levert</Label>
+              </div>
+            </RadioGroup>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setIsOpen(false)}>Avbryt</Button>
@@ -218,7 +248,7 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
     setCommentModal({ open: true, studentId, homeworkId });
   };
 
-  const handleAddHomework = async (title: string, subjectId: string) => {
+  const handleAddHomework = async (title: string, subjectId: string, defaultStatus: HomeworkStatus | "none") => {
     const newDate = new Date();
     const newHomeworkData: Omit<Homework, 'id'> = {
       title,
@@ -228,11 +258,22 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
     };
     
     try {
-        await addHomework(newHomeworkData);
-        onUpdate();
+        const newHomework = await addHomework(newHomeworkData);
         toast({ title: "Lekse lagt til", description: `"${title}" er lagt til i oversikten.` });
+
+        if (defaultStatus !== "none") {
+            const newSubmissions: Omit<Submission, 'id'>[] = students.map(student => ({
+                studentId: student.id,
+                homeworkId: newHomework.id,
+                status: defaultStatus,
+                comment: ""
+            }));
+            await batchAddSubmissions(newSubmissions);
+            toast({ title: "Standardstatus satt", description: `Alle elever er satt til "${defaultStatus}".` });
+        }
+        onUpdate();
     } catch(error) {
-        toast({ title: "Feil", description: "Kunne ikke legge til lekse.", variant: "destructive" });
+        toast({ title: "Feil", description: "Kunne ikke legge til lekse eller standardstatus.", variant: "destructive" });
     }
   };
 
@@ -375,3 +416,5 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
     </div>
   );
 }
+
+    
