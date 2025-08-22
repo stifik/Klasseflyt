@@ -171,21 +171,26 @@ export default function SeatingChart({ students }: SeatingChartProps) {
     if (startRow === endRow && startCol === endCol && startStudentIdx === endStudentIdx) return;
     
     const newChart = JSON.parse(JSON.stringify(seatingChart));
+
+    const startDesk = newChart[startRow]?.[startCol];
+    const studentToMove = startDesk?.[startStudentIdx];
     
-    const studentToMove = newChart[startRow]?.[startCol]?.[startStudentIdx];
-    const studentToSwap = newChart[endRow]?.[endCol]?.[endStudentIdx];
-    
-    if (newChart[endRow] && newChart[endRow][endCol]) {
-       newChart[endRow][endCol][endStudentIdx] = studentToMove || null;
-    } else if (newChart[endRow]) {
-        // Handle case where desk is null
-        newChart[endRow][endCol] = Array(groupSize).fill(null);
-        newChart[endRow][endCol][endStudentIdx] = studentToMove || null;
+    if (studentToMove === undefined) return;
+
+    const endDesk = newChart[endRow]?.[endCol];
+    const studentToSwap = endDesk?.[endStudentIdx];
+
+    // Create end desk if it doesn't exist (is null)
+    if (!newChart[endRow][endCol]) {
+      newChart[endRow][endCol] = Array(groupSize).fill(null);
     }
     
-    if (newChart[startRow] && newChart[startRow][startCol]) {
-        newChart[startRow][startCol][startStudentIdx] = studentToSwap || null;
+    // Swap or move
+    newChart[endRow][endCol][endStudentIdx] = studentToMove;
+    if (startDesk) {
+      startDesk[startStudentIdx] = studentToSwap || null;
     }
+    
 
     // Clean up empty desks (desks that are all nulls should be just null)
     for (let r=0; r < newChart.length; r++) {
@@ -200,7 +205,11 @@ export default function SeatingChart({ students }: SeatingChartProps) {
     setSeatingChart(newChart);
   };
   
-  const draggedStudentName = activeDragId ? seatingChart?.at(parseInt(activeDragId.split('-')[0]))?.at(parseInt(activeDragId.split('-')[1]))?.at(parseInt(activeDragId.split('-')[2])) : null;
+  const draggedStudentName = activeDragId 
+      ? seatingChart?.at(parseInt(activeDragId.split('-')[0]))
+          ?.at(parseInt(activeDragId.split('-')[1]))
+          ?.at(parseInt(activeDragId.split('-')[2])) 
+      : null;
 
   return (
     <div className="grid gap-6 md:grid-cols-3">
