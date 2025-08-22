@@ -13,8 +13,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateSeatingChart } from "@/ai/flows/generate-seating-chart";
+import { cn } from "@/lib/utils";
 
-type SeatingChartData = (string[])[][];
+type SeatingChartData = (string[] | null)[][];
 type AvoidPair = [string, string];
 
 interface SeatingChartProps {
@@ -61,7 +62,12 @@ export default function SeatingChart({ students }: SeatingChartProps) {
         avoidPairs: avoidPairNames as [string, string][],
       });
       
-      setSeatingChart(result.seatingChart);
+      // Ensure the output is a 2D array
+      const chart = result.seatingChart || [];
+      const validatedChart: SeatingChartData = Array.from({ length: rows }, (_, r) =>
+        Array.from({ length: cols }, (_, c) => chart[r]?.[c] || null)
+      );
+      setSeatingChart(validatedChart);
 
     } catch (error) {
         console.error(error);
@@ -87,11 +93,11 @@ export default function SeatingChart({ students }: SeatingChartProps) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="rows">Rader</Label>
-                <Input id="rows" type="number" value={rows} onChange={(e) => setRows(Number(e.target.value))} min="1" />
+                <Input id="rows" type="number" value={rows} onChange={(e) => setRows(Math.max(1, Number(e.target.value)))} min="1" />
               </div>
               <div>
                 <Label htmlFor="cols">Kolonner</Label>
-                <Input id="cols" type="number" value={cols} onChange={(e) => setCols(Number(e.target.value))} min="1" />
+                <Input id="cols" type="number" value={cols} onChange={(e) => setCols(Math.max(1, Number(e.target.value)))} min="1" />
               </div>
             </div>
             <div>
@@ -166,9 +172,11 @@ export default function SeatingChart({ students }: SeatingChartProps) {
                     {seatingChart.flat().map((desk, index) => (
                         <Card key={index} className="flex flex-col items-center justify-center p-2 text-center aspect-square bg-secondary">
                            {desk ? (
-                                desk.map(studentName => (
+                               <div className={cn("flex w-full h-full items-center justify-around", groupSize > 1 ? "flex-row" : "flex-col")}>
+                                {desk.map(studentName => (
                                     <p key={studentName} className="text-sm font-medium">{studentName}</p>
-                                ))
+                                ))}
+                               </div>
                            ) : (
                                 <p className="text-sm text-muted-foreground">-</p>
                            )}
