@@ -36,6 +36,7 @@ export default function Reports() {
   
   useEffect(() => {
     async function loadData() {
+      setLoading(true);
       try {
         const [studentsData, subjectsData, homeworkData, submissionsData, dailyChecksData] = await Promise.all([
           getStudents(),
@@ -46,9 +47,9 @@ export default function Reports() {
         ]);
         setStudents(studentsData);
         setSubjects(subjectsData);
-        setHomework(homeworkData.map(h => ({...h, date: new Date(h.date)})));
+        setHomework(homeworkData);
         setSubmissions(submissionsData);
-        setDailyChecks(dailyChecksData.map(c => ({...c, date: new Date(c.date)})));
+        setDailyChecks(dailyChecksData);
       } catch (error) {
         toast({ title: "Feil", description: "Kunne ikke laste data.", variant: "destructive" });
       } finally {

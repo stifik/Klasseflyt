@@ -1,20 +1,29 @@
 "use server";
 
 import { db } from './firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, writeBatch, query, where, getDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, writeBatch, query, where, getDoc, Timestamp } from 'firebase/firestore';
 import type { Student, Subject, Homework, Submission, DailyCheck } from './types';
+
+// Helper to convert Firestore Timestamps to JS Dates
+const convertTimestamps = (data: any) => {
+  if (data?.date && data.date instanceof Timestamp) {
+    return { ...data, date: data.date.toDate() };
+  }
+  return data;
+};
 
 // Generic fetch function
 async function fetchCollection<T>(collectionName: string): Promise<T[]> {
   const querySnapshot = await getDocs(collection(db, collectionName));
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...convertTimestamps(doc.data()) } as T));
 }
 
 // Generic add function
 async function addDocument<T extends object>(collectionName: string, data: T): Promise<T & { id: string }> {
   const docRef = await addDoc(collection(db, collectionName), data);
   const docSnap = await getDoc(docRef);
-  return { id: docRef.id, ...(docSnap.data() as T) };
+  const docData = docSnap.data();
+  return { id: docRef.id, ...(convertTimestamps(docData) as T) };
 }
 
 // Generic update function
@@ -58,7 +67,7 @@ export async function setSubmission(submission: Omit<Submission, 'id'>): Promise
         const docId = querySnapshot.docs[0].id;
         await updateDocument('submissions', docId, rest);
         const docSnap = await getDoc(doc(db, 'submissions', docId));
-        return {id: docId, ...docSnap.data()} as Submission;
+        return {id: docId, ...(convertTimestamps(docSnap.data()) as Omit<Submission, 'id'>)} as Submission;
     }
 };
 
@@ -67,38 +76,56 @@ export async function setSubmission(submission: Omit<Submission, 'id'>): Promise
 export async function getDailyChecks(): Promise<DailyCheck[]> { return fetchCollection<DailyCheck>('dailyChecks'); }
 export async function setDailyCheck(check: Omit<DailyCheck, 'id'>): Promise<DailyCheck> {
     const { studentId, date, ...rest } = check;
-    const dateString = new Date(date).toISOString().split('T')[0];
+    const dateOnly = new Date(date);
+    dateOnly.setHours(0, 0, 0, 0);
+
+    const startOfDay = Timestamp.fromDate(dateOnly);
     
+    const nextDay = new Date(dateOnly);
+    nextDay.setDate(dateOnly.getDate() + 1);
+    const endOfDay = Timestamp.fromDate(nextDay);
+
     const q = query(
         collection(db, 'dailyChecks'),
         where('studentId', '==', studentId),
+        where('date', '>=', startOfDay),
+        where('date', '<', endOfDay)
     );
 
     const querySnapshot = await getDocs(q);
-    const checks = querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()})) as DailyCheck[];
-    const existingDoc = checks.find(c => new Date(c.date).toISOString().split('T')[0] === dateString);
-
-
-    if (!existingDoc) {
-        return addDocument('dailyChecks', check);
+    
+    const checkWithTimestamp = { ...check, date: Timestamp.fromDate(new Date(date)) };
+    
+    if (querySnapshot.empty) {
+        return addDocument('dailyChecks', checkWithTimestamp);
     } else {
-        await updateDocument('dailyChecks', existingDoc.id, rest);
-        const docSnap = await getDoc(doc(db, 'dailyChecks', existingDoc.id));
-        return {id: existingDoc.id, ...docSnap.data()} as DailyCheck;
+        const docId = querySnapshot.docs[0].id;
+        await updateDocument('dailyChecks', docId, rest);
+        const docSnap = await getDoc(doc(db, 'dailyChecks', docId));
+        return {id: docId, ...(convertTimestamps(docSnap.data()) as Omit<DailyCheck, 'id'>)} as DailyCheck;
     }
 };
 export async function deleteDailyCheckByStudentAndDate(studentId: string, date: Date) {
-     const dateString = new Date(date).toISOString().split('T')[0];
+     const dateOnly = new Date(date);
+     dateOnly.setHours(0, 0, 0, 0);
+
+     const startOfDay = Timestamp.fromDate(dateOnly);
+     
+     const nextDay = new Date(dateOnly);
+     nextDay.setDate(dateOnly.getDate() + 1);
+     const endOfDay = Timestamp.fromDate(nextDay);
+     
      const q = query(
         collection(db, 'dailyChecks'),
         where('studentId', '==', studentId),
+        where('date', '>=', startOfDay),
+        where('date', '<', endOfDay)
     );
     const querySnapshot = await getDocs(q);
-    const checks = querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()})) as DailyCheck[];
-    const existingDoc = checks.find(c => new Date(c.date).toISOString().split('T')[0] === dateString);
-
-    if (existingDoc) {
-        await deleteDocument('dailyChecks', existingDoc.id);
+    
+    if (!querySnapshot.empty) {
+        const docId = querySnapshot.docs[0].id;
+        await deleteDocument('dailyChecks', docId);
     }
 }
 

@@ -15,7 +15,7 @@ export type Homework = {
   title: string;
   subjectId: string;
   week: number;
-  date: Date | { seconds: number, nanoseconds: number }; // Support Firestore Timestamp
+  date: Date;
 };
 
 export type Submission = {
@@ -29,7 +29,7 @@ export type Submission = {
 export type DailyCheck = {
   id: string;
   studentId: string;
-  date: Date | { seconds: number, nanoseconds: number }; // Support Firestore Timestamp
+  date: Date;
   ipadCharged: boolean;
   ipadBrought: boolean;
 };

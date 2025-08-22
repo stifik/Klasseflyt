@@ -133,6 +133,7 @@ export default function HomeworkOverview({}: HomeworkOverviewProps) {
 
   useEffect(() => {
     async function loadData() {
+      setLoading(true);
       try {
         const [studentsData, subjectsData, homeworkData, submissionsData] = await Promise.all([
           getStudents(),
@@ -142,7 +143,7 @@ export default function HomeworkOverview({}: HomeworkOverviewProps) {
         ]);
         setStudents(studentsData);
         setSubjects(subjectsData);
-        setHomeworkList(homeworkData.map(h => ({...h, date: new Date(h.date)})));
+        setHomeworkList(homeworkData);
         setSubmissions(submissionsData);
       } catch (error) {
         toast({ title: "Feil", description: "Kunne ikke laste data.", variant: "destructive" });
@@ -223,7 +224,7 @@ export default function HomeworkOverview({}: HomeworkOverviewProps) {
     };
     try {
         const newHomework = await addHomework(newHomeworkData);
-        setHomeworkList([...homeworkList, {...newHomework, date: new Date(newHomework.date)}]);
+        setHomeworkList([...homeworkList, newHomework]);
         toast({ title: "Lekse lagt til", description: `"${title}" er lagt til i oversikten.` });
     } catch(error) {
         toast({ title: "Feil", description: "Kunne ikke legge til lekse.", variant: "destructive" });
@@ -237,7 +238,7 @@ export default function HomeworkOverview({}: HomeworkOverviewProps) {
       const newHwData = { ...hwData, week: new Date().getWeek(), date: new Date() };
       try {
         const newHomework = await addHomework(newHwData);
-        setHomeworkList([...homeworkList, {...newHomework, date: new Date(newHomework.date)}]);
+        setHomeworkList([...homeworkList, newHomework]);
         toast({ title: "Lekse kopiert", description: `En ny versjon av "${hwToCopy.title}" er opprettet for denne uken.`});
       } catch(error) {
         toast({ title: "Feil", description: "Kunne ikke kopiere lekse.", variant: "destructive" });

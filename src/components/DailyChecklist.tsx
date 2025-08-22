@@ -24,10 +24,11 @@ export default function DailyChecklist() {
 
   useEffect(() => {
     async function loadData() {
+      setLoading(true);
       try {
         const [studentsData, checksData] = await Promise.all([getStudents(), getDailyChecks()]);
         setStudents(studentsData);
-        setChecks(checksData.map(c => ({...c, date: new Date(c.date)})));
+        setChecks(checksData);
       } catch (error) {
         toast({ title: "Feil", description: "Kunne ikke laste data.", variant: "destructive" });
       } finally {
@@ -85,10 +86,11 @@ export default function DailyChecklist() {
             if (existingIndex > -1) {
                 setChecks(prev => prev.map((c, i) => i === existingIndex ? {...c, ...updatedCheck} : c));
             } else {
-                setChecks(prev => [...prev, {...updatedCheck, date: new Date(updatedCheck.date)}]);
+                setChecks(prev => [...prev, updatedCheck]);
             }
         }
     } catch (error) {
+        console.error(error);
         toast({title: "Feil", description: "Kunne ikke lagre endring.", variant: "destructive"});
     }
   };
