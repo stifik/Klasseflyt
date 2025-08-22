@@ -7,6 +7,7 @@ import HomeworkOverview from "@/components/HomeworkOverview";
 import DailyChecklist from "@/components/DailyChecklist";
 import Reports from "@/components/Reports";
 import Admin from "@/components/Admin";
+import SeatingChart from "@/components/SeatingChart";
 import { BookOpenCheck, Loader2 } from "lucide-react";
 import type { Student, Subject, Homework, Submission, DailyCheck } from "@/lib/types";
 import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks } from "@/lib/firestore";
@@ -81,10 +82,11 @@ export default function Home() {
       </header>
       <main className="flex-1 p-4 sm:p-6">
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4 sm:w-auto sm:inline-flex">
+          <TabsList className="grid w-full grid-cols-2 mb-4 sm:grid-cols-3 md:grid-cols-5">
             <TabsTrigger value="overview">Lekseoversikt</TabsTrigger>
             <TabsTrigger value="daily">Daglig Sjekk</TabsTrigger>
             <TabsTrigger value="reports">Rapporter</TabsTrigger>
+            <TabsTrigger value="seating-chart">Klassekart</TabsTrigger>
             <TabsTrigger value="admin">Admin</TabsTrigger>
           </TabsList>
 
@@ -112,6 +114,9 @@ export default function Home() {
                 submissions={submissions}
                 dailyChecks={dailyChecks}
              />
+          </TabsContent>
+           <TabsContent value="seating-chart">
+            <SeatingChart students={students} />
           </TabsContent>
           <TabsContent value="admin">
             <Admin
