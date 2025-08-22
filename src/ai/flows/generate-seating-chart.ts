@@ -68,7 +68,8 @@ Constraints:
 
 Please generate a completely new and random seating chart based on these details.
 - Place all students from the list into the seating chart.
-- If the total capacity is greater than the number of students, some desks or spots at desks will be empty. Represent empty desks with 'null' in the array, and empty spots at a desk with 'null' inside that desk's array.
+- If the total capacity is greater than the number of students, some desks will be empty. Represent empty desks with 'null' in the array.
+- IMPORTANT: Groups of students should be kept together. Do not place a 'null' value for a single empty seat within a desk group that contains other students. A desk/group is either completely empty (represented as 'null') or contains only student names.
 - It is very important that you respect the 'avoidPairs' constraints. Students in those pairs cannot be in the same group if it means they sit next to each other. For example, in a group of 3 (A, B, C), if (A, B) is an avoid pair, A and B cannot sit next to each other, but A and C could be in the same group if B is not between them. The students are seated in the order they appear in the array.
 - The final output must be a 2D array of size {{rows}} x {{cols}}, where each cell contains an array of student names (up to groupSize) or is null if the desk is empty.
 `,
