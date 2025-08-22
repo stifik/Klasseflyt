@@ -153,7 +153,7 @@ export default function DailyChecklist({ students, initialChecks, onUpdate, seat
         {seatingChart ? (
             <div className="grid gap-y-4">
                 {seatingChart.map((row, rowIndex) => (
-                    <div key={rowIndex} className="flex flex-wrap justify-center gap-x-4 gap-y-4">
+                    <div key={rowIndex} className="flex flex-wrap justify-start gap-x-4 gap-y-4">
                         {row.map((desk, deskIndex) => (
                            <div key={deskIndex} className="flex gap-1">
                                 {desk ? desk.map((studentName, studentIndex) => {
