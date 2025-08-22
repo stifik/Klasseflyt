@@ -196,17 +196,22 @@ export async function seedDatabase() {
     date.setDate(today.getDate() - i);
     const week = getWeekNumber(date);
 
+    // Create homework with a ~40% chance each day
     if (Math.random() < 0.4) {
       const subjectId = subjectIds[Math.floor(Math.random() * subjectIds.length)];
+      
+      // IMPORTANT: Generate the document reference (and its ID) *before* using it.
       const hwRef = doc(collection(db, 'homework'));
+      
       const newHomework = {
-        title: `Leselekse ${i}`,
+        title: `Leselekse dag ${180-i}`,
         subjectId: subjectId,
         week,
         date: Timestamp.fromDate(date),
       };
       dataBatch.set(hwRef, newHomework);
 
+      // Create submissions for this homework for each student
       studentIds.forEach(studentId => {
         const randomStatus = Math.random();
         let status: HomeworkStatus = 'Godkjent';
@@ -215,10 +220,12 @@ export async function seedDatabase() {
         else if (randomStatus < 0.13) status = 'Syk/Fravær';
         else if (randomStatus < 0.16) status = 'Glemt bok';
         
+        // Generate the submission reference with its own unique ID
         const subRef = doc(collection(db, 'submissions'));
+        
         const newSubmission: Omit<Submission, 'id' | 'comment'> & { comment?: string } = {
           studentId: studentId,
-          homeworkId: hwRef.id,
+          homeworkId: hwRef.id, // Now hwRef.id is a valid, unique ID
           status,
         };
 
@@ -229,6 +236,7 @@ export async function seedDatabase() {
       });
     }
 
+    // Create daily iPad checks with a ~10% chance each day
     studentIds.forEach(studentId => {
       const randomCheck = Math.random();
       if (randomCheck < 0.1) {
@@ -236,8 +244,8 @@ export async function seedDatabase() {
           dataBatch.set(checkRef, {
               studentId: studentId,
               date: Timestamp.fromDate(date),
-              ipadCharged: randomCheck > 0.05,
-              ipadBrought: randomCheck < 0.05 || randomCheck > 0.07,
+              ipadCharged: randomCheck > 0.05, // 50% chance of not charged
+              ipadBrought: randomCheck < 0.05 ? false : true, // 50% chance of not brought, if an issue exists
           });
       }
     });
