@@ -19,11 +19,10 @@ type IpadStatus = "OK" | "NotCharged" | "NotBrought";
 interface DailyChecklistProps {
   students: Student[];
   initialChecks: DailyCheck[];
-  usingMockData?: boolean;
-  onLocalUpdate?: (data: { dailyChecks?: DailyCheck[] }) => void;
+  onUpdate: () => void;
 }
 
-export default function DailyChecklist({ students, initialChecks, usingMockData, onLocalUpdate }: DailyChecklistProps) {
+export default function DailyChecklist({ students, initialChecks, onUpdate }: DailyChecklistProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [checks, setChecks] = useState<DailyCheck[]>(initialChecks);
   const { toast } = useToast();
@@ -70,28 +69,13 @@ export default function DailyChecklist({ students, initialChecks, usingMockData,
         break;
     }
 
-    if (usingMockData && onLocalUpdate) {
-        let updatedChecks = checks.filter(c => !(c.studentId === studentId && new Date(c.date).toISOString().split('T')[0] === dateString));
-        if (newStatus !== 'OK') {
-            updatedChecks.push({ id: `dc${checks.length + 1}`, ...newCheckState } as DailyCheck);
-        }
-        onLocalUpdate({ dailyChecks: updatedChecks });
-        return;
-    }
-
     try {
         if (newStatus === 'OK') {
             await deleteDailyCheckByStudentAndDate(studentId, date);
-            setChecks(prev => prev.filter(c => !(c.studentId === studentId && new Date(c.date).toISOString().split('T')[0] === dateString)))
         } else {
-            const updatedCheck = await setDailyCheck(newCheckState as Omit<DailyCheck, 'id'>);
-            const existingIndex = checks.findIndex(c => c.studentId === studentId && new Date(c.date).toISOString().split('T')[0] === dateString);
-            if (existingIndex > -1) {
-                setChecks(prev => prev.map((c, i) => i === existingIndex ? {...c, ...updatedCheck} : c));
-            } else {
-                setChecks(prev => [...prev, updatedCheck]);
-            }
+            await setDailyCheck(newCheckState as Omit<DailyCheck, 'id'>);
         }
+        onUpdate();
     } catch (error) {
         console.error(error);
         toast({title: "Feil", description: "Kunne ikke lagre endring.", variant: "destructive"});

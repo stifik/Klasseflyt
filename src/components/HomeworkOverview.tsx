@@ -22,8 +22,6 @@ interface HomeworkOverviewProps {
   homeworkList: Homework[];
   submissions: Submission[];
   onUpdate: () => void;
-  usingMockData?: boolean;
-  onLocalUpdate?: (data: { homework?: Homework[], submissions?: Submission[] }) => void;
 }
 
 const statusIcons: Record<HomeworkStatus, React.ReactElement> = {
@@ -127,7 +125,7 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
   );
 };
 
-export default function HomeworkOverview({ students, subjects, homeworkList, submissions, onUpdate, usingMockData, onLocalUpdate }: HomeworkOverviewProps) {
+export default function HomeworkOverview({ students, subjects, homeworkList, submissions, onUpdate }: HomeworkOverviewProps) {
   const [commentModal, setCommentModal] = useState<{ open: boolean; studentId?: string; homeworkId?: string; }>({ open: false });
   const [currentComment, setCurrentComment] = useState("");
   const [filters, setFilters] = useState<{ subject: string; week: string; showProblems: boolean }>({ subject: "all", week: "all", showProblems: false });
@@ -136,22 +134,6 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
   const getSubmission = (studentId: string, homeworkId: string) => submissions.find(s => s.studentId === studentId && s.homeworkId === homeworkId);
 
   const handleStatusChange = async (studentId: string, homeworkId: string, status: HomeworkStatus) => {
-    if (usingMockData && onLocalUpdate) {
-        let submissionUpdated = false;
-        const newSubmissions = submissions.map(s => {
-            if (s.studentId === studentId && s.homeworkId === homeworkId) {
-                submissionUpdated = true;
-                return { ...s, status };
-            }
-            return s;
-        });
-        if (!submissionUpdated) {
-            newSubmissions.push({ id: `sub${submissions.length + 1}`, studentId, homeworkId, status });
-        }
-        onLocalUpdate({ submissions: newSubmissions });
-        return;
-    }
-
     const existingSubmission = getSubmission(studentId, homeworkId);
     const submissionData = {
         studentId,
@@ -171,25 +153,6 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
   const handleCommentSave = async () => {
     if (!commentModal.studentId || !commentModal.homeworkId) return;
     const { studentId, homeworkId } = commentModal;
-
-    if (usingMockData && onLocalUpdate) {
-        let submissionUpdated = false;
-        const newSubmissions = submissions.map(s => {
-            if (s.studentId === studentId && s.homeworkId === homeworkId) {
-                submissionUpdated = true;
-                return { ...s, comment: currentComment };
-            }
-            return s;
-        });
-        if (!submissionUpdated) {
-            newSubmissions.push({ id: `sub${submissions.length + 1}`, studentId, homeworkId, status: "Godkjent", comment: currentComment });
-        }
-        onLocalUpdate({ submissions: newSubmissions });
-        setCommentModal({ open: false });
-        setCurrentComment("");
-        toast({ title: "Kommentar lagret (Demo)" });
-        return;
-    }
 
     const existingSubmission = getSubmission(studentId, homeworkId);
     const submissionData = {
@@ -233,12 +196,7 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
       date: newDate,
       week: newDate.getWeek(),
     };
-    if (usingMockData && onLocalUpdate) {
-        const newHomework: Homework = { id: `hw${homeworkList.length + 1}`, ...newHomeworkData };
-        onLocalUpdate({ homework: [...homeworkList, newHomework] });
-        toast({ title: "Lekse lagt til (Demo)", description: `"${title}" er lagt til i oversikten.` });
-        return;
-    }
+    
     try {
         await addHomework(newHomeworkData);
         onUpdate();
@@ -254,13 +212,6 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
       const { id, ...hwData } = hwToCopy;
       const newHwData = { ...hwData, week: new Date().getWeek(), date: new Date() };
       
-      if (usingMockData && onLocalUpdate) {
-          const newHomework: Homework = { id: `hw${homeworkList.length + 1}`, ...newHwData };
-          onLocalUpdate({ homework: [...homeworkList, newHomework] });
-          toast({ title: "Lekse kopiert (Demo)", description: `En ny versjon av "${hwToCopy.title}" er opprettet for denne uken.`});
-          return;
-      }
-
       try {
         await addHomework(newHwData);
         onUpdate();

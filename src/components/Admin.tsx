@@ -6,23 +6,22 @@ import type { Student, Subject } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Database } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { addStudent, deleteStudent, addSubject, deleteSubject } from "@/lib/firestore";
+import { addStudent, deleteStudent, addSubject, deleteSubject, seedDatabase } from "@/lib/firestore";
 
 interface AdminProps {
   initialStudents: Student[];
   initialSubjects: Subject[];
   onUpdate: () => void;
-  usingMockData?: boolean;
-  onLocalUpdate?: (data: { students?: Student[], subjects?: Subject[] }) => void;
 }
 
-export default function Admin({ initialStudents, initialSubjects, onUpdate, usingMockData, onLocalUpdate }: AdminProps) {
+export default function Admin({ initialStudents, initialSubjects, onUpdate }: AdminProps) {
   const [students, setStudents] = useState<Student[]>(initialStudents);
   const [subjects, setSubjects] = useState<Subject[]>(initialSubjects);
   const [newStudent, setNewStudent] = useState("");
   const [newSubject, setNewSubject] = useState("");
+  const [isSeeding, setIsSeeding] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -32,13 +31,6 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate, usin
 
   const handleAddStudent = async () => {
     if (newStudent.trim()) {
-      if (usingMockData && onLocalUpdate) {
-        const newStudentObj = { id: `s${students.length + 1}`, name: newStudent.trim() };
-        onLocalUpdate({ students: [...students, newStudentObj] });
-        setNewStudent("");
-        toast({ title: "Elev lagt til (Demo)", description: `${newStudent.trim()} er lagt til i listen.` });
-        return;
-      }
       try {
         await addStudent({ name: newStudent.trim() });
         setNewStudent("");
@@ -52,13 +44,6 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate, usin
 
   const handleAddSubject = async () => {
     if (newSubject.trim()) {
-      if (usingMockData && onLocalUpdate) {
-        const newSubjectObj = { id: `sub${subjects.length + 1}`, name: newSubject.trim() };
-        onLocalUpdate({ subjects: [...subjects, newSubjectObj] });
-        setNewSubject("");
-        toast({ title: "Fag lagt til (Demo)", description: `${newSubject.trim()} er lagt til i listen.` });
-        return;
-      }
       try {
         await addSubject({ name: newSubject.trim() });
         setNewSubject("");
@@ -72,11 +57,6 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate, usin
 
   const handleDeleteStudent = async (id: string) => {
     const studentName = students.find(s => s.id === id)?.name;
-     if (usingMockData && onLocalUpdate) {
-        onLocalUpdate({ students: students.filter(s => s.id !== id) });
-        toast({ title: "Elev slettet (Demo)", description: `${studentName} er fjernet.`, variant: "destructive" });
-        return;
-      }
     try {
       await deleteStudent(id);
       onUpdate();
@@ -88,11 +68,6 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate, usin
 
   const handleDeleteSubject = async (id: string) => {
     const subjectName = subjects.find(s => s.id === id)?.name;
-    if (usingMockData && onLocalUpdate) {
-        onLocalUpdate({ subjects: subjects.filter(s => s.id !== id) });
-        toast({ title: "Fag slettet (Demo)", description: `${subjectName} er fjernet.`, variant: "destructive" });
-        return;
-    }
     try {
       await deleteSubject(id);
       onUpdate();
@@ -102,8 +77,45 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate, usin
     }
   };
 
+  const handleSeedDatabase = async () => {
+    setIsSeeding(true);
+    try {
+      await seedDatabase();
+      toast({
+        title: "Database fylt!",
+        description: "Databasen er fylt med demodata.",
+      });
+      onUpdate();
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Feil ved fylling av database",
+        description: "Kunne ikke fylle databasen. Sjekk konsollen for feil.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+
   return (
     <div className="space-y-6">
+       {students.length === 0 && (
+         <Card>
+          <CardHeader>
+            <CardTitle>Start med Demodata</CardTitle>
+          </CardHeader>
+          <CardContent>
+             <p className="mb-4 text-sm text-muted-foreground">Databasen din er tom. Klikk her for å fylle den med demodata for å komme i gang.</p>
+             <Button onClick={handleSeedDatabase} disabled={isSeeding}>
+                <Database className="mr-2" />
+                {isSeeding ? 'Fyller database...' : 'Fyll database med demodata'}
+             </Button>
+          </CardContent>
+        </Card>
+       )}
+
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>

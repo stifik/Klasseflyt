@@ -11,7 +11,6 @@ import { BookOpenCheck, Loader2 } from "lucide-react";
 import type { Student, Subject, Homework, Submission, DailyCheck } from "@/lib/types";
 import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { students as mockStudents, subjects as mockSubjects, homework as mockHomework, submissions as mockSubmissions, dailyChecks as mockDailyChecks } from "@/lib/mock-data";
 
 export default function Home() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -20,13 +19,12 @@ export default function Home() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [dailyChecks, setDailyChecks] = useState<DailyCheck[]>([]);
   const [loading, setLoading] = useState(true);
-  const [usingMockData, setUsingMockData] = useState(false);
   const { toast } = useToast();
 
   const loadData = async () => {
     setLoading(true);
     try {
-      let [studentsData, subjectsData, homeworkData, submissionsData, dailyChecksData] = await Promise.all([
+      const [studentsData, subjectsData, homeworkData, submissionsData, dailyChecksData] = await Promise.all([
         getStudents(),
         getSubjects(),
         getHomework(),
@@ -34,31 +32,15 @@ export default function Home() {
         getDailyChecks()
       ]);
 
-      if (studentsData.length === 0) {
-        toast({ title: "Bruker demodata", description: "Databasen er tom, viser innebygd demodata." });
-        setStudents(mockStudents);
-        setSubjects(mockSubjects);
-        setHomework(mockHomework);
-        setSubmissions(mockSubmissions);
-        setDailyChecks(mockDailyChecks);
-        setUsingMockData(true);
-      } else {
-        setStudents(studentsData);
-        setSubjects(subjectsData);
-        setHomework(homeworkData);
-        setSubmissions(submissionsData);
-        setDailyChecks(dailyChecksData);
-        setUsingMockData(false);
-      }
+      setStudents(studentsData);
+      setSubjects(subjectsData);
+      setHomework(homeworkData);
+      setSubmissions(submissionsData);
+      setDailyChecks(dailyChecksData);
+
     } catch (error) {
       console.error(error);
-      toast({ title: "Feil", description: "Kunne ikke laste data. Viser demodata.", variant: "destructive" });
-      setStudents(mockStudents);
-      setSubjects(mockSubjects);
-      setHomework(mockHomework);
-      setSubmissions(mockSubmissions);
-      setDailyChecks(mockDailyChecks);
-      setUsingMockData(true);
+      toast({ title: "Feil", description: "Kunne ikke laste data fra databasen.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -66,22 +48,8 @@ export default function Home() {
 
   useEffect(() => {
     loadData();
-  }, [toast]);
+  }, []);
 
-  const handleLocalUpdate = (updatedData: {
-      students?: Student[];
-      subjects?: Subject[];
-      homework?: Homework[];
-      submissions?: Submission[];
-      dailyChecks?: DailyCheck[];
-  }) => {
-      if (updatedData.students) setStudents(updatedData.students);
-      if (updatedData.subjects) setSubjects(updatedData.subjects);
-      if (updatedData.homework) setHomework(updatedData.homework);
-      if (updatedData.submissions) setSubmissions(updatedData.submissions);
-      if (updatedData.dailyChecks) setDailyChecks(updatedData.dailyChecks);
-  };
-  
   if (loading) {
     return (
       <div className="flex flex-col min-h-screen bg-background items-center justify-center">
@@ -115,16 +83,13 @@ export default function Home() {
               homeworkList={homework}
               submissions={submissions}
               onUpdate={loadData}
-              usingMockData={usingMockData}
-              onLocalUpdate={handleLocalUpdate}
             />
           </TabsContent>
           <TabsContent value="daily">
             <DailyChecklist
               students={students}
               initialChecks={dailyChecks}
-              usingMockData={usingMockData}
-              onLocalUpdate={handleLocalUpdate}
+              onUpdate={loadData}
             />
           </TabsContent>
           <TabsContent value="reports">
@@ -141,8 +106,6 @@ export default function Home() {
               initialStudents={students}
               initialSubjects={subjects}
               onUpdate={loadData}
-              usingMockData={usingMockData}
-              onLocalUpdate={handleLocalUpdate}
             />
           </TabsContent>
         </Tabs>

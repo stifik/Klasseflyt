@@ -2,8 +2,8 @@
 "use server";
 
 import { db } from './firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, Timestamp } from 'firebase/firestore';
-import type { Student, Subject, Homework, Submission, DailyCheck } from './types';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, Timestamp, writeBatch } from 'firebase/firestore';
+import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus } from './types';
 
 // Helper to convert Firestore Timestamps to JS Dates
 const convertTimestamps = (data: any) => {
@@ -131,4 +131,111 @@ export async function deleteDailyCheckByStudentAndDate(studentId: string, date: 
         const docId = querySnapshot.docs[0].id;
         await deleteDocument('dailyChecks', docId);
     }
+}
+
+export async function seedDatabase() {
+    
+  if (!('getWeek' in Date.prototype)) {
+    Date.prototype.getWeek = function() {
+        const d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+        return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1)/7);
+    };
+  }
+
+  const students: Omit<Student, 'id'>[] = [
+    { name: 'Liam Jensen' }, { name: 'Olivia Nguyen' }, { name: 'Noah Olsen' },
+    { name: 'Emma Johansen' }, { name: 'Lucas Andersen' }, { name: 'Mia Hansen' },
+    { name: 'Aksel Kristiansen' }, { name: 'Frida Pedersen' },
+  ];
+  
+  const subjects: Omit<Subject, 'id'>[] = [
+    { name: 'Norsk' }, { name: 'Matematikk' }, { name: 'Engelsk' }, { name: 'Naturfag' },
+  ];
+
+  const batch = writeBatch(db);
+
+  // Add students and subjects, and keep track of their new IDs
+  const studentRefs = students.map(s => {
+      const ref = doc(collection(db, "students"));
+      batch.set(ref, s);
+      return ref;
+  });
+  const subjectRefs = subjects.map(s => {
+      const ref = doc(collection(db, "subjects"));
+      batch.set(ref, s);
+      return ref;
+  });
+
+  await batch.commit();
+
+  // We need to get the documents back to get their IDs
+  const studentDocs = await Promise.all(studentRefs.map(ref => getDoc(ref)));
+  const subjectDocs = await Promise.all(subjectRefs.map(ref => getDoc(ref)));
+  
+  const studentIds = studentDocs.map(doc => doc.id);
+  const subjectIds = subjectDocs.map(doc => doc.id);
+  
+  const homework: Homework[] = [];
+  const submissions: Submission[] = [];
+  const dailyChecks: DailyCheck[] = [];
+  const today = new Date();
+
+  // Generate 6 months of demo data
+  for (let i = 180; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    const week = date.getWeek();
+
+    if (Math.random() < 0.4) {
+      const subjectId = subjectIds[Math.floor(Math.random() * subjectIds.length)];
+      const hwRef = doc(collection(db, 'homework'));
+      const newHomework = {
+        title: `Leselekse ${i}`,
+        subjectId: subjectId,
+        week,
+        date: Timestamp.fromDate(date),
+      };
+      batch.set(hwRef, newHomework);
+
+      studentIds.forEach(studentId => {
+        const randomStatus = Math.random();
+        let status: HomeworkStatus = 'Godkjent';
+        if (randomStatus < 0.05) status = 'Ikke levert';
+        else if (randomStatus < 0.1) status = 'Må rettes';
+        else if (randomStatus < 0.13) status = 'Syk/Fravær';
+        else if (randomStatus < 0.16) status = 'Glemt bok';
+        
+        const subRef = doc(collection(db, 'submissions'));
+        const newSubmission: Omit<Submission, 'id' | 'comment'> & { comment?: string } = {
+          studentId: studentId,
+          homeworkId: hwRef.id,
+          status,
+        };
+
+        if (status !== 'Godkjent' && Math.random() < 0.5) {
+          newSubmission.comment = `Gjorde en god innsats, men trenger å se over ${Math.floor(Math.random() * 3) + 1} oppgaver.`;
+        }
+        batch.set(subRef, newSubmission);
+      });
+    }
+
+    studentIds.forEach(studentId => {
+      const randomCheck = Math.random();
+      if (randomCheck < 0.1) {
+          const checkRef = doc(collection(db, 'dailyChecks'));
+          batch.set(checkRef, {
+              studentId: studentId,
+              date: Timestamp.fromDate(date),
+              ipadCharged: randomCheck > 0.05,
+              ipadBrought: randomCheck < 0.05 || randomCheck > 0.07,
+          });
+      }
+    });
+  }
+
+  // Commit all the generated data
+  await batch.commit();
 }
