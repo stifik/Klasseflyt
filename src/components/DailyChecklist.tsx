@@ -87,8 +87,7 @@ export default function DailyChecklist({ students, initialChecks, onUpdate }: Da
             // newCheckData will not be null here
             await setDailyCheck(newCheckData!);
         }
-        // Data is out of sync, trigger a full refetch in the background
-        onUpdate(); 
+        // onUpdate(); // This was causing the race condition and is no longer needed for optimistic updates.
     } catch (error) {
         console.error(error);
         // Revert UI on error
