@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
+import { cn } from '@/lib/utils';
 
 interface StudentLookupProps {
   students: Student[];
@@ -29,7 +30,12 @@ const statusVariantMap: Record<HomeworkStatus, "default" | "destructive" | "seco
 
 export default function StudentLookup({ students, subjects, homework, submissions, dailyChecks, remarks }: StudentLookupProps) {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<HomeworkStatus | null>(null);
 
+  const handleFilterClick = (status: HomeworkStatus) => {
+    setStatusFilter(prevFilter => (prevFilter === status ? null : status));
+  };
+  
   const studentData = useMemo(() => {
     if (!selectedStudentId) return null;
 
@@ -47,6 +53,10 @@ export default function StudentLookup({ students, subjects, homework, submission
         date: hw?.date,
       };
     }).sort((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0));
+    
+    const filteredHomeworkDetails = statusFilter 
+        ? homeworkDetails.filter(hw => hw.status === statusFilter) 
+        : homeworkDetails;
 
     const ipadNotCharged = studentChecks.filter(c => c.ipadBrought && !c.ipadCharged);
     const ipadNotBrought = studentChecks.filter(c => !c.ipadBrought);
@@ -57,13 +67,19 @@ export default function StudentLookup({ students, subjects, homework, submission
     }, {} as Record<HomeworkStatus, number>);
 
     return {
-      homeworkDetails,
+      homeworkDetails: filteredHomeworkDetails,
       ipadNotCharged,
       ipadNotBrought,
       remarks: studentRemarks.sort((a,b) => b.date.getTime() - a.date.getTime()),
       statusCounts,
     };
-  }, [selectedStudentId, submissions, dailyChecks, remarks, homework, subjects]);
+  }, [selectedStudentId, submissions, dailyChecks, remarks, homework, subjects, statusFilter]);
+  
+  // Reset filter when student changes
+  const handleStudentChange = (studentId: string) => {
+      setSelectedStudentId(studentId);
+      setStatusFilter(null);
+  }
 
   return (
     <div className="space-y-6">
@@ -73,7 +89,7 @@ export default function StudentLookup({ students, subjects, homework, submission
           <CardDescription>Velg en elev for å se en samlet oversikt over lekser, iPad-ansvar og anmerkninger.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Select onValueChange={setSelectedStudentId}>
+          <Select onValueChange={handleStudentChange} value={selectedStudentId || undefined}>
             <SelectTrigger className="w-full sm:w-[280px]">
               <SelectValue placeholder="Velg en elev..." />
             </SelectTrigger>
@@ -96,7 +112,15 @@ export default function StudentLookup({ students, subjects, homework, submission
                 <CardContent>
                      <div className="flex flex-wrap gap-2 mb-4">
                         {Object.entries(studentData.statusCounts).map(([status, count]) => (
-                            <Badge key={status} variant={statusVariantMap[status as HomeworkStatus]}>
+                            <Badge 
+                                key={status} 
+                                variant={statusVariantMap[status as HomeworkStatus]}
+                                onClick={() => handleFilterClick(status as HomeworkStatus)}
+                                className={cn("cursor-pointer transition-opacity hover:opacity-80", {
+                                    "opacity-50": statusFilter && statusFilter !== status,
+                                    "ring-2 ring-ring ring-offset-2": statusFilter === status,
+                                })}
+                            >
                                 {status}: {count}
                             </Badge>
                         ))}
