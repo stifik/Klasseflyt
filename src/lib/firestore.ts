@@ -16,8 +16,16 @@ const convertTimestamps = (data: any) => {
 // Generic fetch function
 async function fetchCollection<T>(collectionName: string): Promise<T[]> {
   const querySnapshot = await getDocs(collection(db, collectionName));
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...convertTimestamps(doc.data()) } as T));
+  return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      // Ensure homework dates are converted
+      if (collectionName === 'homework' && data.date instanceof Timestamp) {
+          data.date = data.date.toDate();
+      }
+      return { id: doc.id, ...convertTimestamps(data) } as T
+  });
 }
+
 
 // Generic add function
 async function addDocument<T extends object>(collectionName: string, data: T): Promise<T & { id: string }> {
