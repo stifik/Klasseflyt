@@ -2,9 +2,8 @@
 "use server";
 
 import { db } from './firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, writeBatch, query, where, getDoc, Timestamp, setDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, Timestamp, setDoc } from 'firebase/firestore';
 import type { Student, Subject, Homework, Submission, DailyCheck } from './types';
-import { students, subjects, homework, submissions, dailyChecks } from '@/lib/mock-data';
 
 // Helper to convert Firestore Timestamps to JS Dates
 const convertTimestamps = (data: any) => {
@@ -13,67 +12,6 @@ const convertTimestamps = (data: any) => {
   }
   return data;
 };
-
-// Function to seed database if it's empty
-async function seedDatabase() {
-  console.log('Checking if database needs seeding...');
-  const studentsSnapshot = await getDocs(collection(db, 'students'));
-  if (!studentsSnapshot.empty) {
-    console.log('Database already contains data. Skipping seed.');
-    return;
-  }
-  
-  console.log('Seeding database...');
-  const batch = writeBatch(db);
-
-  students.forEach(s => {
-    const docRef = doc(db, 'students', s.id);
-    batch.set(docRef, { name: s.name });
-  });
-
-  subjects.forEach(s => {
-    const docRef = doc(db, 'subjects', s.id);
-    batch.set(docRef, { name: s.name });
-  });
-
-  homework.forEach(h => {
-    const docRef = doc(db, 'homework', h.id);
-    batch.set(docRef, {
-      title: h.title,
-      subjectId: h.subjectId,
-      week: h.week,
-      date: Timestamp.fromDate(h.date)
-    });
-  });
-
-  submissions.forEach(s => {
-    const docRef = doc(db, 'submissions', s.id);
-    batch.set(docRef, {
-      studentId: s.studentId,
-      homeworkId: s.homeworkId,
-      status: s.status,
-      comment: s.comment || ""
-    });
-  });
-  
-  dailyChecks.forEach(c => {
-    const docRef = doc(db, 'dailyChecks', c.id);
-    batch.set(docRef, {
-      studentId: c.studentId,
-      date: Timestamp.fromDate(c.date),
-      ipadCharged: c.ipadCharged,
-      ipadBrought: c.ipadBrought
-    });
-  });
-  
-  await batch.commit();
-  console.log('Database seeded successfully.');
-};
-
-(async () => {
-  await seedDatabase();
-})();
-
 
 // Generic fetch function
 async function fetchCollection<T>(collectionName: string): Promise<T[]> {
@@ -114,7 +52,7 @@ export async function deleteSubject(id: string) { return deleteDocument('subject
 
 // Homework functions
 export async function getHomework(): Promise<Homework[]> { return fetchCollection<Homework>('homework'); }
-export async function addHomework(homework: Omit<Homework, 'id'>) { return addDocument('homework', homework); }
+export async function addHomework(homework: Omit<Homework, 'id'>) { return addDocument('homework', { ...homework, date: Timestamp.fromDate(homework.date) }); }
 
 // Submission functions
 export async function getSubmissions(): Promise<Submission[]> { return fetchCollection<Submission>('submissions'); }
@@ -194,4 +132,3 @@ export async function deleteDailyCheckByStudentAndDate(studentId: string, date: 
         await deleteDocument('dailyChecks', docId);
     }
 }
-
