@@ -3,12 +3,12 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
+  projectId: "leksehjelperen",
+  appId: "1:921278946270:web:e33466e16e07e626b71b4f",
+  storageBucket: "leksehjelperen.firebasestorage.app",
   apiKey: "AIzaSyAc84hVWcY8zY2JpUVQP90k6SylmyoryKQ",
   authDomain: "leksehjelperen.firebaseapp.com",
-  projectId: "leksehjelperen",
-  storageBucket: "leksehjelperen.firebasestorage.app",
-  messagingSenderId: "921278946270",
-  appId: "1:921278946270:web:e33466e16e07e626b71b4f"
+  messagingSenderId: "921278946270"
 };
 
 function initializeFirebase() {
