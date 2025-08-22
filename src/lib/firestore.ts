@@ -13,7 +13,8 @@ async function fetchCollection<T>(collectionName: string): Promise<T[]> {
 // Generic add function
 async function addDocument<T extends object>(collectionName: string, data: T): Promise<T & { id: string }> {
   const docRef = await addDoc(collection(db, collectionName), data);
-  return { id: docRef.id, ...data };
+  const docSnap = await getDoc(docRef);
+  return { id: docRef.id, ...(docSnap.data() as T) };
 }
 
 // Generic update function
@@ -28,22 +29,22 @@ async function deleteDocument(collectionName: string, id: string): Promise<void>
 }
 
 // Student functions
-export const getStudents = async () => fetchCollection<Student>('students');
-export const addStudent = async (student: Omit<Student, 'id'>) => addDocument('students', student);
-export const deleteStudent = async (id: string) => deleteDocument('students', id);
+export async function getStudents(): Promise<Student[]> { return fetchCollection<Student>('students'); }
+export async function addStudent(student: Omit<Student, 'id'>) { return addDocument('students', student); }
+export async function deleteStudent(id: string) { return deleteDocument('students', id); }
 
 // Subject functions
-export const getSubjects = async () => fetchCollection<Subject>('subjects');
-export const addSubject = async (subject: Omit<Subject, 'id'>) => addDocument('subjects', subject);
-export const deleteSubject = async (id: string) => deleteDocument('subjects', id);
+export async function getSubjects(): Promise<Subject[]> { return fetchCollection<Subject>('subjects'); }
+export async function addSubject(subject: Omit<Subject, 'id'>) { return addDocument('subjects', subject); }
+export async function deleteSubject(id: string) { return deleteDocument('subjects', id); }
 
 // Homework functions
-export const getHomework = async () => fetchCollection<Homework>('homework');
-export const addHomework = async (homework: Omit<Homework, 'id'>) => addDocument('homework', homework);
+export async function getHomework(): Promise<Homework[]> { return fetchCollection<Homework>('homework'); }
+export async function addHomework(homework: Omit<Homework, 'id'>) { return addDocument('homework', homework); }
 
 // Submission functions
-export const getSubmissions = async () => fetchCollection<Submission>('submissions');
-export const setSubmission = async (submission: Omit<Submission, 'id'>) => {
+export async function getSubmissions(): Promise<Submission[]> { return fetchCollection<Submission>('submissions'); }
+export async function setSubmission(submission: Omit<Submission, 'id'>): Promise<Submission> {
     const { studentId, homeworkId, ...rest } = submission;
     const q = query(
         collection(db, 'submissions'),
@@ -63,19 +64,14 @@ export const setSubmission = async (submission: Omit<Submission, 'id'>) => {
 
 
 // DailyCheck functions
-export const getDailyChecks = async () => fetchCollection<DailyCheck>('dailyChecks');
-export const setDailyCheck = async (check: Omit<DailyCheck, 'id'>) => {
+export async function getDailyChecks(): Promise<DailyCheck[]> { return fetchCollection<DailyCheck>('dailyChecks'); }
+export async function setDailyCheck(check: Omit<DailyCheck, 'id'>): Promise<DailyCheck> {
     const { studentId, date, ...rest } = check;
     const dateString = new Date(date).toISOString().split('T')[0];
     
     const q = query(
         collection(db, 'dailyChecks'),
         where('studentId', '==', studentId),
-        // Firestore doesn't support date object equality directly in where clauses well.
-        // A common pattern is to store the date as a string or timestamp.
-        // For this query to work, we'd need to adjust how we store/query dates.
-        // A simpler approach for this app is to fetch and filter client-side or store a date string.
-        // Let's assume we store the full date and need to find the specific day's check.
     );
 
     const querySnapshot = await getDocs(q);
@@ -91,7 +87,7 @@ export const setDailyCheck = async (check: Omit<DailyCheck, 'id'>) => {
         return {id: existingDoc.id, ...docSnap.data()} as DailyCheck;
     }
 };
-export const deleteDailyCheckByStudentAndDate = async (studentId: string, date: Date) => {
+export async function deleteDailyCheckByStudentAndDate(studentId: string, date: Date) {
      const dateString = new Date(date).toISOString().split('T')[0];
      const q = query(
         collection(db, 'dailyChecks'),
@@ -108,28 +104,26 @@ export const deleteDailyCheckByStudentAndDate = async (studentId: string, date: 
 
 
 // Function to seed database if it's empty
-export const seedDatabase = async () => {
+export async function seedDatabase() {
   const studentsSnapshot = await getDocs(collection(db, 'students'));
   if (!studentsSnapshot.empty) {
     console.log('Database already seeded.');
-    return;
+    throw new Error("Database already contains data. Seeding aborted.");
   }
 
   console.log('Seeding database...');
-  const { students, subjects, homework, submissions, dailyChecks } = await import('@/lib/mock-data');
+  const { students, subjects } = await import('@/lib/mock-data');
   const batch = writeBatch(db);
 
-  students.forEach(s => batch.set(doc(collection(db, 'students')), {name: s.name}));
-  subjects.forEach(s => batch.set(doc(collection(db, 'subjects')), {name: s.name}));
+  students.forEach(s => {
+    const docRef = doc(collection(db, 'students'));
+    batch.set(docRef, { name: s.name });
+  });
+  subjects.forEach(s => {
+    const docRef = doc(collection(db, 'subjects'));
+    batch.set(docRef, { name: s.name });
+  });
   
-  // Note: Seeding relational data like this is complex.
-  // For a real app, you'd need to get the newly created IDs for students/subjects
-  // and use them to create homework/submissions.
-  // For this demo, we'll skip seeding the more complex data.
-  // homework.forEach(h => batch.set(doc(collection(db, 'homework')), h));
-  // submissions.forEach(s => batch.set(doc(collection(db, 'submissions')), s));
-  // dailyChecks.forEach(dc => batch.set(doc(collection(db, 'dailyChecks')), dc));
-
   await batch.commit();
-  console.log('Database seeded successfully.');
+  console.log('Database seeded successfully with students and subjects.');
 };

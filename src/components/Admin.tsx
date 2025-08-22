@@ -5,9 +5,9 @@ import type { Student, Subject } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Loader2, Database } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getStudents, addStudent, deleteStudent, getSubjects, addSubject, deleteSubject } from "@/lib/firestore";
+import { getStudents, addStudent, deleteStudent, getSubjects, addSubject, deleteSubject, seedDatabase } from "@/lib/firestore";
 
 export default function Admin() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -15,21 +15,24 @@ export default function Admin() {
   const [newStudent, setNewStudent] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isSeeding, setIsSeeding] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [studentsData, subjectsData] = await Promise.all([getStudents(), getSubjects()]);
-        setStudents(studentsData);
-        setSubjects(subjectsData);
-      } catch (error) {
-        console.error("Error loading data:", error);
-        toast({ title: "Feil", description: "Kunne ikke laste data fra databasen.", variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [studentsData, subjectsData] = await Promise.all([getStudents(), getSubjects()]);
+      setStudents(studentsData);
+      setSubjects(subjectsData);
+    } catch (error) {
+      console.error("Error loading data:", error);
+      toast({ title: "Feil", description: "Kunne ikke laste data fra databasen.", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
+  }
+
+  useEffect(() => {
     loadData();
   }, [toast]);
 
@@ -80,9 +83,39 @@ export default function Admin() {
        toast({ title: "Feil", description: "Kunne ikke slette fag.", variant: "destructive" });
     }
   };
+
+  const handleSeedDatabase = async () => {
+    setIsSeeding(true);
+    try {
+      await seedDatabase();
+      toast({ title: "Database fylt", description: "Startdata har blitt lagt til i databasen."});
+      await loadData();
+    } catch(error) {
+       toast({ title: "Feil", description: "Kunne ikke legge til startdata.", variant: "destructive" });
+    } finally {
+      setIsSeeding(false);
+    }
+  }
   
   if (loading) {
     return <div className="flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin" /> Laster data...</div>;
+  }
+
+  if (students.length === 0) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Start-oppsett</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p className="mb-4 text-muted-foreground">Databasen er tom. Legg til start-data for å komme i gang.</p>
+                <Button onClick={handleSeedDatabase} disabled={isSeeding}>
+                    {isSeeding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Database className="mr-2"/>}
+                    Fyll database med start-data
+                </Button>
+            </CardContent>
+        </Card>
+    )
   }
 
   return (
