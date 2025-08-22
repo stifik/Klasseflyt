@@ -9,6 +9,7 @@ import Reports from "@/components/Reports";
 import Admin from "@/components/Admin";
 import SeatingChart from "@/components/SeatingChart";
 import Remarks from "@/components/Remarks";
+import StudentLookup from "@/components/StudentLookup"; // Importer den nye komponenten
 import { BookOpenCheck, Loader2 } from "lucide-react";
 import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark } from "@/lib/types";
 import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks, getLatestSeatingChart, saveSeatingChart, getSeatingChartHistory, getRemarks } from "@/lib/firestore";
@@ -134,10 +135,11 @@ export default function Home() {
       </header>
       <main className="flex-1 p-4 sm:p-6">
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4 sm:grid-cols-3 md:grid-cols-6">
+          <TabsList className="grid w-full grid-cols-2 mb-4 sm:grid-cols-4 md:grid-cols-7">
             <TabsTrigger value="overview">Lekseoversikt</TabsTrigger>
             <TabsTrigger value="daily">Daglig Sjekk</TabsTrigger>
             <TabsTrigger value="remarks">Anmerkninger</TabsTrigger>
+            <TabsTrigger value="student-lookup">Elevsøk</TabsTrigger>
             <TabsTrigger value="reports">Rapporter</TabsTrigger>
             <TabsTrigger value="seating-chart">Klassekart</TabsTrigger>
             <TabsTrigger value="admin">Admin</TabsTrigger>
@@ -166,6 +168,16 @@ export default function Home() {
               initialRemarks={remarks}
               onUpdate={handleDataUpdate}
               seatingChart={seatingChart}
+            />
+          </TabsContent>
+          <TabsContent value="student-lookup">
+            <StudentLookup
+              students={students}
+              subjects={subjects}
+              homework={homework}
+              submissions={submissions}
+              dailyChecks={dailyChecks}
+              remarks={remarks}
             />
           </TabsContent>
           <TabsContent value="reports">
