@@ -82,27 +82,25 @@ export async function setDailyCheck(check: Omit<DailyCheck, 'id'>): Promise<Dail
     const dateOnly = new Date(date);
     dateOnly.setHours(0, 0, 0, 0);
 
-    const startOfDay = Timestamp.fromDate(dateOnly);
-    
-    const nextDay = new Date(dateOnly);
-    nextDay.setDate(dateOnly.getDate() + 1);
-    const endOfDay = Timestamp.fromDate(nextDay);
-
     const q = query(
         collection(db, 'dailyChecks'),
-        where('studentId', '==', studentId),
-        where('date', '>=', startOfDay),
-        where('date', '<', endOfDay)
+        where('studentId', '==', studentId)
     );
 
     const querySnapshot = await getDocs(q);
-    
     const checkWithTimestamp = { ...check, date: Timestamp.fromDate(new Date(date)) };
     
-    if (querySnapshot.empty) {
+    const existingDoc = querySnapshot.docs.find(doc => {
+        const checkData = convertTimestamps(doc.data()) as DailyCheck;
+        const checkDate = new Date(checkData.date);
+        checkDate.setHours(0,0,0,0);
+        return checkDate.getTime() === dateOnly.getTime();
+    });
+
+    if (!existingDoc) {
         return addDocument('dailyChecks', checkWithTimestamp);
     } else {
-        const docId = querySnapshot.docs[0].id;
+        const docId = existingDoc.id;
         const updateData = { ...rest, date: Timestamp.fromDate(new Date(date)) };
         await updateDocument('dailyChecks', docId, updateData);
         const docSnap = await getDoc(doc(db, 'dailyChecks', docId));
