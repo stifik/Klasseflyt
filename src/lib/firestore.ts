@@ -13,17 +13,14 @@ const convertTimestamps = (data: any) => {
   return data;
 };
 
+const docToData = <T>(doc: any): T => {
+    return { id: doc.id, ...convertTimestamps(doc.data()) } as T;
+}
+
 // Generic fetch function
 async function fetchCollection<T>(collectionName: string): Promise<T[]> {
   const querySnapshot = await getDocs(collection(db, collectionName));
-  return querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      // Ensure homework dates are converted
-      if (collectionName === 'homework' && data.date instanceof Timestamp) {
-          data.date = data.date.toDate();
-      }
-      return { id: doc.id, ...convertTimestamps(data) } as T
-  });
+  return querySnapshot.docs.map(doc => docToData<T>(doc));
 }
 
 
@@ -31,8 +28,7 @@ async function fetchCollection<T>(collectionName: string): Promise<T[]> {
 async function addDocument<T extends object>(collectionName: string, data: T): Promise<T & { id: string }> {
   const docRef = await addDoc(collection(db, collectionName), data);
   const docSnap = await getDoc(docRef);
-  const docData = docSnap.data();
-  return { id: docRef.id, ...(convertTimestamps(docData) as T) };
+  return docToData<T & { id: string }>(docSnap);
 }
 
 // Generic update function
@@ -78,7 +74,7 @@ export async function setSubmission(submission: Omit<Submission, 'id'>): Promise
         const docId = querySnapshot.docs[0].id;
         await updateDocument('submissions', docId, rest);
         const docSnap = await getDoc(doc(db, 'submissions', docId));
-        return {id: docId, ...(convertTimestamps(docSnap.data()) as Omit<Submission, 'id'>)} as Submission;
+        return docToData<Submission>(docSnap);
     }
 };
 
@@ -112,7 +108,7 @@ export async function setDailyCheck(check: Omit<DailyCheck, 'id'>): Promise<Dail
         const updateData = { ...rest, date: Timestamp.fromDate(new Date(date)) };
         await updateDocument('dailyChecks', docId, updateData);
         const docSnap = await getDoc(doc(db, 'dailyChecks', docId));
-        return {id: docId, ...(convertTimestamps(docSnap.data()) as Omit<DailyCheck, 'id'>)} as DailyCheck;
+        return docToData<DailyCheck>(docSnap);
     }
 };
 export async function deleteDailyCheckByStudentAndDate(studentId: string, date: Date) {
