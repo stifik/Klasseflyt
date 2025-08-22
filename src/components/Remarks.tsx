@@ -51,12 +51,19 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
 
   const handleAddRemark = async (studentId: string) => {
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
+    const tempId = `temp-${Date.now()}`;
+    const newRemark: Remark = { id: tempId, studentId, date, period: currentPeriod };
+
+    // Optimistic update
+    setRemarks(prev => [...prev, newRemark]);
     
     try {
       await addRemark(userId, { studentId, date, period: currentPeriod });
-      onUpdate(); // Trigger data refresh
+      onUpdate(); // Refresh from DB to get the real ID and confirm
     } catch (error) {
       console.error(error);
+      // Revert on error
+      setRemarks(prev => prev.filter(r => r.id !== tempId));
       toast({ title: "Feil", description: `Kunne ikke legge til anmerkning for ${studentName}.`, variant: "destructive" });
     }
   };
@@ -70,14 +77,20 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
 
     const lastRemark = studentRemarksThisPeriod[0];
     
+    // Optimistic update
+    setRemarks(prev => prev.filter(r => r.id !== lastRemark.id));
+
     try {
       await deleteRemark(userId, lastRemark.id);
-      onUpdate(); // Trigger data refresh
+      onUpdate(); // Refresh from DB to confirm
     } catch (error) {
       console.error(error);
+      // Revert on error
+      setRemarks(prev => [...prev, lastRemark]);
       toast({ title: "Feil", description: `Kunne ikke fjerne anmerkning for ${studentName}.`, variant: "destructive" });
     }
   };
+
 
   const handlePressStart = (studentId: string) => {
     pressTimer.current = setTimeout(() => {
