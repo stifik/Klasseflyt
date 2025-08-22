@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, type FC } from "react";
+import { useState, useMemo, type FC, useEffect } from "react";
 import type { Student, Subject, Homework, Submission, HomeworkStatus } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -131,22 +131,43 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
   const [currentComment, setCurrentComment] = useState("");
   const [filters, setFilters] = useState<{ subject: string; week: string; showProblems: boolean }>({ subject: "all", week: "all", showProblems: false });
   const { toast } = useToast();
+  const [localSubmissions, setLocalSubmissions] = useState<Submission[]>(submissions);
+
+  useEffect(() => {
+    setLocalSubmissions(submissions);
+  }, [submissions]);
   
-  const getSubmission = (studentId: string, homeworkId: string) => submissions.find(s => s.studentId === studentId && s.homeworkId === homeworkId);
+  const getSubmission = (studentId: string, homeworkId: string) => localSubmissions.find(s => s.studentId === studentId && s.homeworkId === homeworkId);
 
   const handleStatusChange = async (studentId: string, homeworkId: string, status: HomeworkStatus) => {
     const existingSubmission = getSubmission(studentId, homeworkId);
     const submissionData = {
+        id: existingSubmission?.id || `${studentId}-${homeworkId}`, // Create a temporary ID for optimistic update
         studentId,
         homeworkId,
         status,
         comment: existingSubmission?.comment || "",
     };
 
+    const previousSubmissions = [...localSubmissions];
+    // Optimistic UI Update
+    const existingIndex = localSubmissions.findIndex(s => s.studentId === studentId && s.homeworkId === homeworkId);
+    if (existingIndex > -1) {
+      const newSubmissions = [...localSubmissions];
+      newSubmissions[existingIndex] = submissionData;
+      setLocalSubmissions(newSubmissions);
+    } else {
+      setLocalSubmissions([...localSubmissions, submissionData]);
+    }
+
     try {
-        await setSubmission(submissionData);
-        onUpdate();
+        const savedSubmission = await setSubmission(submissionData);
+        // Update local state with the actual data from firestore, including the real ID
+        setLocalSubmissions(prev => prev.map(s => (s.id === submissionData.id ? savedSubmission : s)));
+
     } catch (error) {
+        // Revert on error
+        setLocalSubmissions(previousSubmissions);
         toast({ title: "Feil", description: "Kunne ikke lagre status.", variant: "destructive" });
     }
   };
@@ -156,20 +177,37 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
     const { studentId, homeworkId } = commentModal;
 
     const existingSubmission = getSubmission(studentId, homeworkId);
+    // If there's no existing submission, the status must be set. Defaulting to 'Godkjent'.
+    const status = existingSubmission?.status || 'Godkjent';
+    
     const submissionData = {
+        id: existingSubmission?.id || `${studentId}-${homeworkId}`,
         studentId,
         homeworkId,
-        status: existingSubmission?.status || "Godkjent",
+        status,
         comment: currentComment,
     };
     
+    const previousSubmissions = [...localSubmissions];
+    // Optimistic UI Update for comment
+    const existingIndex = localSubmissions.findIndex(s => s.studentId === studentId && s.homeworkId === homeworkId);
+    if (existingIndex > -1) {
+        const newSubmissions = [...localSubmissions];
+        newSubmissions[existingIndex] = { ...newSubmissions[existingIndex], comment: currentComment, status: status };
+        setLocalSubmissions(newSubmissions);
+    } else {
+        setLocalSubmissions([...localSubmissions, submissionData]);
+    }
+    
+    setCommentModal({ open: false });
+    setCurrentComment("");
+
     try {
-        await setSubmission(submissionData);
-        onUpdate();
-        setCommentModal({ open: false });
-        setCurrentComment("");
+        const savedSubmission = await setSubmission(submissionData);
+        setLocalSubmissions(prev => prev.map(s => (s.id === submissionData.id ? savedSubmission : s)));
         toast({ title: "Kommentar lagret" });
     } catch(error) {
+        setLocalSubmissions(previousSubmissions);
         toast({ title: "Feil", description: "Kunne ikke lagre kommentar.", variant: "destructive" });
     }
   };
@@ -228,10 +266,10 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
   }, [homeworkList, filters]);
 
   const problemStudentIds = useMemo(() => {
-    return new Set(submissions
+    return new Set(localSubmissions
       .filter(s => s.status === 'Ikke levert' || s.status === 'Må rettes')
       .map(s => s.studentId));
-  }, [submissions]);
+  }, [localSubmissions]);
 
   const filteredStudents = useMemo(() => {
     return filters.showProblems ? students.filter(s => problemStudentIds.has(s.id)) : students;
