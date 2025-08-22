@@ -1,3 +1,4 @@
+
 "use server";
 
 import { db } from './firebase';
@@ -139,18 +140,66 @@ export async function seedDatabase() {
   }
 
   console.log('Seeding database...');
-  const { students, subjects } = await import('@/lib/mock-data');
+  const { students, subjects, homework, submissions, dailyChecks } = await import('@/lib/mock-data');
   const batch = writeBatch(db);
+
+  // Use maps to track new IDs
+  const studentIdMap = new Map<string, string>();
+  const subjectIdMap = new Map<string, string>();
+  const homeworkIdMap = new Map<string, string>();
 
   students.forEach(s => {
     const docRef = doc(collection(db, 'students'));
+    studentIdMap.set(s.id, docRef.id);
     batch.set(docRef, { name: s.name });
   });
   subjects.forEach(s => {
     const docRef = doc(collection(db, 'subjects'));
+    subjectIdMap.set(s.id, docRef.id);
     batch.set(docRef, { name: s.name });
+  });
+
+  homework.forEach(h => {
+    const docRef = doc(collection(db, 'homework'));
+    homeworkIdMap.set(h.id, docRef.id);
+    const newSubjectId = subjectIdMap.get(h.subjectId);
+    if (newSubjectId) {
+       batch.set(docRef, {
+        title: h.title,
+        subjectId: newSubjectId,
+        week: h.week,
+        date: Timestamp.fromDate(h.date)
+      });
+    }
+  });
+
+  submissions.forEach(s => {
+    const docRef = doc(collection(db, 'submissions'));
+    const newStudentId = studentIdMap.get(s.studentId);
+    const newHomeworkId = homeworkIdMap.get(s.homeworkId);
+    if (newStudentId && newHomeworkId) {
+      batch.set(docRef, {
+        studentId: newStudentId,
+        homeworkId: newHomeworkId,
+        status: s.status,
+        comment: s.comment || ""
+      });
+    }
+  });
+  
+  dailyChecks.forEach(c => {
+    const docRef = doc(collection(db, 'dailyChecks'));
+    const newStudentId = studentIdMap.get(c.studentId);
+    if (newStudentId) {
+      batch.set(docRef, {
+        studentId: newStudentId,
+        date: Timestamp.fromDate(c.date),
+        ipadCharged: c.ipadCharged,
+        ipadBrought: c.ipadBrought
+      });
+    }
   });
   
   await batch.commit();
-  console.log('Database seeded successfully with students and subjects.');
+  console.log('Database seeded successfully.');
 };
