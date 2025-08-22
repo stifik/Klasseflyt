@@ -45,6 +45,7 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
     try {
       const newRemark = await addRemark(userId, { studentId, date });
       setRemarks(prev => [...prev, newRemark]);
+      onUpdate();
     } catch (error) {
       console.error(error);
       toast({ title: "Feil", description: `Kunne ikke legge til anmerkning for ${studentName}.`, variant: "destructive" });
@@ -62,6 +63,7 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
     try {
       await deleteRemark(userId, lastRemark.id);
       setRemarks(prev => prev.filter(r => r.id !== lastRemark.id));
+      onUpdate();
     } catch (error) {
       console.error(error);
       toast({ title: "Feil", description: `Kunne ikke fjerne anmerkning for ${studentName}.`, variant: "destructive" });
