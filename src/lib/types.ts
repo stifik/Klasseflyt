@@ -39,6 +39,7 @@ export type Remark = {
   id: string;
   studentId: string;
   date: Date;
+  period: number;
 };
 
 export type SeatingChartData = (string[] | null)[][];

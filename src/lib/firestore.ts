@@ -329,6 +329,7 @@ async function seedDatabase(userId: string) {
         dataBatch.set(newRemarkRef, {
           studentId: studentId,
           date: Timestamp.fromDate(date),
+          period: Math.floor(Math.random() * 6) + 1,
         });
       }
     });

@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 import { addRemark, deleteRemark } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 
+const NUMBER_OF_PERIODS = 6;
+
 interface RemarksProps {
   userId: string;
   students: Student[];
@@ -25,35 +27,40 @@ interface RemarksProps {
 export default function Remarks({ userId, students, initialRemarks, onUpdate, seatingChart }: RemarksProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [remarks, setRemarks] = useState<Remark[]>(initialRemarks);
+  const [currentPeriod, setCurrentPeriod] = useState<number>(1);
   const { toast } = useToast();
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setRemarks(initialRemarks);
   }, [initialRemarks]);
+
+  const isSameDay = (d1: Date, d2: Date) =>
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate();
   
-  const getRemarksForDate = (studentId: string, checkDate: Date): Remark[] => {
-    const dateString = checkDate.toISOString().split("T")[0];
+  const getRemarksForStudent = (studentId: string, checkDate: Date, period?: number): Remark[] => {
     return remarks.filter(
-      (r) => r.studentId === studentId && new Date(r.date).toISOString().split("T")[0] === dateString
+      (r) =>
+        r.studentId === studentId &&
+        isSameDay(new Date(r.date), checkDate) &&
+        (period === undefined || r.period === period)
     );
   };
 
   const handleAddRemark = async (studentId: string) => {
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
     const tempId = `temp-${Date.now()}`;
-    const newRemarkOptimistic: Remark = { id: tempId, studentId, date };
+    const newRemarkOptimistic: Remark = { id: tempId, studentId, date, period: currentPeriod };
 
-    // Optimistic update
     setRemarks(prev => [...prev, newRemarkOptimistic]);
     
     try {
-      const newRemark = await addRemark(userId, { studentId, date });
-      // Replace optimistic remark with real one from Firestore
+      const newRemark = await addRemark(userId, { studentId, date, period: currentPeriod });
       setRemarks(prev => prev.map(r => r.id === tempId ? newRemark : r));
     } catch (error) {
       console.error(error);
-      // Revert optimistic update
       setRemarks(prev => prev.filter(r => r.id !== tempId));
       toast({ title: "Feil", description: `Kunne ikke legge til anmerkning for ${studentName}.`, variant: "destructive" });
     }
@@ -61,13 +68,13 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
 
   const handleRemoveLastRemark = async (studentId: string) => {
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
-    const studentRemarksToday = getRemarksForDate(studentId, date).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const studentRemarksThisPeriod = getRemarksForStudent(studentId, date, currentPeriod)
+      .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
-    if (studentRemarksToday.length === 0) return;
+    if (studentRemarksThisPeriod.length === 0) return;
 
-    const lastRemark = studentRemarksToday[0];
+    const lastRemark = studentRemarksThisPeriod[0];
     
-    // Optimistic update
     const previousRemarks = [...remarks];
     setRemarks(prev => prev.filter(r => r.id !== lastRemark.id));
 
@@ -75,7 +82,6 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
       await deleteRemark(userId, lastRemark.id);
     } catch (error) {
       console.error(error);
-      // Revert optimistic update
       setRemarks(previousRemarks);
       toast({ title: "Feil", description: `Kunne ikke fjerne anmerkning for ${studentName}.`, variant: "destructive" });
     }
@@ -95,17 +101,16 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
   };
 
   const StudentButton = ({ student }: { student: Student }) => {
-    const remarksToday = getRemarksForDate(student.id, date);
-    const count = remarksToday.length;
+    const remarksForPeriod = getRemarksForStudent(student.id, date, currentPeriod);
+    const remarksForDay = getRemarksForStudent(student.id, date);
+    const countPeriod = remarksForPeriod.length;
+    const countDay = remarksForDay.length;
     
     return (
       <Button
-        variant={count > 0 ? "destructive" : "secondary"}
+        variant={countPeriod > 0 ? "destructive" : "secondary"}
         onClick={() => handleAddRemark(student.id)}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          handleRemoveLastRemark(student.id);
-        }}
+        onContextMenu={(e) => { e.preventDefault(); handleRemoveLastRemark(student.id); }}
         onTouchStart={() => handlePressStart(student.id)}
         onTouchEnd={handlePressEnd}
         onMouseDown={() => handlePressStart(student.id)}
@@ -114,10 +119,15 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
         className="justify-center h-auto py-2 flex-col w-28 h-20 relative touch-manipulation"
       >
         <span className="font-semibold text-xs">{student.name}</span>
-        {count > 0 && (
+        {countPeriod > 0 && (
           <div className="absolute top-1 right-1 flex items-center justify-center bg-background text-destructive rounded-full w-5 h-5 text-xs font-bold">
-            {count}
+            {countPeriod}
           </div>
+        )}
+        {countDay > 0 && (
+           <div className="absolute bottom-1 right-1 text-xs text-muted-foreground bg-background/50 rounded px-1">
+             Total: {countDay}
+           </div>
         )}
         <div className="flex items-center text-xs opacity-80 mt-1">
           <Megaphone className="mr-2" />
@@ -155,6 +165,17 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
               <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
             </PopoverContent>
           </Popover>
+        </div>
+        <div className="flex flex-wrap gap-2 pt-4">
+            {Array.from({ length: NUMBER_OF_PERIODS }, (_, i) => i + 1).map(period => (
+                <Button 
+                    key={period} 
+                    variant={currentPeriod === period ? "default" : "outline"}
+                    onClick={() => setCurrentPeriod(period)}
+                >
+                    Time {period}
+                </Button>
+            ))}
         </div>
       </CardHeader>
       <CardContent>
