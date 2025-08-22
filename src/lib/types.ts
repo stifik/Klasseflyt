@@ -1,3 +1,4 @@
+
 export type Student = {
   id: string;
   name: string;
@@ -40,5 +41,8 @@ export type SeatingChartData = (string[] | null)[][];
 export type SeatingChartRecord = {
   id: string;
   chartJson: string; // Stored as a JSON string
+  rows: number;
+  cols: number;
+  groupSize: number;
   createdAt: Date;
 };

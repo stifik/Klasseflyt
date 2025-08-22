@@ -43,7 +43,7 @@ export default function Home() {
         homeworkData, 
         submissionsData, 
         dailyChecksData,
-        seatingChartData
+        seatingChartResult
       ] = await Promise.all([
         getStudents(),
         getSubjects(),
@@ -58,7 +58,11 @@ export default function Home() {
       setHomework(homeworkData);
       setSubmissions(submissionsData);
       setDailyChecks(dailyChecksData);
-      setSeatingChart(seatingChartData);
+      
+      if (seatingChartResult) {
+        setSeatingChart(seatingChartResult.chart);
+        setSeatingChartSettings(seatingChartResult.settings);
+      }
 
     } catch (error) {
       console.error(error);
@@ -91,7 +95,7 @@ export default function Home() {
     setSeatingChart(newChart);
     if (newChart) {
       try {
-        await saveSeatingChart(newChart);
+        await saveSeatingChart(newChart, seatingChartSettings);
         // Optional: show a success toast, but might be too noisy.
       } catch (error) {
         console.error("Failed to save seating chart:", error);
@@ -101,6 +105,18 @@ export default function Home() {
       }
     }
   };
+  
+  const handleSettingsChange = async (newSettings: {rows: number; cols: number; groupSize: number}) => {
+    setSeatingChartSettings(newSettings);
+    if (seatingChart) {
+         try {
+            await saveSeatingChart(seatingChart, newSettings);
+        } catch (error) {
+            console.error("Failed to save settings with chart:", error);
+            toast({ title: "Feil", description: "Kunne ikke lagre nye innstillinger med eksisterende kart.", variant: "destructive" });
+        }
+    }
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -152,7 +168,7 @@ export default function Home() {
               seatingChart={seatingChart}
               onSeatingChartChange={handleSeatingChartChange}
               settings={seatingChartSettings}
-              onSettingsChange={setSeatingChartSettings}
+              onSettingsChange={handleSettingsChange}
             />
           </TabsContent>
           <TabsContent value="admin">

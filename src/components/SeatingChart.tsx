@@ -171,22 +171,23 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     const { active, over } = event;
     if (!over || !seatingChart) return;
     
+    if (active.id === over.id) return;
+    
     const [startRow, startCol, startStudentIdx] = active.id.toString().split('-').map(Number);
     const [endRow, endCol, endStudentIdx] = over.id.toString().split('-').map(Number);
-    
-    if (startRow === endRow && startCol === endCol && startStudentIdx === endStudentIdx) return;
     
     const newChart = JSON.parse(JSON.stringify(seatingChart));
 
     const startDesk = newChart[startRow]?.[startCol];
     const studentToMove = startDesk?.[startStudentIdx];
     
-    if (studentToMove === undefined && studentToMove !== null) return;
-
+    // Ensure we don't drag from an empty spot
+    if (studentToMove === null) return;
+    
     if (!newChart[endRow][endCol]) {
       newChart[endRow][endCol] = Array(groupSize).fill(null);
     }
-     const endDesk = newChart[endRow]?.[endCol];
+    const endDesk = newChart[endRow]?.[endCol];
     const studentToSwap = endDesk?.[endStudentIdx];
     
     newChart[endRow][endCol][endStudentIdx] = studentToMove;

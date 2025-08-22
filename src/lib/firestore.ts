@@ -190,7 +190,8 @@ export async function deleteDailyCheckByStudentAndDate(studentId: string, date: 
 }
 
 // Seating Chart functions
-export async function getSeatingChart(): Promise<SeatingChartData | null> {
+type SeatingChartSettings = { rows: number; cols: number; groupSize: number };
+export async function getSeatingChart(): Promise<{ chart: SeatingChartData; settings: SeatingChartSettings } | null> {
     const q = query(collection(db, 'seatingCharts'), orderBy('createdAt', 'desc'), limit(1));
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) {
@@ -198,18 +199,25 @@ export async function getSeatingChart(): Promise<SeatingChartData | null> {
     }
     const latestChartRecord = docToData<SeatingChartRecord>(querySnapshot.docs[0]);
     try {
-        // Parse the JSON string back into the nested array structure
-        return JSON.parse(latestChartRecord.chartJson);
+        const chart = JSON.parse(latestChartRecord.chartJson);
+        const settings = {
+            rows: latestChartRecord.rows || 4,
+            cols: latestChartRecord.cols || 5,
+            groupSize: latestChartRecord.groupSize || 2,
+        };
+        return { chart, settings };
     } catch (error) {
         console.error("Error parsing seating chart JSON:", error);
         return null;
     }
 }
 
-export async function saveSeatingChart(chart: SeatingChartData): Promise<void> {
-    const newChartRecord = {
-        // Convert the nested array into a JSON string
+export async function saveSeatingChart(chart: SeatingChartData, settings: SeatingChartSettings): Promise<void> {
+    const newChartRecord: Omit<SeatingChartRecord, 'id' | 'createdAt'> & { createdAt: Timestamp } = {
         chartJson: JSON.stringify(chart),
+        rows: settings.rows,
+        cols: settings.cols,
+        groupSize: settings.groupSize,
         createdAt: Timestamp.now(),
     };
     await addDocument('seatingCharts', newChartRecord);
@@ -312,5 +320,3 @@ async function seedDatabase() {
 
   await dataBatch.commit();
 }
-
-    
