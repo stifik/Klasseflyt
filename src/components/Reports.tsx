@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -10,8 +10,7 @@ import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { useToast } from "@/hooks/use-toast";
 import { generateWeeklySummary, GenerateWeeklySummaryInput } from '@/ai/flows/generate-weekly-summary';
 import { Printer, Copy, Loader2 } from 'lucide-react';
-import useLocalStorage from '@/hooks/useLocalStorage';
-import { students as initialStudents, subjects as initialSubjects, homework as initialHomework, submissions as initialSubmissions, dailyChecks as initialDailyChecks } from "@/lib/mock-data";
+import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks } from '@/lib/firestore';
 
 
 const statusColors: Record<HomeworkStatus, string> = {
@@ -24,15 +23,40 @@ const statusColors: Record<HomeworkStatus, string> = {
 
 export default function Reports() {
   const { toast } = useToast();
-  const [students] = useLocalStorage<Student[]>("students", initialStudents);
-  const [subjects] = useLocalStorage<Subject[]>("subjects", initialSubjects);
-  const [homework] = useLocalStorage<Homework[]>("homework", initialHomework);
-  const [submissions] = useLocalStorage<Submission[]>("submissions", initialSubmissions);
-  const [dailyChecks] = useLocalStorage<DailyCheck[]>("dailyChecks", initialDailyChecks);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [homework, setHomework] = useState<Homework[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [dailyChecks, setDailyChecks] = useState<DailyCheck[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   const [generatedMessages, setGeneratedMessages] = useState<Array<{ studentName: string; message: string }>>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [studentsData, subjectsData, homeworkData, submissionsData, dailyChecksData] = await Promise.all([
+          getStudents(),
+          getSubjects(),
+          getHomework(),
+          getSubmissions(),
+          getDailyChecks()
+        ]);
+        setStudents(studentsData);
+        setSubjects(subjectsData);
+        setHomework(homeworkData.map(h => ({...h, date: new Date(h.date)})));
+        setSubmissions(submissionsData);
+        setDailyChecks(dailyChecksData.map(c => ({...c, date: new Date(c.date)})));
+      } catch (error) {
+        toast({ title: "Feil", description: "Kunne ikke laste data.", variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [toast]);
 
   const studentStats = useMemo(() => {
     return students.map(student => {
@@ -117,9 +141,14 @@ export default function Reports() {
       return { studentName: student.name, message: result.message };
     });
 
-    const results = await Promise.all(promises);
-    setGeneratedMessages(results);
-    setIsGenerating(false);
+    try {
+      const results = await Promise.all(promises);
+      setGeneratedMessages(results);
+    } catch (error) {
+       toast({ title: "Feil med AI", description: "Kunne ikke generere sammendrag.", variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleCopyMessage = (message: string) => {
@@ -129,6 +158,10 @@ export default function Reports() {
   
   const handlePrint = () => {
     window.print();
+  }
+  
+  if (loading) {
+    return <div className="flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin" /> Laster data...</div>;
   }
 
   return (

@@ -1,55 +1,89 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import type { Student, Subject } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import useLocalStorage from "@/hooks/useLocalStorage";
-import { useState } from "react";
+import { getStudents, addStudent, deleteStudent, getSubjects, addSubject, deleteSubject } from "@/lib/firestore";
 
-interface AdminProps {
-  initialStudents: Student[];
-  initialSubjects: Subject[];
-}
-
-export default function Admin({ initialStudents, initialSubjects }: AdminProps) {
-  const [students, setStudents] = useLocalStorage<Student[]>("students", initialStudents);
-  const [subjects, setSubjects] = useLocalStorage<Subject[]>("subjects", initialSubjects);
+export default function Admin() {
+  const [students, setStudents] = useState<Student[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [newStudent, setNewStudent] = useState("");
   const [newSubject, setNewSubject] = useState("");
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const handleAddStudent = () => {
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [studentsData, subjectsData] = await Promise.all([getStudents(), getSubjects()]);
+        setStudents(studentsData);
+        setSubjects(subjectsData);
+      } catch (error) {
+        console.error("Error loading data:", error);
+        toast({ title: "Feil", description: "Kunne ikke laste data fra databasen.", variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [toast]);
+
+  const handleAddStudent = async () => {
     if (newStudent.trim()) {
-      const student = { id: `s${students.length + 1}`, name: newStudent.trim() };
-      setStudents([...students, student]);
-      setNewStudent("");
-      toast({ title: "Elev lagt til", description: `${student.name} er lagt til i klasselisten.` });
+      try {
+        const newStudentDoc = await addStudent({ name: newStudent.trim() });
+        setStudents([...students, newStudentDoc]);
+        setNewStudent("");
+        toast({ title: "Elev lagt til", description: `${newStudentDoc.name} er lagt til i klasselisten.` });
+      } catch (error) {
+        toast({ title: "Feil", description: "Kunne ikke legge til elev.", variant: "destructive" });
+      }
     }
   };
 
-  const handleAddSubject = () => {
+  const handleAddSubject = async () => {
     if (newSubject.trim()) {
-      const subject = { id: `sub${subjects.length + 1}`, name: newSubject.trim() };
-      setSubjects([...subjects, subject]);
-      setNewSubject("");
-       toast({ title: "Fag lagt til", description: `${subject.name} er lagt til i faglisten.` });
+      try {
+        const newSubjectDoc = await addSubject({ name: newSubject.trim() });
+        setSubjects([...subjects, newSubjectDoc]);
+        setNewSubject("");
+        toast({ title: "Fag lagt til", description: `${newSubjectDoc.name} er lagt til i faglisten.` });
+      } catch (error) {
+         toast({ title: "Feil", description: "Kunne ikke legge til fag.", variant: "destructive" });
+      }
     }
   };
 
-  const handleDeleteStudent = (id: string) => {
+  const handleDeleteStudent = async (id: string) => {
     const studentName = students.find(s => s.id === id)?.name;
-    setStudents(students.filter((s) => s.id !== id));
-    toast({ title: "Elev slettet", description: `${studentName} er fjernet.`, variant: "destructive" });
+    try {
+      await deleteStudent(id);
+      setStudents(students.filter((s) => s.id !== id));
+      toast({ title: "Elev slettet", description: `${studentName} er fjernet.`, variant: "destructive" });
+    } catch (error) {
+       toast({ title: "Feil", description: "Kunne ikke slette elev.", variant: "destructive" });
+    }
   };
 
-  const handleDeleteSubject = (id: string) => {
-     const subjectName = subjects.find(s => s.id === id)?.name;
-    setSubjects(subjects.filter((s) => s.id !== id));
-    toast({ title: "Fag slettet", description: `${subjectName} er fjernet.`, variant: "destructive" });
+  const handleDeleteSubject = async (id: string) => {
+    const subjectName = subjects.find(s => s.id === id)?.name;
+    try {
+      await deleteSubject(id);
+      setSubjects(subjects.filter((s) => s.id !== id));
+      toast({ title: "Fag slettet", description: `${subjectName} er fjernet.`, variant: "destructive" });
+    } catch (error) {
+       toast({ title: "Feil", description: "Kunne ikke slette fag.", variant: "destructive" });
+    }
   };
+  
+  if (loading) {
+    return <div className="flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin" /> Laster data...</div>;
+  }
 
   return (
     <div className="grid gap-6 md:grid-cols-2">

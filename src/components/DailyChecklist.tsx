@@ -1,28 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Student, DailyCheck } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, BatteryWarning, TabletSmartphone } from "lucide-react";
+import { Calendar as CalendarIcon, BatteryWarning, TabletSmartphone, Loader2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import useLocalStorage from "@/hooks/useLocalStorage";
-
-interface DailyChecklistProps {
-  students: Student[];
-  initialChecks: DailyCheck[];
-}
+import { getStudents, getDailyChecks, setDailyCheck, deleteDailyCheckByStudentAndDate } from "@/lib/firestore";
+import { useToast } from "@/hooks/use-toast";
 
 type IpadStatus = "OK" | "NotCharged" | "NotBrought";
 
-export default function DailyChecklist({ students: initialStudents, initialChecks }: DailyChecklistProps) {
+export default function DailyChecklist() {
   const [date, setDate] = useState<Date>(new Date());
-  const [students] = useLocalStorage<Student[]>("students", initialStudents);
-  const [checks, setChecks] = useLocalStorage<DailyCheck[]>("dailyChecks", initialChecks);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [checks, setChecks] = useState<DailyCheck[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [studentsData, checksData] = await Promise.all([getStudents(), getDailyChecks()]);
+        setStudents(studentsData);
+        setChecks(checksData.map(c => ({...c, date: new Date(c.date)})));
+      } catch (error) {
+        toast({ title: "Feil", description: "Kunne ikke laste data.", variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [toast]);
 
   const getCheckForDate = (studentId: string, checkDate: Date) => {
     const dateString = checkDate.toISOString().split("T")[0];
@@ -39,10 +52,9 @@ export default function DailyChecklist({ students: initialStudents, initialCheck
     return "OK";
   };
   
-  const handleStatusChange = (studentId: string) => {
+  const handleStatusChange = async (studentId: string) => {
     const currentStatus = getStatus(studentId);
-    const todayString = date.toISOString().split("T")[0];
-    const existingCheck = getCheckForDate(studentId, date);
+    const dateString = date.toISOString().split("T")[0];
 
     let newStatus: IpadStatus;
     let newCheckState: Partial<DailyCheck> = {};
@@ -50,39 +62,35 @@ export default function DailyChecklist({ students: initialStudents, initialCheck
     switch (currentStatus) {
       case "OK":
         newStatus = "NotCharged";
-        newCheckState = { ipadCharged: false, ipadBrought: true };
+        newCheckState = { studentId, date, ipadCharged: false, ipadBrought: true };
         break;
       case "NotCharged":
         newStatus = "NotBrought";
-        newCheckState = { ipadCharged: false, ipadBrought: false };
+        newCheckState = { studentId, date, ipadCharged: false, ipadBrought: false };
         break;
       case "NotBrought":
       default:
         newStatus = "OK";
-        newCheckState = { ipadCharged: true, ipadBrought: true };
+        newCheckState = { studentId, date, ipadCharged: true, ipadBrought: true };
         break;
     }
 
-    let newChecks = [...checks];
-    if (existingCheck) {
-      const updatedCheck = { ...existingCheck, ...newCheckState };
-       // If status is OK, we can remove the check record for that day
-      if (newStatus === 'OK') {
-        newChecks = newChecks.filter(c => c.id !== existingCheck.id);
-      } else {
-        newChecks = newChecks.map(c => c.id === existingCheck.id ? updatedCheck : c);
-      }
-    } else if (newStatus !== 'OK') {
-      const newCheck: DailyCheck = {
-        id: `dc${checks.length + 1}`,
-        studentId,
-        date,
-        ipadCharged: newCheckState.ipadCharged!,
-        ipadBrought: newCheckState.ipadBrought!,
-      };
-      newChecks.push(newCheck);
+    try {
+        if (newStatus === 'OK') {
+            await deleteDailyCheckByStudentAndDate(studentId, date);
+            setChecks(prev => prev.filter(c => !(c.studentId === studentId && new Date(c.date).toISOString().split('T')[0] === dateString)))
+        } else {
+            const updatedCheck = await setDailyCheck(newCheckState as Omit<DailyCheck, 'id'>);
+            const existingIndex = checks.findIndex(c => c.studentId === studentId && new Date(c.date).toISOString().split('T')[0] === dateString);
+            if (existingIndex > -1) {
+                setChecks(prev => prev.map((c, i) => i === existingIndex ? {...c, ...updatedCheck} : c));
+            } else {
+                setChecks(prev => [...prev, {...updatedCheck, date: new Date(updatedCheck.date)}]);
+            }
+        }
+    } catch (error) {
+        toast({title: "Feil", description: "Kunne ikke lagre endring.", variant: "destructive"});
     }
-    setChecks(newChecks);
   };
   
   const statusConfig: Record<IpadStatus, { variant: "default" | "destructive" | "outline", icon?: React.ReactNode, label: string }> = {
@@ -90,6 +98,10 @@ export default function DailyChecklist({ students: initialStudents, initialCheck
     NotCharged: { variant: "outline", icon: <BatteryWarning className="mr-2" />, label: "Ikke ladet" },
     NotBrought: { variant: "destructive", icon: <TabletSmartphone className="mr-2" />, label: "Ikke medbrakt" },
   };
+  
+  if (loading) {
+    return <div className="flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin" /> Laster data...</div>;
+  }
 
   return (
     <Card>

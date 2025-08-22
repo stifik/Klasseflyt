@@ -1,26 +1,22 @@
 "use client";
 
-import { useState, useMemo, type FC } from "react";
+import { useState, useMemo, type FC, useEffect } from "react";
 import type { Student, Subject, Homework, Submission, HomeworkStatus } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX, Plus } from "lucide-react";
+import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX, Plus, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import useLocalStorage from "@/hooks/useLocalStorage";
+import { getStudents, getSubjects, getHomework, getSubmissions, addHomework, setSubmission } from "@/lib/firestore";
+import { Input } from "./ui/input";
 
-interface HomeworkOverviewProps {
-  students: Student[];
-  subjects: Subject[];
-  homework: Homework[];
-  initialSubmissions: Submission[];
-}
+
+interface HomeworkOverviewProps {}
 
 const statusIcons: Record<HomeworkStatus, React.ReactElement> = {
   "Godkjent": <CheckCircle className="text-green-500" />,
@@ -123,44 +119,92 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
   );
 };
 
-export default function HomeworkOverview({ students: initialStudents, subjects: initialSubjects, homework: initialHomework, initialSubmissions }: HomeworkProps) {
-  const [students] = useLocalStorage<Student[]>("students", initialStudents);
-  const [subjects] = useLocalStorage<Subject[]>("subjects", initialSubjects);
-  const [submissions, setSubmissions] = useLocalStorage<Submission[]>("submissions", initialSubmissions);
-  const [homeworkList, setHomeworkList] = useLocalStorage<Homework[]>("homework", initialHomework);
+export default function HomeworkOverview({}: HomeworkOverviewProps) {
+  const [students, setStudents] = useState<Student[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [homeworkList, setHomeworkList] = useState<Homework[]>([]);
+  const [loading, setLoading] = useState(true);
   
   const [commentModal, setCommentModal] = useState<{ open: boolean; studentId?: string; homeworkId?: string; }>({ open: false });
   const [currentComment, setCurrentComment] = useState("");
   const [filters, setFilters] = useState<{ subject: string; week: string; showProblems: boolean }>({ subject: "all", week: "all", showProblems: false });
   const { toast } = useToast();
 
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [studentsData, subjectsData, homeworkData, submissionsData] = await Promise.all([
+          getStudents(),
+          getSubjects(),
+          getHomework(),
+          getSubmissions()
+        ]);
+        setStudents(studentsData);
+        setSubjects(subjectsData);
+        setHomeworkList(homeworkData.map(h => ({...h, date: new Date(h.date)})));
+        setSubmissions(submissionsData);
+      } catch (error) {
+        toast({ title: "Feil", description: "Kunne ikke laste data.", variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [toast]);
+  
   const getSubmission = (studentId: string, homeworkId: string) => submissions.find(s => s.studentId === studentId && s.homeworkId === homeworkId);
 
-  const handleStatusChange = (studentId: string, homeworkId: string, status: HomeworkStatus) => {
-    const existingIndex = submissions.findIndex(s => s.studentId === studentId && s.homeworkId === homeworkId);
-    let newSubmissions = [...submissions];
-    if (existingIndex > -1) {
-      newSubmissions[existingIndex] = { ...newSubmissions[existingIndex], status };
-    } else {
-      newSubmissions.push({ id: `sub${submissions.length + 1}`, studentId, homeworkId, status });
+  const handleStatusChange = async (studentId: string, homeworkId: string, status: HomeworkStatus) => {
+    const existingSubmission = getSubmission(studentId, homeworkId);
+    const submissionData = {
+        studentId,
+        homeworkId,
+        status,
+        comment: existingSubmission?.comment || "",
+    };
+
+    try {
+        const updatedSubmission = await setSubmission(submissionData);
+        setSubmissions(prev => {
+            const index = prev.findIndex(s => s.id === updatedSubmission.id);
+            if (index > -1) {
+                return prev.map((s, i) => i === index ? updatedSubmission : s);
+            }
+            return [...prev, updatedSubmission];
+        });
+    } catch (error) {
+        toast({ title: "Feil", description: "Kunne ikke lagre status.", variant: "destructive" });
     }
-    setSubmissions(newSubmissions);
   };
   
-  const handleCommentSave = () => {
+  const handleCommentSave = async () => {
     if (!commentModal.studentId || !commentModal.homeworkId) return;
     const { studentId, homeworkId } = commentModal;
-    const existingIndex = submissions.findIndex(s => s.studentId === studentId && s.homeworkId === homeworkId);
-    let newSubmissions = [...submissions];
-    if (existingIndex > -1) {
-      newSubmissions[existingIndex] = { ...newSubmissions[existingIndex], comment: currentComment };
-    } else {
-      newSubmissions.push({ id: `sub${submissions.length + 1}`, studentId, homeworkId, status: "Godkjent", comment: currentComment });
+
+    const existingSubmission = getSubmission(studentId, homeworkId);
+    const submissionData = {
+        studentId,
+        homeworkId,
+        status: existingSubmission?.status || "Godkjent",
+        comment: currentComment,
+    };
+    
+    try {
+        const updatedSubmission = await setSubmission(submissionData);
+         setSubmissions(prev => {
+            const index = prev.findIndex(s => s.id === updatedSubmission.id);
+            if (index > -1) {
+                return prev.map((s, i) => i === index ? updatedSubmission : s);
+            }
+            return [...prev, updatedSubmission];
+        });
+        setCommentModal({ open: false });
+        setCurrentComment("");
+        toast({ title: "Kommentar lagret" });
+    } catch(error) {
+        toast({ title: "Feil", description: "Kunne ikke lagre kommentar.", variant: "destructive" });
     }
-    setSubmissions(newSubmissions);
-    setCommentModal({ open: false });
-    setCurrentComment("");
-    toast({ title: "Kommentar lagret" });
   };
   
   const openCommentModal = (studentId: string, homeworkId: string) => {
@@ -169,29 +213,38 @@ export default function HomeworkOverview({ students: initialStudents, subjects: 
     setCommentModal({ open: true, studentId, homeworkId });
   };
 
-  const handleAddHomework = (title: string, subjectId: string) => {
+  const handleAddHomework = async (title: string, subjectId: string) => {
     const newDate = new Date();
-    const newHomework: Homework = {
-      id: `hw${homeworkList.length + 1}`,
+    const newHomeworkData: Omit<Homework, 'id'> = {
       title,
       subjectId,
       date: newDate,
       week: newDate.getWeek(),
     };
-    setHomeworkList([...homeworkList, newHomework]);
-    toast({ title: "Lekse lagt til", description: `"${title}" er lagt til i oversikten.` });
-  };
-
-  const handleCopyHomework = (homeworkId: string) => {
-    const hwToCopy = homeworkList.find(h => h.id === homeworkId);
-    if(hwToCopy) {
-      const newHw = { ...hwToCopy, id: `hw${homeworkList.length + 1}`, week: new Date().getWeek(), date: new Date() };
-      setHomeworkList([...homeworkList, newHw]);
-      toast({ title: "Lekse kopiert", description: `En ny versjon av "${hwToCopy.title}" er opprettet for denne uken.`});
+    try {
+        const newHomework = await addHomework(newHomeworkData);
+        setHomeworkList([...homeworkList, {...newHomework, date: new Date(newHomework.date)}]);
+        toast({ title: "Lekse lagt til", description: `"${title}" er lagt til i oversikten.` });
+    } catch(error) {
+        toast({ title: "Feil", description: "Kunne ikke legge til lekse.", variant: "destructive" });
     }
   };
 
-  // Extend Date prototype for week number
+  const handleCopyHomework = async (homeworkId: string) => {
+    const hwToCopy = homeworkList.find(h => h.id === homeworkId);
+    if(hwToCopy) {
+      const { id, ...hwData } = hwToCopy;
+      const newHwData = { ...hwData, week: new Date().getWeek(), date: new Date() };
+      try {
+        const newHomework = await addHomework(newHwData);
+        setHomeworkList([...homeworkList, {...newHomework, date: new Date(newHomework.date)}]);
+        toast({ title: "Lekse kopiert", description: `En ny versjon av "${hwToCopy.title}" er opprettet for denne uken.`});
+      } catch(error) {
+        toast({ title: "Feil", description: "Kunne ikke kopiere lekse.", variant: "destructive" });
+      }
+    }
+  };
+
   if (!('getWeek' in Date.prototype)) {
     Date.prototype.getWeek = function() {
         var d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
@@ -206,7 +259,7 @@ export default function HomeworkOverview({ students: initialStudents, subjects: 
     return homeworkList
       .filter(hw => filters.subject === "all" || hw.subjectId === filters.subject)
       .filter(hw => filters.week === "all" || hw.week === parseInt(filters.week))
-      .sort((a,b) => b.date.getTime() - a.date.getTime());
+      .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [homeworkList, filters]);
 
   const problemStudentIds = useMemo(() => {
@@ -220,6 +273,10 @@ export default function HomeworkOverview({ students: initialStudents, subjects: 
   }, [students, filters.showProblems, problemStudentIds]);
   
   const uniqueWeeks = [...new Set(homeworkList.map(h => h.week))].sort((a,b) => b-a);
+  
+  if (loading) {
+    return <div className="flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin" /> Laster data...</div>;
+  }
   
   return (
     <div className="space-y-4">

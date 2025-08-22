@@ -3,7 +3,6 @@ import HomeworkOverview from "@/components/HomeworkOverview";
 import DailyChecklist from "@/components/DailyChecklist";
 import Reports from "@/components/Reports";
 import Admin from "@/components/Admin";
-import { students, subjects, homework, submissions, dailyChecks } from "@/lib/mock-data";
 import { BookOpenCheck } from "lucide-react";
 
 export default function Home() {
@@ -25,21 +24,16 @@ export default function Home() {
           </TabsList>
 
           <TabsContent value="overview">
-            <HomeworkOverview
-              students={students}
-              subjects={subjects}
-              homework={homework}
-              initialSubmissions={submissions}
-            />
+            <HomeworkOverview />
           </TabsContent>
           <TabsContent value="daily">
-            <DailyChecklist students={students} initialChecks={dailyChecks} />
+            <DailyChecklist />
           </TabsContent>
           <TabsContent value="reports">
              <Reports />
           </TabsContent>
           <TabsContent value="admin">
-            <Admin initialStudents={students} initialSubjects={subjects} />
+            <Admin />
           </TabsContent>
         </Tabs>
       </main>
