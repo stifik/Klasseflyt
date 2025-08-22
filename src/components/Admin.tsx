@@ -6,9 +6,20 @@ import type { Student, Subject } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Database } from "lucide-react";
+import { Plus, Trash2, Database, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { addStudent, deleteStudent, addSubject, deleteSubject, seedDatabase } from "@/lib/firestore";
+import { addStudent, deleteStudent, addSubject, deleteSubject, resetAndSeedDatabase } from "@/lib/firestore";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface AdminProps {
   initialStudents: Student[];
@@ -70,20 +81,20 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
     }
   };
 
-  const handleSeedDatabase = async () => {
+  const handleResetDatabase = async () => {
     setIsSeeding(true);
     try {
-      await seedDatabase();
+      await resetAndSeedDatabase();
       toast({
-        title: "Database fylt!",
-        description: "Databasen er fylt med demodata.",
+        title: "Database nullstilt og fylt!",
+        description: "Databasen er fylt med fersk demodata.",
       });
       onUpdate();
     } catch (error) {
       console.error(error);
       toast({
-        title: "Feil ved fylling av database",
-        description: "Kunne ikke fylle databasen. Sjekk konsollen for feil.",
+        title: "Feil ved nullstilling",
+        description: "Kunne ikke nullstille databasen. Sjekk konsollen for feil.",
         variant: "destructive",
       });
     } finally {
@@ -94,20 +105,39 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
 
   return (
     <div className="space-y-6">
-       {initialStudents.length === 0 && (
-         <Card>
-          <CardHeader>
-            <CardTitle>Start med Demodata</CardTitle>
-          </CardHeader>
-          <CardContent>
-             <p className="mb-4 text-sm text-muted-foreground">Databasen din er tom. Klikk her for å fylle den med demodata for å komme i gang.</p>
-             <Button onClick={handleSeedDatabase} disabled={isSeeding}>
-                <Database className="mr-2" />
-                {isSeeding ? 'Fyller database...' : 'Fyll database med demodata'}
-             </Button>
-          </CardContent>
-        </Card>
-       )}
+       <Card>
+        <CardHeader>
+          <CardTitle>Demodata</CardTitle>
+        </CardHeader>
+        <CardContent>
+           <p className="mb-4 text-sm text-muted-foreground">
+            {initialStudents.length === 0 
+              ? "Databasen din er tom. Klikk her for å fylle den med demodata for å komme i gang."
+              : "Dette vil slette all nåværende data og fylle databasen med et nytt sett med demodata."
+            }
+           </p>
+           <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant={initialStudents.length > 0 ? "destructive" : "default"} disabled={isSeeding}>
+                  <Database className="mr-2" />
+                  {isSeeding ? 'Jobber...' : (initialStudents.length === 0 ? 'Fyll database med demodata' : 'Nullstill og fyll database')}
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle><AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Dette vil permanent slette all data i databasen, inkludert alle elever, fag, lekser og innleveringer. Handlingen kan ikke angres.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                <AlertDialogAction onClick={handleResetDatabase}>Ja, slett alt og start på nytt</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>

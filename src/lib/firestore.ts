@@ -30,9 +30,13 @@ const convertTimestamps = (data: any): any => {
 };
 
 
-const docToData = <T>(doc: any): T => {
-    return { id: doc.id, ...convertTimestamps(doc.data()) } as T;
-}
+const docToData = <T>(docSnap: any): T => {
+    const data = docSnap.data();
+    return {
+        id: docSnap.id,
+        ...convertTimestamps(data)
+    } as T;
+};
 
 // Generic fetch function
 async function fetchCollection<T>(collectionName: string): Promise<T[]> {
@@ -152,7 +156,27 @@ export async function deleteDailyCheckByStudentAndDate(studentId: string, date: 
     }
 }
 
-export async function seedDatabase() {
+async function clearCollection(collectionName: string) {
+    const querySnapshot = await getDocs(collection(db, collectionName));
+    const batch = writeBatch(db);
+    querySnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+    await batch.commit();
+}
+
+
+export async function resetAndSeedDatabase() {
+  await clearCollection('students');
+  await clearCollection('subjects');
+  await clearCollection('homework');
+  await clearCollection('submissions');
+  await clearCollection('dailyChecks');
+  await seedDatabase();
+}
+
+
+async function seedDatabase() {
   const students: Omit<Student, 'id'>[] = [
     { name: 'Liam Jensen' }, { name: 'Olivia Nguyen' }, { name: 'Noah Olsen' },
     { name: 'Emma Johansen' }, { name: 'Lucas Andersen' }, { name: 'Mia Hansen' },
@@ -200,7 +224,6 @@ export async function seedDatabase() {
     if (Math.random() < 0.4) {
       const subjectId = subjectIds[Math.floor(Math.random() * subjectIds.length)];
       
-      // IMPORTANT: Generate the document reference (and its ID) *before* using it.
       const hwRef = doc(collection(db, 'homework'));
       
       const newHomework = {
@@ -220,12 +243,11 @@ export async function seedDatabase() {
         else if (randomStatus < 0.13) status = 'Syk/Fravær';
         else if (randomStatus < 0.16) status = 'Glemt bok';
         
-        // Generate the submission reference with its own unique ID
         const subRef = doc(collection(db, 'submissions'));
         
         const newSubmission: Omit<Submission, 'id' | 'comment'> & { comment?: string } = {
           studentId: studentId,
-          homeworkId: hwRef.id, // Now hwRef.id is a valid, unique ID
+          homeworkId: hwRef.id,
           status,
         };
 
@@ -244,13 +266,12 @@ export async function seedDatabase() {
           dataBatch.set(checkRef, {
               studentId: studentId,
               date: Timestamp.fromDate(date),
-              ipadCharged: randomCheck > 0.05, // 50% chance of not charged
-              ipadBrought: randomCheck < 0.05 ? false : true, // 50% chance of not brought, if an issue exists
+              ipadCharged: randomCheck > 0.05,
+              ipadBrought: randomCheck < 0.05 ? false : true,
           });
       }
     });
   }
 
-  // Commit all the generated data
   await dataBatch.commit();
 }
