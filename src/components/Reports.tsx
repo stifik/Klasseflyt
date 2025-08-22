@@ -9,9 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useToast } from "@/hooks/use-toast";
-import { generateWeeklySummary, GenerateWeeklySummaryInput } from '@/ai/flows/generate-weekly-summary';
 import { Printer, Copy, Loader2 } from 'lucide-react';
-import { getWeekNumber, getWeekDates } from '@/lib/utils';
+import { getWeekNumber } from '@/lib/utils';
 
 interface ReportsProps {
   students: Student[];
@@ -28,6 +27,55 @@ const statusColors: Record<HomeworkStatus, string> = {
   "Syk/Fravær": "#3b82f6",
   "Glemt bok": "#f97316",
 };
+
+// Lokal funksjon for å generere melding
+const generateSummaryMessage = (
+    studentName: string,
+    week: number,
+    missingAssignments: string[],
+    incompleteAssignments: string[],
+    forgottenBooks: string[],
+    ipadNotChargedCount: number,
+    ipadNotBroughtCount: number
+): string => {
+    let message = `Hei,\nEn liten oppsummering for ${studentName} i uke ${week}.\n\n`;
+    let hasIssues = false;
+
+    const homeworkIssues: string[] = [];
+    if (missingAssignments.length > 0) {
+        homeworkIssues.push(`Ikke levert: ${missingAssignments.join(', ')}`);
+    }
+    if (incompleteAssignments.length > 0) {
+        homeworkIssues.push(`Må rettes: ${incompleteAssignments.join(', ')}`);
+    }
+     if (forgottenBooks.length > 0) {
+        homeworkIssues.push(`Glemt bok: ${forgottenBooks.join(', ')}`);
+    }
+
+    if (homeworkIssues.length > 0) {
+        message += `Lekser:\n- ${homeworkIssues.join('\n- ')}\n\n`;
+        hasIssues = true;
+    }
+
+    const ipadIssues: string[] = [];
+    if (ipadNotChargedCount > 0) {
+        ipadIssues.push(`Ikke ladet: ${ipadNotChargedCount} gang(er)`);
+    }
+    if (ipadNotBroughtCount > 0) {
+        ipadIssues.push(`Ikke medbrakt: ${ipadNotBroughtCount} gang(er)`);
+    }
+
+    if (ipadIssues.length > 0) {
+        message += `iPad:\n- ${ipadIssues.join('\n- ')}\n\n`;
+        hasIssues = true;
+    }
+
+    if (!hasIssues) return "";
+
+    message += "Vennlig hilsen,\nLæreren";
+    return message;
+};
+
 
 export default function Reports({ students, subjects, homework, submissions, dailyChecks }: ReportsProps) {
   const { toast } = useToast();
@@ -90,19 +138,14 @@ export default function Reports({ students, subjects, homework, submissions, dai
 
     const weekHomeworkIds = new Set(homework.filter(h => h.week === selectedWeek).map(h => h.id));
 
-    // Filter students who have issues this week
     const studentsWithIssues = students.filter(student => {
       const studentWeekSubmissions = submissions.filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
       const studentWeekChecks = dailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
-
       const hasHomeworkIssues = studentWeekSubmissions.some(s => 
         s.status === 'Ikke levert' || s.status === 'Må rettes' || s.status === 'Glemt bok'
       );
       const hasIpadIssues = studentWeekChecks.some(c => !c.ipadBrought || !c.ipadCharged);
-      
-      // Exclude students who ONLY have "Syk/Fravær" and no other issues
       const onlyAbsence = studentWeekSubmissions.length > 0 && studentWeekSubmissions.every(s => s.status === 'Syk/Fravær') && !hasIpadIssues;
-
       return (hasHomeworkIssues || hasIpadIssues) && !onlyAbsence;
     });
 
@@ -112,32 +155,24 @@ export default function Reports({ students, subjects, homework, submissions, dai
         return;
     }
 
-    const promises = studentsWithIssues.map(async student => {
-      const studentWeekSubmissions = submissions.filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
-      const studentWeekChecks = dailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
-      
-      const input: GenerateWeeklySummaryInput = {
-        studentName: student.name,
-        week: `Uke ${selectedWeek}`,
-        missingAssignments: studentWeekSubmissions.filter(s => s.status === 'Ikke levert').map(s => homework.find(h => h.id === s.homeworkId)?.title || ''),
-        incompleteAssignments: studentWeekSubmissions.filter(s => s.status === 'Må rettes').map(s => homework.find(h => h.id === s.homeworkId)?.title || ''),
-        forgottenBooks: studentWeekSubmissions.filter(s => s.status === 'Glemt bok').map(s => subjects.find(sub => sub.id === homework.find(h => h.id === s.homeworkId)?.subjectId)?.name || ''),
-        ipadNotChargedCount: studentWeekChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
-        ipadNotBroughtCount: studentWeekChecks.filter(c => !c.ipadBrought).length,
-      };
+    const messages = studentsWithIssues.map(student => {
+        const studentWeekSubmissions = submissions.filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
+        const studentWeekChecks = dailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
 
-      const result = await generateWeeklySummary(input);
-      return { studentName: student.name, message: result.message };
-    });
+        const message = generateSummaryMessage(
+            student.name,
+            selectedWeek,
+            studentWeekSubmissions.filter(s => s.status === 'Ikke levert').map(s => homework.find(h => h.id === s.homeworkId)?.title || ''),
+            studentWeekSubmissions.filter(s => s.status === 'Må rettes').map(s => homework.find(h => h.id === s.homeworkId)?.title || ''),
+            studentWeekSubmissions.filter(s => s.status === 'Glemt bok').map(s => subjects.find(sub => sub.id === homework.find(h => h.id === s.homeworkId)?.subjectId)?.name || ''),
+            studentWeekChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
+            studentWeekChecks.filter(c => !c.ipadBrought).length
+        );
+        return { studentName: student.name, message };
+    }).filter(item => item.message); // Filtrer bort tomme meldinger
 
-    try {
-      const results = await Promise.all(promises);
-      setGeneratedMessages(results);
-    } catch (error) {
-       toast({ title: "Feil med AI", description: "Kunne ikke generere sammendrag.", variant: "destructive" });
-    } finally {
-      setIsGenerating(false);
-    }
+    setGeneratedMessages(messages);
+    setIsGenerating(false);
   };
 
   const handleCopyMessage = (message: string) => {
@@ -220,7 +255,7 @@ export default function Reports({ students, subjects, homework, submissions, dai
       
       <Card className="no-print">
         <CardHeader>
-          <CardTitle>Ukesoppsummering for Meldinger (AI)</CardTitle>
+          <CardTitle>Ukesoppsummering for Meldinger</CardTitle>
           <CardDescription>Generer automatisk meldinger til foresatte for elever med anmerkninger for en valgt uke.</CardDescription>
         </CardHeader>
         <CardContent>
