@@ -33,7 +33,7 @@ const StatusPopover: FC<{ submission?: Submission; onStatusChange: (status: Home
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="w-full h-full rounded-none">
+        <Button variant="ghost" className="w-full h-full rounded-none">
           {submission ? statusIcons[submission.status] : <span className="text-muted-foreground">-</span>}
            {hasComment && <FileText className="absolute w-3 h-3 text-blue-600 bottom-1 right-1" />}
         </Button>
