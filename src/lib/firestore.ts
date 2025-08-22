@@ -135,7 +135,6 @@ export async function deleteDailyCheckByStudentAndDate(studentId: string, date: 
 }
 
 export async function seedDatabase() {
-  console.log("Starting to seed database...");
   const batch = writeBatch(db);
 
   const students: Student[] = [
