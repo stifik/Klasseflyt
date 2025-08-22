@@ -8,9 +8,10 @@ import DailyChecklist from "@/components/DailyChecklist";
 import Reports from "@/components/Reports";
 import Admin from "@/components/Admin";
 import SeatingChart from "@/components/SeatingChart";
+import Remarks from "@/components/Remarks";
 import { BookOpenCheck, Loader2 } from "lucide-react";
-import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord } from "@/lib/types";
-import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks, getLatestSeatingChart, saveSeatingChart, getSeatingChartHistory } from "@/lib/firestore";
+import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark } from "@/lib/types";
+import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks, getLatestSeatingChart, saveSeatingChart, getSeatingChartHistory, getRemarks } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
@@ -19,6 +20,7 @@ export default function Home() {
   const [homework, setHomework] = useState<Homework[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [dailyChecks, setDailyChecks] = useState<DailyCheck[]>([]);
+  const [remarks, setRemarks] = useState<Remark[]>([]);
   const [seatingChart, setSeatingChart] = useState<SeatingChartData | null>(null);
   const [seatingChartHistory, setSeatingChartHistory] = useState<SeatingChartRecord[]>([]);
   const [seatingChartSettings, setSeatingChartSettings] = useState({
@@ -44,6 +46,7 @@ export default function Home() {
         homeworkData, 
         submissionsData, 
         dailyChecksData,
+        remarksData,
         seatingChartResult,
         historyData
       ] = await Promise.all([
@@ -52,6 +55,7 @@ export default function Home() {
         getHomework(),
         getSubmissions(),
         getDailyChecks(),
+        getRemarks(),
         getLatestSeatingChart(),
         getSeatingChartHistory()
       ]);
@@ -61,6 +65,7 @@ export default function Home() {
       setHomework(homeworkData);
       setSubmissions(submissionsData);
       setDailyChecks(dailyChecksData);
+      setRemarks(remarksData);
       setSeatingChartHistory(historyData);
       
       if (seatingChartResult) {
@@ -129,9 +134,10 @@ export default function Home() {
       </header>
       <main className="flex-1 p-4 sm:p-6">
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4 sm:grid-cols-3 md:grid-cols-5">
+          <TabsList className="grid w-full grid-cols-2 mb-4 sm:grid-cols-3 md:grid-cols-6">
             <TabsTrigger value="overview">Lekseoversikt</TabsTrigger>
             <TabsTrigger value="daily">Daglig Sjekk</TabsTrigger>
+            <TabsTrigger value="remarks">Anmerkninger</TabsTrigger>
             <TabsTrigger value="reports">Rapporter</TabsTrigger>
             <TabsTrigger value="seating-chart">Klassekart</TabsTrigger>
             <TabsTrigger value="admin">Admin</TabsTrigger>
@@ -150,6 +156,14 @@ export default function Home() {
             <DailyChecklist
               students={students}
               initialChecks={dailyChecks}
+              onUpdate={handleDataUpdate}
+              seatingChart={seatingChart}
+            />
+          </TabsContent>
+           <TabsContent value="remarks">
+            <Remarks
+              students={students}
+              initialRemarks={remarks}
               onUpdate={handleDataUpdate}
               seatingChart={seatingChart}
             />

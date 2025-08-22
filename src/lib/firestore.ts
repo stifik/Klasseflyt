@@ -3,7 +3,7 @@
 
 import { db } from './firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, Timestamp, writeBatch, limit, orderBy } from 'firebase/firestore';
-import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, SeatingChartRecord, SeatingChartData } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, SeatingChartRecord, SeatingChartData, Remark } from './types';
 import { getWeekNumber } from './utils';
 
 // Helper to convert Firestore Timestamps to JS Dates in nested objects
@@ -189,6 +189,14 @@ export async function deleteDailyCheckByStudentAndDate(studentId: string, date: 
     }
 }
 
+// Remark functions
+export async function getRemarks(): Promise<Remark[]> { return fetchCollection<Remark>('remarks'); }
+export async function addRemark(remark: Omit<Remark, 'id'>): Promise<Remark> {
+    const remarkWithTimestamp = { ...remark, date: Timestamp.fromDate(new Date(remark.date)) };
+    return addDocument('remarks', remarkWithTimestamp);
+}
+export async function deleteRemark(id: string) { return deleteDocument('remarks', id); }
+
 // Seating Chart functions
 type SeatingChartSettings = { rows: number; cols: number; groupSize: number };
 export async function getLatestSeatingChart(): Promise<{ chart: SeatingChartData; settings: SeatingChartSettings } | null> {
@@ -248,6 +256,7 @@ export async function resetAndSeedDatabase() {
   await clearCollection('submissions');
   await clearCollection('dailyChecks');
   await clearCollection('seatingCharts');
+  await clearCollection('remarks');
   await seedDatabase();
 }
 
@@ -321,6 +330,13 @@ async function seedDatabase() {
               ipadCharged: randomCheck > 0.05,
               ipadBrought: randomCheck < 0.05 ? false : true,
           });
+      }
+      if (Math.random() < 0.02) {
+        const remarkRef = doc(collection(db, 'remarks'));
+        dataBatch.set(remarkRef, {
+          studentId: studentId,
+          date: Timestamp.fromDate(date),
+        });
       }
     });
   }
