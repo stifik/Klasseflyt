@@ -9,11 +9,9 @@ import Reports from "@/components/Reports";
 import Admin from "@/components/Admin";
 import SeatingChart from "@/components/SeatingChart";
 import { BookOpenCheck, Loader2 } from "lucide-react";
-import type { Student, Subject, Homework, Submission, DailyCheck } from "@/lib/types";
-import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks } from "@/lib/firestore";
+import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData } from "@/lib/types";
+import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks, getSeatingChart, saveSeatingChart } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
-
-type SeatingChartData = (string[] | null)[][];
 
 export default function Home() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -34,12 +32,20 @@ export default function Home() {
     }
 
     try {
-      const [studentsData, subjectsData, homeworkData, submissionsData, dailyChecksData] = await Promise.all([
+      const [
+        studentsData, 
+        subjectsData, 
+        homeworkData, 
+        submissionsData, 
+        dailyChecksData,
+        seatingChartData
+      ] = await Promise.all([
         getStudents(),
         getSubjects(),
         getHomework(),
         getSubmissions(),
-        getDailyChecks()
+        getDailyChecks(),
+        getSeatingChart()
       ]);
 
       setStudents(studentsData);
@@ -47,6 +53,7 @@ export default function Home() {
       setHomework(homeworkData);
       setSubmissions(submissionsData);
       setDailyChecks(dailyChecksData);
+      setSeatingChart(seatingChartData);
 
     } catch (error) {
       console.error(error);
@@ -74,6 +81,21 @@ export default function Home() {
   }
 
   const handleDataUpdate = () => loadData(true);
+
+  const handleSeatingChartChange = async (newChart: SeatingChartData | null) => {
+    setSeatingChart(newChart);
+    if (newChart) {
+      try {
+        await saveSeatingChart(newChart);
+        // Optional: show a success toast, but might be too noisy.
+      } catch (error) {
+        console.error("Failed to save seating chart:", error);
+        toast({ title: "Feil", description: "Kunne ikke lagre klassekartet.", variant: "destructive" });
+        // Optional: revert optimistic update if saving fails
+        loadData(true); 
+      }
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -122,7 +144,7 @@ export default function Home() {
             <SeatingChart
               students={students}
               seatingChart={seatingChart}
-              onSeatingChartChange={setSeatingChart}
+              onSeatingChartChange={handleSeatingChartChange}
             />
           </TabsContent>
           <TabsContent value="admin">

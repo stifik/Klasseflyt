@@ -33,3 +33,11 @@ export type DailyCheck = {
   ipadCharged: boolean;
   ipadBrought: boolean;
 };
+
+export type SeatingChartData = (string[] | null)[][];
+
+export type SeatingChartRecord = {
+  id: string;
+  chart: SeatingChartData;
+  createdAt: Date;
+};

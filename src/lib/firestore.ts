@@ -2,8 +2,8 @@
 "use server";
 
 import { db } from './firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, Timestamp, writeBatch } from 'firebase/firestore';
-import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus } from './types';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, Timestamp, writeBatch, limit, orderBy } from 'firebase/firestore';
+import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, SeatingChartRecord, SeatingChartData } from './types';
 import { getWeekNumber } from './utils';
 
 // Helper to convert Firestore Timestamps to JS Dates in nested objects
@@ -156,6 +156,25 @@ export async function deleteDailyCheckByStudentAndDate(studentId: string, date: 
     }
 }
 
+// Seating Chart functions
+export async function getSeatingChart(): Promise<SeatingChartData | null> {
+    const q = query(collection(db, 'seatingCharts'), orderBy('createdAt', 'desc'), limit(1));
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) {
+        return null;
+    }
+    const latestChart = docToData<SeatingChartRecord>(querySnapshot.docs[0]);
+    return latestChart.chart;
+}
+
+export async function saveSeatingChart(chart: SeatingChartData): Promise<void> {
+    const newChartRecord = {
+        chart,
+        createdAt: Timestamp.now(),
+    };
+    await addDocument('seatingCharts', newChartRecord);
+}
+
 async function clearCollection(collectionName: string) {
     const querySnapshot = await getDocs(collection(db, collectionName));
     const batch = writeBatch(db);
@@ -172,6 +191,7 @@ export async function resetAndSeedDatabase() {
   await clearCollection('homework');
   await clearCollection('submissions');
   await clearCollection('dailyChecks');
+  await clearCollection('seatingCharts');
   await seedDatabase();
 }
 
@@ -189,26 +209,16 @@ async function seedDatabase() {
 
   const initialBatch = writeBatch(db);
 
-  // Add students and subjects, and keep track of their new IDs
-  const studentRefs = students.map(s => {
-      const ref = doc(collection(db, "students"));
-      initialBatch.set(ref, s);
-      return ref;
-  });
-  const subjectRefs = subjects.map(s => {
-      const ref = doc(collection(db, "subjects"));
-      initialBatch.set(ref, s);
-      return ref;
-  });
+  const studentRefs = students.map(s => doc(collection(db, "students")));
+  const subjectRefs = subjects.map(s => doc(collection(db, "subjects")));
 
+  studentRefs.forEach((ref, index) => initialBatch.set(ref, students[index]));
+  subjectRefs.forEach((ref, index) => initialBatch.set(ref, subjects[index]));
+  
   await initialBatch.commit();
 
-  // We need to get the documents back to get their IDs
-  const studentDocs = await Promise.all(studentRefs.map(ref => getDoc(ref)));
-  const subjectDocs = await Promise.all(subjectRefs.map(ref => getDoc(ref)));
-  
-  const studentIds = studentDocs.map(doc => doc.id);
-  const subjectIds = subjectDocs.map(doc => doc.id);
+  const studentIds = studentRefs.map(ref => ref.id);
+  const subjectIds = subjectRefs.map(ref => ref.id);
   
   const today = new Date();
   
