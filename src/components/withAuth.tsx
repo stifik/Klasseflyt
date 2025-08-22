@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { Loader2 } from 'lucide-react';
-import { db } from '@/lib/firebase'; // Ensure db is initialized here
+import { getDb } from '@/lib/firebase';
 
 export default function withAuth<P extends object>(Component: React.ComponentType<P & { userId: string }>) {
   const AuthComponent = (props: P) => {
@@ -14,7 +14,8 @@ export default function withAuth<P extends object>(Component: React.ComponentTyp
     const router = useRouter();
     
     useEffect(() => {
-      // Defer getAuth() call until after component mounts and Firebase is initialized.
+      // Ensure Firebase is initialized before using any auth functions
+      getDb(); 
       const auth = getAuth();
       const unsubscribe = onAuthStateChanged(auth, (user) => {
         if (user) {
