@@ -11,6 +11,7 @@ import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { useToast } from "@/hooks/use-toast";
 import { generateWeeklySummary, GenerateWeeklySummaryInput } from '@/ai/flows/generate-weekly-summary';
 import { Printer, Copy, Loader2 } from 'lucide-react';
+import { getWeekNumber, getWeekDates } from '@/lib/utils';
 
 interface ReportsProps {
   students: Student[];
@@ -88,31 +89,43 @@ export default function Reports({ students, subjects, homework, submissions, dai
     setGeneratedMessages([]);
 
     const weekHomeworkIds = new Set(homework.filter(h => h.week === selectedWeek).map(h => h.id));
-    const studentsWithIssues = students.filter(student => 
-      submissions.some(s => 
-        s.studentId === student.id && 
-        weekHomeworkIds.has(s.homeworkId) && 
-        (s.status === 'Ikke levert' || s.status === 'Må rettes' || s.status === 'Glemt bok')
-      )
-    );
+
+    // Filter students who have issues this week
+    const studentsWithIssues = students.filter(student => {
+      const studentWeekSubmissions = submissions.filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
+      const studentWeekChecks = dailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
+
+      const hasHomeworkIssues = studentWeekSubmissions.some(s => 
+        s.status === 'Ikke levert' || s.status === 'Må rettes' || s.status === 'Glemt bok'
+      );
+      const hasIpadIssues = studentWeekChecks.some(c => !c.ipadBrought || !c.ipadCharged);
+      
+      // Exclude students who ONLY have "Syk/Fravær" and no other issues
+      const onlyAbsence = studentWeekSubmissions.length > 0 && studentWeekSubmissions.every(s => s.status === 'Syk/Fravær') && !hasIpadIssues;
+
+      return (hasHomeworkIssues || hasIpadIssues) && !onlyAbsence;
+    });
 
     if (studentsWithIssues.length === 0) {
-        toast({ title: "Ingen mangler", description: `Fant ingen elever med utestående arbeid i uke ${selectedWeek}.` });
+        toast({ title: "Ingen anmerkninger", description: `Fant ingen elever med anmerkninger i uke ${selectedWeek}.` });
         setIsGenerating(false);
         return;
     }
 
     const promises = studentsWithIssues.map(async student => {
       const studentWeekSubmissions = submissions.filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
+      const studentWeekChecks = dailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
       
       const input: GenerateWeeklySummaryInput = {
         studentName: student.name,
         week: `Uke ${selectedWeek}`,
         missingAssignments: studentWeekSubmissions.filter(s => s.status === 'Ikke levert').map(s => homework.find(h => h.id === s.homeworkId)?.title || ''),
         incompleteAssignments: studentWeekSubmissions.filter(s => s.status === 'Må rettes').map(s => homework.find(h => h.id === s.homeworkId)?.title || ''),
-        correctedAssignments: [], // This could be enhanced with more detailed data tracking
         forgottenBooks: studentWeekSubmissions.filter(s => s.status === 'Glemt bok').map(s => subjects.find(sub => sub.id === homework.find(h => h.id === s.homeworkId)?.subjectId)?.name || ''),
+        ipadNotChargedCount: studentWeekChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
+        ipadNotBroughtCount: studentWeekChecks.filter(c => !c.ipadBrought).length,
       };
+
       const result = await generateWeeklySummary(input);
       return { studentName: student.name, message: result.message };
     });
@@ -208,7 +221,7 @@ export default function Reports({ students, subjects, homework, submissions, dai
       <Card className="no-print">
         <CardHeader>
           <CardTitle>Ukesoppsummering for Meldinger (AI)</CardTitle>
-          <CardDescription>Generer automatisk meldinger til elever med utestående arbeid for en valgt uke.</CardDescription>
+          <CardDescription>Generer automatisk meldinger til foresatte for elever med anmerkninger for en valgt uke.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -220,7 +233,7 @@ export default function Reports({ students, subjects, homework, submissions, dai
                 {uniqueWeeks.map(w => <SelectItem key={w} value={String(w)}>Uke {w}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Button onClick={handleGenerateSummaries} disabled={isGenerating} className="w-full sm:w-auto">
+            <Button onClick={handleGenerateSummaries} disabled={isGenerating || !selectedWeek} className="w-full sm:w-auto">
               {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               Generer Oppsummering
             </Button>

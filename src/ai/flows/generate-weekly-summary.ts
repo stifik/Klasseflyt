@@ -3,9 +3,9 @@
 'use server';
 
 /**
- * @fileOverview A Genkit flow for generating weekly summary messages for students with missing or incomplete homework.
+ * @fileOverview A Genkit flow for generating weekly summary messages for parents about students with missing homework or iPad issues.
  *
- * - generateWeeklySummary - A function that generates weekly summary messages for students.
+ * - generateWeeklySummary - A function that generates weekly summary messages.
  * - GenerateWeeklySummaryInput - The input type for the generateWeeklySummary function.
  * - GenerateWeeklySummaryOutput - The return type for the generateWeeklySummary function.
  */
@@ -15,21 +15,18 @@ import {z} from 'genkit';
 
 const GenerateWeeklySummaryInputSchema = z.object({
   studentName: z.string().describe('The name of the student.'),
-  week: z.string().describe('The week for which to generate the summary.'),
+  week: z.string().describe('The week for which to generate the summary (e.g., "Uke 34").'),
   missingAssignments: z
     .array(z.string())
     .describe('A list of missing assignments.'),
   incompleteAssignments: z
     .array(z.string())
-    .describe('A list of incomplete assignments.'),
-  correctedAssignments: z
-    .array(z.string())
-    .describe(
-      'A list of assignments that were initially missing/incomplete but have since been corrected during the week.'
-    ),
+    .describe('A list of assignments that need corrections.'),
   forgottenBooks: z
     .array(z.string())
     .describe('A list of subjects for which the student forgot the book.'),
+  ipadNotChargedCount: z.number().describe('Number of times the iPad was not charged.'),
+  ipadNotBroughtCount: z.number().describe('Number of times the iPad was not brought to school.'),
 });
 
 export type GenerateWeeklySummaryInput = z.infer<
@@ -37,7 +34,7 @@ export type GenerateWeeklySummaryInput = z.infer<
 >;
 
 const GenerateWeeklySummaryOutputSchema = z.object({
-  message: z.string().describe('The generated summary message for the student.'),
+  message: z.string().describe('The generated summary message for the parents.'),
 });
 
 export type GenerateWeeklySummaryOutput = z.infer<
@@ -54,18 +51,39 @@ const prompt = ai.definePrompt({
   name: 'generateWeeklySummaryPrompt',
   input: {schema: GenerateWeeklySummaryInputSchema},
   output: {schema: GenerateWeeklySummaryOutputSchema},
-  prompt: `You are a helpful teacher generating summary messages for students and their parents.
+  prompt: `You are a helpful teacher in a Norwegian school, writing a weekly summary message to the parents of a student. The tone should be professional, informative, and neutral.
 
-  Compose a message for {{studentName}} for week {{week}}.
+  The message is for the parents of **{{studentName}}** regarding **{{week}}**.
 
-  The message should include:
-  - A list of missing assignments: {{missingAssignments}}
-  - A list of incomplete assignments: {{incompleteAssignments}}
-  - A list of assignments that have been corrected during the week: {{correctedAssignments}}
-  - A list of subjects for which the student forgot the book: {{forgottenBooks}}
+  Include the following points ONLY if they have occurred. If a list is empty or a count is zero, do not mention that category in the message.
 
-  "Syk/Fravær" should be considered valid absences and not included in the message. Acknowledge any assignments that were corrected during the week.
-  The tone should be encouraging and supportive.`,
+  - **Ikke levert (Missing assignments):** {{#if missingAssignments}}
+    - {{#each missingAssignments}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+    {{/if}}
+  - **Må rettes (Needs correction):** {{#if incompleteAssignments}}
+    - {{#each incompleteAssignments}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+    {{/if}}
+  - **Glemt bok (Forgotten book):** {{#if forgottenBooks}}
+    - {{#each forgottenBooks}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+    {{/if}}
+  - **iPad ikke ladet (iPad not charged):** {{#if ipadNotChargedCount}}{{ipadNotChargedCount}} gang(er){{/if}}
+  - **iPad ikke medbrakt (iPad not brought):** {{#if ipadNotBroughtCount}}{{ipadNotBroughtCount}} gang(er){{/if}}
+
+  Start the message with a polite opening. Combine the points into a concise and clear message. End with a polite closing.
+
+  Example message for a student with issues:
+  "Hei,
+  En liten oppsummering for [Student Name] i [Uke].
+  
+  Mangler/må rettes:
+  - Norsk: Leselekse
+  
+  iPad:
+  - Ikke ladet: 1 gang
+  
+  Vennlig hilsen,
+  Læreren"
+  `,
 });
 
 const generateWeeklySummaryFlow = ai.defineFlow(
