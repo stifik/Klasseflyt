@@ -22,12 +22,13 @@ import {
 } from "@/components/ui/alert-dialog"
 
 interface AdminProps {
+  userId: string;
   initialStudents: Student[];
   initialSubjects: Subject[];
   onUpdate: () => void;
 }
 
-export default function Admin({ initialStudents, initialSubjects, onUpdate }: AdminProps) {
+export default function Admin({ userId, initialStudents, initialSubjects, onUpdate }: AdminProps) {
   const [newStudent, setNewStudent] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [isSeeding, setIsSeeding] = useState(false);
@@ -36,7 +37,7 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
   const handleAddStudent = async () => {
     if (newStudent.trim()) {
       try {
-        await addStudent({ name: newStudent.trim() });
+        await addStudent(userId, { name: newStudent.trim() });
         setNewStudent("");
         onUpdate(); 
         toast({ title: "Elev lagt til", description: `${newStudent.trim()} er lagt til i klasselisten.` });
@@ -49,7 +50,7 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
   const handleAddSubject = async () => {
     if (newSubject.trim()) {
       try {
-        await addSubject({ name: newSubject.trim() });
+        await addSubject(userId, { name: newSubject.trim() });
         setNewSubject("");
         onUpdate();
         toast({ title: "Fag lagt til", description: `${newSubject.trim()} er lagt til i faglisten.` });
@@ -62,7 +63,7 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
   const handleDeleteStudent = async (id: string) => {
     const studentName = initialStudents.find(s => s.id === id)?.name;
     try {
-      await deleteStudent(id);
+      await deleteStudent(userId, id);
       onUpdate();
       toast({ title: "Elev slettet", description: `${studentName} er fjernet.`, variant: "destructive" });
     } catch (error) {
@@ -73,7 +74,7 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
   const handleDeleteSubject = async (id: string) => {
     const subjectName = initialSubjects.find(s => s.id === id)?.name;
     try {
-      await deleteSubject(id);
+      await deleteSubject(userId, id);
       onUpdate();
       toast({ title: "Fag slettet", description: `${subjectName} er fjernet.`, variant: "destructive" });
     } catch (error) {
@@ -84,10 +85,10 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
   const handleResetDatabase = async () => {
     setIsSeeding(true);
     try {
-      await resetAndSeedDatabase();
+      await resetAndSeedDatabase(userId);
       toast({
         title: "Database nullstilt og fylt!",
-        description: "Databasen er fylt med fersk demodata.",
+        description: "Databasen er fylt med fersk demodata for din bruker.",
       });
       onUpdate();
     } catch (error) {
@@ -113,7 +114,7 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
            <p className="mb-4 text-sm text-muted-foreground">
             {initialStudents.length === 0 
               ? "Databasen din er tom. Klikk her for å fylle den med demodata for å komme i gang."
-              : "Dette vil slette all nåværende data og fylle databasen med et nytt sett med demodata."
+              : "Dette vil slette all nåværende data knyttet til din bruker og fylle databasen med et nytt sett med demodata."
             }
            </p>
            <AlertDialog>
@@ -127,7 +128,7 @@ export default function Admin({ initialStudents, initialSubjects, onUpdate }: Ad
               <AlertDialogHeader>
                 <AlertDialogTitle><AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Dette vil permanent slette all data i databasen, inkludert alle elever, fag, lekser og innleveringer. Handlingen kan ikke angres.
+                  Dette vil permanent slette all data knyttet til din brukerkonto, inkludert alle elever, fag, lekser og innleveringer. Handlingen kan ikke angres.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

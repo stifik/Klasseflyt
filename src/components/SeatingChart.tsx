@@ -26,6 +26,7 @@ type SeatingChartSettings = {
 };
 
 interface SeatingChartProps {
+  userId: string;
   students: Student[];
   seatingChart: SeatingChartData | null;
   onSeatingChartChange: (chart: SeatingChartData | null, source: 'generation' | 'drag' | 'load') => void;
@@ -78,7 +79,7 @@ const DroppableDesk = ({ studentName, id, children }: DeskProps & { children: Re
 };
 
 
-export default function SeatingChart({ students, seatingChart, onSeatingChartChange, settings, onSettingsChange, history }: SeatingChartProps) {
+export default function SeatingChart({ userId, students, seatingChart, onSeatingChartChange, settings, onSettingsChange, history }: SeatingChartProps) {
   const { rows, cols, groupSize } = settings;
   const [avoidPairs, setAvoidPairs] = useState<AvoidPair[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);

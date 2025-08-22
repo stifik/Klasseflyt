@@ -17,13 +17,14 @@ import { useToast } from "@/hooks/use-toast";
 type IpadStatus = "OK" | "NotCharged" | "NotBrought";
 
 interface DailyChecklistProps {
+  userId: string;
   students: Student[];
   initialChecks: DailyCheck[];
   onUpdate: () => void;
   seatingChart: SeatingChartData | null;
 }
 
-export default function DailyChecklist({ students, initialChecks, onUpdate, seatingChart }: DailyChecklistProps) {
+export default function DailyChecklist({ userId, students, initialChecks, onUpdate, seatingChart }: DailyChecklistProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [checks, setChecks] = useState<DailyCheck[]>(initialChecks);
   const { toast } = useToast();
@@ -53,16 +54,16 @@ export default function DailyChecklist({ students, initialChecks, onUpdate, seat
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
 
     let newStatus: IpadStatus;
-    let newCheckData: DailyCheck | null = null;
+    let newCheckData: Omit<DailyCheck, 'id'> | null = null;
     
     switch (currentStatus) {
       case "OK":
         newStatus = "NotCharged";
-        newCheckData = { id: '', studentId, date, ipadCharged: false, ipadBrought: true };
+        newCheckData = { studentId, date, ipadCharged: false, ipadBrought: true };
         break;
       case "NotCharged":
         newStatus = "NotBrought";
-        newCheckData = { id: '', studentId, date, ipadCharged: false, ipadBrought: false };
+        newCheckData = { studentId, date, ipadCharged: false, ipadBrought: false };
         break;
       case "NotBrought":
       default:
@@ -73,16 +74,16 @@ export default function DailyChecklist({ students, initialChecks, onUpdate, seat
     const previousChecks = [...checks];
     if (newCheckData) {
         const otherChecks = checks.filter(c => !(c.studentId === studentId && new Date(c.date).toISOString().split('T')[0] === dateString));
-        setChecks([...otherChecks, newCheckData]);
+        setChecks([...otherChecks, {...newCheckData, id: 'temp-id'}]);
     } else {
         setChecks(checks.filter(c => !(c.studentId === studentId && new Date(c.date).toISOString().split('T')[0] === dateString)));
     }
 
     try {
         if (newStatus === 'OK') {
-            await deleteDailyCheckByStudentAndDate(studentId, date);
+            await deleteDailyCheckByStudentAndDate(userId, studentId, date);
         } else {
-            await setDailyCheck(newCheckData!);
+            await setDailyCheck(userId, newCheckData!);
         }
     } catch (error) {
         console.error(error);

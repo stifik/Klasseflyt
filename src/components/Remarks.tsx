@@ -15,13 +15,14 @@ import { addRemark, deleteRemark } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 interface RemarksProps {
+  userId: string;
   students: Student[];
   initialRemarks: Remark[];
   onUpdate: () => void;
   seatingChart: SeatingChartData | null;
 }
 
-export default function Remarks({ students, initialRemarks, onUpdate, seatingChart }: RemarksProps) {
+export default function Remarks({ userId, students, initialRemarks, onUpdate, seatingChart }: RemarksProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [remarks, setRemarks] = useState<Remark[]>(initialRemarks);
   const { toast } = useToast();
@@ -42,7 +43,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
     
     try {
-      const newRemark = await addRemark({ studentId, date });
+      const newRemark = await addRemark(userId, { studentId, date });
       setRemarks(prev => [...prev, newRemark]);
     } catch (error) {
       console.error(error);
@@ -59,7 +60,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
     const lastRemark = studentRemarksToday[0];
 
     try {
-      await deleteRemark(lastRemark.id);
+      await deleteRemark(userId, lastRemark.id);
       setRemarks(prev => prev.filter(r => r.id !== lastRemark.id));
     } catch (error) {
       console.error(error);

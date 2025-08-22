@@ -20,6 +20,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { getWeekNumber } from "@/lib/utils";
 
 interface HomeworkOverviewProps {
+  userId: string;
   students: Student[];
   subjects: Subject[];
   homeworkList: Homework[];
@@ -156,7 +157,7 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
   );
 };
 
-export default function HomeworkOverview({ students, subjects, homeworkList, submissions, onUpdate }: HomeworkOverviewProps) {
+export default function HomeworkOverview({ userId, students, subjects, homeworkList, submissions, onUpdate }: HomeworkOverviewProps) {
   const [commentModal, setCommentModal] = useState<{ open: boolean; studentId?: string; homeworkId?: string; }>({ open: false });
   const [currentComment, setCurrentComment] = useState("");
   const [filters, setFilters] = useState<{ subject: string; week: string; showProblems: boolean }>({ subject: "all", week: "all", showProblems: false });
@@ -191,7 +192,7 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
     }
 
     try {
-        const savedSubmission = await setSubmission(submissionData);
+        const savedSubmission = await setSubmission(userId, submissionData);
         // Update local state with the actual data from firestore, including the real ID
         setLocalSubmissions(prev => prev.map(s => (s.id === submissionData.id ? savedSubmission : s)));
 
@@ -233,7 +234,7 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
     setCurrentComment("");
 
     try {
-        const savedSubmission = await setSubmission(submissionData);
+        const savedSubmission = await setSubmission(userId, submissionData);
         setLocalSubmissions(prev => prev.map(s => (s.id === submissionData.id ? savedSubmission : s)));
         toast({ title: "Kommentar lagret" });
     } catch(error) {
@@ -258,7 +259,7 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
     };
     
     try {
-        const newHomework = await addHomework(newHomeworkData);
+        const newHomework = await addHomework(userId, newHomeworkData);
         toast({ title: "Lekse lagt til", description: `"${title}" er lagt til i oversikten.` });
 
         if (defaultStatus !== "none") {
@@ -268,7 +269,7 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
                 status: defaultStatus,
                 comment: ""
             }));
-            await batchAddSubmissions(newSubmissions);
+            await batchAddSubmissions(userId, newSubmissions);
             toast({ title: "Standardstatus satt", description: `Alle elever er satt til "${defaultStatus}".` });
         }
         onUpdate();
@@ -285,7 +286,7 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
       const newHwData = { ...hwData, week: getWeekNumber(newDate), date: newDate };
       
       try {
-        await addHomework(newHwData);
+        await addHomework(userId, newHwData);
         onUpdate();
         toast({ title: "Lekse kopiert", description: `En ny versjon av "${hwToCopy.title}" er opprettet for denne uken.`});
       } catch(error) {
@@ -416,5 +417,3 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
     </div>
   );
 }
-
-    

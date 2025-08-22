@@ -9,13 +9,18 @@ import Reports from "@/components/Reports";
 import Admin from "@/components/Admin";
 import SeatingChart from "@/components/SeatingChart";
 import Remarks from "@/components/Remarks";
-import StudentLookup from "@/components/StudentLookup"; // Importer den nye komponenten
-import { BookOpenCheck, Loader2 } from "lucide-react";
+import StudentLookup from "@/components/StudentLookup";
+import withAuth from '@/components/withAuth';
+import { Button } from "@/components/ui/button";
+import { BookOpenCheck, Loader2, LogOut } from "lucide-react";
 import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark } from "@/lib/types";
 import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks, getLatestSeatingChart, saveSeatingChart, getSeatingChartHistory, getRemarks } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { getAuth, signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
 
-export default function Home() {
+
+function Home({ userId }: { userId: string }) {
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [homework, setHomework] = useState<Homework[]>([]);
@@ -32,8 +37,11 @@ export default function Home() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
+  const auth = getAuth();
 
   const loadData = async (isUpdate = false) => {
+    if (!userId) return;
     if (isUpdate) {
       setIsUpdating(true);
     } else {
@@ -51,14 +59,14 @@ export default function Home() {
         seatingChartResult,
         historyData
       ] = await Promise.all([
-        getStudents(),
-        getSubjects(),
-        getHomework(),
-        getSubmissions(),
-        getDailyChecks(),
-        getRemarks(),
-        getLatestSeatingChart(),
-        getSeatingChartHistory()
+        getStudents(userId),
+        getSubjects(userId),
+        getHomework(userId),
+        getSubmissions(userId),
+        getDailyChecks(userId),
+        getRemarks(userId),
+        getLatestSeatingChart(userId),
+        getSeatingChartHistory(userId)
       ]);
 
       setStudents(studentsData);
@@ -88,7 +96,17 @@ export default function Home() {
 
   useEffect(() => {
     loadData(false);
-  }, []);
+  }, [userId]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error("Error signing out: ", error);
+      toast({ title: "Feil", description: "Kunne ikke logge ut.", variant: "destructive" });
+    }
+  };
 
   if (initialLoading) {
     return (
@@ -105,11 +123,11 @@ export default function Home() {
     setSeatingChart(newChart);
     if (newChart && (source === 'generation' || source === 'drag')) {
       try {
-        await saveSeatingChart(newChart, seatingChartSettings);
+        await saveSeatingChart(userId, newChart, seatingChartSettings);
         if(source === 'generation') {
            toast({ title: "Klassekart lagret", description: "Et nytt klassekart er generert og lagret i arkivet."});
            // reload history
-           getSeatingChartHistory().then(setSeatingChartHistory);
+           getSeatingChartHistory(userId).then(setSeatingChartHistory);
         }
       } catch (error) {
         console.error("Failed to save seating chart:", error);
@@ -127,11 +145,14 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <header className="sticky top-0 z-10 flex items-center h-16 px-4 border-b bg-background sm:px-6">
+      <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 border-b bg-background sm:px-6">
         <div className="flex items-center gap-2 text-primary-foreground">
           <BookOpenCheck className="w-8 h-8 text-primary" />
           <h1 className="text-xl font-bold text-foreground font-headline">Leksehjelperen</h1>
         </div>
+        <Button variant="ghost" onClick={handleLogout}>
+            <LogOut className="mr-2" /> Logg ut
+        </Button>
       </header>
       <main className="flex-1 p-4 sm:p-6">
         <Tabs defaultValue="overview" className="w-full">
@@ -147,6 +168,7 @@ export default function Home() {
 
           <TabsContent value="overview">
             <HomeworkOverview
+              userId={userId}
               students={students}
               subjects={subjects}
               homeworkList={homework}
@@ -156,6 +178,7 @@ export default function Home() {
           </TabsContent>
           <TabsContent value="daily">
             <DailyChecklist
+              userId={userId}
               students={students}
               initialChecks={dailyChecks}
               onUpdate={handleDataUpdate}
@@ -164,6 +187,7 @@ export default function Home() {
           </TabsContent>
            <TabsContent value="remarks">
             <Remarks
+              userId={userId}
               students={students}
               initialRemarks={remarks}
               onUpdate={handleDataUpdate}
@@ -191,6 +215,7 @@ export default function Home() {
           </TabsContent>
            <TabsContent value="seating-chart">
             <SeatingChart
+              userId={userId}
               students={students}
               seatingChart={seatingChart}
               onSeatingChartChange={handleSeatingChartChange}
@@ -201,6 +226,7 @@ export default function Home() {
           </TabsContent>
           <TabsContent value="admin">
             <Admin
+              userId={userId}
               initialStudents={students}
               initialSubjects={subjects}
               onUpdate={handleDataUpdate}
@@ -211,3 +237,5 @@ export default function Home() {
     </div>
   );
 }
+
+export default withAuth(Home);
