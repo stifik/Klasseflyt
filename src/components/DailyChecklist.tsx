@@ -49,36 +49,51 @@ export default function DailyChecklist({ students, initialChecks, onUpdate }: Da
   const handleStatusChange = async (studentId: string) => {
     const currentStatus = getStatus(studentId);
     const dateString = date.toISOString().split("T")[0];
+    const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
 
     let newStatus: IpadStatus;
-    let newCheckState: Partial<DailyCheck> = {};
-
+    let newCheckData: DailyCheck | null = null;
+    
     switch (currentStatus) {
       case "OK":
         newStatus = "NotCharged";
-        newCheckState = { studentId, date, ipadCharged: false, ipadBrought: true };
+        newCheckData = { id: '', studentId, date, ipadCharged: false, ipadBrought: true };
         break;
       case "NotCharged":
         newStatus = "NotBrought";
-        newCheckState = { studentId, date, ipadCharged: false, ipadBrought: false };
+        newCheckData = { id: '', studentId, date, ipadCharged: false, ipadBrought: false };
         break;
       case "NotBrought":
       default:
         newStatus = "OK";
-        newCheckState = { studentId, date, ipadCharged: true, ipadBrought: true };
         break;
+    }
+    
+    // Optimistic UI Update
+    const previousChecks = [...checks];
+    if (newCheckData) {
+        // Remove old check for this student and date, and add new one
+        const otherChecks = checks.filter(c => !(c.studentId === studentId && new Date(c.date).toISOString().split('T')[0] === dateString));
+        setChecks([...otherChecks, newCheckData]);
+    } else {
+        // Remove the check (status is OK)
+        setChecks(checks.filter(c => !(c.studentId === studentId && new Date(c.date).toISOString().split('T')[0] === dateString)));
     }
 
     try {
         if (newStatus === 'OK') {
             await deleteDailyCheckByStudentAndDate(studentId, date);
         } else {
-            await setDailyCheck(newCheckState as Omit<DailyCheck, 'id'>);
+            // newCheckData will not be null here
+            await setDailyCheck(newCheckData!);
         }
-        onUpdate();
+        // Data is out of sync, trigger a full refetch in the background
+        onUpdate(); 
     } catch (error) {
         console.error(error);
-        toast({title: "Feil", description: "Kunne ikke lagre endring.", variant: "destructive"});
+        // Revert UI on error
+        setChecks(previousChecks);
+        toast({title: "Feil", description: `Kunne ikke lagre endring for ${studentName}.`, variant: "destructive"});
     }
   };
   
