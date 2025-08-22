@@ -3,53 +3,90 @@
 import { useState } from "react";
 import type { Student, DailyCheck } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, BatteryWarning, TabletSmartphone } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface DailyChecklistProps {
   students: Student[];
   initialChecks: DailyCheck[];
 }
 
+type IpadStatus = "OK" | "NotCharged" | "NotBrought";
+
 export default function DailyChecklist({ students, initialChecks }: DailyChecklistProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [checks, setChecks] = useState<DailyCheck[]>(initialChecks);
 
-  const handleCheckChange = (studentId: string, type: "ipadCharged" | "ipadBrought", checked: boolean) => {
-    const todayString = date.toISOString().split("T")[0];
-    const existingCheckIndex = checks.findIndex(
-      (c) => c.studentId === studentId && c.date.toISOString().split("T")[0] === todayString
+  const getCheckForDate = (studentId: string, checkDate: Date) => {
+    const dateString = checkDate.toISOString().split("T")[0];
+    return checks.find(
+      (c) => c.studentId === studentId && c.date.toISOString().split("T")[0] === dateString
     );
+  };
+  
+  const getStatus = (studentId: string): IpadStatus => {
+    const check = getCheckForDate(studentId, date);
+    if (!check) return "OK";
+    if (!check.ipadBrought) return "NotBrought";
+    if (!check.ipadCharged) return "NotCharged";
+    return "OK";
+  };
+  
+  const handleStatusChange = (studentId: string) => {
+    const currentStatus = getStatus(studentId);
+    const todayString = date.toISOString().split("T")[0];
+    const existingCheck = getCheckForDate(studentId, date);
 
-    let newChecks;
-    if (existingCheckIndex !== -1) {
-      newChecks = [...checks];
-      newChecks[existingCheckIndex] = { ...newChecks[existingCheckIndex], [type]: checked };
-    } else {
+    let newStatus: IpadStatus;
+    let newCheckState: Partial<DailyCheck> = {};
+
+    switch (currentStatus) {
+      case "OK":
+        newStatus = "NotCharged";
+        newCheckState = { ipadCharged: false, ipadBrought: true };
+        break;
+      case "NotCharged":
+        newStatus = "NotBrought";
+        newCheckState = { ipadCharged: false, ipadBrought: false };
+        break;
+      case "NotBrought":
+      default:
+        newStatus = "OK";
+        newCheckState = { ipadCharged: true, ipadBrought: true };
+        break;
+    }
+
+    let newChecks = [...checks];
+    if (existingCheck) {
+      const updatedCheck = { ...existingCheck, ...newCheckState };
+       // If status is OK, we can remove the check record for that day
+      if (newStatus === 'OK') {
+        newChecks = newChecks.filter(c => c.id !== existingCheck.id);
+      } else {
+        newChecks = newChecks.map(c => c.id === existingCheck.id ? updatedCheck : c);
+      }
+    } else if (newStatus !== 'OK') {
       const newCheck: DailyCheck = {
         id: `dc${checks.length + 1}`,
         studentId,
         date,
-        ipadCharged: type === "ipadCharged" ? checked : true,
-        ipadBrought: type === "ipadBrought" ? checked : true,
+        ipadCharged: newCheckState.ipadCharged!,
+        ipadBrought: newCheckState.ipadBrought!,
       };
-      newChecks = [...checks, newCheck];
+      newChecks.push(newCheck);
     }
     setChecks(newChecks);
   };
-
-  const getCheckStatus = (studentId: string, type: "ipadCharged" | "ipadBrought") => {
-    const todayString = date.toISOString().split("T")[0];
-    const check = checks.find(
-      (c) => c.studentId === studentId && c.date.toISOString().split("T")[0] === todayString
-    );
-    return check ? check[type] : true;
+  
+  const statusConfig: Record<IpadStatus, { variant: "default" | "destructive" | "outline", icon?: React.ReactNode, label: string }> = {
+    OK: { variant: "default", label: "OK" },
+    NotCharged: { variant: "outline", icon: <BatteryWarning className="mr-2" />, label: "Ikke ladet" },
+    NotBrought: { variant: "destructive", icon: <TabletSmartphone className="mr-2" />, label: "Ikke medbrakt" },
   };
 
   return (
@@ -57,8 +94,8 @@ export default function DailyChecklist({ students, initialChecks }: DailyCheckli
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle>Daglig Sjekk</CardTitle>
-            <CardDescription>Kryss av for elever som ikke har med eller ladet iPad.</CardDescription>
+            <CardTitle>Daglig iPad-sjekk</CardTitle>
+            <CardDescription>Registrer status for hver elevs iPad.</CardDescription>
           </div>
           <Popover>
             <PopoverTrigger asChild>
@@ -77,37 +114,28 @@ export default function DailyChecklist({ students, initialChecks }: DailyCheckli
         </div>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Elev</TableHead>
-                <TableHead className="text-center">Ladet iPad</TableHead>
-                <TableHead className="text-center">Medbrakt iPad</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {students.map((student) => (
-                <TableRow key={student.id}>
-                  <TableCell className="font-medium">{student.name}</TableCell>
-                  <TableCell className="text-center">
-                    <Checkbox
-                      checked={getCheckStatus(student.id, "ipadCharged")}
-                      onCheckedChange={(checked) => handleCheckChange(student.id, "ipadCharged", !!checked)}
-                      aria-label={`iPad ladet for ${student.name}`}
-                    />
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Checkbox
-                      checked={getCheckStatus(student.id, "ipadBrought")}
-                      onCheckedChange={(checked) => handleCheckChange(student.id, "ipadBrought", !!checked)}
-                       aria-label={`iPad medbrakt for ${student.name}`}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {students.map((student) => {
+                const status = getStatus(student.id);
+                const config = statusConfig[status];
+                return (
+                    <Button
+                        key={student.id}
+                        variant={config.variant}
+                        onClick={() => handleStatusChange(student.id)}
+                        className={cn("justify-center h-auto py-2 flex-col", {
+                           "bg-green-600 hover:bg-green-700 text-white": status === "OK",
+                           "bg-yellow-400 hover:bg-yellow-500 text-yellow-900 border-yellow-500": status === "NotCharged",
+                        })}
+                    >
+                        <span className="font-semibold">{student.name}</span>
+                        <div className="flex items-center text-xs opacity-80">
+                           {config.icon}
+                           <span>{config.label}</span>
+                        </div>
+                    </Button>
+                )
+            })}
         </div>
       </CardContent>
     </Card>
