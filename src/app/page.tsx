@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getAuth, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useSettings } from "@/hooks/useSettings";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 
 const tabComponents: Record<TabKey, React.FC<any>> = {
@@ -164,18 +165,6 @@ function Home({ userId }: { userId: string }) {
 
   const visibleTabs = settings.tabOrder.filter(tabKey => settings.tabs[tabKey]);
 
-  const tabGridCols: Record<number, string> = {
-    1: 'grid-cols-1',
-    2: 'grid-cols-2',
-    3: 'sm:grid-cols-3',
-    4: 'sm:grid-cols-4',
-    5: 'sm:grid-cols-5',
-    6: 'sm:grid-cols-3 md:grid-cols-6',
-  };
-  
-  const numVisibleTabs = visibleTabs.length + 1; // +1 for settings tab
-  const gridClass = tabGridCols[numVisibleTabs] || 'sm:grid-cols-3 md:grid-cols-6';
-
   const componentProps = {
     overview: { userId, students, subjects, homeworkList: homework, submissions, onUpdate: handleDataUpdate },
     dailyCheck: { userId, students, initialChecks: dailyChecks, onUpdate: handleDataUpdate, seatingChart },
@@ -198,12 +187,15 @@ function Home({ userId }: { userId: string }) {
       </header>
       <main className="flex-1 p-4 sm:p-6">
         <Tabs defaultValue={visibleTabs[0] || 'settings'} className="w-full">
-          <TabsList className={`grid w-full mb-4 ${gridClass}`}>
-            {visibleTabs.map(tabKey => (
-              <TabsTrigger key={tabKey} value={tabKey}>{tabLabels[tabKey]}</TabsTrigger>
-            ))}
-            <TabsTrigger value="settings">Innstillinger</TabsTrigger>
-          </TabsList>
+          <ScrollArea className="w-full whitespace-nowrap">
+            <TabsList className="inline-flex w-auto mb-4">
+              {visibleTabs.map(tabKey => (
+                <TabsTrigger key={tabKey} value={tabKey}>{tabLabels[tabKey]}</TabsTrigger>
+              ))}
+              <TabsTrigger value="settings">Innstillinger</TabsTrigger>
+            </TabsList>
+            <ScrollBar orientation="horizontal" className="invisible" />
+          </ScrollArea>
 
           {visibleTabs.map(tabKey => {
               const Component = tabComponents[tabKey];
