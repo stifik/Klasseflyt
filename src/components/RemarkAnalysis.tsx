@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { Button } from "./ui/button";
 import { X as XIcon } from "lucide-react";
+import { subDays, startOfDay } from 'date-fns';
 
 interface RemarkAnalysisProps {
   students: Student[];
@@ -20,7 +21,8 @@ const dayOfWeekMap = [
 ];
 const dayOfWeekArray = ['Søn', 'Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør'];
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1919'];
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1919', '#4dd0e1', '#ffcdd2', '#d1c4e9'];
+
 
 interface FilterState {
   day?: number;
@@ -30,12 +32,26 @@ interface FilterState {
 export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnalysisProps) {
   const [selectedStudentId, setSelectedStudentId] = useState<string>("whole-class");
   const [filter, setFilter] = useState<FilterState>({});
+  const [dateFilter, setDateFilter] = useState<string>("all-time");
 
   const analysisData = useMemo(() => {
     const isWholeClass = selectedStudentId === "whole-class";
+    
+    const now = new Date();
+    const filteredRemarksByDate = initialRemarks.filter(r => {
+        const remarkDate = new Date(r.date);
+        if (dateFilter === "7-days") {
+            return remarkDate >= subDays(now, 7);
+        }
+        if (dateFilter === "30-days") {
+            return remarkDate >= subDays(now, 30);
+        }
+        return true; // "all-time"
+    });
+
     let relevantRemarks = isWholeClass 
-      ? initialRemarks 
-      : initialRemarks.filter(r => r.studentId === selectedStudentId);
+      ? filteredRemarksByDate 
+      : filteredRemarksByDate.filter(r => r.studentId === selectedStudentId);
 
     // Initial charts data
     const remarksByPeriod = Array.from({ length: 6 }, (_, i) => ({ name: `Time ${i + 1}`, value: i + 1, Antall: 0 }));
@@ -124,7 +140,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
 
 
     return {
-      total: isWholeClass ? initialRemarks.length : relevantRemarks.length,
+      total: relevantRemarks.length,
       byPeriod: remarksByPeriod.filter(p => p.Antall > 0),
       byDay: remarksByDay.filter(d => d.name !== 'Lør' && d.name !== 'Søn' && d.Antall > 0),
       byType: pieChartData,
@@ -132,7 +148,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
       drillDownTitle,
       drillDownSubtitle,
     };
-  }, [selectedStudentId, initialRemarks, filter, students]);
+  }, [selectedStudentId, initialRemarks, filter, students, dateFilter]);
   
   const handleBarClick = (data: any, type: 'day' | 'period' | 'student') => {
     if (data && data.activePayload && data.activePayload.length > 0) {
@@ -159,22 +175,34 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <CardTitle>{currentTitle}</CardTitle>
-                <CardDescription>Velg en elev eller se data for hele klassen. Klikk på søyler for å drille ned i data.</CardDescription>
+                <CardDescription>Velg en elev, tidsperiode, og klikk på søyler for å drille ned i data.</CardDescription>
             </div>
-            <Select value={selectedStudentId} onValueChange={(id) => { setSelectedStudentId(id); setFilter({}); }}>
-              <SelectTrigger className="w-full mt-2 sm:mt-0 sm:w-[280px]">
-                <SelectValue placeholder="Velg elev..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="whole-class">Hele Klassen</SelectItem>
-                {students.map(student => (
-                  <SelectItem key={student.id} value={student.id}>{student.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Select value={dateFilter} onValueChange={setDateFilter}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue placeholder="Velg tidsperiode..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all-time">Hele perioden</SelectItem>
+                      <SelectItem value="30-days">Siste 30 dager</SelectItem>
+                      <SelectItem value="7-days">Siste 7 dager</SelectItem>
+                  </SelectContent>
+              </Select>
+              <Select value={selectedStudentId} onValueChange={(id) => { setSelectedStudentId(id); setFilter({}); }}>
+                <SelectTrigger className="w-full sm:w-[280px]">
+                  <SelectValue placeholder="Velg elev..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="whole-class">Hele Klassen</SelectItem>
+                  {students.map(student => (
+                    <SelectItem key={student.id} value={student.id}>{student.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -189,6 +217,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
                         </CardHeader>
                         <CardContent>
                             <p className="text-4xl font-bold">{analysisData.total} <span className="text-lg font-normal text-muted-foreground">anmerkninger</span></p>
+                             <p className="text-xs text-muted-foreground">i valgt periode</p>
                         </CardContent>
                     </Card>
                     <Card>
@@ -200,11 +229,11 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
                                 <div className="h-[150px] -ml-4">
                                 <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
-                                            <Pie data={analysisData.byType} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} fill="#8884d8">
+                                            <Pie data={analysisData.byType} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60}>
                                                 {analysisData.byType.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                             </Pie>
-                                            <Tooltip />
-                                            <Legend />
+                                            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }} />
+                                            <Legend wrapperStyle={{fontSize: "12px"}}/>
                                         </PieChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -226,7 +255,11 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
                                             <XAxis dataKey="name" fontSize={12} />
                                             <YAxis allowDecimals={false} fontSize={12} />
                                             <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', fontSize: '12px' }} />
-                                            <Bar dataKey="Antall" fill="hsl(var(--primary))" className={isWholeClass ? "cursor-pointer" : ""} />
+                                            <Bar dataKey="Antall" className={isWholeClass ? "cursor-pointer" : ""}>
+                                                {analysisData.byPeriod.map((entry, index) => (
+                                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Bar>
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -244,7 +277,11 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
                                             <XAxis dataKey="name" fontSize={12} />
                                             <YAxis allowDecimals={false} fontSize={12} />
                                             <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', fontSize: '12px' }} />
-                                            <Bar dataKey="Antall" fill="hsl(var(--primary))" className={isWholeClass ? "cursor-pointer" : ""} />
+                                            <Bar dataKey="Antall" className={isWholeClass ? "cursor-pointer" : ""}>
+                                                {analysisData.byDay.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Bar>
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -280,7 +317,11 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
                                                         <XAxis dataKey="name" fontSize={12} />
                                                         <YAxis allowDecimals={false} fontSize={12} />
                                                         <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', fontSize: '12px' }} />
-                                                        <Bar dataKey="Antall" fill="hsl(var(--accent))" className={chartInfo.chartType === 'period' ? 'cursor-pointer' : ''} />
+                                                        <Bar dataKey="Antall" className={chartInfo.chartType === 'period' ? 'cursor-pointer' : ''}>
+                                                            {chartInfo.data.map((entry: any, index: number) => (
+                                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                            ))}
+                                                        </Bar>
                                                     </BarChart>
                                                 </ResponsiveContainer>
                                             </CardContent>
@@ -296,7 +337,11 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
                                             <XAxis dataKey="name" fontSize={12} />
                                             <YAxis allowDecimals={false} fontSize={12} />
                                             <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', fontSize: '12px' }} />
-                                            <Bar dataKey="Antall" fill="hsl(var(--accent))" />
+                                            <Bar dataKey="Antall">
+                                                {(analysisData.drillDownData as any[]).map((entry: any, index: number) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Bar>
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>
