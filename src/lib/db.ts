@@ -15,7 +15,7 @@ export class MySubClassedDexie extends Dexie {
     settings!: Table<AppSettings & { id: string }, string>;
 
     constructor() {
-        super('LeksehjelperenDB');
+        super('KlasseflytDB');
         this.version(1).stores({
             students: '++id, name',
             subjects: '++id, name',
@@ -67,6 +67,13 @@ const defaultSettings: AppSettings = {
   remarkTypes: ["Generell", "Forstyrrer andre", "Mangler utstyr", "Upassende språk", "Gjorde en god innsats"],
 };
 
+// Function to clear all data from the database
+export async function clearDatabase() {
+     await db.transaction('rw', db.tables, async () => {
+        await Promise.all(db.tables.map(table => table.clear()));
+        console.log("Database has been cleared.");
+     });
+}
 
 // Function to clear all data and re-seed with mock data
 export async function resetDatabase() {

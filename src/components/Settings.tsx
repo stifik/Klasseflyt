@@ -38,7 +38,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Separator } from "./ui/separator";
-import { db, resetDatabase } from "@/lib/db";
+import { db, resetDatabase, clearDatabase } from "@/lib/db";
 
 interface SettingsProps {
   initialStudents: Student[];
@@ -95,7 +95,7 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
   const [newStudent, setNewStudent] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [newRemarkType, setNewRemarkType] = useState("");
-  const [isSeeding, setIsSeeding] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [localSettings, setLocalSettings] = useState(initialSettings);
 
   const { toast } = useToast();
@@ -178,7 +178,7 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
 
 
   const handleResetDatabase = async () => {
-    setIsSeeding(true);
+    setIsProcessing(true);
     try {
       await resetDatabase();
       toast({
@@ -193,7 +193,27 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
         variant: "destructive",
       });
     } finally {
-      setIsSeeding(false);
+      setIsProcessing(false);
+    }
+  };
+  
+  const handleClearDatabase = async () => {
+    setIsProcessing(true);
+    try {
+        await clearDatabase();
+        toast({
+            title: "Database tømt!",
+            description: "All data er slettet. Du kan nå legge inn din egen data.",
+        });
+    } catch (error) {
+        console.error(error);
+        toast({
+            title: "Feil ved tømming",
+            description: "Kunne ikke tømme databasen.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsProcessing(false);
     }
   };
 
@@ -394,35 +414,61 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
         </Card>
          <Card>
             <CardHeader>
-                <CardTitle>Demodata</CardTitle>
+                <CardTitle className="flex items-center"><Database className="mr-2" />Database</CardTitle>
+                <CardDescription>Handlinger for å administrere appens lokale data.</CardDescription>
             </CardHeader>
-            <CardContent>
-                <p className="mb-4 text-sm text-muted-foreground">
-                    {initialStudents.length === 0 
-                    ? "Databasen din er tom. Klikk her for å fylle den med demodata for å komme i gang."
-                    : "Dette vil slette all nåværende data og fylle databasen med et nytt sett med demodata."
-                    }
-                </p>
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant={initialStudents.length > 0 ? "destructive" : "default"} disabled={isSeeding}>
-                        <Database className="mr-2" />
-                        {isSeeding ? 'Jobber...' : (initialStudents.length === 0 ? 'Fyll database med demodata' : 'Nullstill og fyll database')}
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle><AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                        Dette vil permanent slette all data. Handlingen kan ikke angres.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleResetDatabase}>Ja, slett alt og start på nytt</AlertDialogAction>
-                    </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+            <CardContent className="space-y-4">
+                 <div>
+                    <h4 className="font-semibold">Tøm database for ny start</h4>
+                    <p className="mb-2 text-sm text-muted-foreground">
+                        Dette sletter all eksisterende data (elever, lekser, anmerkninger etc.) slik at du kan starte med blanke ark. Handlingen kan ikke angres.
+                    </p>
+                     <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" disabled={isProcessing}>
+                            {isProcessing ? 'Jobber...' : 'Tøm all data'}
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle><AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                            Dette vil permanent slette all data i appen. Handlingen kan ikke angres.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleClearDatabase}>Ja, slett alt</AlertDialogAction>
+                        </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
+                <Separator />
+                <div>
+                     <h4 className="font-semibold">Fyll med demodata</h4>
+                    <p className="mb-2 text-sm text-muted-foreground">
+                        Dette er for testing. Handlingen sletter først all data, og fyller deretter databasen med et sett med fiktive elever og data.
+                    </p>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="outline" disabled={isProcessing}>
+                            {isProcessing ? 'Jobber...' : 'Nullstill og fyll med demodata'}
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle><AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                            Dette vil permanent slette all nåværende data og erstatte den med demodata.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleResetDatabase}>Ja, nullstill og fyll på nytt</AlertDialogAction>
+                        </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
             </CardContent>
         </Card>
       </div>
