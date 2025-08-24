@@ -7,9 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useToast } from "@/hooks/use-toast";
-import { Printer, Copy, Loader2 } from 'lucide-react';
+import { Printer, Copy, Loader2, BookX } from 'lucide-react';
 import { getWeekNumber } from '@/lib/utils';
 import { format } from 'date-fns';
 import { nb } from 'date-fns/locale';
@@ -31,6 +30,9 @@ const statusColors: Record<HomeworkStatus, string> = {
   "Syk/Fravær": "#3b82f6",
   "Glemt bok": "#f97316",
 };
+
+const statusOrder: HomeworkStatus[] = ["Godkjent", "Må rettes", "Glemt bok", "Ikke levert", "Syk/Fravær"];
+
 
 // Lokal funksjon for å generere melding
 const generateSummaryMessage = (
@@ -123,18 +125,31 @@ export default function Reports({ students, subjects, homework, submissions, dai
           acc[sub.status] = (acc[sub.status] || 0) + 1;
           return acc;
         }, {} as Record<HomeworkStatus, number>);
+        
+        const totalSubmissions = subjectSubmissions.length;
 
         const comments = subjectSubmissions.filter(s => s.comment).map(s => ({
             homeworkTitle: homework.find(h => h.id === s.homeworkId)?.title || 'Ukjent lekse',
+            week: homework.find(h => h.id === s.homeworkId)?.week || 0,
             comment: s.comment!
         }));
+
+        const problemSubmissions = subjectSubmissions
+            .filter(s => s.status === "Må rettes")
+            .map(s => ({
+                week: homework.find(h => h.id === s.homeworkId)?.week,
+                title: homework.find(h => h.id === s.homeworkId)?.title,
+                comment: s.comment
+            }))
+            .filter(s => s.title);
 
         return {
           subjectId: subject.id,
           subjectName: subject.name,
           statusCounts,
           comments,
-          chartData: Object.entries(statusCounts).map(([name, value]) => ({ name, value, fill: statusColors[name as HomeworkStatus] })),
+          totalSubmissions,
+          problemSubmissions,
         };
       });
 
@@ -275,28 +290,43 @@ export default function Reports({ students, subjects, homework, submissions, dai
                 </AccordionTrigger>
                 <AccordionContent className="p-4 space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
-                    {stat.statsBySubject.map(subStat => (
+                     {stat.statsBySubject.map(subStat => (
                       <Card key={subStat.subjectId}>
                         <CardHeader>
-                          <CardTitle>{subStat.subjectName}</CardTitle>
+                          <CardTitle className="text-base">{subStat.subjectName} ({subStat.totalSubmissions})</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            {subStat.chartData.length > 0 ? (
-                                <ResponsiveContainer width="100%" height={200}>
-                                    <BarChart data={subStat.chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                                        <YAxis allowDecimals={false} />
-                                        <Tooltip />
-                                        <Bar dataKey="value" name="Antall" />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            ) : <p className="text-sm text-muted-foreground">Ingen data for dette faget.</p>}
-                            {subStat.comments.length > 0 && (
-                                <div className="mt-4">
-                                    <h4 className="font-semibold">Kommentarer:</h4>
-                                    <ul className="pl-4 mt-1 text-sm list-disc">
-                                        {subStat.comments.map((c, i) => <li key={i}><strong>{c.homeworkTitle}:</strong> {c.comment}</li>)}
+                        <CardContent className="space-y-3">
+                          {subStat.totalSubmissions > 0 ? (
+                            <div className="w-full h-4 flex rounded-full overflow-hidden bg-gray-200">
+                              {statusOrder.map(status => {
+                                const count = subStat.statusCounts[status] || 0;
+                                if (count === 0) return null;
+                                const percentage = (count / subStat.totalSubmissions) * 100;
+                                return (
+                                  <div
+                                    key={status}
+                                    className="h-full"
+                                    style={{
+                                      width: `${percentage}%`,
+                                      backgroundColor: statusColors[status],
+                                    }}
+                                    title={`${status}: ${count}`}
+                                  />
+                                );
+                              })}
+                            </div>
+                          ) : <p className="text-sm text-muted-foreground">Ingen leksedata for dette faget.</p>}
+                          
+                           {subStat.problemSubmissions.length > 0 && (
+                                <div className="pt-2 border-t">
+                                    <h4 className="font-semibold text-sm flex items-center gap-2"><BookX className="w-4 h-4 text-yellow-600" /> Lekser som må rettes</h4>
+                                    <ul className="pl-4 mt-1 text-sm list-disc space-y-1">
+                                        {subStat.problemSubmissions.map((c, i) => 
+                                            <li key={i}>
+                                                <strong>Uke {c.week}: {c.title}</strong>
+                                                {c.comment && <p className="text-xs text-muted-foreground pl-2 italic">"{c.comment}"</p>}
+                                            </li>
+                                        )}
                                     </ul>
                                 </div>
                             )}
@@ -329,7 +359,7 @@ export default function Reports({ students, subjects, homework, submissions, dai
                   </div>
                   <div className="pt-4 text-xs text-center text-muted-foreground">
                     Tegnforklaring: 
-                    {Object.entries(statusColors).map(([name, color]) => <span key={name} className="inline-flex items-center ml-4"><span className="w-3 h-3 mr-1 rounded-full" style={{backgroundColor: color}}></span>{name}</span>)}
+                    {statusOrder.map((name) => <span key={name} className="inline-flex items-center ml-4"><span className="w-3 h-3 mr-1 rounded-full" style={{backgroundColor: statusColors[name]}}></span>{name}</span>)}
                   </div>
                 </AccordionContent>
               </AccordionItem>
