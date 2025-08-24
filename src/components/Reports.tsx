@@ -266,11 +266,11 @@ export default function Reports({ students, subjects, homework, submissions, dai
     const studentIds = studentStats.map(s => s.studentId);
     setAccordionValue(studentIds);
 
-    // Give the DOM a moment to update before printing
+    // Give the DOM a moment to update and re-render before printing
     setTimeout(() => {
         window.print();
-        setAccordionValue(undefined);
-    }, 50);
+        setAccordionValue(undefined); // Close accordions after printing
+    }, 50); // A small delay is crucial
   };
 
   return (
