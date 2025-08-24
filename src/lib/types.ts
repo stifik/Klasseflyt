@@ -76,9 +76,16 @@ export type ReportSettings = {
   teacherName: string;
 };
 
+export type PeriodTime = {
+    period: number;
+    startTime: string;
+    endTime: string;
+};
+
 export type AppSettings = {
   tabs: Record<TabKey, boolean>;
   tabOrder: TabKey[];
   reportSettings: ReportSettings;
+  schedule: PeriodTime[];
   selectedSeatingLayoutId?: string | null;
 };

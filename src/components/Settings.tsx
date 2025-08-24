@@ -7,7 +7,7 @@ import type { Student, Subject, AppSettings, TabKey } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote } from "lucide-react";
+import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { addStudent, deleteStudent, addSubject, deleteSubject, resetAndSeedDatabase } from "@/lib/firestore";
 import {
@@ -223,6 +223,17 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
       reportSettings: { ...current.reportSettings, [setting]: value }
     }));
   };
+  
+  const handleScheduleChange = (period: number, type: 'startTime' | 'endTime', value: string) => {
+    handleSettingChange(current => {
+        const newSchedule = [...current.schedule];
+        const periodIndex = newSchedule.findIndex(p => p.period === period);
+        if (periodIndex > -1) {
+            newSchedule[periodIndex] = { ...newSchedule[periodIndex], [type]: value };
+        }
+        return { ...current, schedule: newSchedule };
+    });
+  };
 
 
   return (
@@ -250,69 +261,96 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
                 </DndContext>
             </CardContent>
         </Card>
-         <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center"><MessageSquareQuote className="mr-2" />Innstillinger for Ukesmelding</CardTitle>
-                <CardDescription>Tilpass innholdet og teksten i den genererte ukesoppsummeringen.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                 <div>
-                    <h4 className="mb-2 font-medium text-sm">Innhold</h4>
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between p-3 border rounded-lg">
-                            <Label htmlFor="report-homework" className="font-medium">Inkluder lekse-status</Label>
-                            <Switch
-                                id="report-homework"
-                                checked={localSettings.reportSettings.includeHomework}
-                                onCheckedChange={(checked) => handleReportSettingChange('includeHomework', checked)}
+        <div className="space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center"><Clock className="mr-2" />Timeplan</CardTitle>
+                    <CardDescription>Legg inn start- og sluttid for timene. Dette brukes til å auto-velge time i anmerkningsfanen.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                    {localSettings.schedule.map(({ period, startTime, endTime }) => (
+                        <div key={period} className="grid items-center grid-cols-3 gap-2 p-2 border rounded-lg">
+                            <Label htmlFor={`period-${period}`} className="font-medium">Time {period}</Label>
+                            <Input
+                                id={`period-${period}-start`}
+                                type="time"
+                                value={startTime}
+                                onChange={(e) => handleScheduleChange(period, 'startTime', e.target.value)}
+                            />
+                            <Input
+                                id={`period-${period}-end`}
+                                type="time"
+                                value={endTime}
+                                onChange={(e) => handleScheduleChange(period, 'endTime', e.target.value)}
                             />
                         </div>
-                         <div className="flex items-center justify-between p-3 border rounded-lg">
-                            <Label htmlFor="report-ipad" className="font-medium">Inkluder iPad-status</Label>
-                            <Switch
-                                id="report-ipad"
-                                checked={localSettings.reportSettings.includeIpad}
-                                onCheckedChange={(checked) => handleReportSettingChange('includeIpad', checked)}
-                            />
-                        </div>
-                         <div className="flex items-center justify-between p-3 border rounded-lg">
-                            <Label htmlFor="report-remarks" className="font-medium">Inkluder anmerkninger</Label>
-                            <Switch
-                                id="report-remarks"
-                                checked={localSettings.reportSettings.includeRemarks}
-                                onCheckedChange={(checked) => handleReportSettingChange('includeRemarks', checked)}
-                            />
-                        </div>
-                        <div className="flex items-center justify-between p-3 border rounded-lg">
-                            <Label htmlFor="report-positive" className="font-medium">Send ros ved prikkfri uke</Label>
-                            <Switch
-                                id="report-positive"
-                                checked={localSettings.reportSettings.includePositiveFeedback}
-                                onCheckedChange={(checked) => handleReportSettingChange('includePositiveFeedback', checked)}
-                            />
+                    ))}
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center"><MessageSquareQuote className="mr-2" />Innstillinger for Ukesmelding</CardTitle>
+                    <CardDescription>Tilpass innholdet og teksten i den genererte ukesoppsummeringen.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                     <div>
+                        <h4 className="mb-2 font-medium text-sm">Innhold</h4>
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between p-3 border rounded-lg">
+                                <Label htmlFor="report-homework" className="font-medium">Inkluder lekse-status</Label>
+                                <Switch
+                                    id="report-homework"
+                                    checked={localSettings.reportSettings.includeHomework}
+                                    onCheckedChange={(checked) => handleReportSettingChange('includeHomework', checked)}
+                                />
+                            </div>
+                             <div className="flex items-center justify-between p-3 border rounded-lg">
+                                <Label htmlFor="report-ipad" className="font-medium">Inkluder iPad-status</Label>
+                                <Switch
+                                    id="report-ipad"
+                                    checked={localSettings.reportSettings.includeIpad}
+                                    onCheckedChange={(checked) => handleReportSettingChange('includeIpad', checked)}
+                                />
+                            </div>
+                             <div className="flex items-center justify-between p-3 border rounded-lg">
+                                <Label htmlFor="report-remarks" className="font-medium">Inkluder anmerkninger</Label>
+                                <Switch
+                                    id="report-remarks"
+                                    checked={localSettings.reportSettings.includeRemarks}
+                                    onCheckedChange={(checked) => handleReportSettingChange('includeRemarks', checked)}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between p-3 border rounded-lg">
+                                <Label htmlFor="report-positive" className="font-medium">Send ros ved prikkfri uke</Label>
+                                <Switch
+                                    id="report-positive"
+                                    checked={localSettings.reportSettings.includePositiveFeedback}
+                                    onCheckedChange={(checked) => handleReportSettingChange('includePositiveFeedback', checked)}
+                                />
+                            </div>
                         </div>
                     </div>
-                </div>
-                <Separator />
-                <div>
-                    <h4 className="mb-2 font-medium text-sm">Tekstmal</h4>
-                     <div className="space-y-3">
-                        <div className="space-y-1">
-                            <Label htmlFor="greeting">Hilsen</Label>
-                            <Input id="greeting" value={localSettings.reportSettings.greeting} onChange={(e) => handleReportSettingChange('greeting', e.target.value)} />
-                        </div>
-                         <div className="space-y-1">
-                            <Label htmlFor="closing">Avslutning</Label>
-                            <Input id="closing" value={localSettings.reportSettings.closing} onChange={(e) => handleReportSettingChange('closing', e.target.value)} />
-                        </div>
-                        <div className="space-y-1">
-                            <Label htmlFor="teacherName">Ditt navn (for signatur)</Label>
-                            <Input id="teacherName" value={localSettings.reportSettings.teacherName} onChange={(e) => handleReportSettingChange('teacherName', e.target.value)} />
-                        </div>
-                     </div>
-                </div>
-            </CardContent>
-        </Card>
+                    <Separator />
+                    <div>
+                        <h4 className="mb-2 font-medium text-sm">Tekstmal</h4>
+                         <div className="space-y-3">
+                            <div className="space-y-1">
+                                <Label htmlFor="greeting">Hilsen</Label>
+                                <Input id="greeting" value={localSettings.reportSettings.greeting} onChange={(e) => handleReportSettingChange('greeting', e.target.value)} />
+                            </div>
+                             <div className="space-y-1">
+                                <Label htmlFor="closing">Avslutning</Label>
+                                <Input id="closing" value={localSettings.reportSettings.closing} onChange={(e) => handleReportSettingChange('closing', e.target.value)} />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="teacherName">Ditt navn (for signatur)</Label>
+                                <Input id="teacherName" value={localSettings.reportSettings.teacherName} onChange={(e) => handleReportSettingChange('teacherName', e.target.value)} />
+                            </div>
+                         </div>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

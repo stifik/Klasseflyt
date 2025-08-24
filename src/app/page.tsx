@@ -164,7 +164,7 @@ function Home({ userId }: { userId: string }) {
   const componentProps = {
     overview: { userId, students, subjects, homeworkList: homework, submissions, onUpdate: handleDataUpdate },
     dailyCheck: { userId, students, initialChecks: dailyChecks, onUpdate: handleDataUpdate, seatingChart },
-    remarks: { userId, students, initialRemarks: remarks, onUpdate: handleDataUpdate, seatingChart },
+    remarks: { userId, students, initialRemarks: remarks, onUpdate: handleDataUpdate, seatingChart, settings: settings },
     reports: { students, subjects, homework, submissions, dailyChecks, remarks, settings: settings.reportSettings },
     seatingChart: { userId, students, seatingChart, onSeatingChartChange: handleSeatingChartChange, settings: seatingChartSettings, onSettingsChange: handleSettingsChange, history: seatingChartHistory, appSettings: settings, onAppSettingsChange: saveSettings, layouts: seatingLayouts, onLayoutsChange: setSeatingLayouts },
     groupTool: { students },

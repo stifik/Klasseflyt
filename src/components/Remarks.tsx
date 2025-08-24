@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import type { Student, Remark, SeatingChartData } from "@/lib/types";
+import type { Student, Remark, SeatingChartData, AppSettings } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -22,14 +22,56 @@ interface RemarksProps {
   initialRemarks: Remark[];
   onUpdate: () => void;
   seatingChart: SeatingChartData | null;
+  settings: AppSettings;
 }
 
-export default function Remarks({ userId, students, initialRemarks, onUpdate, seatingChart }: RemarksProps) {
+export default function Remarks({ userId, students, initialRemarks, onUpdate, seatingChart, settings }: RemarksProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [remarks, setRemarks] = useState<Remark[]>(initialRemarks);
   const [currentPeriod, setCurrentPeriod] = useState<number>(1);
   const { toast } = useToast();
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    const { schedule } = settings;
+
+    const getCurrentPeriod = () => {
+      const now = new Date();
+      const currentTime = now.getHours() * 60 + now.getMinutes();
+
+      for (const period of schedule) {
+        if (period.startTime && period.endTime) {
+          const [startHour, startMinute] = period.startTime.split(':').map(Number);
+          const [endHour, endMinute] = period.endTime.split(':').map(Number);
+          const startTime = startHour * 60 + startMinute;
+          const endTime = endHour * 60 + endMinute;
+
+          if (currentTime >= startTime && currentTime <= endTime) {
+            return period.period;
+          }
+        }
+      }
+      
+      // If not in any period, find the next upcoming period for today
+      const nextPeriod = schedule
+        .filter(p => p.startTime)
+        .find(p => {
+            const [startHour, startMinute] = p.startTime.split(':').map(Number);
+            return (startHour * 60 + startMinute) > currentTime;
+        });
+
+      return nextPeriod ? nextPeriod.period : 1;
+    };
+
+    setCurrentPeriod(getCurrentPeriod());
+
+    const interval = setInterval(() => {
+        setCurrentPeriod(getCurrentPeriod());
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [settings.schedule]);
+
 
   useEffect(() => {
     setRemarks(initialRemarks);

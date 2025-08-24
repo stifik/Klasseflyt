@@ -7,6 +7,12 @@ import { useToast } from './use-toast';
 
 const defaultTabOrder: TabKey[] = ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'groupTool', 'studentPicker'];
 
+const defaultSchedule = Array.from({ length: 6 }, (_, i) => ({
+    period: i + 1,
+    startTime: "",
+    endTime: "",
+}));
+
 const defaultSettings: AppSettings = {
   tabs: {
     overview: true,
@@ -27,6 +33,7 @@ const defaultSettings: AppSettings = {
     closing: "Vennlig hilsen,",
     teacherName: "Læreren"
   },
+  schedule: defaultSchedule,
   selectedSeatingLayoutId: null,
 };
 
@@ -65,6 +72,7 @@ export function useSettings(userId: string) {
             ...defaultSettings.reportSettings,
             ...(data.reportSettings || {}),
           },
+          schedule: data.schedule && data.schedule.length === 6 ? data.schedule : defaultSchedule,
           selectedSeatingLayoutId: data.selectedSeatingLayoutId || null,
         };
         setSettings(mergedSettings);
