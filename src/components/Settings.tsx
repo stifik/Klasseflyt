@@ -185,6 +185,7 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
         title: "Database nullstilt og fylt!",
         description: "Databasen er fylt med fersk demodata.",
       });
+      window.location.reload();
     } catch (error) {
       console.error(error);
       toast({
@@ -205,6 +206,7 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
             title: "Database tømt!",
             description: "All data er slettet. Du kan nå legge inn din egen data.",
         });
+        window.location.reload();
     } catch (error) {
         console.error(error);
         toast({
