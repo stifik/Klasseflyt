@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -94,7 +94,10 @@ const generateSummaryMessage = (
 
 export default function Reports({ students, subjects, homework, submissions, dailyChecks, remarks, settings }: ReportsProps) {
   const { toast } = useToast();
-  const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
+  const [selectedWeek, setSelectedWeek] = useState<number | null>(() => {
+    // Sett nåværende uke som standard
+    return getWeekNumber(new Date());
+  });
   const [generatedMessages, setGeneratedMessages] = useState<Array<{ studentName: string; message: string }>>([]);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -157,6 +160,16 @@ export default function Reports({ students, subjects, homework, submissions, dai
 
   const uniqueWeeks = [...new Set(homework.map(h => h.week))].sort((a,b) => b-a);
   
+  useEffect(() => {
+    const currentWeek = getWeekNumber(new Date());
+    // If current week is not in the list of available weeks, and there are available weeks, select the most recent one.
+    if (!uniqueWeeks.includes(currentWeek) && uniqueWeeks.length > 0) {
+      setSelectedWeek(uniqueWeeks[0]);
+    } else {
+      setSelectedWeek(currentWeek);
+    }
+  }, [homework]); // Re-run when homework data changes
+
   const handleGenerateSummaries = async () => {
     if (!selectedWeek) {
       toast({ title: "Mangler uke", description: "Vennligst velg en uke for å generere sammendrag.", variant: "destructive" });
@@ -289,7 +302,7 @@ export default function Reports({ students, subjects, homework, submissions, dai
                                 <ul className="list-disc list-inside">
                                     {Object.entries(stat.remarksByDate).map(([date, count]) => (
                                       <li key={date}>
-                                        {date} {count > 1 && `(${count})`}
+                                        {date}{count > 1 && ` (${count})`}
                                       </li>
                                     ))}
                                 </ul>
@@ -315,7 +328,7 @@ export default function Reports({ students, subjects, homework, submissions, dai
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Select onValueChange={(v) => setSelectedWeek(parseInt(v))}>
+            <Select value={selectedWeek ? String(selectedWeek) : ''} onValueChange={(v) => setSelectedWeek(parseInt(v))}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Velg uke" />
               </SelectTrigger>
