@@ -13,7 +13,7 @@ import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { addRemark, deleteRemark } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "./ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from "./ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Label } from "./ui/label";
 
@@ -62,7 +62,12 @@ const AddRemarkDialog = ({ student, onAdd, remarkTypes }: { student: Student; on
                 </Select>
            </div>
         </div>
-        <Button onClick={handleAddClick}>Legg til</Button>
+        <DialogFooter>
+            <DialogClose asChild>
+                <Button variant="outline">Avbryt</Button>
+            </DialogClose>
+            <Button onClick={handleAddClick}>Legg til</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -135,13 +140,21 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
 
   const handleAddRemark = async (studentId: string, type: string = "Generell") => {
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
-    const newRemarkData = { studentId, date, period: currentPeriod, type };
-
+    const tempId = `temp-${Date.now()}`;
+    const newRemarkData: Omit<Remark, 'id'> = { studentId, date, period: currentPeriod, type };
+    const optimisticRemark: Remark = { ...newRemarkData, id: tempId };
+    
+    // Optimistic UI update
+    setRemarks(prev => [...prev, optimisticRemark]);
+    
     try {
-      await addRemark(userId, newRemarkData);
-      onUpdate(); // This will refetch the data and update the state reliably
+      const savedRemark = await addRemark(userId, newRemarkData);
+      // Replace temp remark with real one from Firestore
+      setRemarks(prev => prev.map(r => r.id === tempId ? savedRemark : r));
     } catch (error) {
       console.error(error);
+      // Revert optimistic update on error
+      setRemarks(prev => prev.filter(r => r.id !== tempId));
       toast({ title: "Feil", description: `Kunne ikke legge til anmerkning for ${studentName}.`, variant: "destructive" });
     }
   };
@@ -154,11 +167,15 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
 
     const lastRemark = studentRemarksThisPeriod[0];
     
+    // Optimistic UI update
+    setRemarks(prev => prev.filter(r => r.id !== lastRemark.id));
+    
     try {
       await deleteRemark(userId, lastRemark.id);
-      onUpdate(); // Refetch after deleting
     } catch (error) {
       console.error(error);
+      // Revert optimistic update
+      setRemarks(prev => [...prev, lastRemark].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       toast({ title: "Feil", description: `Kunne ikke fjerne anmerkning.`, variant: "destructive" });
     }
   };
