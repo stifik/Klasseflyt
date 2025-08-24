@@ -29,7 +29,7 @@ Kjør følgende kommando i terminalen i prosjektmappen. Dette vil laste ned alle
 npm install
 ```
 
-**OBS for Windows-brukere:** Hvis du får en feilmelding om `Execution Policies`, se [denne guiden for hvordan du løser det](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy). En vanlig løsning er å åpne PowerShell som administrator og kjøre: `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`.
+**OBS for Windows-brukere:** Hvis du får en feilmelding om `Execution Policies`, se [denne guiden for hvordan du løser det](https://learn.microsoft.com/en/powershell/module/microsoft.powershell.security/set-executionpolicy). En vanlig løsning er å åpne PowerShell som administrator og kjøre: `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`.
 
 ### 3. Start appen
 
@@ -47,7 +47,27 @@ Appen fungerer 100% lokalt uten videre konfigurasjon. All data (elever, anmerkni
 
 ### Valgfri OneDrive-synkronisering
 
-Hvis du får godkjenning fra din IT-avdeling til å synkronisere data til din egen skole-OneDrive, må du gjøre følgende:
+For å aktivere synkronisering mot din skole-OneDrive, må du få IT-avdelingen til å opprette en "App Registration" i skolens Microsoft Azure/Entra ID. Dette er en standard og sikker prosedyre.
+
+**Hva skal du be IT-avdelingen om?**
+
+Du kan sende følgende melding til IT-avdelingen:
+
+> Hei,
+>
+> Jeg ønsker å ta i bruk en applikasjon kalt "Klasseflyt" som lagrer dataene sine i brukerens egen OneDrive. For at dette skal fungere, trenger appen en "App Registration" i vår Microsoft Entra ID (Azure AD).
+>
+> Applikasjonen trenger følgende API-tillatelser (delegert):
+> 1.  `User.Read` (for å bekrefte brukerens identitet ved innlogging)
+> 2.  `Files.ReadWrite.AppFolder` (gir appen tilgang *kun* til sin egen, dedikerte mappe i brukerens OneDrive, ikke andre filer)
+>
+> Når registreringen er opprettet, kan dere sende meg følgende to verdier?
+> *   **Application (client) ID**
+> *   **Directory (tenant) ID**
+>
+> Takk for hjelpen!
+
+Når du mottar disse to ID-ene:
 1.  Omdøp `.env.example` til `.env`.
-2.  Lim inn `CLIENT_ID` og `TENANT_ID` du mottar fra IT-avdelingen i `.env`-filen.
+2.  Lim inn ID-ene i `.env`-filen.
 3.  Start appen på nytt. "Logg inn med Microsoft"-knappen vil nå være funksjonell.
