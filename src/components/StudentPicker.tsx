@@ -5,8 +5,10 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import type { Student, SeatingChartData, SeatingLayout } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles } from "lucide-react";
+import { Sparkles, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
 
 interface StudentPickerProps {
   students: Student[];
@@ -24,9 +26,11 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
   const [isPicking, setIsPicking] = useState(false);
   const [highlightedDesk, setHighlightedDesk] = useState<DeskPosition | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<DeskPosition | null>(null);
+  const [withoutReplacement, setWithoutReplacement] = useState(false);
+  const [pickedStudents, setPickedStudents] = useState<string[]>([]);
   const animationFrameId = useRef<number | null>(null);
 
-  const availableDesks = useMemo(() => {
+  const allDesks = useMemo(() => {
     if (!seatingChart) return [];
     const desks: DeskPosition[] = [];
     seatingChart.forEach((row, rowIndex) => {
@@ -38,6 +42,18 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
     });
     return desks;
   }, [seatingChart]);
+
+  const availableDesks = useMemo(() => {
+      if (withoutReplacement) {
+          return allDesks.filter(desk => !pickedStudents.includes(desk.studentName));
+      }
+      return allDesks;
+  }, [allDesks, withoutReplacement, pickedStudents]);
+  
+  // Reset picked students when toggling replacement strategy
+  useEffect(() => {
+      handleReset();
+  }, [withoutReplacement]);
 
   useEffect(() => {
     // Cleanup on unmount
@@ -59,11 +75,9 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
     const animate = () => {
       const elapsedTime = Date.now() - startTime;
       
-      // Calculate interval based on elapsed time (slows down over time)
       const progress = elapsedTime / totalDuration;
       const interval = 50 + Math.pow(progress, 2) * 400;
 
-      // Pick a random desk to highlight
       const randomIndex = Math.floor(Math.random() * availableDesks.length);
       setHighlightedDesk(availableDesks[randomIndex]);
 
@@ -72,31 +86,40 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
            animationFrameId.current = requestAnimationFrame(animate);
         }, interval);
       } else {
-        // Animation finished, select the final student
         setIsPicking(false);
         const finalStudent = availableDesks[randomIndex];
         setSelectedStudent(finalStudent);
         setHighlightedDesk(null);
+        if (withoutReplacement) {
+            setPickedStudents(prev => [...prev, finalStudent.studentName]);
+        }
       }
     };
     
     animate();
   };
+
+  const handleReset = () => {
+      setPickedStudents([]);
+      setSelectedStudent(null);
+  };
   
   const Desk = ({ rowIndex, colIndex, studentName }: { rowIndex: number, colIndex: number, studentName: string | null }) => {
-    if (!studentName) return <div className="w-24 h-16" />; // Empty space for layout consistency
+    if (!studentName) return <div className="w-24 h-16" />; 
 
     const isHighlighted = (highlightedDesk?.rowIndex === rowIndex && highlightedDesk?.colIndex === colIndex);
     const isSelected = (selectedStudent?.rowIndex === rowIndex && selectedStudent?.colIndex === colIndex);
+    const isPicked = withoutReplacement && pickedStudents.includes(studentName) && !isSelected;
 
     return (
       <div
         className={cn(
           "flex items-center justify-center w-24 h-16 text-center border rounded-lg transition-all duration-100",
           {
-            "bg-secondary": !isHighlighted && !isSelected,
+            "bg-secondary": !isHighlighted && !isSelected && !isPicked,
             "bg-green-400 scale-105 shadow-lg": isHighlighted,
             "bg-primary text-primary-foreground scale-110 shadow-xl border-2 border-primary-foreground font-bold": isSelected,
+            "bg-muted opacity-50": isPicked,
           }
         )}
       >
@@ -105,21 +128,38 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
     );
   };
 
+  const allStudentsPicked = withoutReplacement && availableDesks.length === 0 && allDesks.length > 0;
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle>Elev-trekker</CardTitle>
             <CardDescription>
-              Trykk på knappen for å trekke en tilfeldig elev.
+              {allStudentsPicked 
+                ? "Alle elever er trukket. Trykk på Nullstill for å starte på nytt." 
+                : "Trekk en tilfeldig elev med eller uten tilbakelegging."
+              }
             </CardDescription>
           </div>
-          <Button onClick={startPicking} disabled={isPicking || availableDesks.length === 0} className="mt-2 sm:mt-0">
-            <Sparkles className="mr-2" />
-            {isPicking ? 'Trekker...' : 'Trekk en elev'}
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center space-x-2">
+                <Switch 
+                    id="replacement-mode" 
+                    checked={withoutReplacement} 
+                    onCheckedChange={setWithoutReplacement} 
+                />
+                <Label htmlFor="replacement-mode">Uten tilbakelegging</Label>
+            </div>
+            <Button onClick={handleReset} variant="outline" size="icon" disabled={pickedStudents.length === 0}>
+                <RotateCcw />
+            </Button>
+            <Button onClick={startPicking} disabled={isPicking || allStudentsPicked || allDesks.length === 0} className="w-[160px]">
+              <Sparkles className="mr-2" />
+              {isPicking ? 'Trekker...' : 'Trekk en elev'}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
