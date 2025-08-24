@@ -4,62 +4,85 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 export default function PrivacyPolicyPage() {
+  const lastUpdated = new Date().toLocaleDateString('nb-NO', { year: 'numeric', month: 'long', day: 'numeric' });
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4 sm:p-6">
-      <Card className="w-full max-w-3xl">
+      <Card className="w-full max-w-4xl">
         <CardHeader>
           <CardTitle>Personvernerklæring for Leksehjelperen</CardTitle>
           <CardDescription>
-            Sist oppdatert: {new Date().toLocaleDateString('nb-NO')}
+            Sist oppdatert: {lastUpdated}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 text-sm text-foreground">
+        <CardContent className="space-y-6 text-sm text-foreground">
           <p>
-            Denne personvernerklæringen forklarer hvordan Leksehjelperen ("appen") samler inn, lagrer og behandler data. Det er viktig at du leser og forstår dette før du tar i bruk appen i en skolekontekst.
+            Denne personvernerklæringen beskriver hvordan Leksehjelperen ("vi", "oss", "appen") samler inn, bruker og beskytter personopplysninger. Når du bruker denne appen som lærer i en skole, er det viktig å forstå rollefordelingen i henhold til Personopplysningsloven (GDPR).
           </p>
 
           <div className="p-4 border-l-4 border-destructive bg-destructive/10 rounded-r-lg">
-            <h3 className="font-bold text-destructive">VIKTIG: Ditt ansvar som databehandler</h3>
+            <h3 className="font-bold text-destructive">VIKTIG: Rollefordeling (Behandlingsansvarlig vs. Databehandler)</h3>
             <p className="mt-2">
-              Denne appen er et verktøy. Når du legger inn informasjon om elever, er det <strong>du som lærer, skole eller skoleeier</strong> som er å anse som <strong>databehandleransvarlig</strong>. Det betyr at du er ansvarlig for at bruken av appen er i tråd med Personopplysningsloven (GDPR), samt din skoles og kommunes retningslinjer for behandling av elevdata.
+              Når du (som lærer, skole eller kommune) legger inn data om elever, er det <strong>du som er Behandlingsansvarlig</strong>. Du bestemmer formålet med behandlingen og er ansvarlig for at du har et gyldig behandlingsgrunnlag (f.eks. tjenstlig behov).
             </p>
             <p className="mt-2">
-              Du må selv sørge for at du har nødvendig behandlingsgrunnlag (f.eks. samtykke eller tjenstlig behov) for å lagre og behandle personopplysninger om elever i dette verktøyet.
+              Leksehjelperen fungerer som en <strong>Databehandler</strong>. Vi behandler data på dine vegne og etter dine instrukser. For bruk i skolen krever dette en <strong>databehandleravtale (DPA)</strong>.
             </p>
           </div>
 
-          <div>
-            <h4 className="font-semibold text-lg">1. Hvilke data lagres?</h4>
-            <p>Appen lagrer data du selv legger inn. Dette inkluderer, men er ikke begrenset til:</p>
-            <ul className="list-disc pl-5 mt-2 space-y-1">
-              <li><strong>Brukerkontoinformasjon:</strong> Din e-postadresse (brukes kun for innlogging og autentisering).</li>
-              <li><strong>Elevdata:</strong> Navn eller identifikatorer du gir til elevene i klasselisten din.</li>
-              <li><strong>Fagdata:</strong> Navn på fag du oppretter.</li>
-              <li><strong>Leksedata:</strong> Tittel, fag, og status for lekser og innleveringer.</li>
-              <li><strong>Loggført data:</strong> Anmerkninger, iPad-status og annen data du registrerer på enkeltelever.</li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-semibold text-lg">2. Hvor lagres dataen?</h4>
+          <div className="space-y-4">
+            <h4 className="font-semibold text-lg">1. Vår identitet og kontaktinformasjon</h4>
             <p>
-              All data lagres i en sikker skydatabase levert av Google (Firebase Firestore). Hver brukers data er strengt adskilt og knyttet til din unike, autentiserte bruker-ID. Andre brukere av appen har ingen tilgang til dine data.
+              Leksehjelperen leveres av: <br />
+              <strong>[Firmanavn/Ditt Navn]</strong> <br />
+              [Organisasjonsnummer] <br />
+              [Adresse] <br />
+              For henvendelser knyttet til personvern, kontakt oss på: <strong>[E-postadresse for personvern]</strong>
             </p>
-          </div>
 
-          <div>
-            <h4 className="font-semibold text-lg">3. Anbefalinger for sikker bruk</h4>
-            <ul className="list-disc pl-5 mt-2 space-y-1">
+            <h4 className="font-semibold text-lg">2. Hvilke data behandles og for hvilket formål?</h4>
+            <ul className="list-disc pl-5 space-y-2">
               <li>
-                <strong>Vurder pseudonymisering:</strong> Hvis du er usikker på om du har lov til å lagre fulle elevnavn, bør du vurdere å bruke initialer, elevnummer, eller andre koder som ikke er direkte identifiserbare.
+                <strong>Kontoinformasjon (Lærer):</strong> Vi behandler din e-postadresse for å opprette og sikre din brukerkonto, samt for å autentisere deg ved innlogging. Behandlingsgrunnlaget er GDPR art. 6(1)(b) (avtale).
               </li>
               <li>
-                <strong>Sjekk lokale retningslinjer:</strong> Forsikre deg om at din skole eller kommune tillater bruk av tredjepartsverktøy som dette for lagring av elevinformasjon.
-              </li>
-              <li>
-                <strong>Sikker innlogging:</strong> Bruk et sterkt, unikt passord for din konto.
+                <strong>Elev-, fag- og leksedata:</strong> Vi behandler data du legger inn, som elevnavn (eller pseudonymer), fag, lekser, innleveringsstatus, kommentarer, iPad-status og anmerkninger. Formålet er å levere appens kjernefunksjonalitet til deg. Som databehandler er vårt grunnlag for behandling databehandleravtalen med deg. Ditt grunnlag som behandlingsansvarlig er typisk GDPR art. 6(1)(e) (utøve offentlig myndighet).
               </li>
             </ul>
+
+            <h4 className="font-semibold text-lg">3. Databehandleravtale (DPA)</h4>
+            <p>
+              For å bruke Leksehjelperen til å behandle elevopplysninger i skolesammenheng, er du lovpålagt å inngå en databehandleravtale med oss. Denne avtalen regulerer hvordan vi behandler data på dine vegne og sikrer at behandlingen skjer i tråd med GDPR. Vennligst kontakt oss på <strong>[E-postadresse for DPA]</strong> for å få tilsendt vår standard databehandleravtale.
+            </p>
+
+            <h4 className="font-semibold text-lg">4. Lagringstid</h4>
+            <p>
+              Vi lagrer dine data så lenge du har en aktiv konto hos oss. Hvis du sletter en enkeltopplysning (f.eks. en elev eller en anmerkning) i appen, slettes den fra våre systemer. Hvis du sletter hele din brukerkonto, vil alle tilknyttede data bli permanent slettet innen 90 dager.
+            </p>
+
+            <h4 className="font-semibold text-lg">5. Overføring av data til tredjeland</h4>
+            <p>
+              Appen benytter skytjenesten Google Firebase, som har servere lokalisert globalt. Dette kan innebære at data overføres til land utenfor EU/EØS (f.eks. USA). Grunnlaget for slik overføring er EU-kommisjonens standard personvernbestemmelser (SCCs), som sikrer at dine data er underlagt et beskyttelsesnivå i tråd med europeisk lovgivning.
+            </p>
+
+            <h4 className="font-semibold text-lg">6. Dine rettigheter som registrert</h4>
+            <p>Du har rett til å be om:</p>
+            <ul className="list-disc pl-5 mt-2 space-y-1">
+              <li><strong>Innsyn</strong> i dine personopplysninger.</li>
+              <li><strong>Retting</strong> av feilaktige opplysninger.</li>
+              <li><strong>Sletting</strong> av dine personopplysninger.</li>
+              <li><strong>Begrensning</strong> av behandlingen av dine opplysninger.</li>
+              <li><strong>Dataportabilitet</strong> (å motta dine data i et strukturert, maskinlesbart format).</li>
+              <li><strong>Å protestere</strong> mot behandlingen.</li>
+            </ul>
+            <p>
+              Du kan utøve de fleste av disse rettighetene gjennom funksjonalitet i appen (f.eks. ved å slette elever eller fag). For øvrige henvendelser, kontakt oss på e-posten oppgitt i punkt 1. Foresatte som ønsker å utøve rettigheter på vegne av elever, må kontakte skolen (behandlingsansvarlig).
+            </p>
+
+            <h4 className="font-semibold text-lg">7. Rett til å klage</h4>
+            <p>
+              Hvis du mener vår behandling av personopplysninger er i strid med personvernregelverket, har du rett til å klage til den nasjonale tilsynsmyndigheten. I Norge er dette <strong>Datatilsynet</strong>.
+            </p>
           </div>
           
           <div className="pt-4">
