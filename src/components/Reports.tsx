@@ -11,6 +11,8 @@ import { Printer, Copy, Loader2, BookX } from 'lucide-react';
 import { getWeekNumber } from '@/lib/utils';
 import { format } from 'date-fns';
 import { nb } from 'date-fns/locale';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+
 
 interface ReportsProps {
   students: Student[];
@@ -163,6 +165,23 @@ export default function Reports({ students, subjects, homework, submissions, dai
           return acc;
         }, {} as Record<string, number>);
 
+      const remarksByPeriod = studentRemarks.reduce((acc, remark) => {
+          const period = remark.period || 0;
+          acc[period] = (acc[period] || 0) + 1;
+          return acc;
+      }, {} as Record<number, number>);
+
+      const remarksByWeek = studentRemarks.reduce((acc, remark) => {
+          const week = getWeekNumber(new Date(remark.date));
+          acc[week] = (acc[week] || 0) + 1;
+          return acc;
+      }, {} as Record<number, number>);
+      
+      const periodChartData = Array.from({ length: 6 }, (_, i) => ({
+          name: `T${i + 1}`,
+          count: remarksByPeriod[i + 1] || 0,
+      }));
+
       return {
         studentId: student.id,
         studentName: student.name,
@@ -171,7 +190,9 @@ export default function Reports({ students, subjects, homework, submissions, dai
         ipadNotBrought,
         totalRemarks: studentRemarks.length,
         remarksByDate,
-        statsBySubject,
+        remarksByPeriod,
+        remarksByWeek,
+        periodChartData,
       };
     });
   }, [students, subjects, homework, submissions, dailyChecks, remarks]);
@@ -377,16 +398,35 @@ export default function Reports({ students, subjects, homework, submissions, dai
                       </Card>
                        <Card>
                         <CardHeader><CardTitle className="text-base">Anmerkninger ({stat.totalRemarks} totalt)</CardTitle></CardHeader>
-                        <CardContent className="text-sm">
-                           {Object.keys(stat.remarksByDate).length > 0 ? (
-                                <ul className="list-disc list-inside">
-                                    {Object.entries(stat.remarksByDate).map(([date, count]) => (
-                                      <li key={date}>
-                                        {date}{count > 1 && ` (${count})`}
-                                      </li>
-                                    ))}
-                                </ul>
-                           ) : <p>Ingen anmerkninger registrert.</p>}
+                        <CardContent>
+                           {stat.totalRemarks > 0 ? (
+                            <div className="h-[150px] -ml-4">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={stat.periodChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="name" fontSize={12} />
+                                        <YAxis allowDecimals={false} fontSize={12} />
+                                        <Tooltip 
+                                            cursor={{ fill: 'hsl(var(--muted))' }}
+                                            contentStyle={{ 
+                                                backgroundColor: 'hsl(var(--background))', 
+                                                borderColor: 'hsl(var(--border))',
+                                                fontSize: '12px',
+                                            }}
+                                        />
+                                        <Bar dataKey="count" fill="hsl(var(--primary))" name="Antall" />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                           ) : <p className="text-sm text-muted-foreground">Ingen anmerkninger registrert.</p>}
+                           <div className="mt-4 space-y-1 text-sm">
+                                {Object.entries(stat.remarksByWeek).map(([week, count]) => (
+                                    <div key={week} className="flex justify-between">
+                                        <span>Uke {week}:</span>
+                                        <span className="font-medium">{count} anm.</span>
+                                    </div>
+                                ))}
+                           </div>
                         </CardContent>
                       </Card>
                   </div>
@@ -405,3 +445,4 @@ export default function Reports({ students, subjects, homework, submissions, dai
     </div>
   );
 }
+
