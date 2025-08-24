@@ -2,46 +2,17 @@
 'use client'
 
 import { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import HomeworkOverview from "@/components/HomeworkOverview";
-import DailyChecklist from "@/components/DailyChecklist";
-import Reports from "@/components/Reports";
-import Settings from "@/components/Settings";
-import SeatingChart from "@/components/SeatingChart";
-import Remarks from "@/components/Remarks";
-import GroupTool from "@/components/GroupTool";
-import StudentPicker from "@/components/StudentPicker";
 import withAuth from '@/components/withAuth';
 import { Button } from "@/components/ui/button";
-import { BookOpenCheck, Loader2, LogOut } from "lucide-react";
+import { BookOpenCheck, Loader2, LogOut, Settings as SettingsIcon } from "lucide-react";
 import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark, TabKey, AppSettings, SeatingLayout } from "@/lib/types";
 import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks, getLatestSeatingChart, saveSeatingChart, getSeatingChartHistory, getRemarks, getSeatingLayouts } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { getAuth, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useSettings } from "@/hooks/useSettings";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-
-
-const tabComponents: Record<TabKey, React.FC<any>> = {
-  overview: HomeworkOverview,
-  dailyCheck: DailyChecklist,
-  remarks: Remarks,
-  reports: Reports,
-  seatingChart: SeatingChart,
-  groupTool: GroupTool,
-  studentPicker: StudentPicker,
-};
-
-const tabLabels: Record<TabKey, string> = {
-  overview: "Lekseoversikt",
-  dailyCheck: "Daglig Sjekk",
-  remarks: "Anmerkninger",
-  reports: "Rapporter",
-  seatingChart: "Klassekart",
-  groupTool: "Gruppeverktøy",
-  studentPicker: "Elev-trekker",
-};
+import AppView from "@/components/AppView";
+import Dashboard from "@/components/Dashboard";
 
 function Home({ userId }: { userId: string }) {
   const [students, setStudents] = useState<Student[]>([]);
@@ -59,6 +30,9 @@ function Home({ userId }: { userId: string }) {
   });
   const [initialLoading, setInitialLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [activeView, setActiveView] = useState<'dashboard' | 'app' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<TabKey | null>(null);
+  
   const { toast } = useToast();
   const router = useRouter();
   const auth = getAuth();
@@ -136,6 +110,15 @@ function Home({ userId }: { userId: string }) {
       toast({ title: "Feil", description: "Kunne ikke logge ut.", variant: "destructive" });
     }
   };
+  
+  const navigateToTab = (tab: TabKey) => {
+    setActiveTab(tab);
+    setActiveView('app');
+  };
+
+  const navigateToSettings = () => {
+      setActiveView('settings');
+  }
 
   if (initialLoading || settingsLoading) {
     return (
@@ -152,7 +135,13 @@ function Home({ userId }: { userId: string }) {
     setSeatingChart(newChart);
     if (newChart && (source === 'generation' || source === 'drag')) {
       try {
-        await saveSeatingChart(userId, newChart, seatingChartSettings);
+        const layoutId = settings.selectedSeatingLayoutId;
+        const activeLayout = seatingLayouts.find(l => l.id === layoutId);
+        if (!activeLayout) {
+          toast({ title: "Feil", description: "Ingen layout er valgt.", variant: "destructive" });
+          return;
+        }
+        await saveSeatingChart(userId, newChart, {rows: activeLayout.rows, cols: activeLayout.cols});
         if(source === 'generation') {
            toast({ title: "Klassekart lagret", description: "Et nytt klassekart er generert og lagret i arkivet."});
            // reload history
@@ -172,8 +161,6 @@ function Home({ userId }: { userId: string }) {
      // Settings are only saved when a chart is saved.
   }
 
-  const visibleTabs = settings.tabOrder.filter(tabKey => settings.tabs[tabKey]);
-
   const componentProps = {
     overview: { userId, students, subjects, homeworkList: homework, submissions, onUpdate: handleDataUpdate },
     dailyCheck: { userId, students, initialChecks: dailyChecks, onUpdate: handleDataUpdate, seatingChart },
@@ -187,47 +174,44 @@ function Home({ userId }: { userId: string }) {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 border-b bg-background sm:px-6">
-        <div className="flex items-center gap-2 text-primary-foreground">
-          <BookOpenCheck className="w-8 h-8 text-primary" />
-          <h1 className="text-xl font-bold text-foreground font-headline">Leksehjelperen</h1>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setActiveView('dashboard')} className="flex items-center gap-2 text-primary-foreground">
+            <BookOpenCheck className="w-8 h-8 text-primary" />
+            <h1 className="text-xl font-bold text-foreground font-headline">Leksehjelperen</h1>
+          </button>
         </div>
-        <Button variant="ghost" onClick={handleLogout}>
-            <LogOut className="mr-2" /> Logg ut
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" onClick={navigateToSettings}>
+              <SettingsIcon className="mr-2" /> Innstillinger
+          </Button>
+          <Button variant="ghost" onClick={handleLogout}>
+              <LogOut className="mr-2" /> Logg ut
+          </Button>
+        </div>
       </header>
       <main className="flex-1 p-4 sm:p-6">
-        <Tabs defaultValue={visibleTabs[0] || 'settings'} className="w-full">
-          <ScrollArea className="w-full whitespace-nowrap">
-            <TabsList className="inline-flex w-auto mb-4">
-              {visibleTabs.map(tabKey => (
-                <TabsTrigger key={tabKey} value={tabKey}>{tabLabels[tabKey]}</TabsTrigger>
-              ))}
-              <TabsTrigger value="settings">Innstillinger</TabsTrigger>
-            </TabsList>
-            <ScrollBar orientation="horizontal" className="invisible" />
-          </ScrollArea>
-
-          {visibleTabs.map(tabKey => {
-              const Component = tabComponents[tabKey];
-              const props = componentProps[tabKey];
-              return (
-                  <TabsContent key={tabKey} value={tabKey}>
-                      <Component {...props} />
-                  </TabsContent>
-              );
-          })}
-
-          <TabsContent value="settings">
-            <Settings
-              userId={userId}
-              initialStudents={students}
-              initialSubjects={subjects}
-              onUpdate={handleDataUpdate}
-              settings={settings}
-              onSettingsChange={saveSettings}
+        {activeView === 'dashboard' && <Dashboard settings={settings} onNavigate={navigateToTab} />}
+        {activeView === 'app' && (
+            <AppView 
+                settings={settings}
+                activeTab={activeTab}
+                componentProps={componentProps}
+                onTabChange={setActiveTab}
             />
-          </TabsContent>
-        </Tabs>
+        )}
+         {activeView === 'settings' && (
+            <AppView 
+                settings={settings}
+                activeTab={null} // or a specific string like 'settings'
+                componentProps={componentProps}
+                forceSettingsView={true}
+                 initialStudents={students}
+                initialSubjects={subjects}
+                onUpdate={handleDataUpdate}
+                onSettingsChange={saveSettings}
+                userId={userId}
+            />
+        )}
       </main>
     </div>
   );
