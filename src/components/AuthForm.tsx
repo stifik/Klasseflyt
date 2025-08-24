@@ -93,6 +93,13 @@ export default function AuthForm({ mode, onSubmit, error }: AuthFormProps) {
             </>
           )}
         </div>
+        <div className="mt-6 text-center text-xs text-muted-foreground">
+          Ved å logge inn eller registrere deg, godtar du vilkårene i vår{" "}
+          <Link href="/privacy" className="underline">
+            Personvernerklæring
+          </Link>
+          .
+        </div>
       </CardContent>
     </Card>
   );
