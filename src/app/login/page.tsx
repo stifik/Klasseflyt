@@ -1,43 +1,42 @@
 
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
-import { useToast } from "@/hooks/use-toast";
-import AuthForm from "@/components/AuthForm";
-import { getDb } from "@/lib/firebase";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
+
+// Placeholder for MSAL button
+const MsalLoginButton = () => {
+    // Logic to handle Microsoft Login will be added here.
+    return (
+        <Button className="w-full" disabled>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Laster Microsoft innlogging...
+        </Button>
+    )
+}
+
 
 export default function LoginPage() {
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
-  const { toast } = useToast();
-  getDb(); // Ensure Firebase is initialized
-
-  const handleLogin = async (email: string, password: string) => {
-    setError(null);
-    try {
-      const auth = getAuth();
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({ title: "Innlogging vellykket", description: "Velkommen tilbake!" });
-      router.push("/");
-    } catch (error: any) {
-      console.error("Login error:", error);
-      if (error.code === 'auth/invalid-credential') {
-        setError("Ugyldig e-post eller passord.");
-      } else {
-        setError("En ukjent feil oppstod. Prøv igjen.");
-      }
-    }
-  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
-      <AuthForm
-        mode="login"
-        onSubmit={handleLogin}
-        error={error}
-      />
+       <Card className="w-full max-w-sm">
+        <CardHeader>
+            <CardTitle>Logg inn</CardTitle>
+            <CardDescription>
+                Bruk din skolekonto fra Microsoft for å logge inn.
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+            <div className="space-y-4">
+                <MsalLoginButton />
+            </div>
+             <div className="mt-6 text-center text-xs text-muted-foreground">
+                Ved å logge inn godtar du at appen lagrer en enkelt databasefil i din personlige OneDrive for å synkronisere data.
+            </div>
+        </CardContent>
+       </Card>
     </div>
   );
 }

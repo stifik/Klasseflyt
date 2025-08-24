@@ -2,21 +2,42 @@
 'use client'
 
 import { useState, useEffect } from "react";
-import withAuth from '@/components/withAuth';
+// import withAuth from '@/components/withAuth'; // To be replaced with new auth
 import { Button } from "@/components/ui/button";
 import { BookOpenCheck, Loader2, LogOut, Settings as SettingsIcon } from "lucide-react";
 import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark, TabKey, AppSettings, SeatingLayout } from "@/lib/types";
-import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks, getLatestSeatingChart, saveSeatingChart, getSeatingChartHistory, getRemarks, getSeatingLayouts } from "@/lib/firestore";
+// import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks, getLatestSeatingChart, saveSeatingChart, getSeatingChartHistory, getRemarks, getSeatingLayouts } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, signOut } from "firebase/auth";
+// import { getAuth, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { useSettings } from "@/hooks/useSettings";
+// import { useSettings } from "@/hooks/useSettings";
 import AppView from "@/components/AppView";
 import Dashboard from "@/components/Dashboard";
 
+// Mock data while building the new data layer
+const mockStudents: Student[] = [{id: '1', name: 'Ola Nordmann'}, {id: '2', name: 'Kari Normann'}];
+const mockSubjects: Subject[] = [{id: '1', name: 'Norsk'}, {id: '2', name: 'Matte'}];
+const mockSettings: AppSettings = {
+  tabs: {
+    overview: true, dailyCheck: true, remarks: true, reports: true,
+    seatingChart: true, groupTool: true, studentPicker: true, remarkAnalysis: true,
+  },
+  tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'groupTool', 'studentPicker', 'remarkAnalysis'],
+  reportSettings: {
+    includeHomework: true, includeIpad: true, includeRemarks: true,
+    includePositiveFeedback: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
+  },
+  schedule: Array.from({ length: 6 }, (_, i) => ({ period: i + 1, startTime: "", endTime: "" })),
+  selectedSeatingLayoutId: null,
+  remarkTypes: ["Generell", "Forstyrrer andre", "Mangler utstyr", "Upassende språk"],
+};
+
+
+// The Home component will be re-integrated with the new data layer.
+// For now, it will render with mock data to avoid breaking the UI.
 function Home({ userId }: { userId: string }) {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [students, setStudents] = useState<Student[]>(mockStudents);
+  const [subjects, setSubjects] = useState<Subject[]>(mockSubjects);
   const [homework, setHomework] = useState<Homework[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [dailyChecks, setDailyChecks] = useState<DailyCheck[]>([]);
@@ -24,91 +45,31 @@ function Home({ userId }: { userId: string }) {
   const [seatingChart, setSeatingChart] = useState<SeatingChartData | null>(null);
   const [seatingChartHistory, setSeatingChartHistory] = useState<SeatingChartRecord[]>([]);
   const [seatingLayouts, setSeatingLayouts] = useState<SeatingLayout[]>([]);
-  const [seatingChartSettings, setSeatingChartSettings] = useState({
-    rows: 4,
-    cols: 5,
-  });
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [seatingChartSettings, setSeatingChartSettings] = useState({ rows: 4, cols: 5 });
+  const [initialLoading, setInitialLoading] = useState(false); // Changed to false
   const [isUpdating, setIsUpdating] = useState(false);
   const [activeView, setActiveView] = useState<'dashboard' | 'app' | 'settings'>('dashboard');
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
   
   const { toast } = useToast();
   const router = useRouter();
-  const auth = getAuth();
-  const { settings, saveSettings, loading: settingsLoading } = useSettings(userId);
+  // const auth = getAuth();
+  const [settings, setSettings] = useState<AppSettings>(mockSettings);
   
   const activeLayout = seatingLayouts.find(l => l.id === settings.selectedSeatingLayoutId);
 
   const loadData = async (isUpdate = false) => {
-    if (!userId) return;
-    if (isUpdate) {
-      setIsUpdating(true);
-    } else {
-      setInitialLoading(true);
-    }
-
-    try {
-      const [
-        studentsData, 
-        subjectsData, 
-        homeworkData, 
-        submissionsData, 
-        dailyChecksData,
-        remarksData,
-        seatingChartResult,
-        historyData,
-        layoutsData
-      ] = await Promise.all([
-        getStudents(userId),
-        getSubjects(userId),
-        getHomework(userId),
-        getSubmissions(userId),
-        getDailyChecks(userId),
-        getRemarks(userId),
-        getLatestSeatingChart(userId),
-        getSeatingChartHistory(userId),
-        getSeatingLayouts(userId)
-      ]);
-
-      setStudents(studentsData);
-      setSubjects(subjectsData);
-      setHomework(homeworkData);
-      setSubmissions(submissionsData);
-      setDailyChecks(dailyChecksData);
-      setRemarks(remarksData);
-      setSeatingChartHistory(historyData);
-      setSeatingLayouts(layoutsData);
-      
-      if (seatingChartResult) {
-        setSeatingChart(seatingChartResult.chart);
-        setSeatingChartSettings(seatingChartResult.settings);
-      }
-
-    } catch (error) {
-      console.error(error);
-      toast({ title: "Feil", description: "Kunne ikke laste data fra databasen.", variant: "destructive" });
-    } finally {
-      if (isUpdate) {
-        setIsUpdating(false);
-      } else {
-        setInitialLoading(false);
-      }
-    }
+    // This function will be rewritten to use the new local DB + OneDrive sync
+    console.log("Data loading will be re-implemented.");
   }
 
   useEffect(() => {
-    loadData(false);
+    // Initial data load will be handled differently
   }, [userId]);
 
   const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      router.push('/login');
-    } catch (error) {
-      console.error("Error signing out: ", error);
-      toast({ title: "Feil", description: "Kunne ikke logge ut.", variant: "destructive" });
-    }
+    // To be replaced with MSAL logout
+    router.push('/login');
   };
   
   const navigateToTab = (tab: TabKey) => {
@@ -120,45 +81,27 @@ function Home({ userId }: { userId: string }) {
       setActiveView('settings');
   }
 
-  if (initialLoading || settingsLoading) {
+  if (initialLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-background items-center justify-center">
         <Loader2 className="w-12 h-12 animate-spin mb-4" />
-        <p>Laster data fra databasen...</p>
+        <p>Laster data...</p>
       </div>
     );
   }
 
-  const handleDataUpdate = () => loadData(true);
+  const handleDataUpdate = () => console.log("Data update triggered");
 
   const handleSeatingChartChange = async (newChart: SeatingChartData | null, source: 'generation' | 'drag' | 'load') => {
     setSeatingChart(newChart);
-    if (newChart && (source === 'generation' || source === 'drag')) {
-      try {
-        const layoutId = settings.selectedSeatingLayoutId;
-        const activeLayout = seatingLayouts.find(l => l.id === layoutId);
-        if (!activeLayout) {
-          toast({ title: "Feil", description: "Ingen layout er valgt.", variant: "destructive" });
-          return;
-        }
-        await saveSeatingChart(userId, newChart, {rows: activeLayout.rows, cols: activeLayout.cols});
-        if(source === 'generation') {
-           toast({ title: "Klassekart lagret", description: "Et nytt klassekart er generert og lagret i arkivet."});
-           // reload history
-           getSeatingChartHistory(userId).then(setSeatingChartHistory);
-        }
-      } catch (error) {
-        console.error("Failed to save seating chart:", error);
-        toast({ title: "Feil", description: "Kunne ikke lagre klassekartet.", variant: "destructive" });
-        // Optional: revert optimistic update if saving fails
-        loadData(true); 
-      }
-    }
   };
   
-  const handleSettingsChange = async (newSettings: {rows: number; cols: number}) => {
+  const handleSettingsChange = (newSettings: AppSettings) => {
+    setSettings(newSettings);
+  }
+  
+  const handleSimpleSettingsChange = (newSettings: {rows: number; cols: number}) => {
     setSeatingChartSettings(newSettings);
-     // Settings are only saved when a chart is saved.
   }
 
   const componentProps = {
@@ -166,7 +109,7 @@ function Home({ userId }: { userId: string }) {
     dailyCheck: { userId, students, initialChecks: dailyChecks, onUpdate: handleDataUpdate, seatingChart },
     remarks: { userId, students, initialRemarks: remarks, onUpdate: handleDataUpdate, seatingChart, settings: settings },
     reports: { students, subjects, homework, submissions, dailyChecks, remarks, settings: settings.reportSettings },
-    seatingChart: { userId, students, seatingChart, onSeatingChartChange: handleSeatingChartChange, settings: seatingChartSettings, onSettingsChange: handleSettingsChange, history: seatingChartHistory, appSettings: settings, onAppSettingsChange: saveSettings, layouts: seatingLayouts, onLayoutsChange: setSeatingLayouts },
+    seatingChart: { userId, students, seatingChart, onSeatingChartChange: handleSeatingChartChange, settings: seatingChartSettings, onSettingsChange: handleSimpleSettingsChange, history: seatingChartHistory, appSettings: settings, onAppSettingsChange: setSettings, layouts: seatingLayouts, onLayoutsChange: setSeatingLayouts },
     groupTool: { students },
     studentPicker: { students, seatingChart, activeLayout },
     remarkAnalysis: { students, initialRemarks: remarks },
@@ -179,7 +122,7 @@ function Home({ userId }: { userId: string }) {
     initialStudents: students,
     initialSubjects: subjects,
     onUpdate: handleDataUpdate,
-    onSettingsChange: saveSettings,
+    onSettingsChange: handleSettingsChange,
   };
 
 
@@ -213,7 +156,7 @@ function Home({ userId }: { userId: string }) {
          {activeView === 'settings' && (
             <AppView 
                 {...appViewProps}
-                activeTab={null} // or a specific string like 'settings'
+                activeTab={null}
                 forceSettingsView={true}
             />
         )}
@@ -222,4 +165,34 @@ function Home({ userId }: { userId: string }) {
   );
 }
 
-export default withAuth(Home);
+// A temporary wrapper until the new auth is in place
+const HomeWithTempAuth = () => {
+    const [userId, setUserId] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const router = useRouter();
+
+    useEffect(() => {
+        // In a real scenario, we'd check for an MSAL session here.
+        // For now, we'll just simulate a logged-in user.
+        setTimeout(() => {
+            setUserId("temp-user-id");
+            setLoading(false);
+        }, 500);
+    }, [router]);
+
+    if (loading) {
+        return (
+            <div className="flex flex-col min-h-screen bg-background items-center justify-center">
+                <Loader2 className="w-12 h-12 animate-spin mb-4" />
+                <p>Laster...</p>
+            </div>
+        );
+    }
+
+    if (!userId) return null;
+
+    return <Home userId={userId} />;
+}
+
+
+export default HomeWithTempAuth;
