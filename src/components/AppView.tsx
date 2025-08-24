@@ -94,7 +94,6 @@ const AppView: FC<AppViewProps> = ({
         <Settings
           initialStudents={initialStudents}
           initialSubjects={initialSubjects}
-          onUpdate={onUpdate}
           settings={settings}
           onSettingsChange={onSettingsChange}
         />

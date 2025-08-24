@@ -10,11 +10,12 @@ import { Calendar as CalendarIcon, Megaphone, ListChecks, PlusCircle } from "luc
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose, DialogFooter } from "./ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Label } from "./ui/label";
+import { db } from "@/lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
 
 const NUMBER_OF_PERIODS = 6;
 
@@ -69,10 +70,11 @@ const AddRemarkDialog = ({ student, onAdd, remarkTypes, children }: { student: S
 
 export default function Remarks({ students, initialRemarks, onUpdate, seatingChart, settings }: RemarksProps) {
   const [date, setDate] = useState<Date>(new Date());
-  const [remarks, setRemarks] = useState<Remark[]>(initialRemarks);
   const [currentPeriod, setCurrentPeriod] = useState<number>(1);
   const { toast } = useToast();
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
+  
+  const remarks = useLiveQuery(() => db.remarks.toArray(), initialRemarks);
   
   useEffect(() => {
     const { schedule } = settings;
@@ -113,17 +115,13 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
     return () => clearInterval(interval);
   }, [settings.schedule]);
 
-
-  useEffect(() => {
-    setRemarks(initialRemarks);
-  }, [initialRemarks]);
-
   const isSameDay = (d1: Date, d2: Date) =>
     d1.getFullYear() === d2.getFullYear() &&
     d1.getMonth() === d2.getMonth() &&
     d1.getDate() === d2.getDate();
   
   const getRemarksForStudent = (studentId: string, checkDate: Date, period?: number): Remark[] => {
+    if (!remarks) return [];
     return remarks.filter(
       (r) =>
         r.studentId === studentId &&
@@ -134,19 +132,10 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
 
   const handleAddRemark = async (studentId: string, type: string = "Generell") => {
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
-    const tempId = `temp-${Date.now()}`;
-    const newRemarkData: Omit<Remark, 'id'> = { studentId, date, period: currentPeriod, type };
-    const optimisticRemark: Remark = { ...newRemarkData, id: tempId };
-    
-    // Optimistic UI update
-    setRemarks(prev => [...prev, optimisticRemark]);
-    
     try {
-      console.log("Adding remark (not implemented yet):", newRemarkData);
+      await db.remarks.add({ studentId, date, period: currentPeriod, type });
     } catch (error) {
       console.error(error);
-      // Revert optimistic update on error
-      setRemarks(prev => prev.filter(r => r.id !== tempId));
       toast({ title: "Feil", description: `Kunne ikke legge til anmerkning for ${studentName}.`, variant: "destructive" });
     }
   };
@@ -159,15 +148,12 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
 
     const lastRemark = studentRemarksThisPeriod[0];
     
-    // Optimistic UI update
-    setRemarks(prev => prev.filter(r => r.id !== lastRemark.id));
-    
     try {
-      console.log("Deleting remark (not implemented yet):", lastRemark.id);
+      if (lastRemark.id) {
+          await db.remarks.delete(lastRemark.id);
+      }
     } catch (error) {
       console.error(error);
-      // Revert optimistic update
-      setRemarks(prev => [...prev, lastRemark].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       toast({ title: "Feil", description: `Kunne ikke fjerne anmerkning.`, variant: "destructive" });
     }
   };
@@ -187,6 +173,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
   };
 
   const dailyTotals = useMemo(() => {
+    if (!remarks) return [];
     const totals = students.map(student => {
       const studentRemarks = getRemarksForStudent(student.id, date);
       return {
@@ -314,7 +301,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
         </CardContent>
       </Card>
       
-      {dailyTotals.length > 0 && (
+      {dailyTotals && dailyTotals.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">

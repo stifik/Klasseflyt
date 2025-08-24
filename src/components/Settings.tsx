@@ -38,11 +38,11 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Separator } from "./ui/separator";
+import { db, resetDatabase } from "@/lib/db";
 
 interface SettingsProps {
   initialStudents: Student[];
   initialSubjects: Subject[];
-  onUpdate: () => void;
   settings: AppSettings;
   onSettingsChange: (newSettings: AppSettings) => void;
 }
@@ -91,7 +91,7 @@ const SortableTabItem = ({ id, onToggle, settings }: { id: TabKey, onToggle: (ta
   );
 };
 
-export default function Settings({ initialStudents, initialSubjects, onUpdate, settings: initialSettings, onSettingsChange }: SettingsProps) {
+export default function Settings({ initialStudents, initialSubjects, settings: initialSettings, onSettingsChange }: SettingsProps) {
   const [newStudent, setNewStudent] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [newRemarkType, setNewRemarkType] = useState("");
@@ -122,9 +122,8 @@ export default function Settings({ initialStudents, initialSubjects, onUpdate, s
   const handleAddStudent = async () => {
     if (newStudent.trim()) {
       try {
-        console.log("Adding student (not implemented yet):", newStudent.trim());
+        await db.students.add({ name: newStudent.trim() });
         setNewStudent("");
-        onUpdate(); 
         toast({ title: "Elev lagt til", description: `${newStudent.trim()} er lagt til i klasselisten.` });
       } catch (error) {
         toast({ title: "Feil", description: "Kunne ikke legge til elev.", variant: "destructive" });
@@ -135,9 +134,8 @@ export default function Settings({ initialStudents, initialSubjects, onUpdate, s
   const handleAddSubject = async () => {
     if (newSubject.trim()) {
       try {
-        console.log("Adding subject (not implemented yet):", newSubject.trim());
+        await db.subjects.add({ name: newSubject.trim() });
         setNewSubject("");
-        onUpdate();
         toast({ title: "Fag lagt til", description: `${newSubject.trim()} er lagt til i faglisten.` });
       } catch (error) {
          toast({ title: "Feil", description: "Kunne ikke legge til fag.", variant: "destructive" });
@@ -148,8 +146,7 @@ export default function Settings({ initialStudents, initialSubjects, onUpdate, s
   const handleDeleteStudent = async (id: string) => {
     const studentName = initialStudents.find(s => s.id === id)?.name;
     try {
-      console.log("Deleting student (not implemented yet):", id);
-      onUpdate();
+      await db.students.delete(id);
       toast({ title: "Elev slettet", description: `${studentName} er fjernet.`, variant: "destructive" });
     } catch (error) {
        toast({ title: "Feil", description: "Kunne ikke slette elev.", variant: "destructive" });
@@ -159,8 +156,7 @@ export default function Settings({ initialStudents, initialSubjects, onUpdate, s
   const handleDeleteSubject = async (id: string) => {
     const subjectName = initialSubjects.find(s => s.id === id)?.name;
     try {
-      console.log("Deleting subject (not implemented yet):", id);
-      onUpdate();
+      await db.subjects.delete(id);
       toast({ title: "Fag slettet", description: `${subjectName} er fjernet.`, variant: "destructive" });
     } catch (error) {
        toast({ title: "Feil", description: "Kunne ikke slette fag.", variant: "destructive" });
@@ -184,12 +180,11 @@ export default function Settings({ initialStudents, initialSubjects, onUpdate, s
   const handleResetDatabase = async () => {
     setIsSeeding(true);
     try {
-      console.log("Resetting database (not implemented yet)");
+      await resetDatabase();
       toast({
         title: "Database nullstilt og fylt!",
-        description: "Databasen er fylt med fersk demodata for din bruker.",
+        description: "Databasen er fylt med fersk demodata.",
       });
-      onUpdate();
     } catch (error) {
       console.error(error);
       toast({
@@ -405,7 +400,7 @@ export default function Settings({ initialStudents, initialSubjects, onUpdate, s
                 <p className="mb-4 text-sm text-muted-foreground">
                     {initialStudents.length === 0 
                     ? "Databasen din er tom. Klikk her for å fylle den med demodata for å komme i gang."
-                    : "Dette vil slette all nåværende data knyttet til din bruker og fylle databasen med et nytt sett med demodata."
+                    : "Dette vil slette all nåværende data og fylle databasen med et nytt sett med demodata."
                     }
                 </p>
                 <AlertDialog>
@@ -419,7 +414,7 @@ export default function Settings({ initialStudents, initialSubjects, onUpdate, s
                     <AlertDialogHeader>
                         <AlertDialogTitle><AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?</AlertDialogTitle>
                         <AlertDialogDescription>
-                        Dette vil permanent slette all data knyttet til din brukerkonto, inkludert alle elever, fag, lekser og innleveringer. Handlingen kan ikke angres.
+                        Dette vil permanent slette all data. Handlingen kan ikke angres.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

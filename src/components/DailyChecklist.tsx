@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { db } from "@/lib/db";
 
 type IpadStatus = "OK" | "NotCharged" | "NotBrought";
 
@@ -24,16 +25,11 @@ interface DailyChecklistProps {
 
 export default function DailyChecklist({ students, initialChecks, onUpdate, seatingChart }: DailyChecklistProps) {
   const [date, setDate] = useState<Date>(new Date());
-  const [checks, setChecks] = useState<DailyCheck[]>(initialChecks);
   const { toast } = useToast();
-
-  useEffect(() => {
-    setChecks(initialChecks);
-  }, [initialChecks]);
 
   const getCheckForDate = (studentId: string, checkDate: Date) => {
     const dateString = checkDate.toISOString().split("T")[0];
-    return checks.find(
+    return initialChecks.find(
       (c) => c.studentId === studentId && new Date(c.date).toISOString().split("T")[0] === dateString
     );
   };
@@ -48,46 +44,24 @@ export default function DailyChecklist({ students, initialChecks, onUpdate, seat
   
   const handleStatusChange = async (studentId: string) => {
     const currentStatus = getStatus(studentId);
-    const dateString = date.toISOString().split("T")[0];
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
-
-    let newStatus: IpadStatus;
-    let newCheckData: Omit<DailyCheck, 'id'> | null = null;
-    
-    switch (currentStatus) {
-      case "OK":
-        newStatus = "NotCharged";
-        newCheckData = { studentId, date, ipadCharged: false, ipadBrought: true };
-        break;
-      case "NotCharged":
-        newStatus = "NotBrought";
-        newCheckData = { studentId, date, ipadCharged: false, ipadBrought: false };
-        break;
-      case "NotBrought":
-      default:
-        newStatus = "OK";
-        break;
-    }
-    
-    const previousChecks = [...checks];
-    
-    // Optimistic UI update
-    const otherChecks = checks.filter(c => !(c.studentId === studentId && new Date(c.date).toISOString().split('T')[0] === dateString));
-    if (newCheckData) {
-        setChecks([...otherChecks, {...newCheckData, id: 'temp-id'}]);
-    } else {
-        setChecks(otherChecks);
-    }
+    const existingCheck = getCheckForDate(studentId, date);
 
     try {
-        // Data saving logic will be re-implemented here
-        console.log("Saving new status (not implemented yet):", newStatus, newCheckData);
-        
-        // Wait for the database operation to complete, THEN trigger the update.
+        switch (currentStatus) {
+            case "OK":
+                await db.dailyChecks.add({ studentId, date, ipadCharged: false, ipadBrought: true });
+                break;
+            case "NotCharged":
+                 if (existingCheck) await db.dailyChecks.update(existingCheck.id!, { ipadBrought: false });
+                break;
+            case "NotBrought":
+                if (existingCheck) await db.dailyChecks.delete(existingCheck.id!);
+                break;
+        }
         onUpdate();
     } catch (error) {
         console.error(error);
-        setChecks(previousChecks);
         toast({title: "Feil", description: `Kunne ikke lagre endring for ${studentName}.`, variant: "destructive"});
     }
   };

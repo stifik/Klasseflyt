@@ -1,18 +1,19 @@
 
+
 export type Student = {
-  id: string;
+  id?: string;
   name: string;
 };
 
 export type Subject = {
-  id: string;
+  id?: string;
   name: string;
 };
 
 export type HomeworkStatus = 'Godkjent' | 'Ikke levert' | 'Må rettes' | 'Syk/Fravær' | 'Glemt bok';
 
 export type Homework = {
-  id: string;
+  id?: number;
   title: string;
   subjectId: string;
   week: number;
@@ -20,15 +21,15 @@ export type Homework = {
 };
 
 export type Submission = {
-  id: string;
+  id?: number;
   studentId: string;
-  homeworkId: string;
+  homeworkId: number;
   status: HomeworkStatus;
   comment?: string;
 };
 
 export type DailyCheck = {
-  id: string;
+  id?: number;
   studentId: string;
   date: Date;
   ipadCharged: boolean;
@@ -36,7 +37,7 @@ export type DailyCheck = {
 };
 
 export type Remark = {
-  id: string;
+  id?: number;
   studentId: string;
   date: Date;
   period: number;
@@ -45,9 +46,8 @@ export type Remark = {
 
 export type SeatingChartData = (string[] | null)[][];
 
-// The chart is stored as a JSON string in Firestore to avoid nested array issues.
 export type SeatingChartRecord = {
-  id: string;
+  id?: number;
   chartJson: string; // Stored as a JSON string
   rows: number;
   cols: number;
@@ -55,7 +55,7 @@ export type SeatingChartRecord = {
 };
 
 export type SeatingLayout = {
-  id: string;
+  id?: string;
   name: string;
   rows: number;
   cols: number;

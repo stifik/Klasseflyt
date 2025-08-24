@@ -17,6 +17,7 @@ import { Input } from "./ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { getWeekNumber } from "@/lib/utils";
+import { db } from "@/lib/db";
 
 interface HomeworkOverviewProps {
   students: Student[];
@@ -160,40 +161,19 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
   const [currentComment, setCurrentComment] = useState("");
   const [filters, setFilters] = useState<{ subject: string; week: string; showProblems: boolean }>({ subject: "all", week: "all", showProblems: false });
   const { toast } = useToast();
-  const [localSubmissions, setLocalSubmissions] = useState<Submission[]>(submissions);
-
-  useEffect(() => {
-    setLocalSubmissions(submissions);
-  }, [submissions]);
   
-  const getSubmission = (studentId: string, homeworkId: string) => localSubmissions.find(s => s.studentId === studentId && s.homeworkId === homeworkId);
+  const getSubmission = (studentId: string, homeworkId: string) => submissions.find(s => s.studentId === studentId && s.homeworkId === homeworkId);
 
   const handleStatusChange = async (studentId: string, homeworkId: string, status: HomeworkStatus) => {
     const existingSubmission = getSubmission(studentId, homeworkId);
-    const submissionData = {
-        id: existingSubmission?.id || `${studentId}-${homeworkId}`, // Create a temporary ID for optimistic update
-        studentId,
-        homeworkId,
-        status,
-        comment: existingSubmission?.comment || "",
-    };
-
-    const previousSubmissions = [...localSubmissions];
-    // Optimistic UI Update
-    const existingIndex = localSubmissions.findIndex(s => s.studentId === studentId && s.homeworkId === homeworkId);
-    if (existingIndex > -1) {
-      const newSubmissions = [...localSubmissions];
-      newSubmissions[existingIndex] = submissionData;
-      setLocalSubmissions(newSubmissions);
-    } else {
-      setLocalSubmissions([...localSubmissions, submissionData]);
-    }
 
     try {
-        console.log("Saving status (not implemented yet):", submissionData);
+        if (existingSubmission) {
+            await db.submissions.update(existingSubmission.id!, { status });
+        } else {
+            await db.submissions.add({ studentId, homeworkId, status, comment: "" });
+        }
     } catch (error) {
-        // Revert on error
-        setLocalSubmissions(previousSubmissions);
         toast({ title: "Feil", description: "Kunne ikke lagre status.", variant: "destructive" });
     }
   };
@@ -203,36 +183,18 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
     const { studentId, homeworkId } = commentModal;
 
     const existingSubmission = getSubmission(studentId, homeworkId);
-    // If there's no existing submission, the status must be set. Defaulting to 'Godkjent'.
-    const status = existingSubmission?.status || 'Godkjent';
     
-    const submissionData = {
-        id: existingSubmission?.id || `${studentId}-${homeworkId}`,
-        studentId,
-        homeworkId,
-        status,
-        comment: currentComment,
-    };
-    
-    const previousSubmissions = [...localSubmissions];
-    // Optimistic UI Update for comment
-    const existingIndex = localSubmissions.findIndex(s => s.studentId === studentId && s.homeworkId === homeworkId);
-    if (existingIndex > -1) {
-        const newSubmissions = [...localSubmissions];
-        newSubmissions[existingIndex] = { ...newSubmissions[existingIndex], comment: currentComment, status: status };
-        setLocalSubmissions(newSubmissions);
-    } else {
-        setLocalSubmissions([...localSubmissions, submissionData]);
-    }
-    
-    setCommentModal({ open: false });
-    setCurrentComment("");
-
     try {
-        console.log("Saving comment (not implemented yet):", submissionData);
+        if (existingSubmission) {
+            await db.submissions.update(existingSubmission.id!, { comment: currentComment });
+        } else {
+            // If there's no existing submission, the status must be set. Defaulting to 'Godkjent'.
+            await db.submissions.add({ studentId, homeworkId, status: 'Godkjent', comment: currentComment });
+        }
+        setCommentModal({ open: false });
+        setCurrentComment("");
         toast({ title: "Kommentar lagret" });
     } catch(error) {
-        setLocalSubmissions(previousSubmissions);
         toast({ title: "Feil", description: "Kunne ikke lagre kommentar.", variant: "destructive" });
     }
   };
@@ -245,28 +207,26 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
 
   const handleAddHomework = async (title: string, subjectId: string, defaultStatus: HomeworkStatus | "none") => {
     const newDate = new Date();
-    const newHomeworkData: Omit<Homework, 'id'> = {
-      title,
-      subjectId,
-      date: newDate,
-      week: getWeekNumber(newDate),
-    };
     
     try {
-        console.log("Adding homework (not implemented yet):", newHomeworkData);
+        const newHomeworkId = await db.homework.add({
+          title,
+          subjectId,
+          date: newDate,
+          week: getWeekNumber(newDate),
+        });
         toast({ title: "Lekse lagt til", description: `"${title}" er lagt til i oversikten.` });
 
         if (defaultStatus !== "none") {
-            const newSubmissions: Omit<Submission, 'id'>[] = students.map(student => ({
+            const newSubmissions = students.map(student => ({
                 studentId: student.id,
-                homeworkId: 'temp-hw-id',
+                homeworkId: newHomeworkId,
                 status: defaultStatus,
                 comment: ""
             }));
-            console.log("Adding batch submissions (not implemented yet):", newSubmissions);
+            await db.submissions.bulkAdd(newSubmissions);
             toast({ title: "Standardstatus satt", description: `Alle elever er satt til "${defaultStatus}".` });
         }
-        onUpdate();
     } catch(error) {
         toast({ title: "Feil", description: "Kunne ikke legge til lekse eller standardstatus.", variant: "destructive" });
     }
@@ -280,8 +240,7 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
       const newHwData = { ...hwData, week: getWeekNumber(newDate), date: newDate };
       
       try {
-        console.log("Copying homework (not implemented yet):", newHwData);
-        onUpdate();
+        await db.homework.add(newHwData as Homework);
         toast({ title: "Lekse kopiert", description: `En ny versjon av "${hwToCopy.title}" er opprettet for denne uken.`});
       } catch(error) {
         toast({ title: "Feil", description: "Kunne ikke kopiere lekse.", variant: "destructive" });
@@ -314,15 +273,12 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
     }
 
     return students.filter(student => {
-      // Check if this student has any problem status for any of the VISIBLE homework
       return filteredHomework.some(hw => {
         const submission = getSubmission(student.id, hw.id);
-        // A problem is a submission with a problem status, or no submission at all.
-        // 'Syk/Fravær' is not considered a problem in this context.
         return !submission || problemStatuses.includes(submission.status);
       });
     });
-  }, [students, filters.showProblems, filteredHomework, localSubmissions]);
+  }, [students, filters.showProblems, filteredHomework, submissions]);
   
   const uniqueWeeks = [...new Set(homeworkList.map(h => h.week))].sort((a,b) => b-a);
   

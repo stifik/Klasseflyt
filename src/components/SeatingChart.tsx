@@ -17,20 +17,15 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Switch } from "./ui/switch";
+import { db } from "@/lib/db";
 
 type SeatingChartData = (string[] | null)[][];
 type AvoidPair = [string, string];
-type SeatingChartSettings = {
-    rows: number;
-    cols: number;
-};
 
 interface SeatingChartProps {
   students: Student[];
   seatingChart: SeatingChartData | null;
   onSeatingChartChange: (chart: SeatingChartData | null, source: 'generation' | 'drag' | 'load') => void;
-  settings: SeatingChartSettings;
-  onSettingsChange: (settings: SeatingChartSettings) => void;
   history: SeatingChartRecord[];
   appSettings: AppSettings;
   onAppSettingsChange: (newSettings: AppSettings) => void;
@@ -101,7 +96,6 @@ const LayoutDesigner = ({ onSave, onCancel }: { onSave: (layout: SeatingLayout) 
         setRows(newRows);
         setCols(newCols);
         
-        // Correctly initialize the new layout grid with 'false'
         const newLayout = Array.from({ length: newRows }, () => Array(newCols).fill(false));
         setLayout(newLayout);
     };
@@ -115,12 +109,13 @@ const LayoutDesigner = ({ onSave, onCancel }: { onSave: (layout: SeatingLayout) 
             toast({ title: "Ingen pulter", description: "Du må legge til minst én pult.", variant: "destructive" });
             return;
         }
-        const newLayoutData = { name, rows, cols, layout, seatCount };
+        
+        const newLayoutData = { name, rows, cols, layout, seatCount, createdAt: new Date() };
         try {
-            console.log("Saving layout (not implemented yet):", newLayoutData);
-            const savedLayout = { ...newLayoutData, id: `temp-layout-${Date.now()}`, createdAt: new Date() };
+            const newId = await db.seatingLayouts.add(newLayoutData as Omit<SeatingLayout, 'id'>);
+            const savedLayout = { ...newLayoutData, id: newId as string };
             toast({ title: "Layout lagret", description: `"${name}" er lagret.`});
-            onSave(savedLayout as any);
+            onSave(savedLayout);
         } catch (error) {
             console.error(error);
             toast({ title: "Feil", description: "Kunne ikke lagre layout.", variant: "destructive" });
@@ -181,7 +176,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 };
 
 // --- Main Component ---
-export default function SeatingChart({ students, seatingChart, onSeatingChartChange, settings, onSettingsChange, history, appSettings, onAppSettingsChange, layouts, onLayoutsChange }: SeatingChartProps) {
+export default function SeatingChart({ students, seatingChart, onSeatingChartChange, history, appSettings, onAppSettingsChange, layouts, onLayoutsChange }: SeatingChartProps) {
   const [avoidPairs, setAvoidPairs] = useState<AvoidPair[]>([]);
   const [avoidSameNeighbors, setAvoidSameNeighbors] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -189,19 +184,13 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
   const [selectedStudent1, setSelectedStudent1] = useState<string>("");
   const [selectedStudent2, setSelectedStudent2] = useState<string>("");
   const [isDesignerOpen, setIsDesignerOpen] = useState(false);
-  const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(appSettings.selectedSeatingLayoutId || null);
+  
   const { toast } = useToast();
   
-  const activeLayout = useMemo(() => layouts.find(l => l.id === selectedLayoutId), [layouts, selectedLayoutId]);
+  const activeLayout = useMemo(() => layouts.find(l => l.id === appSettings.selectedSeatingLayoutId), [layouts, appSettings.selectedSeatingLayoutId]);
   const lastChart = history[0] ? JSON.parse(history[0].chartJson) : null;
 
-
-  useEffect(() => {
-    console.log("Loading layouts (not implemented yet)");
-  }, [onLayoutsChange]);
-
   const handleSelectedLayoutChange = (layoutId: string) => {
-    setSelectedLayoutId(layoutId);
     onAppSettingsChange({ ...appSettings, selectedSeatingLayoutId: layoutId });
   };
 
@@ -270,8 +259,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                          const lastC = lastStudentPos % lastChart[0].length;
                          const lastNeighbors = getNeighbors(lastR, lastC, lastChart);
                          if (neighbors.some(n => n && lastNeighbors.includes(n))) {
-                            // Prefer not to sit next to old neighbors
-                            if (Math.random() > 0.2) continue; // 80% chance to skip
+                            if (Math.random() > 0.2) continue;
                          }
                     }
                 }
@@ -300,8 +288,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     setTimeout(() => {
         try {
             const newChart = generateChartWithLogic();
-            if (newChart && activeLayout) {
-                onSettingsChange({ rows: activeLayout.rows, cols: activeLayout.cols });
+            if (newChart) {
                 onSeatingChartChange(newChart, 'generation');
             }
         } catch (error) {
@@ -334,15 +321,14 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
   };
 
   const handleLayoutSaved = (newLayout: SeatingLayout) => {
-      onLayoutsChange([newLayout, ...layouts.filter(l => l.id !== newLayout.id)]);
+      onLayoutsChange([...layouts, newLayout]);
       handleSelectedLayoutChange(newLayout.id);
       setIsDesignerOpen(false);
   }
 
   const handleDeleteLayout = async (id: string) => {
-    console.log("Deleting layout (not implemented yet):", id);
-    onLayoutsChange(layouts.filter(l => l.id !== id));
-    if (selectedLayoutId === id) {
+    await db.seatingLayouts.delete(id);
+    if (appSettings.selectedSeatingLayoutId === id) {
         handleSelectedLayoutChange('');
     }
     toast({ title: "Layout slettet", variant: "destructive" });
@@ -365,13 +351,13 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
               </CardHeader>
               <CardContent className="space-y-4">
                   <div className="flex gap-2">
-                    <Select value={selectedLayoutId || ""} onValueChange={handleSelectedLayoutChange}>
+                    <Select value={appSettings.selectedSeatingLayoutId || ""} onValueChange={handleSelectedLayoutChange}>
                         <SelectTrigger><SelectValue placeholder="Velg layout..." /></SelectTrigger>
                         <SelectContent>
                             {layouts.map(l => <SelectItem key={l.id} value={l.id}>{l.name} ({l.seatCount} plasser)</SelectItem>)}
                         </SelectContent>
                     </Select>
-                     {selectedLayoutId && <Button size="icon" variant="ghost" onClick={() => handleDeleteLayout(selectedLayoutId)}><Trash2 className="text-destructive" /></Button>}
+                     {appSettings.selectedSeatingLayoutId && <Button size="icon" variant="ghost" onClick={() => handleDeleteLayout(appSettings.selectedSeatingLayoutId as string)}><Trash2 className="text-destructive" /></Button>}
                   </div>
                 <DialogTrigger asChild>
                     <Button variant="outline" className="w-full"><LayoutTemplate className="mr-2" />Design Ny Layout</Button>

@@ -10,12 +10,11 @@ import { useRouter } from "next/navigation";
 import AppView from "@/components/AppView";
 import Dashboard from "@/components/Dashboard";
 import { useIsAuthenticated, useMsal } from "@azure/msal-react";
+import { db, resetDatabase } from "@/lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
 
 
-// Mock data while building the new data layer
-const mockStudents: Student[] = [{id: '1', name: 'Ola Nordmann'}, {id: '2', name: 'Kari Normann'}];
-const mockSubjects: Subject[] = [{id: '1', name: 'Norsk'}, {id: '2', name: 'Matte'}];
-const mockSettings: AppSettings = {
+const defaultSettings: AppSettings = {
   tabs: {
     overview: true, dailyCheck: true, remarks: true, reports: true,
     seatingChart: true, groupTool: true, studentPicker: true, remarkAnalysis: true,
@@ -30,20 +29,8 @@ const mockSettings: AppSettings = {
   remarkTypes: ["Generell", "Forstyrrer andre", "Mangler utstyr", "Upassende språk"],
 };
 
-
 function Home() {
-  const [students, setStudents] = useState<Student[]>(mockStudents);
-  const [subjects, setSubjects] = useState<Subject[]>(mockSubjects);
-  const [homework, setHomework] = useState<Homework[]>([]);
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [dailyChecks, setDailyChecks] = useState<DailyCheck[]>([]);
-  const [remarks, setRemarks] = useState<Remark[]>([]);
-  const [seatingChart, setSeatingChart] = useState<SeatingChartData | null>(null);
-  const [seatingChartHistory, setSeatingChartHistory] = useState<SeatingChartRecord[]>([]);
-  const [seatingLayouts, setSeatingLayouts] = useState<SeatingLayout[]>([]);
-  const [seatingChartSettings, setSeatingChartSettings] = useState({ rows: 4, cols: 5 });
-  const [initialLoading, setInitialLoading] = useState(false); // Changed to false, will be local-first
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [activeView, setActiveView] = useState<'dashboard' | 'app' | 'settings'>('dashboard');
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
   
@@ -51,23 +38,40 @@ function Home() {
   const router = useRouter();
   const { instance } = useMsal();
   const isAuthenticated = useIsAuthenticated();
-  const [settings, setSettings] = useState<AppSettings>(mockSettings);
-  
-  const activeLayout = seatingLayouts.find(l => l.id === settings.selectedSeatingLayoutId);
 
-  // This function will be rewritten to use the new local DB + optional OneDrive sync
-  const loadData = async (isUpdate = false) => {
-    console.log("Data loading will be re-implemented for local-first architecture.");
-  }
+  // Live queries that automatically update when data changes
+  const students = useLiveQuery(() => db.students.toArray(), []);
+  const subjects = useLiveQuery(() => db.subjects.toArray(), []);
+  const homework = useLiveQuery(() => db.homework.toArray(), []);
+  const submissions = useLiveQuery(() => db.submissions.toArray(), []);
+  const dailyChecks = useLiveQuery(() => db.dailyChecks.toArray(), []);
+  const remarks = useLiveQuery(() => db.remarks.toArray(), []);
+  const seatingChartHistory = useLiveQuery(() => db.seatingChartHistory.orderBy('createdAt').reverse().toArray(), []);
+  const seatingLayouts = useLiveQuery(() => db.seatingLayouts.toArray(), []);
+  const settings = useLiveQuery(() => db.settings.get('userSettings'), []);
+  
+  const currentSettings = settings || defaultSettings;
+  const seatingChart = useLiveQuery(async () => {
+      const latest = await db.seatingChartHistory.orderBy('createdAt').last();
+      return latest ? JSON.parse(latest.chartJson) : null;
+  }, []);
 
   useEffect(() => {
-    // Initial data load will be handled differently
+    const checkDb = async () => {
+      const studentCount = await db.students.count();
+      if (studentCount === 0) {
+        // This is a fresh install, let's seed the database with defaults.
+        await resetDatabase();
+      }
+      setInitialLoading(false);
+    }
+    checkDb();
   }, []);
+
 
   const handleLogout = async () => {
     try {
         await instance.logoutPopup();
-        // Stay on the page, don't redirect to login
     } catch (error) {
         console.error(error);
         toast({ title: "Utloggingsfeil", description: "Kunne ikke logge ut.", variant: "destructive"});
@@ -82,47 +86,66 @@ function Home() {
   const navigateToSettings = () => {
       setActiveView('settings');
   }
+  
+  const handleDataUpdate = async (tableName: string) => {
+    // This function can be used to trigger re-renders if needed,
+    // but useLiveQuery should handle most cases.
+    console.log(`${tableName} was updated.`);
+  };
 
-  if (initialLoading) {
+  const handleSeatingChartChange = async (newChart: SeatingChartData | null, source: 'generation' | 'drag' | 'load') => {
+    if (newChart) {
+        const activeLayout = seatingLayouts?.find(l => l.id === currentSettings.selectedSeatingLayoutId);
+        if (activeLayout) {
+             await db.seatingChartHistory.add({
+                chartJson: JSON.stringify(newChart),
+                rows: activeLayout.rows,
+                cols: activeLayout.cols,
+                createdAt: new Date(),
+            });
+        }
+    }
+  };
+  
+  const handleSettingsChange = async (newSettings: AppSettings) => {
+    await db.settings.put({ id: 'userSettings', ...newSettings });
+  }
+
+  const handleLayoutsChange = async (layouts: SeatingLayout[]) => {
+      // This is a simplified handler. In a real scenario, you'd handle create/update/delete.
+      const currentIds = new Set(layouts.map(l => l.id));
+      const dbLayouts = await db.seatingLayouts.toArray();
+      const toDelete = dbLayouts.filter(dbl => !currentIds.has(dbl.id)).map(l => l.id as string);
+      
+      if(toDelete.length > 0) await db.seatingLayouts.bulkDelete(toDelete);
+      if(layouts.length > 0) await db.seatingLayouts.bulkPut(layouts);
+  }
+
+  if (initialLoading || !students || !subjects || !homework || !submissions || !dailyChecks || !remarks || !seatingLayouts || !settings) {
     return (
       <div className="flex flex-col min-h-screen bg-background items-center justify-center">
         <Loader2 className="w-12 h-12 animate-spin mb-4" />
-        <p>Laster data...</p>
+        <p>Laster database...</p>
       </div>
     );
   }
 
-  const handleDataUpdate = () => console.log("Data update triggered");
-
-  const handleSeatingChartChange = async (newChart: SeatingChartData | null, source: 'generation' | 'drag' | 'load') => {
-    setSeatingChart(newChart);
-  };
-  
-  const handleSettingsChange = (newSettings: AppSettings) => {
-    setSettings(newSettings);
-  }
-  
-  const handleSimpleSettingsChange = (newSettings: {rows: number; cols: number}) => {
-    setSeatingChartSettings(newSettings);
-  }
-
   const componentProps = {
-    overview: { students, subjects, homeworkList: homework, submissions, onUpdate: handleDataUpdate },
-    dailyCheck: { students, initialChecks: dailyChecks, onUpdate: handleDataUpdate, seatingChart },
-    remarks: { students, initialRemarks: remarks, onUpdate: handleDataUpdate, seatingChart, settings: settings },
-    reports: { students, subjects, homework, submissions, dailyChecks, remarks, settings: settings.reportSettings },
-    seatingChart: { students, seatingChart, onSeatingChartChange: handleSeatingChartChange, settings: seatingChartSettings, onSettingsChange: handleSimpleSettingsChange, history: seatingChartHistory, appSettings: settings, onAppSettingsChange: setSettings, layouts: seatingLayouts, onLayoutsChange: setSeatingLayouts },
+    overview: { students, subjects, homeworkList: homework, submissions, onUpdate: () => handleDataUpdate('homework') },
+    dailyCheck: { students, initialChecks: dailyChecks, onUpdate: () => handleDataUpdate('dailyChecks'), seatingChart },
+    remarks: { students, initialRemarks: remarks, onUpdate: () => handleDataUpdate('remarks'), seatingChart, settings: currentSettings },
+    reports: { students, subjects, homework, submissions, dailyChecks, remarks, settings: currentSettings.reportSettings },
+    seatingChart: { students, seatingChart, onSeatingChartChange: handleSeatingChartChange, history: seatingChartHistory || [], appSettings: currentSettings, onAppSettingsChange: handleSettingsChange, layouts: seatingLayouts, onLayoutsChange: handleLayoutsChange },
     groupTool: { students },
-    studentPicker: { students, seatingChart, activeLayout },
+    studentPicker: { students, seatingChart, activeLayout: seatingLayouts.find(l => l.id === currentSettings.selectedSeatingLayoutId) },
     remarkAnalysis: { students, initialRemarks: remarks },
   };
 
   const appViewProps = {
-    settings,
+    settings: currentSettings,
     componentProps,
     initialStudents: students,
     initialSubjects: subjects,
-    onUpdate: handleDataUpdate,
     onSettingsChange: handleSettingsChange,
   };
 
@@ -155,12 +178,13 @@ function Home() {
         </div>
       </header>
       <main className="flex-1 p-4 sm:p-6">
-        {activeView === 'dashboard' && <Dashboard settings={settings} onNavigate={navigateToTab} />}
+        {activeView === 'dashboard' && <Dashboard settings={currentSettings} onNavigate={navigateToTab} />}
         {activeView === 'app' && (
             <AppView 
                 {...appViewProps}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
+                onUpdate={() => {}}
             />
         )}
          {activeView === 'settings' && (
@@ -168,6 +192,7 @@ function Home() {
                 {...appViewProps}
                 activeTab={null}
                 forceSettingsView={true}
+                onUpdate={() => {}}
             />
         )}
       </main>
