@@ -26,7 +26,6 @@ type SeatingChartSettings = {
 };
 
 interface SeatingChartProps {
-  userId: string;
   students: Student[];
   seatingChart: SeatingChartData | null;
   onSeatingChartChange: (chart: SeatingChartData | null, source: 'generation' | 'drag' | 'load') => void;
@@ -67,7 +66,7 @@ const DroppableDesk = ({ studentName, id, children }: DeskProps & { children: Re
 };
 
 // --- Layout Designer Components ---
-const LayoutDesigner = ({ userId, onSave, onCancel }: { userId: string, onSave: (layout: SeatingLayout) => void; onCancel: () => void; }) => {
+const LayoutDesigner = ({ onSave, onCancel }: { onSave: (layout: SeatingLayout) => void; onCancel: () => void; }) => {
     const [name, setName] = useState("");
     const [rows, setRows] = useState(6);
     const [cols, setCols] = useState(8);
@@ -119,7 +118,6 @@ const LayoutDesigner = ({ userId, onSave, onCancel }: { userId: string, onSave: 
         const newLayoutData = { name, rows, cols, layout, seatCount };
         try {
             console.log("Saving layout (not implemented yet):", newLayoutData);
-            // const savedLayout = await saveSeatingLayout(userId, newLayoutData);
             const savedLayout = { ...newLayoutData, id: `temp-layout-${Date.now()}`, createdAt: new Date() };
             toast({ title: "Layout lagret", description: `"${name}" er lagret.`});
             onSave(savedLayout as any);
@@ -183,7 +181,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 };
 
 // --- Main Component ---
-export default function SeatingChart({ userId, students, seatingChart, onSeatingChartChange, settings, onSettingsChange, history, appSettings, onAppSettingsChange, layouts, onLayoutsChange }: SeatingChartProps) {
+export default function SeatingChart({ students, seatingChart, onSeatingChartChange, settings, onSettingsChange, history, appSettings, onAppSettingsChange, layouts, onLayoutsChange }: SeatingChartProps) {
   const [avoidPairs, setAvoidPairs] = useState<AvoidPair[]>([]);
   const [avoidSameNeighbors, setAvoidSameNeighbors] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -199,9 +197,8 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
 
 
   useEffect(() => {
-    // getSeatingLayouts(userId).then(onLayoutsChange);
     console.log("Loading layouts (not implemented yet)");
-  }, [userId, onLayoutsChange]);
+  }, [onLayoutsChange]);
 
   const handleSelectedLayoutChange = (layoutId: string) => {
     setSelectedLayoutId(layoutId);
@@ -344,7 +341,6 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
 
   const handleDeleteLayout = async (id: string) => {
     console.log("Deleting layout (not implemented yet):", id);
-    // await deleteSeatingLayout(userId, id);
     onLayoutsChange(layouts.filter(l => l.id !== id));
     if (selectedLayoutId === id) {
         handleSelectedLayoutChange('');
@@ -382,7 +378,7 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
                 </DialogTrigger>
               </CardContent>
             </Card>
-            <LayoutDesigner userId={userId} onSave={handleLayoutSaved} onCancel={() => setIsDesignerOpen(false)} />
+            <LayoutDesigner onSave={handleLayoutSaved} onCancel={() => setIsDesignerOpen(false)} />
         </Dialog>
 
         <Card>

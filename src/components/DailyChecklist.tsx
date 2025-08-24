@@ -16,14 +16,13 @@ import { useToast } from "@/hooks/use-toast";
 type IpadStatus = "OK" | "NotCharged" | "NotBrought";
 
 interface DailyChecklistProps {
-  userId: string;
   students: Student[];
   initialChecks: DailyCheck[];
   onUpdate: () => void;
   seatingChart: SeatingChartData | null;
 }
 
-export default function DailyChecklist({ userId, students, initialChecks, onUpdate, seatingChart }: DailyChecklistProps) {
+export default function DailyChecklist({ students, initialChecks, onUpdate, seatingChart }: DailyChecklistProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [checks, setChecks] = useState<DailyCheck[]>(initialChecks);
   const { toast } = useToast();
@@ -83,8 +82,6 @@ export default function DailyChecklist({ userId, students, initialChecks, onUpda
     try {
         // Data saving logic will be re-implemented here
         console.log("Saving new status (not implemented yet):", newStatus, newCheckData);
-        // await deleteDailyCheckByStudentAndDate(userId, studentId, date);
-        // await setDailyCheck(userId, newCheckData);
         
         // Wait for the database operation to complete, THEN trigger the update.
         onUpdate();

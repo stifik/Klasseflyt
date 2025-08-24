@@ -19,7 +19,6 @@ import { Label } from "./ui/label";
 const NUMBER_OF_PERIODS = 6;
 
 interface RemarksProps {
-  userId: string;
   students: Student[];
   initialRemarks: Remark[];
   onUpdate: () => void;
@@ -68,7 +67,7 @@ const AddRemarkDialog = ({ student, onAdd, remarkTypes, children }: { student: S
   );
 };
 
-export default function Remarks({ userId, students, initialRemarks, onUpdate, seatingChart, settings }: RemarksProps) {
+export default function Remarks({ students, initialRemarks, onUpdate, seatingChart, settings }: RemarksProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [remarks, setRemarks] = useState<Remark[]>(initialRemarks);
   const [currentPeriod, setCurrentPeriod] = useState<number>(1);
@@ -144,9 +143,6 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
     
     try {
       console.log("Adding remark (not implemented yet):", newRemarkData);
-      // const savedRemark = await addRemark(userId, newRemarkData);
-      // Replace temp remark with real one from Firestore
-      // setRemarks(prev => prev.map(r => r.id === tempId ? savedRemark : r));
     } catch (error) {
       console.error(error);
       // Revert optimistic update on error
@@ -168,7 +164,6 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
     
     try {
       console.log("Deleting remark (not implemented yet):", lastRemark.id);
-      // await deleteRemark(userId, lastRemark.id);
     } catch (error) {
       console.error(error);
       // Revert optimistic update

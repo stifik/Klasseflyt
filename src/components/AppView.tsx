@@ -38,7 +38,6 @@ const tabLabels: Record<TabKey, string> = {
 };
 
 interface AppViewProps {
-    userId: string;
     settings: AppSettings;
     activeTab: TabKey | null;
     componentProps: any;
@@ -51,7 +50,6 @@ interface AppViewProps {
 }
 
 const AppView: FC<AppViewProps> = ({ 
-    userId,
     settings, 
     activeTab, 
     componentProps, 
@@ -94,7 +92,6 @@ const AppView: FC<AppViewProps> = ({
 
       <TabsContent value="settings">
         <Settings
-          userId={userId}
           initialStudents={initialStudents}
           initialSubjects={initialSubjects}
           onUpdate={onUpdate}

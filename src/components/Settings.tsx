@@ -40,7 +40,6 @@ import { CSS } from '@dnd-kit/utilities';
 import { Separator } from "./ui/separator";
 
 interface SettingsProps {
-  userId: string;
   initialStudents: Student[];
   initialSubjects: Subject[];
   onUpdate: () => void;
@@ -92,7 +91,7 @@ const SortableTabItem = ({ id, onToggle, settings }: { id: TabKey, onToggle: (ta
   );
 };
 
-export default function Settings({ userId, initialStudents, initialSubjects, onUpdate, settings: initialSettings, onSettingsChange }: SettingsProps) {
+export default function Settings({ initialStudents, initialSubjects, onUpdate, settings: initialSettings, onSettingsChange }: SettingsProps) {
   const [newStudent, setNewStudent] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [newRemarkType, setNewRemarkType] = useState("");
@@ -124,7 +123,6 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
     if (newStudent.trim()) {
       try {
         console.log("Adding student (not implemented yet):", newStudent.trim());
-        // await addStudent(userId, { name: newStudent.trim() });
         setNewStudent("");
         onUpdate(); 
         toast({ title: "Elev lagt til", description: `${newStudent.trim()} er lagt til i klasselisten.` });
@@ -138,7 +136,6 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
     if (newSubject.trim()) {
       try {
         console.log("Adding subject (not implemented yet):", newSubject.trim());
-        // await addSubject(userId, { name: newSubject.trim() });
         setNewSubject("");
         onUpdate();
         toast({ title: "Fag lagt til", description: `${newSubject.trim()} er lagt til i faglisten.` });
@@ -152,7 +149,6 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
     const studentName = initialStudents.find(s => s.id === id)?.name;
     try {
       console.log("Deleting student (not implemented yet):", id);
-      // await deleteStudent(userId, id);
       onUpdate();
       toast({ title: "Elev slettet", description: `${studentName} er fjernet.`, variant: "destructive" });
     } catch (error) {
@@ -164,7 +160,6 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
     const subjectName = initialSubjects.find(s => s.id === id)?.name;
     try {
       console.log("Deleting subject (not implemented yet):", id);
-      // await deleteSubject(userId, id);
       onUpdate();
       toast({ title: "Fag slettet", description: `${subjectName} er fjernet.`, variant: "destructive" });
     } catch (error) {
@@ -190,7 +185,6 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
     setIsSeeding(true);
     try {
       console.log("Resetting database (not implemented yet)");
-      // await resetAndSeedDatabase(userId);
       toast({
         title: "Database nullstilt og fylt!",
         description: "Databasen er fylt med fersk demodata for din bruker.",

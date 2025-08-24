@@ -31,9 +31,7 @@ const mockSettings: AppSettings = {
 };
 
 
-// The Home component will be re-integrated with the new data layer.
-// For now, it will render with mock data to avoid breaking the UI.
-function Home({ userId }: { userId: string }) {
+function Home() {
   const [students, setStudents] = useState<Student[]>(mockStudents);
   const [subjects, setSubjects] = useState<Subject[]>(mockSubjects);
   const [homework, setHomework] = useState<Homework[]>([]);
@@ -44,7 +42,7 @@ function Home({ userId }: { userId: string }) {
   const [seatingChartHistory, setSeatingChartHistory] = useState<SeatingChartRecord[]>([]);
   const [seatingLayouts, setSeatingLayouts] = useState<SeatingLayout[]>([]);
   const [seatingChartSettings, setSeatingChartSettings] = useState({ rows: 4, cols: 5 });
-  const [initialLoading, setInitialLoading] = useState(false); // Changed to false
+  const [initialLoading, setInitialLoading] = useState(false); // Changed to false, will be local-first
   const [isUpdating, setIsUpdating] = useState(false);
   const [activeView, setActiveView] = useState<'dashboard' | 'app' | 'settings'>('dashboard');
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
@@ -52,23 +50,24 @@ function Home({ userId }: { userId: string }) {
   const { toast } = useToast();
   const router = useRouter();
   const { instance } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
   const [settings, setSettings] = useState<AppSettings>(mockSettings);
   
   const activeLayout = seatingLayouts.find(l => l.id === settings.selectedSeatingLayoutId);
 
+  // This function will be rewritten to use the new local DB + optional OneDrive sync
   const loadData = async (isUpdate = false) => {
-    // This function will be rewritten to use the new local DB + OneDrive sync
-    console.log("Data loading will be re-implemented.");
+    console.log("Data loading will be re-implemented for local-first architecture.");
   }
 
   useEffect(() => {
     // Initial data load will be handled differently
-  }, [userId]);
+  }, []);
 
   const handleLogout = async () => {
     try {
         await instance.logoutPopup();
-        router.push('/login');
+        // Stay on the page, don't redirect to login
     } catch (error) {
         console.error(error);
         toast({ title: "Utloggingsfeil", description: "Kunne ikke logge ut.", variant: "destructive"});
@@ -108,18 +107,17 @@ function Home({ userId }: { userId: string }) {
   }
 
   const componentProps = {
-    overview: { userId, students, subjects, homeworkList: homework, submissions, onUpdate: handleDataUpdate },
-    dailyCheck: { userId, students, initialChecks: dailyChecks, onUpdate: handleDataUpdate, seatingChart },
-    remarks: { userId, students, initialRemarks: remarks, onUpdate: handleDataUpdate, seatingChart, settings: settings },
+    overview: { students, subjects, homeworkList: homework, submissions, onUpdate: handleDataUpdate },
+    dailyCheck: { students, initialChecks: dailyChecks, onUpdate: handleDataUpdate, seatingChart },
+    remarks: { students, initialRemarks: remarks, onUpdate: handleDataUpdate, seatingChart, settings: settings },
     reports: { students, subjects, homework, submissions, dailyChecks, remarks, settings: settings.reportSettings },
-    seatingChart: { userId, students, seatingChart, onSeatingChartChange: handleSeatingChartChange, settings: seatingChartSettings, onSettingsChange: handleSimpleSettingsChange, history: seatingChartHistory, appSettings: settings, onAppSettingsChange: setSettings, layouts: seatingLayouts, onLayoutsChange: setSeatingLayouts },
+    seatingChart: { students, seatingChart, onSeatingChartChange: handleSeatingChartChange, settings: seatingChartSettings, onSettingsChange: handleSimpleSettingsChange, history: seatingChartHistory, appSettings: settings, onAppSettingsChange: setSettings, layouts: seatingLayouts, onLayoutsChange: setSeatingLayouts },
     groupTool: { students },
     studentPicker: { students, seatingChart, activeLayout },
     remarkAnalysis: { students, initialRemarks: remarks },
   };
 
   const appViewProps = {
-    userId,
     settings,
     componentProps,
     initialStudents: students,
@@ -139,13 +137,20 @@ function Home({ userId }: { userId: string }) {
           </button>
         </div>
         <div className="flex items-center gap-2">
+          {isAuthenticated ? (
+            <>
+              <Button variant="outline">Synkronisert</Button>
+              <Button variant="ghost" size="icon" onClick={handleLogout}>
+                  <LogOut />
+                  <span className="sr-only">Logg ut</span>
+              </Button>
+            </>
+          ) : (
+            <Button onClick={() => router.push('/login')}>Logg inn for å synkronisere</Button>
+          )}
           <Button variant="ghost" size="icon" onClick={navigateToSettings}>
               <SettingsIcon />
               <span className="sr-only">Innstillinger</span>
-          </Button>
-          <Button variant="ghost" size="icon" onClick={handleLogout}>
-              <LogOut />
-              <span className="sr-only">Logg ut</span>
           </Button>
         </div>
       </header>
@@ -170,38 +175,4 @@ function Home({ userId }: { userId: string }) {
   );
 }
 
-const AuthenticatedPage = () => {
-    const isAuthenticated = useIsAuthenticated();
-    const { accounts } = useMsal();
-    const router = useRouter();
-    const [userId, setUserId] = useState<string | null>(null);
-    const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-
-    useEffect(() => {
-        if (!isAuthenticated) {
-            router.push('/login');
-        } else if (accounts.length > 0) {
-            setUserId(accounts[0].homeAccountId);
-            setIsCheckingAuth(false);
-        } else if (isAuthenticated && accounts.length === 0) {
-           // Still waiting for accounts to populate after auth
-           // You can add a small delay or a more robust check here if needed
-        } else {
-            router.push('/login');
-        }
-    }, [isAuthenticated, router, accounts]);
-
-    if (isCheckingAuth || !userId) {
-        return (
-            <div className="flex flex-col min-h-screen bg-background items-center justify-center">
-                <Loader2 className="w-12 h-12 animate-spin mb-4" />
-                <p>Laster...</p>
-            </div>
-        );
-    }
-
-    return <Home userId={userId} />;
-}
-
-
-export default AuthenticatedPage;
+export default Home;
