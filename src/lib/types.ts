@@ -51,7 +51,6 @@ export type SeatingChartRecord = {
   chartJson: string; // Stored as a JSON string
   rows: number;
   cols: number;
-  groupSize: number;
   createdAt: Date;
 };
 

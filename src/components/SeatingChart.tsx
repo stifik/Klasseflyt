@@ -23,7 +23,6 @@ type AvoidPair = [string, string];
 type SeatingChartSettings = {
     rows: number;
     cols: number;
-    groupSize: number;
 };
 
 interface SeatingChartProps {
@@ -214,7 +213,7 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
         return null;
     }
     
-    const { layout, groupSize } = { ...activeLayout, groupSize: settings.groupSize };
+    const { layout } = activeLayout;
     const shuffledStudents = shuffleArray(students.map(s => s.name));
     let studentIndex = 0;
     
@@ -225,13 +224,11 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
     for (let r = 0; r < layout.length; r++) {
         for (let c = 0; c < layout[0].length; c++) {
             if (chart[r][c] !== null) { // If it's a desk
-                for (let i = 0; i < groupSize; i++) {
-                    if (studentIndex < shuffledStudents.length) {
-                        (chart[r][c] as string[]).push(shuffledStudents[studentIndex]);
-                        studentIndex++;
-                    } else {
-                        (chart[r][c] as string[]).push(''); // Empty spot
-                    }
+                if (studentIndex < shuffledStudents.length) {
+                    (chart[r][c] as string[]).push(shuffledStudents[studentIndex]);
+                    studentIndex++;
+                } else {
+                    (chart[r][c] as string[]).push(''); // Empty spot
                 }
             }
         }
@@ -251,7 +248,7 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
         try {
             const newChart = generateChartWithLogic();
             if (newChart && activeLayout) {
-                onSettingsChange({ rows: activeLayout.rows, cols: activeLayout.cols, groupSize: settings.groupSize });
+                onSettingsChange({ rows: activeLayout.rows, cols: activeLayout.cols });
                 onSeatingChartChange(newChart, 'generation');
             }
         } catch (error) {
@@ -333,19 +330,10 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
         
         <Card>
             <CardHeader>
-                 <CardTitle>Innstillinger for generering</CardTitle>
+                 <CardTitle>Generer Klassekart</CardTitle>
+                 <CardDescription>Bruk den valgte layouten til å generere et nytt, tilfeldig klassekart.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-                 <div>
-                    <Label htmlFor="groupSize">Elever pr. pult/gruppe</Label>
-                    <Select value={String(settings.groupSize)} onValueChange={(v) => onSettingsChange({ ...settings, groupSize: Number(v) })}>
-                        <SelectTrigger id="groupSize"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                        <SelectItem value="1">1 og 1</SelectItem>
-                        <SelectItem value="2">2 og 2</SelectItem>
-                        </SelectContent>
-                    </Select>
-                 </div>
+            <CardContent>
                 <Button onClick={handleGenerateClick} disabled={isGenerating || !activeLayout} className="w-full">
                     {isGenerating ? <Loader2 className="mr-2 animate-spin" /> : <Shuffle className="mr-2" />}
                     {seatingChart ? 'Generer nytt klassekart' : 'Generer klassekart'}
@@ -373,7 +361,7 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
                                 {Array.from({ length: activeLayout.cols }).map((_, colIndex) => (
                                    <div key={colIndex} className="flex gap-1">
                                        {activeLayout.layout[rowIndex]?.[colIndex] ? (
-                                           Array.from({ length: settings.groupSize }).map((_, studentIndex) => {
+                                           Array.from({ length: 1 }).map((_, studentIndex) => { // Always 1 student per desk
                                                 const studentName = seatingChart[rowIndex]?.[colIndex]?.[studentIndex] || null;
                                                 const id = `${rowIndex}-${colIndex}-${studentIndex}`;
                                                 return (

@@ -226,7 +226,7 @@ export async function deleteSeatingLayout(userId: string, id: string) {
 }
 
 // Seating Chart History functions
-type SeatingChartSettings = { rows: number; cols: number; groupSize: number };
+type SeatingChartSettings = { rows: number; cols: number; };
 export async function getLatestSeatingChart(userId: string): Promise<{ chart: SeatingChartData; settings: SeatingChartSettings } | null> {
     const chartsRef = collection(db, 'users', userId, 'seatingCharts');
     const q = query(chartsRef, orderBy('createdAt', 'desc'), limit(1));
@@ -240,7 +240,6 @@ export async function getLatestSeatingChart(userId: string): Promise<{ chart: Se
         const settings = {
             rows: latestChartRecord.rows,
             cols: latestChartRecord.cols,
-            groupSize: latestChartRecord.groupSize,
         };
         return { chart, settings };
     } catch (error) {
@@ -262,7 +261,6 @@ export async function saveSeatingChart(userId: string, chart: SeatingChartData, 
         chartJson: JSON.stringify(chart),
         rows: settings.rows,
         cols: settings.cols,
-        groupSize: settings.groupSize,
         createdAt: Timestamp.now(),
     };
     await addUserDocument(userId, 'seatingCharts', newChartRecord);

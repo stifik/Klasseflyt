@@ -51,7 +51,6 @@ function Home({ userId }: { userId: string }) {
   const [seatingChartSettings, setSeatingChartSettings] = useState({
     rows: 4,
     cols: 5,
-    groupSize: 2,
   });
   const [initialLoading, setInitialLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -158,7 +157,7 @@ function Home({ userId }: { userId: string }) {
     }
   };
   
-  const handleSettingsChange = async (newSettings: {rows: number; cols: number; groupSize: number}) => {
+  const handleSettingsChange = async (newSettings: {rows: number; cols: number}) => {
     setSeatingChartSettings(newSettings);
      // Settings are only saved when a chart is saved.
   }
