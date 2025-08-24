@@ -2,15 +2,11 @@
 'use client'
 
 import { useState, useEffect } from "react";
-// import withAuth from '@/components/withAuth'; // To be replaced with new auth
 import { Button } from "@/components/ui/button";
 import { BookOpenCheck, Loader2, LogOut, Settings as SettingsIcon } from "lucide-react";
 import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark, TabKey, AppSettings, SeatingLayout } from "@/lib/types";
-// import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks, getLatestSeatingChart, saveSeatingChart, getSeatingChartHistory, getRemarks, getSeatingLayouts } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
-// import { getAuth, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-// import { useSettings } from "@/hooks/useSettings";
 import AppView from "@/components/AppView";
 import Dashboard from "@/components/Dashboard";
 
@@ -53,7 +49,6 @@ function Home({ userId }: { userId: string }) {
   
   const { toast } = useToast();
   const router = useRouter();
-  // const auth = getAuth();
   const [settings, setSettings] = useState<AppSettings>(mockSettings);
   
   const activeLayout = seatingLayouts.find(l => l.id === settings.selectedSeatingLayoutId);
@@ -130,17 +125,19 @@ function Home({ userId }: { userId: string }) {
     <div className="flex flex-col min-h-screen bg-background">
       <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 border-b bg-background sm:px-6">
         <div className="flex items-center gap-2">
-          <button onClick={() => setActiveView('dashboard')} className="flex items-center gap-2 text-primary-foreground">
+          <button onClick={() => setActiveView('dashboard')} className="flex items-center gap-2">
             <BookOpenCheck className="w-8 h-8 text-primary" />
-            <h1 className="text-xl font-bold text-foreground font-headline">Leksehjelperen</h1>
+            <h1 className="text-xl font-bold text-foreground">Leksehjelperen</h1>
           </button>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={navigateToSettings}>
-              <SettingsIcon className="mr-2" /> Innstillinger
+          <Button variant="ghost" size="icon" onClick={navigateToSettings}>
+              <SettingsIcon />
+              <span className="sr-only">Innstillinger</span>
           </Button>
-          <Button variant="ghost" onClick={handleLogout}>
-              <LogOut className="mr-2" /> Logg ut
+          <Button variant="ghost" size="icon" onClick={handleLogout}>
+              <LogOut />
+              <span className="sr-only">Logg ut</span>
           </Button>
         </div>
       </header>

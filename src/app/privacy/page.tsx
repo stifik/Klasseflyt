@@ -17,13 +17,13 @@ export default function PrivacyPolicyPage() {
         </CardHeader>
         <CardContent className="space-y-6 text-sm text-foreground">
           <p>
-            Denne personvernerklæringen beskriver hvordan Leksehjelperen ("vi", "oss", "appen") behandler personopplysninger. Denne versjonen av appen er designet for å **ikke** bruke eksterne skytjenester for lagring av elevdata, men heller synkronisere data mot din egen Microsoft OneDrive.
+            Denne personvernerklæringen beskriver hvordan Leksehjelperen ("vi", "oss", "appen") behandler personopplysninger. Denne versjonen av appen er designet for å <strong>ikke</strong> bruke eksterne skytjenester for lagring av elevdata, men heller synkronisere data mot din egen Microsoft OneDrive.
           </p>
 
           <div className="p-4 border-l-4 border-primary bg-primary/10 rounded-r-lg">
             <h3 className="font-bold text-primary-foreground">VIKTIG: Du er Behandlingsansvarlig</h3>
             <p className="mt-2">
-              Når du (som lærer, skole eller kommune) legger inn data om elever, er det **du som er Behandlingsansvarlig**. Du bestemmer formålet med behandlingen og er ansvarlig for at du har et gyldig behandlingsgrunnlag (f.eks. tjenstlig behov). Appen fungerer kun som et verktøy for databehandling på ditt eget utstyr og lagringsområde.
+              Når du (som lærer, skole eller kommune) legger inn data om elever, er det <strong>du som er Behandlingsansvarlig</strong>. Du bestemmer formålet med behandlingen og er ansvarlig for at du har et gyldig behandlingsgrunnlag (f.eks. tjenstlig behov). Appen fungerer kun som et verktøy for databehandling på ditt eget utstyr og lagringsområde.
             </p>
           </div>
 
@@ -34,7 +34,7 @@ export default function PrivacyPolicyPage() {
                 <strong>Kontoinformasjon (Lærer):</strong> Appen bruker Microsoft Authenticator for innlogging. Vi lagrer ingen personlig informasjon om deg, men bruker din Microsoft-profil til å få tilgang til appens egen mappe på din OneDrive.
               </li>
               <li>
-                <strong>Elev-, fag- og leksedata:</strong> All data du legger inn (elevnavn, anmerkninger, lekser etc.) lagres lokalt i din nettleser for rask tilgang. Denne dataen blir deretter synkronisert som en enkelt, kryptert fil til en dedikert mappe i din egen Microsoft OneDrive. **Ingen av disse dataene sendes til eller lagres på våre servere.**
+                <strong>Elev-, fag- og leksedata:</strong> All data du legger inn (elevnavn, anmerkninger, lekser etc.) lagres lokalt i din nettleser for rask tilgang. Denne dataen blir deretter synkronisert som en enkelt, kryptert fil til en dedikert mappe i din egen Microsoft OneDrive. <strong>Ingen av disse dataene sendes til eller lagres på våre servere.</strong>
               </li>
             </ul>
 

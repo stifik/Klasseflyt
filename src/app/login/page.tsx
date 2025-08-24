@@ -4,6 +4,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import Link from "next/link";
 
 // Placeholder for MSAL button
 const MsalLoginButton = () => {
@@ -33,7 +34,10 @@ export default function LoginPage() {
                 <MsalLoginButton />
             </div>
              <div className="mt-6 text-center text-xs text-muted-foreground">
-                Ved å logge inn godtar du at appen lagrer en enkelt databasefil i din personlige OneDrive for å synkronisere data.
+                Ved å logge inn godtar du at appen lagrer en enkelt databasefil i din personlige OneDrive for å synkronisere data. Les mer i vår{" "}
+                <Link href="/privacy" className="underline hover:text-primary">
+                    personvernerklæring
+                </Link>.
             </div>
         </CardContent>
        </Card>
