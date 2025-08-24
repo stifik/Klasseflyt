@@ -80,4 +80,18 @@ body {
   .no-print {
     display: none;
   }
+  
+  /* Ensure accordion content is visible when printing */
+  .printable-area [data-state='closed'] {
+    display: block !important;
+  }
+
+  .printable-area [data-radix-collapsible-content] {
+    display: block !important;
+  }
+
+  /* Hide accordion chevron icon when printing */
+  .printable-area [data-radix-accordion-trigger] > svg {
+    display: none;
+  }
 }
