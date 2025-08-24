@@ -62,38 +62,21 @@ body {
 }
 
 @media print {
-  body * {
-    visibility: hidden;
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
-  .printable-area, .printable-area * {
-    visibility: visible;
+  .no-print {
+    display: none !important;
   }
   .printable-area {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
+    display: block !important;
   }
   .page-break {
     page-break-before: always;
   }
-  .no-print {
-    display: none;
-  }
-  
-  /* Force print background colors for the progress bars */
   .progress-bar-segment {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-  }
-
-  /* Ensure accordion content is visible and animations are disabled for printing */
-  .printable-area [data-state=open] > [data-radix-collection-item] {
-    display: block !important;
-  }
-
-  .printable-area [data-radix-accordion-content] {
-    animation: none !important;
-    transition: none !important;
   }
 }

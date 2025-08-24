@@ -4,7 +4,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
@@ -106,7 +105,6 @@ export default function Reports({ students, subjects, homework, submissions, dai
   });
   const [generatedMessages, setGeneratedMessages] = useState<Array<{ studentName: string; message: string }>>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [accordionValue, setAccordionValue] = useState<string | string[] | undefined>(undefined);
 
   const studentStats = useMemo(() => {
     return students.map(student => {
@@ -182,13 +180,12 @@ export default function Reports({ students, subjects, homework, submissions, dai
   
   useEffect(() => {
     const currentWeek = getWeekNumber(new Date());
-    // If current week is not in the list of available weeks, and there are available weeks, select the most recent one.
     if (!uniqueWeeks.includes(currentWeek) && uniqueWeeks.length > 0) {
       setSelectedWeek(uniqueWeeks[0]);
     } else {
       setSelectedWeek(currentWeek);
     }
-  }, [homework]); // Re-run when homework data changes
+  }, [homework]);
 
   const handleGenerateSummaries = async () => {
     if (!selectedWeek) {
@@ -213,7 +210,6 @@ export default function Reports({ students, subjects, homework, submissions, dai
       
       const hasAnyIssues = hasHomeworkIssues || hasIpadIssues || hasRemarks;
       
-      // Don't report if the only issue is absence and there are no other issues.
       const onlyAbsence = !hasIpadIssues && !hasRemarks && studentWeekSubmissions.length > 0 && studentWeekSubmissions.every(s => s.status === 'Syk/Fravær');
 
       if (onlyAbsence) return null;
@@ -262,47 +258,70 @@ export default function Reports({ students, subjects, homework, submissions, dai
     toast({ title: "Kopiert!", description: "Meldingen er kopiert til utklippstavlen." });
   };
   
-  const handlePrint = () => {
-    const studentIds = studentStats.map(s => s.studentId);
-    setAccordionValue(studentIds);
-
-    // Give the DOM a moment to update and re-render before printing
-    setTimeout(() => {
-        window.print();
-        setAccordionValue(undefined); // Close accordions after printing
-    }, 50); // A small delay is crucial
-  };
-
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="no-print">
         <CardHeader>
-          <CardTitle>Elevrapporter</CardTitle>
-          <CardDescription>Oversikt over hver enkelt elevs fremgang og ansvarsområder. Åpne en elev for detaljer.</CardDescription>
+          <CardTitle>Ukesoppsummering for Meldinger</CardTitle>
+          <CardDescription>Generer automatisk meldinger til foresatte for elever med anmerkninger for en valgt uke.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-end mb-4 no-print">
-            <Button onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Skriv ut rapport</Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Select value={selectedWeek ? String(selectedWeek) : ''} onValueChange={(v) => setSelectedWeek(parseInt(v))}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Velg uke" />
+              </SelectTrigger>
+              <SelectContent>
+                {uniqueWeeks.map(w => <SelectItem key={w} value={String(w)}>Uke {w}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button onClick={handleGenerateSummaries} disabled={isGenerating || !selectedWeek} className="w-full sm:w-auto">
+              {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Generer Oppsummering
+            </Button>
           </div>
-          <Accordion 
-            type="multiple"
-            className="w-full printable-area"
-            id="reports-section"
-            value={accordionValue as string[]}
-            onValueChange={setAccordionValue}
-          >
+
+          {generatedMessages.length > 0 && (
+            <div className="mt-4 space-y-4">
+              {generatedMessages.map(({ studentName, message }, index) => (
+                <Card key={index}>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-base">{studentName}</CardTitle>
+                     <Button variant="outline" size="sm" onClick={() => handleCopyMessage(message)}><Copy className="mr-2 h-4 w-4"/> Kopier</Button>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm whitespace-pre-wrap">{message}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+            <div className="flex items-center justify-between">
+                <div>
+                    <CardTitle>Elevrapporter</CardTitle>
+                    <CardDescription>Oversikt over hver enkelt elevs fremgang og ansvarsområder.</CardDescription>
+                </div>
+                <Button onClick={() => window.print()} className="no-print"><Printer className="mr-2 h-4 w-4" /> Skriv ut rapport</Button>
+            </div>
+        </CardHeader>
+        <CardContent className="space-y-4 printable-area">
             {studentStats.map(stat => (
-              <AccordionItem key={stat.studentId} value={stat.studentId} id={`student-report-${stat.studentId}`} className="page-break">
-                <AccordionTrigger>
+              <Card key={stat.studentId} className="page-break">
+                <CardHeader>
                     <div className="flex justify-between w-full pr-4">
-                        <span className="font-bold">{stat.studentName}</span>
+                        <CardTitle>{stat.studentName}</CardTitle>
                         <div className="flex gap-4 text-sm text-muted-foreground">
                           <span>Leksemangler: {stat.totalDelays}</span>
                           <span>Anmerkninger: {stat.totalRemarks}</span>
                         </div>
                     </div>
-                </AccordionTrigger>
-                <AccordionContent className="p-4 space-y-4">
+                </CardHeader>
+                <CardContent className="p-4 space-y-4 pt-0">
                   <div className="grid gap-4 md:grid-cols-2">
                      {stat.statsBySubject.map(subStat => (
                       <Card key={subStat.subjectId}>
@@ -350,14 +369,14 @@ export default function Reports({ students, subjects, homework, submissions, dai
                   </div>
                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <Card>
-                        <CardHeader><CardTitle>iPad-ansvar</CardTitle></CardHeader>
+                        <CardHeader><CardTitle className="text-base">iPad-ansvar</CardTitle></CardHeader>
                         <CardContent className="text-sm">
                           <p>Glemt å lade: <strong>{stat.ipadNotCharged}</strong> gang(er)</p>
                           <p>Glemt å ta med: <strong>{stat.ipadNotBrought}</strong> gang(er)</p>
                         </CardContent>
                       </Card>
                        <Card>
-                        <CardHeader><CardTitle>Anmerkninger ({stat.totalRemarks} totalt)</CardTitle></CardHeader>
+                        <CardHeader><CardTitle className="text-base">Anmerkninger ({stat.totalRemarks} totalt)</CardTitle></CardHeader>
                         <CardContent className="text-sm">
                            {Object.keys(stat.remarksByDate).length > 0 ? (
                                 <ul className="list-disc list-inside">
@@ -375,49 +394,12 @@ export default function Reports({ students, subjects, homework, submissions, dai
                     Tegnforklaring: 
                     {statusOrder.map((name) => <span key={name} className="inline-flex items-center ml-4"><span className="w-3 h-3 mr-1 rounded-full" style={{backgroundColor: statusColors[name]}}></span>{name}</span>)}
                   </div>
-                </AccordionContent>
-              </AccordionItem>
+                </CardContent>
+              </Card>
             ))}
-          </Accordion>
-        </CardContent>
-      </Card>
-      
-      <Card className="no-print">
-        <CardHeader>
-          <CardTitle>Ukesoppsummering for Meldinger</CardTitle>
-          <CardDescription>Generer automatisk meldinger til foresatte for elever med anmerkninger for en valgt uke.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Select value={selectedWeek ? String(selectedWeek) : ''} onValueChange={(v) => setSelectedWeek(parseInt(v))}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Velg uke" />
-              </SelectTrigger>
-              <SelectContent>
-                {uniqueWeeks.map(w => <SelectItem key={w} value={String(w)}>Uke {w}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Button onClick={handleGenerateSummaries} disabled={isGenerating || !selectedWeek} className="w-full sm:w-auto">
-              {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Generer Oppsummering
-            </Button>
-          </div>
-
-          {generatedMessages.length > 0 && (
-            <div className="mt-4 space-y-4">
-              {generatedMessages.map(({ studentName, message }, index) => (
-                <Card key={index}>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-base">{studentName}</CardTitle>
-                     <Button variant="outline" size="sm" onClick={() => handleCopyMessage(message)}><Copy className="mr-2 h-4 w-4"/> Kopier</Button>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm whitespace-pre-wrap">{message}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+             <div className="pt-4 text-xs text-center text-muted-foreground no-print">
+                -- Slutt på rapport --
+              </div>
         </CardContent>
       </Card>
     </div>
