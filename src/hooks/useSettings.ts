@@ -16,6 +16,11 @@ const defaultSettings: AppSettings = {
     seatingChart: true,
   },
   tabOrder: defaultTabOrder,
+  reportSettings: {
+    includeHomework: true,
+    includeIpad: true,
+    includeRemarks: true,
+  },
 };
 
 export function useSettings(userId: string) {
@@ -38,6 +43,10 @@ export function useSettings(userId: string) {
             ...(data.tabs || {}),
           },
           tabOrder: data.tabOrder && data.tabOrder.length > 0 ? data.tabOrder : defaultTabOrder,
+          reportSettings: {
+            ...defaultSettings.reportSettings,
+            ...(data.reportSettings || {}),
+          }
         };
         setSettings(mergedSettings);
       } else {

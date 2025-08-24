@@ -162,7 +162,7 @@ function Home({ userId }: { userId: string }) {
 
   const visibleTabs = settings.tabOrder.filter(tabKey => settings.tabs[tabKey]);
 
-  const tabGridCols = {
+  const tabGridCols: Record<number, string> = {
     1: 'grid-cols-1',
     2: 'grid-cols-2',
     3: 'sm:grid-cols-3',
@@ -178,7 +178,7 @@ function Home({ userId }: { userId: string }) {
     overview: { userId, students, subjects, homeworkList: homework, submissions, onUpdate: handleDataUpdate },
     dailyCheck: { userId, students, initialChecks: dailyChecks, onUpdate: handleDataUpdate, seatingChart },
     remarks: { userId, students, initialRemarks: remarks, onUpdate: handleDataUpdate, seatingChart },
-    reports: { students, subjects, homework, submissions, dailyChecks, remarks },
+    reports: { students, subjects, homework, submissions, dailyChecks, remarks, settings: settings.reportSettings },
     seatingChart: { userId, students, seatingChart, onSeatingChartChange: handleSeatingChartChange, settings: seatingChartSettings, onSettingsChange: handleSettingsChange, history: seatingChartHistory },
   };
 

@@ -56,7 +56,14 @@ export type SeatingChartRecord = {
 
 export type TabKey = 'overview' | 'dailyCheck' | 'remarks' | 'reports' | 'seatingChart';
 
+export type ReportSettings = {
+  includeHomework: boolean;
+  includeIpad: boolean;
+  includeRemarks: boolean;
+};
+
 export type AppSettings = {
   tabs: Record<TabKey, boolean>;
   tabOrder: TabKey[];
+  reportSettings: ReportSettings;
 };

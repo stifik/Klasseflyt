@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -6,7 +7,7 @@ import type { Student, Subject, AppSettings, TabKey } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical } from "lucide-react";
+import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { addStudent, deleteStudent, addSubject, deleteSubject, resetAndSeedDatabase } from "@/lib/firestore";
 import {
@@ -180,66 +181,70 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
       onSettingsChange({ ...settings, tabOrder: newTabOrder });
     }
   };
+  
+  const handleReportSettingToggle = (setting: keyof AppSettings['reportSettings']) => {
+    const newReportSettings = { ...settings.reportSettings, [setting]: !settings.reportSettings[setting] };
+    onSettingsChange({ ...settings, reportSettings: newReportSettings });
+  };
 
   return (
     <div className="space-y-6">
-      <Card>
-          <CardHeader>
-              <CardTitle className="flex items-center"><SettingsIcon className="mr-2" />Faneinnstillinger</CardTitle>
-              <CardDescription>Velg hvilke faner du vil ha synlig, og dra for å endre rekkefølgen.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-              <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-              >
-                  <SortableContext
-                      items={settings.tabOrder}
-                      strategy={verticalListSortingStrategy}
-                  >
-                      {settings.tabOrder.map((tabKey) => (
-                           <SortableTabItem key={tabKey} id={tabKey} onToggle={handleTabToggle} settings={settings} />
-                      ))}
-                  </SortableContext>
-              </DndContext>
-          </CardContent>
-      </Card>
-
-
-       <Card>
-        <CardHeader>
-          <CardTitle>Demodata</CardTitle>
-        </CardHeader>
-        <CardContent>
-           <p className="mb-4 text-sm text-muted-foreground">
-            {initialStudents.length === 0 
-              ? "Databasen din er tom. Klikk her for å fylle den med demodata for å komme i gang."
-              : "Dette vil slette all nåværende data knyttet til din bruker og fylle databasen med et nytt sett med demodata."
-            }
-           </p>
-           <AlertDialog>
-            <AlertDialogTrigger asChild>
-                <Button variant={initialStudents.length > 0 ? "destructive" : "default"} disabled={isSeeding}>
-                  <Database className="mr-2" />
-                  {isSeeding ? 'Jobber...' : (initialStudents.length === 0 ? 'Fyll database med demodata' : 'Nullstill og fyll database')}
-                </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle><AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Dette vil permanent slette all data knyttet til din brukerkonto, inkludert alle elever, fag, lekser og innleveringer. Handlingen kan ikke angres.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                <AlertDialogAction onClick={handleResetDatabase}>Ja, slett alt og start på nytt</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center"><SettingsIcon className="mr-2" />Faneinnstillinger</CardTitle>
+                <CardDescription>Velg hvilke faner du vil ha synlig, og dra for å endre rekkefølgen.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <SortableContext
+                        items={settings.tabOrder}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        {settings.tabOrder.map((tabKey) => (
+                             <SortableTabItem key={tabKey} id={tabKey} onToggle={handleTabToggle} settings={settings} />
+                        ))}
+                    </SortableContext>
+                </DndContext>
+            </CardContent>
+        </Card>
+         <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center"><MessageSquareQuote className="mr-2" />Innhold i Ukesmelding</CardTitle>
+                <CardDescription>Velg hva som skal inkluderes i den genererte ukesoppsummeringen under "Rapporter".</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <Label htmlFor="report-homework" className="font-medium">Lekser (ikke levert, må rettes, glemt bok)</Label>
+                    <Switch
+                        id="report-homework"
+                        checked={settings.reportSettings.includeHomework}
+                        onCheckedChange={() => handleReportSettingToggle('includeHomework')}
+                    />
+                </div>
+                 <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <Label htmlFor="report-ipad" className="font-medium">iPad (ikke ladet, ikke medbrakt)</Label>
+                    <Switch
+                        id="report-ipad"
+                        checked={settings.reportSettings.includeIpad}
+                        onCheckedChange={() => handleReportSettingToggle('includeIpad')}
+                    />
+                </div>
+                 <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <Label htmlFor="report-remarks" className="font-medium">Anmerkninger</Label>
+                    <Switch
+                        id="report-remarks"
+                        checked={settings.reportSettings.includeRemarks}
+                        onCheckedChange={() => handleReportSettingToggle('includeRemarks')}
+                    />
+                </div>
+            </CardContent>
+        </Card>
+      </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
@@ -296,6 +301,39 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
           </CardContent>
         </Card>
       </div>
+       <Card>
+        <CardHeader>
+          <CardTitle>Demodata</CardTitle>
+        </CardHeader>
+        <CardContent>
+           <p className="mb-4 text-sm text-muted-foreground">
+            {initialStudents.length === 0 
+              ? "Databasen din er tom. Klikk her for å fylle den med demodata for å komme i gang."
+              : "Dette vil slette all nåværende data knyttet til din bruker og fylle databasen med et nytt sett med demodata."
+            }
+           </p>
+           <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant={initialStudents.length > 0 ? "destructive" : "default"} disabled={isSeeding}>
+                  <Database className="mr-2" />
+                  {isSeeding ? 'Jobber...' : (initialStudents.length === 0 ? 'Fyll database med demodata' : 'Nullstill og fyll database')}
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle><AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Dette vil permanent slette all data knyttet til din brukerkonto, inkludert alle elever, fag, lekser og innleveringer. Handlingen kan ikke angres.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                <AlertDialogAction onClick={handleResetDatabase}>Ja, slett alt og start på nytt</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
+      </Card>
     </div>
   );
 }

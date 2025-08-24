@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark } from '@/lib/types';
+import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ interface ReportsProps {
   submissions: Submission[];
   dailyChecks: DailyCheck[];
   remarks: Remark[];
+  settings: ReportSettings;
 }
 
 const statusColors: Record<HomeworkStatus, string> = {
@@ -41,40 +42,45 @@ const generateSummaryMessage = (
     ipadNotChargedCount: number,
     ipadNotBroughtCount: number,
     remarksCount: number,
+    settings: ReportSettings,
 ): string => {
     let message = `Hei,\nEn liten oppsummering for ${studentName} i uke ${week}.\n\n`;
     let hasIssues = false;
 
-    const homeworkIssues: string[] = [];
-    if (missingAssignments.length > 0) {
-        homeworkIssues.push(`Ikke levert: ${missingAssignments.join(', ')}`);
-    }
-    if (incompleteAssignments.length > 0) {
-        homeworkIssues.push(`Må rettes: ${incompleteAssignments.join(', ')}`);
-    }
-     if (forgottenBooks.length > 0) {
-        homeworkIssues.push(`Glemt bok: ${forgottenBooks.join(', ')}`);
+    if (settings.includeHomework) {
+        const homeworkIssues: string[] = [];
+        if (missingAssignments.length > 0) {
+            homeworkIssues.push(`Ikke levert: ${missingAssignments.join(', ')}`);
+        }
+        if (incompleteAssignments.length > 0) {
+            homeworkIssues.push(`Må rettes: ${incompleteAssignments.join(', ')}`);
+        }
+         if (forgottenBooks.length > 0) {
+            homeworkIssues.push(`Glemt bok: ${forgottenBooks.join(', ')}`);
+        }
+
+        if (homeworkIssues.length > 0) {
+            message += `Lekser:\n- ${homeworkIssues.join('\n- ')}\n\n`;
+            hasIssues = true;
+        }
     }
 
-    if (homeworkIssues.length > 0) {
-        message += `Lekser:\n- ${homeworkIssues.join('\n- ')}\n\n`;
-        hasIssues = true;
+    if (settings.includeIpad) {
+        const ipadIssues: string[] = [];
+        if (ipadNotChargedCount > 0) {
+            ipadIssues.push(`Ikke ladet: ${ipadNotChargedCount} gang(er)`);
+        }
+        if (ipadNotBroughtCount > 0) {
+            ipadIssues.push(`Ikke medbrakt: ${ipadNotBroughtCount} gang(er)`);
+        }
+
+        if (ipadIssues.length > 0) {
+            message += `iPad:\n- ${ipadIssues.join('\n- ')}\n\n`;
+            hasIssues = true;
+        }
     }
 
-    const ipadIssues: string[] = [];
-    if (ipadNotChargedCount > 0) {
-        ipadIssues.push(`Ikke ladet: ${ipadNotChargedCount} gang(er)`);
-    }
-    if (ipadNotBroughtCount > 0) {
-        ipadIssues.push(`Ikke medbrakt: ${ipadNotBroughtCount} gang(er)`);
-    }
-
-    if (ipadIssues.length > 0) {
-        message += `iPad:\n- ${ipadIssues.join('\n- ')}\n\n`;
-        hasIssues = true;
-    }
-
-    if (remarksCount > 0) {
+    if (settings.includeRemarks && remarksCount > 0) {
         message += `Anmerkninger: ${remarksCount} stk\n\n`;
         hasIssues = true;
     }
@@ -86,7 +92,7 @@ const generateSummaryMessage = (
 };
 
 
-export default function Reports({ students, subjects, homework, submissions, dailyChecks, remarks }: ReportsProps) {
+export default function Reports({ students, subjects, homework, submissions, dailyChecks, remarks, settings }: ReportsProps) {
   const { toast } = useToast();
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   const [generatedMessages, setGeneratedMessages] = useState<Array<{ studentName: string; message: string }>>([]);
@@ -166,11 +172,11 @@ export default function Reports({ students, subjects, homework, submissions, dai
       const studentWeekChecks = dailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
       const studentWeekRemarks = remarks.filter(r => r.studentId === student.id && getWeekNumber(new Date(r.date)) === selectedWeek);
 
-      const hasHomeworkIssues = studentWeekSubmissions.some(s => 
+      const hasHomeworkIssues = settings.includeHomework && studentWeekSubmissions.some(s => 
         s.status === 'Ikke levert' || s.status === 'Må rettes' || s.status === 'Glemt bok'
       );
-      const hasIpadIssues = studentWeekChecks.some(c => !c.ipadBrought || !c.ipadCharged);
-      const hasRemarks = studentWeekRemarks.length > 0;
+      const hasIpadIssues = settings.includeIpad && studentWeekChecks.some(c => !c.ipadBrought || !c.ipadCharged);
+      const hasRemarks = settings.includeRemarks && studentWeekRemarks.length > 0;
       const onlyAbsence = studentWeekSubmissions.length > 0 && studentWeekSubmissions.every(s => s.status === 'Syk/Fravær') && !hasIpadIssues && !hasRemarks;
       
       return (hasHomeworkIssues || hasIpadIssues || hasRemarks) && !onlyAbsence;
@@ -195,7 +201,8 @@ export default function Reports({ students, subjects, homework, submissions, dai
             studentWeekSubmissions.filter(s => s.status === 'Glemt bok').map(s => subjects.find(sub => sub.id === homework.find(h => h.id === s.homeworkId)?.subjectId)?.name || ''),
             studentWeekChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
             studentWeekChecks.filter(c => !c.ipadBrought).length,
-            studentWeekRemarks.length
+            studentWeekRemarks.length,
+            settings
         );
         return { studentName: student.name, message };
     }).filter(item => item.message); // Filtrer bort tomme meldinger
