@@ -10,11 +10,12 @@ import Settings from "@/components/Settings";
 import SeatingChart from "@/components/SeatingChart";
 import Remarks from "@/components/Remarks";
 import GroupTool from "@/components/GroupTool";
+import StudentPicker from "@/components/StudentPicker";
 import withAuth from '@/components/withAuth';
 import { Button } from "@/components/ui/button";
 import { BookOpenCheck, Loader2, LogOut } from "lucide-react";
-import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark, TabKey, AppSettings } from "@/lib/types";
-import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks, getLatestSeatingChart, saveSeatingChart, getSeatingChartHistory, getRemarks } from "@/lib/firestore";
+import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark, TabKey, AppSettings, SeatingLayout } from "@/lib/types";
+import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks, getLatestSeatingChart, saveSeatingChart, getSeatingChartHistory, getRemarks, getSeatingLayouts } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { getAuth, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
@@ -29,6 +30,7 @@ const tabComponents: Record<TabKey, React.FC<any>> = {
   reports: Reports,
   seatingChart: SeatingChart,
   groupTool: GroupTool,
+  studentPicker: StudentPicker,
 };
 
 const tabLabels: Record<TabKey, string> = {
@@ -38,6 +40,7 @@ const tabLabels: Record<TabKey, string> = {
   reports: "Rapporter",
   seatingChart: "Klassekart",
   groupTool: "Gruppeverktøy",
+  studentPicker: "Elev-trekker",
 };
 
 function Home({ userId }: { userId: string }) {
@@ -49,6 +52,7 @@ function Home({ userId }: { userId: string }) {
   const [remarks, setRemarks] = useState<Remark[]>([]);
   const [seatingChart, setSeatingChart] = useState<SeatingChartData | null>(null);
   const [seatingChartHistory, setSeatingChartHistory] = useState<SeatingChartRecord[]>([]);
+  const [seatingLayouts, setSeatingLayouts] = useState<SeatingLayout[]>([]);
   const [seatingChartSettings, setSeatingChartSettings] = useState({
     rows: 4,
     cols: 5,
@@ -59,6 +63,8 @@ function Home({ userId }: { userId: string }) {
   const router = useRouter();
   const auth = getAuth();
   const { settings, saveSettings, loading: settingsLoading } = useSettings(userId);
+  
+  const activeLayout = seatingLayouts.find(l => l.id === settings.selectedSeatingLayoutId);
 
   const loadData = async (isUpdate = false) => {
     if (!userId) return;
@@ -77,7 +83,8 @@ function Home({ userId }: { userId: string }) {
         dailyChecksData,
         remarksData,
         seatingChartResult,
-        historyData
+        historyData,
+        layoutsData
       ] = await Promise.all([
         getStudents(userId),
         getSubjects(userId),
@@ -86,7 +93,8 @@ function Home({ userId }: { userId: string }) {
         getDailyChecks(userId),
         getRemarks(userId),
         getLatestSeatingChart(userId),
-        getSeatingChartHistory(userId)
+        getSeatingChartHistory(userId),
+        getSeatingLayouts(userId)
       ]);
 
       setStudents(studentsData);
@@ -96,6 +104,7 @@ function Home({ userId }: { userId: string }) {
       setDailyChecks(dailyChecksData);
       setRemarks(remarksData);
       setSeatingChartHistory(historyData);
+      setSeatingLayouts(layoutsData);
       
       if (seatingChartResult) {
         setSeatingChart(seatingChartResult.chart);
@@ -170,8 +179,9 @@ function Home({ userId }: { userId: string }) {
     dailyCheck: { userId, students, initialChecks: dailyChecks, onUpdate: handleDataUpdate, seatingChart },
     remarks: { userId, students, initialRemarks: remarks, onUpdate: handleDataUpdate, seatingChart },
     reports: { students, subjects, homework, submissions, dailyChecks, remarks, settings: settings.reportSettings },
-    seatingChart: { userId, students, seatingChart, onSeatingChartChange: handleSeatingChartChange, settings: seatingChartSettings, onSettingsChange: handleSettingsChange, history: seatingChartHistory, appSettings: settings, onAppSettingsChange: saveSettings },
+    seatingChart: { userId, students, seatingChart, onSeatingChartChange: handleSeatingChartChange, settings: seatingChartSettings, onSettingsChange: handleSettingsChange, history: seatingChartHistory, appSettings: settings, onAppSettingsChange: saveSettings, layouts: seatingLayouts, onLayoutsChange: setSeatingLayouts },
     groupTool: { students },
+    studentPicker: { students, seatingChart, activeLayout },
   };
 
   return (

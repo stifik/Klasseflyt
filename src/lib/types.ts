@@ -1,5 +1,4 @@
 
-
 export type Student = {
   id: string;
   name: string;
@@ -65,7 +64,7 @@ export type SeatingLayout = {
   createdAt: Date;
 };
 
-export type TabKey = 'overview' | 'dailyCheck' | 'remarks' | 'reports' | 'seatingChart' | 'groupTool';
+export type TabKey = 'overview' | 'dailyCheck' | 'remarks' | 'reports' | 'seatingChart' | 'groupTool' | 'studentPicker';
 
 export type ReportSettings = {
   includeHomework: boolean;

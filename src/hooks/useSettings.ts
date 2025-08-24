@@ -5,7 +5,7 @@ import { db } from '@/lib/firebase';
 import type { AppSettings, TabKey } from '@/lib/types';
 import { useToast } from './use-toast';
 
-const defaultTabOrder: TabKey[] = ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'groupTool'];
+const defaultTabOrder: TabKey[] = ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'groupTool', 'studentPicker'];
 
 const defaultSettings: AppSettings = {
   tabs: {
@@ -15,6 +15,7 @@ const defaultSettings: AppSettings = {
     reports: true,
     seatingChart: true,
     groupTool: true,
+    studentPicker: true,
   },
   tabOrder: defaultTabOrder,
   reportSettings: {
