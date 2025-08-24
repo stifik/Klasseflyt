@@ -106,7 +106,7 @@ export default function Reports({ students, subjects, homework, submissions, dai
   });
   const [generatedMessages, setGeneratedMessages] = useState<Array<{ studentName: string; message: string }>>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [accordionValue, setAccordionValue] = useState<string | undefined>();
+  const [accordionValue, setAccordionValue] = useState<string | string[] | undefined>(undefined);
 
   const studentStats = useMemo(() => {
     return students.map(student => {
@@ -263,41 +263,14 @@ export default function Reports({ students, subjects, homework, submissions, dai
   };
   
   const handlePrint = () => {
-    const reportSection = document.getElementById('reports-section');
-    if (!reportSection) return;
+    const studentIds = studentStats.map(s => s.studentId);
+    setAccordionValue(studentIds);
 
-    const originalValues: { [key: string]: string | undefined } = {};
-    const triggers = reportSection.querySelectorAll<HTMLElement>('[data-radix-accordion-trigger]');
-
-    // 1. Open all closed accordions and store their original state
-    triggers.forEach(trigger => {
-        const item = trigger.closest('[data-radix-accordion-item]');
-        if (item) {
-            originalValues[item.id] = item.getAttribute('data-state') || 'closed';
-            if (item.getAttribute('data-state') === 'closed') {
-                trigger.click(); 
-            }
-        }
-    });
-
-    // 2. Wait for the DOM to update, then print
+    // Give the DOM a moment to update before printing
     setTimeout(() => {
         window.print();
-
-        // 3. Revert to original state after printing
-        setTimeout(() => {
-             triggers.forEach(trigger => {
-                const item = trigger.closest('[data-radix-accordion-item]');
-                if (item && originalValues[item.id] === 'closed') {
-                   const currentState = item.getAttribute('data-state');
-                   if (currentState === 'open') {
-                       trigger.click();
-                   }
-                }
-            });
-        }, 100);
-
-    }, 100); // A short delay to allow content to expand
+        setAccordionValue(undefined);
+    }, 50);
   };
 
   return (
@@ -311,7 +284,13 @@ export default function Reports({ students, subjects, homework, submissions, dai
           <div className="flex justify-end mb-4 no-print">
             <Button onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Skriv ut rapport</Button>
           </div>
-          <Accordion type="single" collapsible className="w-full printable-area" id="reports-section" value={accordionValue} onValueChange={setAccordionValue}>
+          <Accordion 
+            type="multiple"
+            className="w-full printable-area"
+            id="reports-section"
+            value={accordionValue as string[]}
+            onValueChange={setAccordionValue}
+          >
             {studentStats.map(stat => (
               <AccordionItem key={stat.studentId} value={stat.studentId} id={`student-report-${stat.studentId}`} className="page-break">
                 <AccordionTrigger>
