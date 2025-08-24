@@ -98,7 +98,10 @@ const LayoutDesigner = ({ userId, onSave, onCancel }: { userId: string, onSave: 
         const newCols = type === 'cols' ? value : cols;
         setRows(newRows);
         setCols(newCols);
-        setLayout(Array.from({ length: newRows }, () => Array(newCols).fill(false)));
+        
+        // Correctly initialize the new layout grid with 'false'
+        const newLayout = Array.from({ length: newRows }, () => Array(newCols).fill(false));
+        setLayout(newLayout);
     };
 
     const handleSave = async () => {
@@ -116,6 +119,7 @@ const LayoutDesigner = ({ userId, onSave, onCancel }: { userId: string, onSave: 
             toast({ title: "Layout lagret", description: `"${name}" er lagret.`});
             onSave(savedLayout);
         } catch (error) {
+            console.error(error);
             toast({ title: "Feil", description: "Kunne ikke lagre layout.", variant: "destructive" });
         }
     };
