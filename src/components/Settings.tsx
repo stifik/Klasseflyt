@@ -276,12 +276,14 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
                                 type="time"
                                 value={startTime}
                                 onChange={(e) => handleScheduleChange(period, 'startTime', e.target.value)}
+                                step="1"
                             />
                             <Input
                                 id={`period-${period}-end`}
                                 type="time"
                                 value={endTime}
                                 onChange={(e) => handleScheduleChange(period, 'endTime', e.target.value)}
+                                step="1"
                             />
                         </div>
                     ))}
