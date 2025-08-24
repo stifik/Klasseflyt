@@ -60,6 +60,10 @@ export type ReportSettings = {
   includeHomework: boolean;
   includeIpad: boolean;
   includeRemarks: boolean;
+  includePositiveFeedback: boolean;
+  greeting: string;
+  closing: string;
+  teacherName: string;
 };
 
 export type AppSettings = {

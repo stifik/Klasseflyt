@@ -36,6 +36,7 @@ const statusColors: Record<HomeworkStatus, string> = {
 const generateSummaryMessage = (
     studentName: string,
     week: number,
+    hasIssues: boolean,
     missingAssignments: string[],
     incompleteAssignments: string[],
     forgottenBooks: string[],
@@ -44,51 +45,54 @@ const generateSummaryMessage = (
     remarksCount: number,
     settings: ReportSettings,
 ): string => {
-    let message = `Hei,\nEn liten oppsummering for ${studentName} i uke ${week}.\n\n`;
-    let hasIssues = false;
+    
+    if (hasIssues) {
+      let message = `${settings.greeting}\nEn liten oppsummering for ${studentName} i uke ${week}.\n\n`;
+      
+      if (settings.includeHomework) {
+          const homeworkIssues: string[] = [];
+          if (missingAssignments.length > 0) {
+              homeworkIssues.push(`Ikke levert: ${missingAssignments.join(', ')}`);
+          }
+          if (incompleteAssignments.length > 0) {
+              homeworkIssues.push(`Må rettes: ${incompleteAssignments.join(', ')}`);
+          }
+           if (forgottenBooks.length > 0) {
+              homeworkIssues.push(`Glemt bok: ${forgottenBooks.join(', ')}`);
+          }
 
-    if (settings.includeHomework) {
-        const homeworkIssues: string[] = [];
-        if (missingAssignments.length > 0) {
-            homeworkIssues.push(`Ikke levert: ${missingAssignments.join(', ')}`);
-        }
-        if (incompleteAssignments.length > 0) {
-            homeworkIssues.push(`Må rettes: ${incompleteAssignments.join(', ')}`);
-        }
-         if (forgottenBooks.length > 0) {
-            homeworkIssues.push(`Glemt bok: ${forgottenBooks.join(', ')}`);
-        }
+          if (homeworkIssues.length > 0) {
+              message += `Lekser:\n- ${homeworkIssues.join('\n- ')}\n\n`;
+          }
+      }
 
-        if (homeworkIssues.length > 0) {
-            message += `Lekser:\n- ${homeworkIssues.join('\n- ')}\n\n`;
-            hasIssues = true;
-        }
+      if (settings.includeIpad) {
+          const ipadIssues: string[] = [];
+          if (ipadNotChargedCount > 0) {
+              ipadIssues.push(`Ikke ladet: ${ipadNotChargedCount} gang(er)`);
+          }
+          if (ipadNotBroughtCount > 0) {
+              ipadIssues.push(`Ikke medbrakt: ${ipadNotBroughtCount} gang(er)`);
+          }
+
+          if (ipadIssues.length > 0) {
+              message += `iPad:\n- ${ipadIssues.join('\n- ')}\n\n`;
+          }
+      }
+
+      if (settings.includeRemarks && remarksCount > 0) {
+          message += `Anmerkninger: ${remarksCount} stk\n\n`;
+      }
+
+      message += `${settings.closing}\n${settings.teacherName}`;
+      return message;
     }
 
-    if (settings.includeIpad) {
-        const ipadIssues: string[] = [];
-        if (ipadNotChargedCount > 0) {
-            ipadIssues.push(`Ikke ladet: ${ipadNotChargedCount} gang(er)`);
-        }
-        if (ipadNotBroughtCount > 0) {
-            ipadIssues.push(`Ikke medbrakt: ${ipadNotBroughtCount} gang(er)`);
-        }
-
-        if (ipadIssues.length > 0) {
-            message += `iPad:\n- ${ipadIssues.join('\n- ')}\n\n`;
-            hasIssues = true;
-        }
+    if (settings.includePositiveFeedback) {
+        return `${settings.greeting}\nEn liten oppdatering for ${studentName} i uke ${week}: Alt har vært helt supert! God innsats.\n\n${settings.closing}\n${settings.teacherName}`;
     }
 
-    if (settings.includeRemarks && remarksCount > 0) {
-        message += `Anmerkninger: ${remarksCount} stk\n\n`;
-        hasIssues = true;
-    }
-
-    if (!hasIssues) return "";
-
-    message += "Vennlig hilsen,\nLæreren";
-    return message;
+    return "";
 };
 
 
@@ -135,9 +139,9 @@ export default function Reports({ students, subjects, homework, submissions, dai
       });
 
       const remarksByDate = studentRemarks
-        .sort((a, b) => b.date.getTime() - a.date.getTime())
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .reduce((acc, remark) => {
-          const dateString = format(remark.date, 'PPP', { locale: nb });
+          const dateString = format(new Date(remark.date), 'PPP', { locale: nb });
           if (!acc[dateString]) {
             acc[dateString] = 0;
           }
@@ -180,7 +184,7 @@ export default function Reports({ students, subjects, homework, submissions, dai
 
     const weekHomeworkIds = new Set(homework.filter(h => h.week === selectedWeek).map(h => h.id));
 
-    const studentsWithIssues = students.filter(student => {
+    const studentsToReport = students.map(student => {
       const studentWeekSubmissions = submissions.filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
       const studentWeekChecks = dailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
       const studentWeekRemarks = remarks.filter(r => r.studentId === student.id && getWeekNumber(new Date(r.date)) === selectedWeek);
@@ -190,25 +194,34 @@ export default function Reports({ students, subjects, homework, submissions, dai
       );
       const hasIpadIssues = settings.includeIpad && studentWeekChecks.some(c => !c.ipadBrought || !c.ipadCharged);
       const hasRemarks = settings.includeRemarks && studentWeekRemarks.length > 0;
-      const onlyAbsence = studentWeekSubmissions.length > 0 && studentWeekSubmissions.every(s => s.status === 'Syk/Fravær') && !hasIpadIssues && !hasRemarks;
       
-      return (hasHomeworkIssues || hasIpadIssues || hasRemarks) && !onlyAbsence;
-    });
+      const hasAnyIssues = hasHomeworkIssues || hasIpadIssues || hasRemarks;
+      
+      // Don't report if the only issue is absence and there are no other issues.
+      const onlyAbsence = !hasIpadIssues && !hasRemarks && studentWeekSubmissions.length > 0 && studentWeekSubmissions.every(s => s.status === 'Syk/Fravær');
 
-    if (studentsWithIssues.length === 0) {
-        toast({ title: "Ingen anmerkninger", description: `Fant ingen elever med anmerkninger i uke ${selectedWeek}.` });
+      if (onlyAbsence) return null;
+      if (hasAnyIssues || settings.includePositiveFeedback) {
+        return { student, hasAnyIssues, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks };
+      }
+      return null;
+    }).filter(Boolean);
+
+
+    if (studentsToReport.length === 0) {
+        toast({ title: "Ingen data", description: `Fant ingen relevante hendelser for uke ${selectedWeek}.` });
         setIsGenerating(false);
         return;
     }
 
-    const messages = studentsWithIssues.map(student => {
-        const studentWeekSubmissions = submissions.filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
-        const studentWeekChecks = dailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
-        const studentWeekRemarks = remarks.filter(r => r.studentId === student.id && getWeekNumber(new Date(r.date)) === selectedWeek);
+    const messages = studentsToReport.map(report => {
+        if (!report) return null;
+        const { student, hasAnyIssues, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks } = report;
 
         const message = generateSummaryMessage(
             student.name,
             selectedWeek,
+            hasAnyIssues,
             studentWeekSubmissions.filter(s => s.status === 'Ikke levert').map(s => homework.find(h => h.id === s.homeworkId)?.title || ''),
             studentWeekSubmissions.filter(s => s.status === 'Må rettes').map(s => homework.find(h => h.id === s.homeworkId)?.title || ''),
             studentWeekSubmissions.filter(s => s.status === 'Glemt bok').map(s => subjects.find(sub => sub.id === homework.find(h => h.id === s.homeworkId)?.subjectId)?.name || ''),
@@ -218,7 +231,11 @@ export default function Reports({ students, subjects, homework, submissions, dai
             settings
         );
         return { studentName: student.name, message };
-    }).filter(item => item.message); // Filtrer bort tomme meldinger
+    }).filter((item): item is { studentName: string; message: string } => item !== null && item.message !== "");
+
+    if (messages.length === 0) {
+        toast({ title: "Ingenting å rapportere", description: `Alle elever hadde en prikkfri uke ${selectedWeek}.` });
+    }
 
     setGeneratedMessages(messages);
     setIsGenerating(false);

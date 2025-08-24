@@ -38,6 +38,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { Separator } from "./ui/separator";
 
 interface SettingsProps {
   userId: string;
@@ -182,10 +183,11 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
     }
   };
   
-  const handleReportSettingToggle = (setting: keyof AppSettings['reportSettings']) => {
-    const newReportSettings = { ...settings.reportSettings, [setting]: !settings.reportSettings[setting] };
+  const handleReportSettingChange = (setting: keyof AppSettings['reportSettings'], value: any) => {
+    const newReportSettings = { ...settings.reportSettings, [setting]: value };
     onSettingsChange({ ...settings, reportSettings: newReportSettings });
   };
+
 
   return (
     <div className="space-y-6">
@@ -214,33 +216,64 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
         </Card>
          <Card>
             <CardHeader>
-                <CardTitle className="flex items-center"><MessageSquareQuote className="mr-2" />Innhold i Ukesmelding</CardTitle>
-                <CardDescription>Velg hva som skal inkluderes i den genererte ukesoppsummeringen under "Rapporter".</CardDescription>
+                <CardTitle className="flex items-center"><MessageSquareQuote className="mr-2" />Innstillinger for Ukesmelding</CardTitle>
+                <CardDescription>Tilpass innholdet og teksten i den genererte ukesoppsummeringen.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <Label htmlFor="report-homework" className="font-medium">Lekser (ikke levert, må rettes, glemt bok)</Label>
-                    <Switch
-                        id="report-homework"
-                        checked={settings.reportSettings.includeHomework}
-                        onCheckedChange={() => handleReportSettingToggle('includeHomework')}
-                    />
+                 <div>
+                    <h4 className="mb-2 font-medium text-sm">Innhold</h4>
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <Label htmlFor="report-homework" className="font-medium">Inkluder lekse-status</Label>
+                            <Switch
+                                id="report-homework"
+                                checked={settings.reportSettings.includeHomework}
+                                onCheckedChange={(checked) => handleReportSettingChange('includeHomework', checked)}
+                            />
+                        </div>
+                         <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <Label htmlFor="report-ipad" className="font-medium">Inkluder iPad-status</Label>
+                            <Switch
+                                id="report-ipad"
+                                checked={settings.reportSettings.includeIpad}
+                                onCheckedChange={(checked) => handleReportSettingChange('includeIpad', checked)}
+                            />
+                        </div>
+                         <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <Label htmlFor="report-remarks" className="font-medium">Inkluder anmerkninger</Label>
+                            <Switch
+                                id="report-remarks"
+                                checked={settings.reportSettings.includeRemarks}
+                                onCheckedChange={(checked) => handleReportSettingChange('includeRemarks', checked)}
+                            />
+                        </div>
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <Label htmlFor="report-positive" className="font-medium">Send ros ved prikkfri uke</Label>
+                            <Switch
+                                id="report-positive"
+                                checked={settings.reportSettings.includePositiveFeedback}
+                                onCheckedChange={(checked) => handleReportSettingChange('includePositiveFeedback', checked)}
+                            />
+                        </div>
+                    </div>
                 </div>
-                 <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <Label htmlFor="report-ipad" className="font-medium">iPad (ikke ladet, ikke medbrakt)</Label>
-                    <Switch
-                        id="report-ipad"
-                        checked={settings.reportSettings.includeIpad}
-                        onCheckedChange={() => handleReportSettingToggle('includeIpad')}
-                    />
-                </div>
-                 <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <Label htmlFor="report-remarks" className="font-medium">Anmerkninger</Label>
-                    <Switch
-                        id="report-remarks"
-                        checked={settings.reportSettings.includeRemarks}
-                        onCheckedChange={() => handleReportSettingToggle('includeRemarks')}
-                    />
+                <Separator />
+                <div>
+                    <h4 className="mb-2 font-medium text-sm">Tekstmal</h4>
+                     <div className="space-y-3">
+                        <div className="space-y-1">
+                            <Label htmlFor="greeting">Hilsen</Label>
+                            <Input id="greeting" value={settings.reportSettings.greeting} onChange={(e) => handleReportSettingChange('greeting', e.target.value)} />
+                        </div>
+                         <div className="space-y-1">
+                            <Label htmlFor="closing">Avslutning</Label>
+                            <Input id="closing" value={settings.reportSettings.closing} onChange={(e) => handleReportSettingChange('closing', e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="teacherName">Ditt navn (for signatur)</Label>
+                            <Input id="teacherName" value={settings.reportSettings.teacherName} onChange={(e) => handleReportSettingChange('teacherName', e.target.value)} />
+                        </div>
+                     </div>
                 </div>
             </CardContent>
         </Card>

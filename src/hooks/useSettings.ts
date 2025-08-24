@@ -20,6 +20,10 @@ const defaultSettings: AppSettings = {
     includeHomework: true,
     includeIpad: true,
     includeRemarks: true,
+    includePositiveFeedback: false,
+    greeting: "Hei,",
+    closing: "Vennlig hilsen,",
+    teacherName: "Læreren"
   },
 };
 
