@@ -72,19 +72,22 @@ export default function DailyChecklist({ userId, students, initialChecks, onUpda
     }
     
     const previousChecks = [...checks];
+    
+    // Optimistic UI update
+    const otherChecks = checks.filter(c => !(c.studentId === studentId && new Date(c.date).toISOString().split('T')[0] === dateString));
     if (newCheckData) {
-        const otherChecks = checks.filter(c => !(c.studentId === studentId && new Date(c.date).toISOString().split('T')[0] === dateString));
         setChecks([...otherChecks, {...newCheckData, id: 'temp-id'}]);
     } else {
-        setChecks(checks.filter(c => !(c.studentId === studentId && new Date(c.date).toISOString().split('T')[0] === dateString)));
+        setChecks(otherChecks);
     }
 
     try {
         if (newStatus === 'OK') {
             await deleteDailyCheckByStudentAndDate(userId, studentId, date);
-        } else {
-            await setDailyCheck(userId, newCheckData!);
+        } else if (newCheckData) {
+            await setDailyCheck(userId, newCheckData);
         }
+        onUpdate();
     } catch (error) {
         console.error(error);
         setChecks(previousChecks);
