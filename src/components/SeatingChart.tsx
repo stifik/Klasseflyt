@@ -113,7 +113,7 @@ const LayoutDesigner = ({ userId, onSave, onCancel }: { userId: string, onSave: 
             toast({ title: "Ingen pulter", description: "Du må legge til minst én pult.", variant: "destructive" });
             return;
         }
-        const newLayoutData: Omit<SeatingLayout, 'id' | 'createdAt'> = { name, rows, cols, layout, seatCount };
+        const newLayoutData = { name, rows, cols, layout, seatCount };
         try {
             const savedLayout = await saveSeatingLayout(userId, newLayoutData);
             toast({ title: "Layout lagret", description: `"${name}" er lagret.`});
@@ -284,7 +284,7 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
   };
 
   const handleLayoutSaved = (newLayout: SeatingLayout) => {
-      setLayouts(prev => [newLayout, ...prev]);
+      setLayouts(prev => [newLayout, ...prev.filter(l => l.id !== newLayout.id)]);
       setSelectedLayoutId(newLayout.id);
       setIsDesignerOpen(false);
   }

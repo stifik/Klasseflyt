@@ -60,7 +60,8 @@ export type SeatingLayout = {
   name: string;
   rows: number;
   cols: number;
-  layout: boolean[][]; // true represents a desk, false is empty space
+  layout: boolean[][]; 
+  layoutJson: string; // Stored as a JSON string
   seatCount: number;
   createdAt: Date;
 };

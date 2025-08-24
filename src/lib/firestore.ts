@@ -206,12 +206,21 @@ export async function deleteRemark(userId: string, id: string) { return deleteUs
 
 // Seating Chart Layout functions
 export async function getSeatingLayouts(userId: string): Promise<SeatingLayout[]> {
-    return fetchUserCollection<SeatingLayout>(userId, 'seatingLayouts');
+    const layouts = await fetchUserCollection<{ id: string, layoutJson: string, [key: string]: any }>(userId, 'seatingLayouts');
+    return layouts.map(l => ({ ...l, layout: JSON.parse(l.layoutJson) as boolean[][] }));
 }
-export async function saveSeatingLayout(userId: string, layout: Omit<SeatingLayout, 'id' | 'createdAt'>): Promise<SeatingLayout> {
-    const layoutWithTimestamp = { ...layout, createdAt: Timestamp.now() };
-    return addUserDocument(userId, 'seatingLayouts', layoutWithTimestamp);
+
+export async function saveSeatingLayout(userId: string, layout: Omit<SeatingLayout, 'id' | 'createdAt' | 'layoutJson'> & { layout: boolean[][] }): Promise<SeatingLayout> {
+    const { layout: layoutArray, ...rest } = layout;
+    const layoutJson = JSON.stringify(layoutArray);
+
+    const layoutWithTimestamp = { ...rest, layoutJson, createdAt: Timestamp.now() };
+    
+    const savedDoc = await addUserDocument(userId, 'seatingLayouts', layoutWithTimestamp);
+    
+    return { ...savedDoc, layout: layoutArray };
 }
+
 export async function deleteSeatingLayout(userId: string, id: string) {
     return deleteUserDocument(userId, 'seatingLayouts', id);
 }
