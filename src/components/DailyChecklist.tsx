@@ -87,6 +87,7 @@ export default function DailyChecklist({ userId, students, initialChecks, onUpda
         } else if (newCheckData) {
             await setDailyCheck(userId, newCheckData);
         }
+        // Wait for the database operation to complete, THEN trigger the update.
         onUpdate();
     } catch (error) {
         console.error(error);
