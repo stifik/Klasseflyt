@@ -13,7 +13,7 @@ import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { addRemark, deleteRemark } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from "./ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "./ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Label } from "./ui/label";
 
@@ -30,9 +30,15 @@ interface RemarksProps {
 
 const AddRemarkDialog = ({ student, onAdd, remarkTypes }: { student: Student; onAdd: (studentId: string, type: string) => void; remarkTypes: string[]; }) => {
   const [selectedType, setSelectedType] = useState(remarkTypes[0] || "Generell");
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const handleAddClick = () => {
+    onAdd(student.id, selectedType);
+    setIsOpen(false);
+  };
   
   return (
-    <Dialog>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon" className="absolute top-1 left-1 h-6 w-6">
             <PlusCircle />
@@ -56,9 +62,7 @@ const AddRemarkDialog = ({ student, onAdd, remarkTypes }: { student: Student; on
                 </Select>
            </div>
         </div>
-        <DialogClose asChild>
-          <Button onClick={() => onAdd(student.id, selectedType)}>Legg til</Button>
-        </DialogClose>
+        <Button onClick={handleAddClick}>Legg til</Button>
       </DialogContent>
     </Dialog>
   );
@@ -131,18 +135,13 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
 
   const handleAddRemark = async (studentId: string, type: string = "Generell") => {
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
-    const tempId = `temp-${Date.now()}`;
     const newRemarkData = { studentId, date, period: currentPeriod, type };
-    const optimisticRemark: Remark = { id: tempId, ...newRemarkData };
 
-    setRemarks(prev => [...prev, optimisticRemark]);
-    
     try {
-      const savedRemark = await addRemark(userId, newRemarkData);
-      setRemarks(prev => prev.map(r => r.id === tempId ? savedRemark : r));
+      await addRemark(userId, newRemarkData);
+      onUpdate(); // This will refetch the data and update the state reliably
     } catch (error) {
       console.error(error);
-      setRemarks(prev => prev.filter(r => r.id !== tempId));
       toast({ title: "Feil", description: `Kunne ikke legge til anmerkning for ${studentName}.`, variant: "destructive" });
     }
   };
@@ -155,14 +154,11 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
 
     const lastRemark = studentRemarksThisPeriod[0];
     
-    setRemarks(prev => prev.filter(r => r.id !== lastRemark.id));
-
     try {
       await deleteRemark(userId, lastRemark.id);
-      onUpdate(); 
+      onUpdate(); // Refetch after deleting
     } catch (error) {
       console.error(error);
-      setRemarks(prev => [...prev, lastRemark]);
       toast({ title: "Feil", description: `Kunne ikke fjerne anmerkning.`, variant: "destructive" });
     }
   };
@@ -326,5 +322,3 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
     </div>
   );
 }
-
-    
