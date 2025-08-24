@@ -6,13 +6,16 @@ import type { Student, Remark, SeatingChartData, AppSettings } from "@/lib/types
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Megaphone, ListChecks } from "lucide-react";
+import { Calendar as CalendarIcon, Megaphone, ListChecks, PlusCircle } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { addRemark, deleteRemark } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from "./ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Label } from "./ui/label";
 
 const NUMBER_OF_PERIODS = 6;
 
@@ -24,6 +27,42 @@ interface RemarksProps {
   seatingChart: SeatingChartData | null;
   settings: AppSettings;
 }
+
+const AddRemarkDialog = ({ student, onAdd, remarkTypes }: { student: Student; onAdd: (studentId: string, type: string) => void; remarkTypes: string[]; }) => {
+  const [selectedType, setSelectedType] = useState(remarkTypes[0] || "Generell");
+  
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" className="absolute top-1 left-1 h-6 w-6">
+            <PlusCircle />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Legg til anmerkning for {student.name}</DialogTitle>
+          <DialogDescription>Velg type anmerkning. Dette hjelper med analysen senere.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+           <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="remark-type" className="text-right">Type</Label>
+                <Select value={selectedType} onValueChange={setSelectedType}>
+                    <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Velg type..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {remarkTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+           </div>
+        </div>
+        <DialogClose asChild>
+          <Button onClick={() => onAdd(student.id, selectedType)}>Legg til</Button>
+        </DialogClose>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 export default function Remarks({ userId, students, initialRemarks, onUpdate, seatingChart, settings }: RemarksProps) {
   const [date, setDate] = useState<Date>(new Date());
@@ -52,7 +91,6 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
         }
       }
       
-      // If not in any period, find the next upcoming period for today
       const nextPeriod = schedule
         .filter(p => p.startTime)
         .find(p => {
@@ -67,7 +105,7 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
 
     const interval = setInterval(() => {
         setCurrentPeriod(getCurrentPeriod());
-    }, 60000); // Check every minute
+    }, 60000); 
 
     return () => clearInterval(interval);
   }, [settings.schedule]);
@@ -91,10 +129,10 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
     );
   };
 
-  const handleAddRemark = async (studentId: string) => {
+  const handleAddRemark = async (studentId: string, type: string = "Generell") => {
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
     const tempId = `temp-${Date.now()}`;
-    const newRemarkData = { studentId, date, period: currentPeriod };
+    const newRemarkData = { studentId, date, period: currentPeriod, type };
     const optimisticRemark: Remark = { id: tempId, ...newRemarkData };
 
     setRemarks(prev => [...prev, optimisticRemark]);
@@ -163,33 +201,36 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
     const countDay = remarksForDay.length;
     
     return (
-      <Button
-        variant={countPeriod > 0 ? "destructive" : "secondary"}
-        onClick={() => handleAddRemark(student.id)}
-        onContextMenu={(e) => { e.preventDefault(); handleRemoveLastRemark(student.id); }}
-        onTouchStart={() => handlePressStart(student.id)}
-        onTouchEnd={handlePressEnd}
-        onMouseDown={() => handlePressStart(student.id)}
-        onMouseUp={handlePressEnd}
-        onMouseLeave={handlePressEnd}
-        className="justify-center h-auto py-2 flex-col w-28 h-20 relative touch-manipulation"
-      >
-        <span className="font-semibold text-xs">{student.name}</span>
-        {countPeriod > 0 && (
-          <div className="absolute top-1 right-1 flex items-center justify-center bg-background text-destructive rounded-full w-5 h-5 text-xs font-bold">
-            {countPeriod}
-          </div>
-        )}
-        {countDay > 0 && (
-           <div className="absolute bottom-1 right-1 text-xs text-muted-foreground bg-background/50 rounded px-1">
-             Total: {countDay}
-           </div>
-        )}
-        <div className="flex items-center text-xs opacity-80 mt-1">
-          <Megaphone className="mr-2" />
-          <span>Registrer</span>
-        </div>
-      </Button>
+      <div className="relative">
+        <AddRemarkDialog student={student} onAdd={handleAddRemark} remarkTypes={settings.remarkTypes || ["Generell"]} />
+        <Button
+            variant={countPeriod > 0 ? "destructive" : "secondary"}
+            onClick={() => handleAddRemark(student.id, "Generell")}
+            onContextMenu={(e) => { e.preventDefault(); handleRemoveLastRemark(student.id); }}
+            onTouchStart={() => handlePressStart(student.id)}
+            onTouchEnd={handlePressEnd}
+            onMouseDown={() => handlePressStart(student.id)}
+            onMouseUp={handlePressEnd}
+            onMouseLeave={handlePressEnd}
+            className="justify-center h-auto py-2 flex-col w-28 h-20 relative touch-manipulation"
+        >
+            <span className="font-semibold text-xs">{student.name}</span>
+            {countPeriod > 0 && (
+            <div className="absolute top-1 right-1 flex items-center justify-center bg-background text-destructive rounded-full w-5 h-5 text-xs font-bold">
+                {countPeriod}
+            </div>
+            )}
+            {countDay > 0 && (
+            <div className="absolute bottom-1 right-1 text-xs text-muted-foreground bg-background/50 rounded px-1">
+                Total: {countDay}
+            </div>
+            )}
+            <div className="flex items-center text-xs opacity-80 mt-1">
+            <Megaphone className="mr-2" />
+            <span>Registrer</span>
+            </div>
+        </Button>
+      </div>
     );
   };
 
@@ -205,7 +246,7 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
             <div>
               <CardTitle>Registrer anmerkninger</CardTitle>
               <CardDescription>
-                Kort trykk for å legge til. Langt trykk eller høyreklikk for å fjerne siste.
+                Trykk for generell, + for type. Langt trykk/høyreklikk for å fjerne siste.
               </CardDescription>
             </div>
             <Popover>

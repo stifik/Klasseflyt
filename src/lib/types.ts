@@ -40,6 +40,7 @@ export type Remark = {
   studentId: string;
   date: Date;
   period: number;
+  type?: string;
 };
 
 export type SeatingChartData = (string[] | null)[][];
@@ -88,4 +89,5 @@ export type AppSettings = {
   reportSettings: ReportSettings;
   schedule: PeriodTime[];
   selectedSeatingLayoutId?: string | null;
+  remarkTypes?: string[];
 };

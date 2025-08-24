@@ -7,7 +7,7 @@ import type { Student, Subject, AppSettings, TabKey } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock } from "lucide-react";
+import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { addStudent, deleteStudent, addSubject, deleteSubject, resetAndSeedDatabase } from "@/lib/firestore";
 import {
@@ -96,6 +96,7 @@ const SortableTabItem = ({ id, onToggle, settings }: { id: TabKey, onToggle: (ta
 export default function Settings({ userId, initialStudents, initialSubjects, onUpdate, settings: initialSettings, onSettingsChange }: SettingsProps) {
   const [newStudent, setNewStudent] = useState("");
   const [newSubject, setNewSubject] = useState("");
+  const [newRemarkType, setNewRemarkType] = useState("");
   const [isSeeding, setIsSeeding] = useState(false);
   const [localSettings, setLocalSettings] = useState(initialSettings);
 
@@ -105,18 +106,16 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
   // Debounce saving
   useEffect(() => {
     const handler = setTimeout(() => {
-      // Only save if there's a difference
       if (JSON.stringify(localSettings) !== JSON.stringify(initialSettings)) {
         onSettingsChange(localSettings);
       }
-    }, 500); // 500ms delay
+    }, 500);
 
     return () => {
       clearTimeout(handler);
     };
   }, [localSettings, initialSettings, onSettingsChange]);
   
-  // Update local state if initialSettings change from parent
   useEffect(() => {
       setLocalSettings(initialSettings);
   }, [initialSettings]);
@@ -169,6 +168,20 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
        toast({ title: "Feil", description: "Kunne ikke slette fag.", variant: "destructive" });
     }
   };
+  
+  const handleAddRemarkType = () => {
+    if (newRemarkType.trim() && !localSettings.remarkTypes?.includes(newRemarkType.trim())) {
+      const updatedTypes = [...(localSettings.remarkTypes || []), newRemarkType.trim()];
+      handleSettingChange({ remarkTypes: updatedTypes });
+      setNewRemarkType("");
+    }
+  };
+
+  const handleDeleteRemarkType = (typeToDelete: string) => {
+    const updatedTypes = localSettings.remarkTypes?.filter(t => t !== typeToDelete);
+    handleSettingChange({ remarkTypes: updatedTypes });
+  };
+
 
   const handleResetDatabase = async () => {
     setIsSeeding(true);
@@ -359,6 +372,69 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
+         <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center"><NotebookText className="mr-2" />Administrer Anmerkningstyper</CardTitle>
+            <CardDescription>Legg til eller fjern typer anmerkninger som kan velges.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2 mb-4">
+              <Input
+                value={newRemarkType}
+                onChange={(e) => setNewRemarkType(e.target.value)}
+                placeholder="Ny anmerkningstype..."
+                onKeyDown={(e) => e.key === 'Enter' && handleAddRemarkType()}
+              />
+              <Button onClick={handleAddRemarkType}><Plus className="mr-2"/> Legg til</Button>
+            </div>
+            <ul className="space-y-2">
+              {(localSettings.remarkTypes || []).map((type) => (
+                <li key={type} className="flex items-center justify-between p-2 rounded-md bg-secondary">
+                  <span>{type}</span>
+                  <Button variant="ghost" size="icon" onClick={() => handleDeleteRemarkType(type)}>
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+         <Card>
+            <CardHeader>
+                <CardTitle>Demodata</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p className="mb-4 text-sm text-muted-foreground">
+                    {initialStudents.length === 0 
+                    ? "Databasen din er tom. Klikk her for å fylle den med demodata for å komme i gang."
+                    : "Dette vil slette all nåværende data knyttet til din bruker og fylle databasen med et nytt sett med demodata."
+                    }
+                </p>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant={initialStudents.length > 0 ? "destructive" : "default"} disabled={isSeeding}>
+                        <Database className="mr-2" />
+                        {isSeeding ? 'Jobber...' : (initialStudents.length === 0 ? 'Fyll database med demodata' : 'Nullstill og fyll database')}
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle><AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                        Dette vil permanent slette all data knyttet til din brukerkonto, inkludert alle elever, fag, lekser og innleveringer. Handlingen kan ikke angres.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleResetDatabase}>Ja, slett alt og start på nytt</AlertDialogAction>
+                    </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Administrer Elever</CardTitle>
@@ -413,39 +489,6 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
           </CardContent>
         </Card>
       </div>
-       <Card>
-        <CardHeader>
-          <CardTitle>Demodata</CardTitle>
-        </CardHeader>
-        <CardContent>
-           <p className="mb-4 text-sm text-muted-foreground">
-            {initialStudents.length === 0 
-              ? "Databasen din er tom. Klikk her for å fylle den med demodata for å komme i gang."
-              : "Dette vil slette all nåværende data knyttet til din bruker og fylle databasen med et nytt sett med demodata."
-            }
-           </p>
-           <AlertDialog>
-            <AlertDialogTrigger asChild>
-                <Button variant={initialStudents.length > 0 ? "destructive" : "default"} disabled={isSeeding}>
-                  <Database className="mr-2" />
-                  {isSeeding ? 'Jobber...' : (initialStudents.length === 0 ? 'Fyll database med demodata' : 'Nullstill og fyll database')}
-                </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle><AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Dette vil permanent slette all data knyttet til din brukerkonto, inkludert alle elever, fag, lekser og innleveringer. Handlingen kan ikke angres.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                <AlertDialogAction onClick={handleResetDatabase}>Ja, slett alt og start på nytt</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </CardContent>
-      </Card>
     </div>
   );
 }

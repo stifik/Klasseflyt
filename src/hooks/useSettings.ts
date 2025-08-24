@@ -36,6 +36,7 @@ const defaultSettings: AppSettings = {
   },
   schedule: defaultSchedule,
   selectedSeatingLayoutId: null,
+  remarkTypes: ["Generell", "Forstyrrer andre", "Mangler utstyr", "Upassende språk"],
 };
 
 export function useSettings(userId: string) {
@@ -55,10 +56,8 @@ export function useSettings(userId: string) {
         const existingTabOrder = data.tabOrder && data.tabOrder.length > 0 ? data.tabOrder : defaultTabOrder;
         const existingTabs = data.tabs || {};
 
-        // Ensure all default tabs are present for existing users
         const mergedTabs = { ...defaultSettings.tabs, ...existingTabs };
         
-        // Ensure new tabs are added to the order for existing users
         const mergedTabOrder = [...existingTabOrder];
         defaultTabOrder.forEach(key => {
             if (!mergedTabOrder.includes(key)) {
@@ -75,10 +74,10 @@ export function useSettings(userId: string) {
           },
           schedule: data.schedule && data.schedule.length === 6 ? data.schedule : defaultSchedule,
           selectedSeatingLayoutId: data.selectedSeatingLayoutId || null,
+          remarkTypes: data.remarkTypes && data.remarkTypes.length > 0 ? data.remarkTypes : defaultSettings.remarkTypes,
         };
         setSettings(mergedSettings);
       } else {
-        // No settings found, so we create them with defaults
         await setDoc(docRef, defaultSettings);
         setSettings(defaultSettings);
       }
@@ -97,7 +96,6 @@ export function useSettings(userId: string) {
   const saveSettings = async (newSettings: AppSettings) => {
     if (!userId) return;
     
-    // Optimistically update local state immediately
     setSettings(newSettings);
 
     const docRef = doc(db, 'users', userId, 'settings', 'appSettings');
@@ -106,7 +104,6 @@ export function useSettings(userId: string) {
     } catch (error) {
       console.error("Error saving settings:", error);
       toast({ title: "Feil", description: "Kunne ikke lagre innstillinger.", variant: "destructive" });
-      // Optional: revert to old settings on error
       getSettings();
     }
   };
