@@ -28,7 +28,7 @@ interface RemarksProps {
   settings: AppSettings;
 }
 
-const AddRemarkDialog = ({ student, onAdd, remarkTypes }: { student: Student; onAdd: (studentId: string, type: string) => void; remarkTypes: string[]; }) => {
+const AddRemarkDialog = ({ student, onAdd, remarkTypes, children }: { student: Student; onAdd: (studentId: string, type: string) => void; remarkTypes: string[]; children: React.ReactNode; }) => {
   const [selectedType, setSelectedType] = useState(remarkTypes[0] || "Generell");
   const [isOpen, setIsOpen] = useState(false);
   
@@ -39,11 +39,7 @@ const AddRemarkDialog = ({ student, onAdd, remarkTypes }: { student: Student; on
   
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="absolute top-1 left-1 h-6 w-6">
-            <PlusCircle />
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Legg til anmerkning for {student.name}</DialogTitle>
@@ -214,8 +210,6 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
     const countDay = remarksForDay.length;
     
     return (
-      <div className="relative">
-        <AddRemarkDialog student={student} onAdd={handleAddRemark} remarkTypes={settings.remarkTypes || ["Generell"]} />
         <Button
             variant={countPeriod > 0 ? "destructive" : "secondary"}
             onClick={() => handleAddRemark(student.id, "Generell")}
@@ -225,25 +219,36 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
             onMouseDown={() => handlePressStart(student.id)}
             onMouseUp={handlePressEnd}
             onMouseLeave={handlePressEnd}
-            className="justify-center h-auto py-2 flex-col w-28 h-20 relative touch-manipulation"
+            className="justify-between items-stretch h-auto p-0 flex-col w-28 h-20 relative touch-manipulation"
         >
-            <span className="font-semibold text-xs">{student.name}</span>
+            <div className="flex-grow flex items-center justify-center p-2 flex-col">
+              <span className="font-semibold text-xs">{student.name}</span>
+              <div className="flex items-center text-xs opacity-80 mt-1">
+                <Megaphone className="mr-2" />
+                <span>Registrer</span>
+              </div>
+            </div>
+            
+            <AddRemarkDialog student={student} onAdd={handleAddRemark} remarkTypes={settings.remarkTypes || ["Generell"]}>
+               <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center justify-center self-stretch px-2 bg-black/10 hover:bg-black/20"
+                >
+                  <PlusCircle className="w-5 h-5" />
+                </div>
+            </AddRemarkDialog>
+
             {countPeriod > 0 && (
             <div className="absolute top-1 right-1 flex items-center justify-center bg-background text-destructive rounded-full w-5 h-5 text-xs font-bold">
                 {countPeriod}
             </div>
             )}
             {countDay > 0 && (
-            <div className="absolute bottom-1 right-1 text-xs text-muted-foreground bg-background/50 rounded px-1">
+            <div className="absolute bottom-1 left-1 text-xs text-muted-foreground bg-background/50 rounded px-1">
                 Total: {countDay}
             </div>
             )}
-            <div className="flex items-center text-xs opacity-80 mt-1">
-            <Megaphone className="mr-2" />
-            <span>Registrer</span>
-            </div>
         </Button>
-      </div>
     );
   };
 
@@ -259,7 +264,7 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
             <div>
               <CardTitle>Registrer anmerkninger</CardTitle>
               <CardDescription>
-                Trykk for generell, + for type. Langt trykk/høyreklikk for å fjerne siste.
+                Klikk for generell, + for type. Langt trykk/høyreklikk for å fjerne siste.
               </CardDescription>
             </div>
             <Popover>
@@ -339,3 +344,5 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
     </div>
   );
 }
+
+    
