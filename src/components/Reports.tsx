@@ -185,6 +185,7 @@ export default function Reports({ students, subjects, homework, submissions, dai
       return {
         studentId: student.id,
         studentName: student.name,
+        statsBySubject,
         totalDelays: delays,
         ipadNotCharged,
         ipadNotBrought,
@@ -446,3 +447,5 @@ export default function Reports({ students, subjects, homework, submissions, dai
   );
 }
 
+
+    
