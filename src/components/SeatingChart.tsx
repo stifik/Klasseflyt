@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { getSeatingLayouts, saveSeatingLayout, deleteSeatingLayout } from "@/lib/firestore";
 import { cn } from "@/lib/utils";
+import { Switch } from "./ui/switch";
 
 type SeatingChartData = (string[] | null)[][];
 type AvoidPair = [string, string];
@@ -133,8 +134,10 @@ const LayoutDesigner = ({ userId, onSave, onCancel }: { userId: string, onSave: 
                 <div className="space-y-4">
                      <Input placeholder="Navn på layout (f.eks. 'Standard U-form')" value={name} onChange={(e) => setName(e.target.value)} />
                      <div className="grid grid-cols-2 gap-2">
-                         <Input type="number" value={rows} onChange={e => handleGridSizeChange('rows', parseInt(e.target.value) || 1)} min="1" max="15" />
-                         <Input type="number" value={cols} onChange={e => handleGridSizeChange('cols', parseInt(e.target.value) || 1)} min="1" max="15" />
+                         <Label htmlFor="layout-rows" className="sr-only">Rader</Label>
+                         <Input id="layout-rows" type="number" value={rows} onChange={e => handleGridSizeChange('rows', parseInt(e.target.value) || 1)} min="1" max="15" />
+                         <Label htmlFor="layout-cols" className="sr-only">Kolonner</Label>
+                         <Input id="layout-cols" type="number" value={cols} onChange={e => handleGridSizeChange('cols', parseInt(e.target.value) || 1)} min="1" max="15" />
                      </div>
                      <p className="text-sm font-medium">Antall sitteplasser: {seatCount}</p>
                      <div className="p-2 border rounded-md bg-muted text-muted-foreground text-xs">
@@ -177,6 +180,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 // --- Main Component ---
 export default function SeatingChart({ userId, students, seatingChart, onSeatingChartChange, settings, onSettingsChange, history }: SeatingChartProps) {
   const [avoidPairs, setAvoidPairs] = useState<AvoidPair[]>([]);
+  const [avoidSameNeighbors, setAvoidSameNeighbors] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [selectedStudent1, setSelectedStudent1] = useState<string>("");
@@ -187,6 +191,8 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
   const { toast } = useToast();
   
   const activeLayout = useMemo(() => layouts.find(l => l.id === selectedLayoutId), [layouts, selectedLayoutId]);
+  const lastChart = history[0] ? JSON.parse(history[0].chartJson) : null;
+
 
   useEffect(() => {
     getSeatingLayouts(userId).then(setLayouts);
@@ -207,38 +213,77 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
     setAvoidPairs(avoidPairs.filter(p => p[0] !== pairToRemove[0] || p[1] !== pairToRemove[1]));
   };
 
+  const getNeighbors = (r: number, c: number, chart: SeatingChartData): (string | null)[] => {
+    const neighbors: (string | null)[] = [];
+    const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // Top, Bottom, Left, Right
+    for (const [dr, dc] of directions) {
+      const nr = r + dr;
+      const nc = c + dc;
+      if (nr >= 0 && nr < chart.length && nc >= 0 && nc < chart[0].length && chart[nr][nc] !== null) {
+        neighbors.push(chart[nr][nc]?.[0] || null);
+      }
+    }
+    return neighbors;
+  };
+
   const generateChartWithLogic = (): SeatingChartData | null => {
      if (!activeLayout) {
         toast({ title: "Ingen layout valgt", description: "Vennligst velg en klasserom-layout først.", variant: "destructive" });
         return null;
     }
     
-    const { layout } = activeLayout;
-    const shuffledStudents = shuffleArray(students.map(s => s.name));
-    let studentIndex = 0;
-    
-    const chart: SeatingChartData = Array.from({ length: layout.length }, (_, r) => 
-        Array.from({ length: layout[0].length }, (_, c) => layout[r][c] ? [] : null)
-    );
+    let attempts = 0;
+    while(attempts < 20) {
+        const shuffledStudents = shuffleArray(students.map(s => s.name));
+        const chart: SeatingChartData = JSON.parse(JSON.stringify(activeLayout.layout)).map((row: boolean[]) => row.map(isDesk => isDesk ? [] : null));
+        
+        const deskCoords: {r: number, c: number}[] = [];
+        activeLayout.layout.forEach((row, r) => row.forEach((isDesk, c) => {
+            if(isDesk) deskCoords.push({r, c});
+        }));
 
-    for (let r = 0; r < layout.length; r++) {
-        for (let c = 0; c < layout[0].length; c++) {
-            if (chart[r][c] !== null) { // If it's a desk
-                if (studentIndex < shuffledStudents.length) {
-                    (chart[r][c] as string[]).push(shuffledStudents[studentIndex]);
-                    studentIndex++;
-                } else {
-                    (chart[r][c] as string[]).push(''); // Empty spot
+        const placeStudent = (studentIndex: number, availableDesks: typeof deskCoords): boolean => {
+            if (studentIndex >= shuffledStudents.length) return true;
+            const student = shuffledStudents[studentIndex];
+            
+            for (let i = 0; i < availableDesks.length; i++) {
+                const {r, c} = availableDesks[i];
+                
+                // Check avoid pairs
+                const neighbors = getNeighbors(r, c, chart);
+                const hasAvoidPair = neighbors.some(n => n && avoidPairs.some(p => (p.includes(student) && p.includes(n))));
+                if(hasAvoidPair) continue;
+
+                // Check same neighbors
+                if (avoidSameNeighbors && lastChart) {
+                    const lastStudentPos = lastChart.flat().findIndex((s: string[] | null) => s?.[0] === student);
+                    if(lastStudentPos > -1) {
+                         const lastR = Math.floor(lastStudentPos / lastChart[0].length);
+                         const lastC = lastStudentPos % lastChart[0].length;
+                         const lastNeighbors = getNeighbors(lastR, lastC, lastChart);
+                         if (neighbors.some(n => n && lastNeighbors.includes(n))) {
+                            // Prefer not to sit next to old neighbors
+                            if (Math.random() > 0.2) continue; // 80% chance to skip
+                         }
+                    }
                 }
+                
+                chart[r][c] = [student];
+                const remainingDesks = [...availableDesks.slice(0, i), ...availableDesks.slice(i+1)];
+                if (placeStudent(studentIndex + 1, remainingDesks)) return true;
+                chart[r][c] = []; // backtrack
             }
+            return false;
+        };
+        
+        if (placeStudent(0, shuffleArray(deskCoords))) {
+            return chart;
         }
+        attempts++;
     }
     
-    if (studentIndex < students.length) {
-        toast({ title: "For få plasser", description: `Det er ${students.length} elever, men bare plass til ${studentIndex} i denne layouten.`, variant: "destructive" });
-    }
-
-    return chart;
+    toast({ title: "Kunne ikke generere", description: "Klarte ikke å finne en gyldig plassering med reglene som ble gitt. Prøv igjen.", variant: "destructive"});
+    return null;
   };
 
   const handleGenerateClick = async () => {
@@ -327,11 +372,48 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
             </Card>
             <LayoutDesigner userId={userId} onSave={handleLayoutSaved} onCancel={() => setIsDesignerOpen(false)} />
         </Dialog>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>Innstillinger for generering</CardTitle>
+                <CardDescription>Legg til regler for å tilpasse plasseringen.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <Label htmlFor="avoid-neighbors" className="font-medium">Unngå tidligere naboer</Label>
+                    <Switch id="avoid-neighbors" checked={avoidSameNeighbors} onCheckedChange={setAvoidSameNeighbors} />
+                </div>
+                <div>
+                    <Label>Unngå par</Label>
+                    <div className="flex gap-2 mt-1">
+                        <Select value={selectedStudent1} onValueChange={setSelectedStudent1}>
+                            <SelectTrigger><SelectValue placeholder="Elev 1" /></SelectTrigger>
+                            <SelectContent>{students.filter(s => s.name !== selectedStudent2).map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <Select value={selectedStudent2} onValueChange={setSelectedStudent2}>
+                            <SelectTrigger><SelectValue placeholder="Elev 2" /></SelectTrigger>
+                            <SelectContent>{students.filter(s => s.name !== selectedStudent1).map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <Button onClick={handleAddAvoidPair} size="icon"><Plus /></Button>
+                    </div>
+                </div>
+                {avoidPairs.length > 0 && (
+                    <div className="space-y-2">
+                        {avoidPairs.map((pair, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 text-sm rounded-md bg-secondary">
+                                <span>{pair.join(' og ')}</span>
+                                <Button size="icon" variant="ghost" onClick={() => handleRemoveAvoidPair(pair)}><X className="w-4 h-4" /></Button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
         
         <Card>
             <CardHeader>
                  <CardTitle>Generer Klassekart</CardTitle>
-                 <CardDescription>Bruk den valgte layouten til å generere et nytt, tilfeldig klassekart.</CardDescription>
+                 <CardDescription>Bruk den valgte layouten og reglene til å generere et nytt, tilfeldig klassekart.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Button onClick={handleGenerateClick} disabled={isGenerating || !activeLayout} className="w-full">
@@ -393,3 +475,5 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
     </div>
   );
 }
+
+    
