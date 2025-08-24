@@ -305,7 +305,7 @@ export default function Reports({ students, subjects, homework, submissions, dai
                                 return (
                                   <div
                                     key={status}
-                                    className="h-full"
+                                    className="h-full progress-bar-segment"
                                     style={{
                                       width: `${percentage}%`,
                                       backgroundColor: statusColors[status],

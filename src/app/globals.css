@@ -86,6 +86,7 @@ body {
     display: block !important;
   }
 
+  /* Force Radix Collapsible content to be visible */
   .printable-area [data-radix-collapsible-content] {
     display: block !important;
   }
@@ -93,5 +94,11 @@ body {
   /* Hide accordion chevron icon when printing */
   .printable-area [data-radix-accordion-trigger] > svg {
     display: none;
+  }
+
+  /* Force print background colors for the progress bars */
+  .progress-bar-segment {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
