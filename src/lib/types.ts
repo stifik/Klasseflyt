@@ -54,7 +54,7 @@ export type SeatingChartRecord = {
   createdAt: Date;
 };
 
-export type TabKey = 'overview' | 'dailyCheck' | 'remarks' | 'reports' | 'seatingChart';
+export type TabKey = 'overview' | 'dailyCheck' | 'remarks' | 'reports' | 'seatingChart' | 'groupTool';
 
 export type ReportSettings = {
   includeHomework: boolean;

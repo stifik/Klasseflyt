@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import type { Student, Subject, AppSettings, TabKey } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -55,6 +55,7 @@ const tabLabels: Record<TabKey, string> = {
   remarks: "Anmerkninger",
   reports: "Rapporter",
   seatingChart: "Klassekart",
+  groupTool: "Gruppeverktøy",
 };
 
 const SortableTabItem = ({ id, onToggle, settings }: { id: TabKey, onToggle: (tab: TabKey) => void, settings: AppSettings }) => {

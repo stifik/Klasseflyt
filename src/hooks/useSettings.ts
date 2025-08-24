@@ -5,7 +5,7 @@ import { db } from '@/lib/firebase';
 import type { AppSettings, TabKey } from '@/lib/types';
 import { useToast } from './use-toast';
 
-const defaultTabOrder: TabKey[] = ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart'];
+const defaultTabOrder: TabKey[] = ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'groupTool'];
 
 const defaultSettings: AppSettings = {
   tabs: {
@@ -14,6 +14,7 @@ const defaultSettings: AppSettings = {
     remarks: true,
     reports: true,
     seatingChart: true,
+    groupTool: true,
   },
   tabOrder: defaultTabOrder,
   reportSettings: {
@@ -40,13 +41,24 @@ export function useSettings(userId: string) {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data() as Partial<AppSettings>;
-        // Merge with defaults to ensure all keys are present, especially for users with old settings
+        
+        const existingTabOrder = data.tabOrder && data.tabOrder.length > 0 ? data.tabOrder : defaultTabOrder;
+        const existingTabs = data.tabs || {};
+
+        // Ensure all default tabs are present for existing users
+        const mergedTabs = { ...defaultSettings.tabs, ...existingTabs };
+        
+        // Ensure new tabs are added to the order for existing users
+        const mergedTabOrder = [...existingTabOrder];
+        defaultTabOrder.forEach(key => {
+            if (!mergedTabOrder.includes(key)) {
+                mergedTabOrder.push(key);
+            }
+        });
+
         const mergedSettings: AppSettings = {
-          tabs: {
-            ...defaultSettings.tabs,
-            ...(data.tabs || {}),
-          },
-          tabOrder: data.tabOrder && data.tabOrder.length > 0 ? data.tabOrder : defaultTabOrder,
+          tabs: mergedTabs,
+          tabOrder: mergedTabOrder,
           reportSettings: {
             ...defaultSettings.reportSettings,
             ...(data.reportSettings || {}),

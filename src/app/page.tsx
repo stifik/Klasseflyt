@@ -9,6 +9,7 @@ import Reports from "@/components/Reports";
 import Settings from "@/components/Settings";
 import SeatingChart from "@/components/SeatingChart";
 import Remarks from "@/components/Remarks";
+import GroupTool from "@/components/GroupTool";
 import withAuth from '@/components/withAuth';
 import { Button } from "@/components/ui/button";
 import { BookOpenCheck, Loader2, LogOut } from "lucide-react";
@@ -26,6 +27,7 @@ const tabComponents: Record<TabKey, React.FC<any>> = {
   remarks: Remarks,
   reports: Reports,
   seatingChart: SeatingChart,
+  groupTool: GroupTool,
 };
 
 const tabLabels: Record<TabKey, string> = {
@@ -34,6 +36,7 @@ const tabLabels: Record<TabKey, string> = {
   remarks: "Anmerkninger",
   reports: "Rapporter",
   seatingChart: "Klassekart",
+  groupTool: "Gruppeverktøy",
 };
 
 function Home({ userId }: { userId: string }) {
@@ -180,6 +183,7 @@ function Home({ userId }: { userId: string }) {
     remarks: { userId, students, initialRemarks: remarks, onUpdate: handleDataUpdate, seatingChart },
     reports: { students, subjects, homework, submissions, dailyChecks, remarks, settings: settings.reportSettings },
     seatingChart: { userId, students, seatingChart, onSeatingChartChange: handleSeatingChartChange, settings: seatingChartSettings, onSettingsChange: handleSettingsChange, history: seatingChartHistory },
+    groupTool: { students },
   };
 
   return (
