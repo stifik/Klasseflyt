@@ -84,6 +84,12 @@ body {
   /* Ensure accordion content is visible when printing */
   .printable-area [data-state='closed'] {
     display: block !important;
+    height: auto !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    overflow: visible !important;
+    animation: none !important;
+    transform: none !important;
   }
 
   /* Force Radix Collapsible content to be visible */
