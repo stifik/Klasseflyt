@@ -273,17 +273,19 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
                             <Label htmlFor={`period-${period}`} className="font-medium">Time {period}</Label>
                             <Input
                                 id={`period-${period}-start`}
-                                type="time"
+                                type="text"
                                 value={startTime}
                                 onChange={(e) => handleScheduleChange(period, 'startTime', e.target.value)}
-                                step="1"
+                                placeholder="TT:MM"
+                                pattern="[0-9]{2}:[0-9]{2}"
                             />
                             <Input
                                 id={`period-${period}-end`}
-                                type="time"
+                                type="text"
                                 value={endTime}
                                 onChange={(e) => handleScheduleChange(period, 'endTime', e.target.value)}
-                                step="1"
+                                placeholder="TT:MM"
+                                pattern="[0-9]{2}:[0-9]{2}"
                             />
                         </div>
                     ))}
