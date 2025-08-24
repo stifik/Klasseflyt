@@ -9,9 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from "@/hooks/use-toast";
 import { Printer, Copy, Loader2, BookX } from 'lucide-react';
 import { getWeekNumber } from '@/lib/utils';
-import { format } from 'date-fns';
-import { nb } from 'date-fns/locale';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 
 interface ReportsProps {
@@ -115,8 +112,6 @@ export default function Reports({ students, subjects, homework, submissions, dai
       const studentRemarks = remarks.filter(r => r.studentId === student.id);
 
       const delays = studentSubmissions.filter(s => s.status === 'Ikke levert' || s.status === 'Må rettes').length;
-      const ipadNotCharged = studentChecks.filter(c => !c.ipadCharged).length;
-      const ipadNotBrought = studentChecks.filter(c => !c.ipadBrought).length;
 
       const statsBySubject = subjects.map(subject => {
         const subjectHomeworkIds = new Set(homework.filter(h => h.subjectId === subject.id).map(h => h.id));
@@ -128,12 +123,6 @@ export default function Reports({ students, subjects, homework, submissions, dai
         }, {} as Record<HomeworkStatus, number>);
         
         const totalSubmissions = subjectSubmissions.length;
-
-        const comments = subjectSubmissions.filter(s => s.comment).map(s => ({
-            homeworkTitle: homework.find(h => h.id === s.homeworkId)?.title || 'Ukjent lekse',
-            week: homework.find(h => h.id === s.homeworkId)?.week || 0,
-            comment: s.comment!
-        }));
 
         const problemSubmissions = subjectSubmissions
             .filter(s => s.status === "Må rettes")
@@ -148,52 +137,19 @@ export default function Reports({ students, subjects, homework, submissions, dai
           subjectId: subject.id,
           subjectName: subject.name,
           statusCounts,
-          comments,
           totalSubmissions,
           problemSubmissions,
         };
       });
-
-      const remarksByDate = studentRemarks
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-        .reduce((acc, remark) => {
-          const dateString = format(new Date(remark.date), 'PPP', { locale: nb });
-          if (!acc[dateString]) {
-            acc[dateString] = 0;
-          }
-          acc[dateString]++;
-          return acc;
-        }, {} as Record<string, number>);
-
-      const remarksByPeriod = studentRemarks.reduce((acc, remark) => {
-          const period = remark.period || 0;
-          acc[period] = (acc[period] || 0) + 1;
-          return acc;
-      }, {} as Record<number, number>);
-
-      const remarksByWeek = studentRemarks.reduce((acc, remark) => {
-          const week = getWeekNumber(new Date(remark.date));
-          acc[week] = (acc[week] || 0) + 1;
-          return acc;
-      }, {} as Record<number, number>);
-      
-      const periodChartData = Array.from({ length: 6 }, (_, i) => ({
-          name: `T${i + 1}`,
-          count: remarksByPeriod[i + 1] || 0,
-      }));
 
       return {
         studentId: student.id,
         studentName: student.name,
         statsBySubject,
         totalDelays: delays,
-        ipadNotCharged,
-        ipadNotBrought,
+        ipadNotCharged: studentChecks.filter(c => !c.ipadCharged).length,
+        ipadNotBrought: studentChecks.filter(c => !c.ipadBrought).length,
         totalRemarks: studentRemarks.length,
-        remarksByDate,
-        remarksByPeriod,
-        remarksByWeek,
-        periodChartData,
       };
     });
   }, [students, subjects, homework, submissions, dailyChecks, remarks]);
@@ -401,33 +357,8 @@ export default function Reports({ students, subjects, homework, submissions, dai
                         <CardHeader><CardTitle className="text-base">Anmerkninger ({stat.totalRemarks} totalt)</CardTitle></CardHeader>
                         <CardContent>
                            {stat.totalRemarks > 0 ? (
-                            <div className="h-[150px] -ml-4">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={stat.periodChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="name" fontSize={12} />
-                                        <YAxis allowDecimals={false} fontSize={12} />
-                                        <Tooltip 
-                                            cursor={{ fill: 'hsl(var(--muted))' }}
-                                            contentStyle={{ 
-                                                backgroundColor: 'hsl(var(--background))', 
-                                                borderColor: 'hsl(var(--border))',
-                                                fontSize: '12px',
-                                            }}
-                                        />
-                                        <Bar dataKey="count" fill="hsl(var(--primary))" name="Antall" />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
+                            <p className="text-sm text-muted-foreground">Detaljert statistikk er tilgjengelig i fanen "Anmerkningsanalyse".</p>
                            ) : <p className="text-sm text-muted-foreground">Ingen anmerkninger registrert.</p>}
-                           <div className="mt-4 space-y-1 text-sm">
-                                {Object.entries(stat.remarksByWeek).map(([week, count]) => (
-                                    <div key={week} className="flex justify-between">
-                                        <span>Uke {week}:</span>
-                                        <span className="font-medium">{count} anm.</span>
-                                    </div>
-                                ))}
-                           </div>
                         </CardContent>
                       </Card>
                   </div>
@@ -446,6 +377,3 @@ export default function Reports({ students, subjects, homework, submissions, dai
     </div>
   );
 }
-
-
-    

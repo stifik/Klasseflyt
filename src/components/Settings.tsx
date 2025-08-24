@@ -57,6 +57,7 @@ const tabLabels: Record<TabKey, string> = {
   seatingChart: "Klassekart",
   groupTool: "Gruppeverktøy",
   studentPicker: "Elev-trekker",
+  remarkAnalysis: "Anmerkningsanalyse",
 };
 
 const SortableTabItem = ({ id, onToggle, settings }: { id: TabKey, onToggle: (tab: TabKey) => void, settings: AppSettings }) => {

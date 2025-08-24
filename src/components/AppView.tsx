@@ -11,6 +11,7 @@ import SeatingChart from "@/components/SeatingChart";
 import Remarks from "@/components/Remarks";
 import GroupTool from "@/components/GroupTool";
 import StudentPicker from "@/components/StudentPicker";
+import RemarkAnalysis from "@/components/RemarkAnalysis";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import type { AppSettings, Student, Subject, TabKey } from '@/lib/types';
 
@@ -22,6 +23,7 @@ const tabComponents: Record<TabKey, React.FC<any>> = {
   seatingChart: SeatingChart,
   groupTool: GroupTool,
   studentPicker: StudentPicker,
+  remarkAnalysis: RemarkAnalysis,
 };
 
 const tabLabels: Record<TabKey, string> = {
@@ -32,6 +34,7 @@ const tabLabels: Record<TabKey, string> = {
   seatingChart: "Klassekart",
   groupTool: "Gruppeverktøy",
   studentPicker: "Elev-trekker",
+  remarkAnalysis: "Anmerkningsanalyse",
 };
 
 interface AppViewProps {

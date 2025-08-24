@@ -4,7 +4,7 @@
 import { FC } from 'react';
 import type { AppSettings, TabKey } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Shuffle, Hand } from 'lucide-react';
+import { BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Shuffle, Hand, AreaChart } from 'lucide-react';
 
 interface DashboardProps {
   settings: AppSettings;
@@ -46,6 +46,11 @@ const tabInfo: Record<TabKey, { label: string; description: string; icon: React.
     label: "Elev-trekker",
     description: "Trekk en tilfeldig elev fra klassen.",
     icon: Hand,
+  },
+  remarkAnalysis: {
+    label: "Anmerkningsanalyse",
+    description: "Analyser mønstre i anmerkninger.",
+    icon: AreaChart,
   },
 };
 

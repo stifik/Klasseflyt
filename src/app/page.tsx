@@ -169,6 +169,7 @@ function Home({ userId }: { userId: string }) {
     seatingChart: { userId, students, seatingChart, onSeatingChartChange: handleSeatingChartChange, settings: seatingChartSettings, onSettingsChange: handleSettingsChange, history: seatingChartHistory, appSettings: settings, onAppSettingsChange: saveSettings, layouts: seatingLayouts, onLayoutsChange: setSeatingLayouts },
     groupTool: { students },
     studentPicker: { students, seatingChart, activeLayout },
+    remarkAnalysis: { students, initialRemarks: remarks },
   };
 
   const appViewProps = {
