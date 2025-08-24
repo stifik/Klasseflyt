@@ -72,16 +72,20 @@ export function useSettings(userId: string) {
 
   const saveSettings = async (newSettings: AppSettings) => {
     if (!userId) return;
+    
+    // Optimistically update local state immediately
+    setSettings(newSettings);
+
     const docRef = doc(db, 'users', userId, 'settings', 'appSettings');
     try {
-      // Use setDoc with merge: true to avoid overwriting fields if the object is partial
       await setDoc(docRef, newSettings, { merge: true });
-      setSettings(newSettings);
     } catch (error) {
       console.error("Error saving settings:", error);
       toast({ title: "Feil", description: "Kunne ikke lagre innstillinger.", variant: "destructive" });
+      // Optional: revert to old settings on error
+      getSettings();
     }
   };
 
-  return { settings, setSettings: saveSettings, loading, refetch: getSettings };
+  return { settings, saveSettings, loading, refetch: getSettings };
 }

@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Student, Subject, AppSettings, TabKey } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -90,12 +90,33 @@ const SortableTabItem = ({ id, onToggle, settings }: { id: TabKey, onToggle: (ta
   );
 };
 
-export default function Settings({ userId, initialStudents, initialSubjects, onUpdate, settings, onSettingsChange }: SettingsProps) {
+export default function Settings({ userId, initialStudents, initialSubjects, onUpdate, settings: initialSettings, onSettingsChange }: SettingsProps) {
   const [newStudent, setNewStudent] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [isSeeding, setIsSeeding] = useState(false);
+  const [localSettings, setLocalSettings] = useState(initialSettings);
+
   const { toast } = useToast();
   const sensors = useSensors(useSensor(PointerSensor));
+
+  // Debounce saving
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      // Only save if there's a difference
+      if (JSON.stringify(localSettings) !== JSON.stringify(initialSettings)) {
+        onSettingsChange(localSettings);
+      }
+    }, 500); // 500ms delay
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [localSettings, initialSettings, onSettingsChange]);
+  
+  // Update local state if initialSettings change from parent
+  useEffect(() => {
+      setLocalSettings(initialSettings);
+  }, [initialSettings]);
 
 
   const handleAddStudent = async () => {
@@ -167,25 +188,38 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
     }
   };
 
+  const handleSettingChange = (update: Partial<AppSettings> | ((current: AppSettings) => AppSettings)) => {
+      if (typeof update === 'function') {
+          setLocalSettings(current => update(current));
+      } else {
+          setLocalSettings(current => ({...current, ...update}));
+      }
+  }
+
   const handleTabToggle = (tab: TabKey) => {
-    const newTabs = { ...settings.tabs, [tab]: !settings.tabs[tab] };
-    onSettingsChange({ ...settings, tabs: newTabs });
+    handleSettingChange(current => ({
+      ...current,
+      tabs: { ...current.tabs, [tab]: !current.tabs[tab] }
+    }));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (active.id !== over?.id) {
-      const oldIndex = settings.tabOrder.indexOf(active.id as TabKey);
-      const newIndex = settings.tabOrder.indexOf(over!.id as TabKey);
-      const newTabOrder = arrayMove(settings.tabOrder, oldIndex, newIndex);
-      onSettingsChange({ ...settings, tabOrder: newTabOrder });
+      handleSettingChange(current => {
+        const oldIndex = current.tabOrder.indexOf(active.id as TabKey);
+        const newIndex = current.tabOrder.indexOf(over!.id as TabKey);
+        return { ...current, tabOrder: arrayMove(current.tabOrder, oldIndex, newIndex) };
+      });
     }
   };
   
   const handleReportSettingChange = (setting: keyof AppSettings['reportSettings'], value: any) => {
-    const newReportSettings = { ...settings.reportSettings, [setting]: value };
-    onSettingsChange({ ...settings, reportSettings: newReportSettings });
+    handleSettingChange(current => ({
+      ...current,
+      reportSettings: { ...current.reportSettings, [setting]: value }
+    }));
   };
 
 
@@ -204,11 +238,11 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
                     onDragEnd={handleDragEnd}
                 >
                     <SortableContext
-                        items={settings.tabOrder}
+                        items={localSettings.tabOrder}
                         strategy={verticalListSortingStrategy}
                     >
-                        {settings.tabOrder.map((tabKey) => (
-                             <SortableTabItem key={tabKey} id={tabKey} onToggle={handleTabToggle} settings={settings} />
+                        {localSettings.tabOrder.map((tabKey) => (
+                             <SortableTabItem key={tabKey} id={tabKey} onToggle={handleTabToggle} settings={localSettings} />
                         ))}
                     </SortableContext>
                 </DndContext>
@@ -227,7 +261,7 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
                             <Label htmlFor="report-homework" className="font-medium">Inkluder lekse-status</Label>
                             <Switch
                                 id="report-homework"
-                                checked={settings.reportSettings.includeHomework}
+                                checked={localSettings.reportSettings.includeHomework}
                                 onCheckedChange={(checked) => handleReportSettingChange('includeHomework', checked)}
                             />
                         </div>
@@ -235,7 +269,7 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
                             <Label htmlFor="report-ipad" className="font-medium">Inkluder iPad-status</Label>
                             <Switch
                                 id="report-ipad"
-                                checked={settings.reportSettings.includeIpad}
+                                checked={localSettings.reportSettings.includeIpad}
                                 onCheckedChange={(checked) => handleReportSettingChange('includeIpad', checked)}
                             />
                         </div>
@@ -243,7 +277,7 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
                             <Label htmlFor="report-remarks" className="font-medium">Inkluder anmerkninger</Label>
                             <Switch
                                 id="report-remarks"
-                                checked={settings.reportSettings.includeRemarks}
+                                checked={localSettings.reportSettings.includeRemarks}
                                 onCheckedChange={(checked) => handleReportSettingChange('includeRemarks', checked)}
                             />
                         </div>
@@ -251,7 +285,7 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
                             <Label htmlFor="report-positive" className="font-medium">Send ros ved prikkfri uke</Label>
                             <Switch
                                 id="report-positive"
-                                checked={settings.reportSettings.includePositiveFeedback}
+                                checked={localSettings.reportSettings.includePositiveFeedback}
                                 onCheckedChange={(checked) => handleReportSettingChange('includePositiveFeedback', checked)}
                             />
                         </div>
@@ -263,15 +297,15 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
                      <div className="space-y-3">
                         <div className="space-y-1">
                             <Label htmlFor="greeting">Hilsen</Label>
-                            <Input id="greeting" value={settings.reportSettings.greeting} onChange={(e) => handleReportSettingChange('greeting', e.target.value)} />
+                            <Input id="greeting" value={localSettings.reportSettings.greeting} onChange={(e) => handleReportSettingChange('greeting', e.target.value)} />
                         </div>
                          <div className="space-y-1">
                             <Label htmlFor="closing">Avslutning</Label>
-                            <Input id="closing" value={settings.reportSettings.closing} onChange={(e) => handleReportSettingChange('closing', e.target.value)} />
+                            <Input id="closing" value={localSettings.reportSettings.closing} onChange={(e) => handleReportSettingChange('closing', e.target.value)} />
                         </div>
                         <div className="space-y-1">
                             <Label htmlFor="teacherName">Ditt navn (for signatur)</Label>
-                            <Input id="teacherName" value={settings.reportSettings.teacherName} onChange={(e) => handleReportSettingChange('teacherName', e.target.value)} />
+                            <Input id="teacherName" value={localSettings.reportSettings.teacherName} onChange={(e) => handleReportSettingChange('teacherName', e.target.value)} />
                         </div>
                      </div>
                 </div>

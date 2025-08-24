@@ -12,7 +12,7 @@ import Remarks from "@/components/Remarks";
 import withAuth from '@/components/withAuth';
 import { Button } from "@/components/ui/button";
 import { BookOpenCheck, Loader2, LogOut } from "lucide-react";
-import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark, TabKey } from "@/lib/types";
+import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark, TabKey, AppSettings } from "@/lib/types";
 import { getStudents, getSubjects, getHomework, getSubmissions, getDailyChecks, getLatestSeatingChart, saveSeatingChart, getSeatingChartHistory, getRemarks } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { getAuth, signOut } from "firebase/auth";
@@ -55,7 +55,7 @@ function Home({ userId }: { userId: string }) {
   const { toast } = useToast();
   const router = useRouter();
   const auth = getAuth();
-  const { settings, setSettings, loading: settingsLoading } = useSettings(userId);
+  const { settings, saveSettings, loading: settingsLoading } = useSettings(userId);
 
   const loadData = async (isUpdate = false) => {
     if (!userId) return;
@@ -219,7 +219,7 @@ function Home({ userId }: { userId: string }) {
               initialSubjects={subjects}
               onUpdate={handleDataUpdate}
               settings={settings}
-              onSettingsChange={setSettings}
+              onSettingsChange={saveSettings}
             />
           </TabsContent>
         </Tabs>
