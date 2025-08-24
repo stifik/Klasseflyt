@@ -9,9 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Users, Shuffle, Plus, X, Archive } from "lucide-react";
+import { Loader2, Users, Shuffle, Plus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { generateSeatingChart } from "@/ai/flows/generate-seating-chart";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { format } from "date-fns";
@@ -78,6 +77,16 @@ const DroppableDesk = ({ studentName, id, children }: DeskProps & { children: Re
   );
 };
 
+// Helper function to shuffle an array
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+};
+
 
 export default function SeatingChart({ userId, students, seatingChart, onSeatingChartChange, settings, onSettingsChange, history }: SeatingChartProps) {
   const { rows, cols, groupSize } = settings;
@@ -104,29 +113,99 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
   };
   
   const getAdjacentPairsFromChart = (chart: SeatingChartData): AvoidPair[] => {
-    const pairs: AvoidPair[] = [];
+    const pairs: Set<string> = new Set();
+    const studentNameToId = new Map(students.map(s => [s.name, s.id]));
+
     chart.forEach(row => {
         row.forEach(desk => {
             if (desk && desk.length > 1) {
-                for (let i = 0; i < desk.length - 1; i++) {
-                    const student1Name = desk[i];
-                    const student2Name = desk[i+1];
-                    if (student1Name && student2Name) {
-                        const s1 = students.find(s => s.name === student1Name);
-                        const s2 = students.find(s => s.name === student2Name);
-                        if (s1 && s2) {
-                           const newPair = [s1.id, s2.id].sort() as AvoidPair;
-                           if(!pairs.some(p => p[0] === newPair[0] && p[1] === newPair[1])) {
-                               pairs.push(newPair);
-                           }
+                for (let i = 0; i < desk.length; i++) {
+                    for (let j = i + 1; j < desk.length; j++) {
+                        const s1Name = desk[i];
+                        const s2Name = desk[j];
+                        if (s1Name && s2Name) {
+                            const s1Id = studentNameToId.get(s1Name);
+                            const s2Id = studentNameToId.get(s2Name);
+                            if (s1Id && s2Id) {
+                                const pair = [s1Id, s2Id].sort();
+                                pairs.add(JSON.stringify(pair));
+                            }
                         }
                     }
                 }
             }
         });
     });
-    return pairs;
+    return Array.from(pairs).map(p => JSON.parse(p));
   }
+
+  const generateChartWithLogic = (currentAvoidPairs: AvoidPair[]): SeatingChartData | null => {
+    const studentNames = shuffleArray(students.map(s => s.name));
+    const studentNameToId = new Map(students.map(s => [s.name, s.id]));
+    const totalDesks = rows * cols;
+    const totalCapacity = totalDesks * groupSize;
+
+    if (studentNames.length > totalCapacity) {
+      toast({
+        title: "For få plasser",
+        description: `Det er ${studentNames.length} elever, men bare kapasitet til ${totalCapacity}. Øk antall rader eller grupper.`,
+        variant: "destructive"
+      });
+      return null;
+    }
+
+    const chart: SeatingChartData = Array.from({ length: rows }, () => 
+      Array.from({ length: cols }, () => null)
+    );
+
+    let studentIndex = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (studentIndex >= studentNames.length) break;
+        
+        const deskGroup: string[] = [];
+        for (let s = 0; s < groupSize; s++) {
+          if (studentIndex >= studentNames.length) break;
+
+          const currentStudentName = studentNames[studentIndex];
+          const currentStudentId = studentNameToId.get(currentStudentName);
+
+          // Check constraints
+          const isInvalidPlacement = deskGroup.some(seatedStudentName => {
+            const seatedStudentId = studentNameToId.get(seatedStudentName);
+            const pair: AvoidPair = [currentStudentId!, seatedStudentId!].sort() as AvoidPair;
+            return currentAvoidPairs.some(p => p[0] === pair[0] && p[1] === pair[1]);
+          });
+
+          if (!isInvalidPlacement) {
+            deskGroup.push(currentStudentName);
+            studentIndex++;
+          } else {
+             // Simple strategy: swap with next available student and retry
+             if (studentIndex < studentNames.length -1) {
+                [studentNames[studentIndex], studentNames[studentIndex+1]] = [studentNames[studentIndex+1], studentNames[studentIndex]];
+                s--; // retry same seat with swapped student
+                continue;
+             }
+             // If it's the last student, we can't place them here. We'll leave the spot empty.
+          }
+        }
+        if (deskGroup.length > 0) {
+           chart[r][c] = deskGroup;
+        }
+      }
+      if (studentIndex >= studentNames.length) break;
+    }
+     if (studentIndex < studentNames.length) {
+       toast({
+         title: "Kunne ikke plassere alle",
+         description: "Noen elever kunne ikke plasseres på grunn av strenge 'unngå par'-regler. Prøv å generere på nytt eller juster reglene.",
+         variant: "destructive"
+       })
+    }
+    return chart;
+  };
+
 
   const handleGenerateClick = async (avoidPreviousNeighbors = false) => {
     setIsGenerating(true);
@@ -134,43 +213,32 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
     let temporaryAvoidPairs: AvoidPair[] = [...avoidPairs];
     if (avoidPreviousNeighbors && seatingChart) {
         const previousNeighbors = getAdjacentPairsFromChart(seatingChart);
-        temporaryAvoidPairs = [...new Set([...temporaryAvoidPairs, ...previousNeighbors])];
+        // Combine and remove duplicates
+        const combined = [...avoidPairs, ...previousNeighbors];
+        const unique = Array.from(new Set(combined.map(p => JSON.stringify(p)))).map(s => JSON.parse(s));
+        temporaryAvoidPairs = unique;
     }
     
     onSeatingChartChange(null, 'generation'); 
 
-    try {
-      const studentNames = students.map(s => s.name);
-      const avoidPairNames = temporaryAvoidPairs.map(([s1Id, s2Id]) => {
-          const s1Name = students.find(st => st.id === s1Id)?.name || '';
-          const s2Name = students.find(st => st.id === s2Id)?.name || '';
-          return [s1Name, s2Name];
-      });
-
-      const result = await generateSeatingChart({
-        studentNames,
-        rows,
-        cols,
-        groupSize,
-        avoidPairs: avoidPairNames as [string, string][],
-      });
-      
-      const chart = result.seatingChart || [];
-      const validatedChart: SeatingChartData = Array.from({ length: rows }, (_, r) =>
-        Array.from({ length: cols }, (_, c) => chart[r]?.[c] || null)
-      );
-      onSeatingChartChange(validatedChart, 'generation');
-
-    } catch (error) {
-        console.error(error);
-        toast({
-            title: "Feil ved generering",
-            description: "Kunne ikke generere klassekart. Prøv igjen.",
-            variant: "destructive",
-        });
-    } finally {
-        setIsGenerating(false);
-    }
+    // Use a short timeout to allow the UI to update to the loading state
+    setTimeout(() => {
+        try {
+            const newChart = generateChartWithLogic(temporaryAvoidPairs);
+            if (newChart) {
+                onSeatingChartChange(newChart, 'generation');
+            }
+        } catch (error) {
+            console.error(error);
+            toast({
+                title: "Feil ved generering",
+                description: "Kunne ikke generere klassekart. Prøv igjen.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsGenerating(false);
+        }
+    }, 50);
   };
   
   const handleDragEnd = (event: DragEndEvent) => {
@@ -381,7 +449,7 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
                         <Loader2 className="w-12 h-12 animate-spin text-primary" />
                     </div>
                 )}
-                {seatingChart && (
+                {!isGenerating && seatingChart && (
                     <div className="grid gap-y-4">
                         {seatingChart.map((row, rowIndex) => (
                             <div key={rowIndex} className="flex flex-wrap justify-start gap-x-4 gap-y-4">
