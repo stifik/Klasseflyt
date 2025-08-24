@@ -307,15 +307,28 @@ export default function HomeworkOverview({ userId, students, subjects, homeworkL
       });
   }, [homeworkList, filters]);
 
-  const problemStudentIds = useMemo(() => {
-    return new Set(localSubmissions
-      .filter(s => s.status === 'Ikke levert' || s.status === 'Må rettes')
-      .map(s => s.studentId));
-  }, [localSubmissions]);
+  const problemStatuses: HomeworkStatus[] = ["Ikke levert", "Må rettes", "Glemt bok"];
 
   const filteredStudents = useMemo(() => {
-    return filters.showProblems ? students.filter(s => problemStudentIds.has(s.id)) : students;
-  }, [students, filters.showProblems, problemStudentIds]);
+    if (!filters.showProblems) {
+      return students;
+    }
+    
+    const visibleHomeworkIds = new Set(filteredHomework.map(hw => hw.id));
+    if (visibleHomeworkIds.size === 0) {
+      return students; // If no homework is visible, don't filter students
+    }
+
+    return students.filter(student => {
+      // Check if this student has any problem status for any of the VISIBLE homework
+      return filteredHomework.some(hw => {
+        const submission = getSubmission(student.id, hw.id);
+        // A problem is a submission with a problem status, or no submission at all.
+        // 'Syk/Fravær' is not considered a problem in this context.
+        return !submission || problemStatuses.includes(submission.status);
+      });
+    });
+  }, [students, filters.showProblems, filteredHomework, localSubmissions]);
   
   const uniqueWeeks = [...new Set(homeworkList.map(h => h.week))].sort((a,b) => b-a);
   
