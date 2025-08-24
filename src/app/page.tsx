@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import AppView from "@/components/AppView";
 import Dashboard from "@/components/Dashboard";
+import { useIsAuthenticated, useMsal } from "@azure/msal-react";
+
 
 // Mock data while building the new data layer
 const mockStudents: Student[] = [{id: '1', name: 'Ola Nordmann'}, {id: '2', name: 'Kari Normann'}];
@@ -49,6 +51,7 @@ function Home({ userId }: { userId: string }) {
   
   const { toast } = useToast();
   const router = useRouter();
+  const { instance } = useMsal();
   const [settings, setSettings] = useState<AppSettings>(mockSettings);
   
   const activeLayout = seatingLayouts.find(l => l.id === settings.selectedSeatingLayoutId);
@@ -63,8 +66,13 @@ function Home({ userId }: { userId: string }) {
   }, [userId]);
 
   const handleLogout = async () => {
-    // To be replaced with MSAL logout
-    router.push('/login');
+    try {
+        await instance.logoutPopup();
+        router.push('/login');
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Utloggingsfeil", description: "Kunne ikke logge ut.", variant: "destructive"});
+    }
   };
   
   const navigateToTab = (tab: TabKey) => {
@@ -162,22 +170,28 @@ function Home({ userId }: { userId: string }) {
   );
 }
 
-// A temporary wrapper until the new auth is in place
-const HomeWithTempAuth = () => {
-    const [userId, setUserId] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+const AuthenticatedPage = () => {
+    const isAuthenticated = useIsAuthenticated();
+    const { accounts } = useMsal();
     const router = useRouter();
+    const [userId, setUserId] = useState<string | null>(null);
+    const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
     useEffect(() => {
-        // In a real scenario, we'd check for an MSAL session here.
-        // For now, we'll just simulate a logged-in user.
-        setTimeout(() => {
-            setUserId("temp-user-id");
-            setLoading(false);
-        }, 500);
-    }, [router]);
+        if (!isAuthenticated) {
+            router.push('/login');
+        } else if (accounts.length > 0) {
+            setUserId(accounts[0].homeAccountId);
+            setIsCheckingAuth(false);
+        } else if (isAuthenticated && accounts.length === 0) {
+           // Still waiting for accounts to populate after auth
+           // You can add a small delay or a more robust check here if needed
+        } else {
+            router.push('/login');
+        }
+    }, [isAuthenticated, router, accounts]);
 
-    if (loading) {
+    if (isCheckingAuth || !userId) {
         return (
             <div className="flex flex-col min-h-screen bg-background items-center justify-center">
                 <Loader2 className="w-12 h-12 animate-spin mb-4" />
@@ -186,10 +200,8 @@ const HomeWithTempAuth = () => {
         );
     }
 
-    if (!userId) return null;
-
     return <Home userId={userId} />;
 }
 
 
-export default HomeWithTempAuth;
+export default AuthenticatedPage;

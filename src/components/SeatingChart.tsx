@@ -15,7 +15,6 @@ import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay 
 import { CSS } from "@dnd-kit/utilities";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { getSeatingLayouts, saveSeatingLayout, deleteSeatingLayout } from "@/lib/firestore";
 import { cn } from "@/lib/utils";
 import { Switch } from "./ui/switch";
 
@@ -36,6 +35,8 @@ interface SeatingChartProps {
   history: SeatingChartRecord[];
   appSettings: AppSettings;
   onAppSettingsChange: (newSettings: AppSettings) => void;
+  layouts: SeatingLayout[];
+  onLayoutsChange: (layouts: SeatingLayout[]) => void;
 }
 
 // --- Draggable Components ---
@@ -117,9 +118,11 @@ const LayoutDesigner = ({ userId, onSave, onCancel }: { userId: string, onSave: 
         }
         const newLayoutData = { name, rows, cols, layout, seatCount };
         try {
-            const savedLayout = await saveSeatingLayout(userId, newLayoutData);
+            console.log("Saving layout (not implemented yet):", newLayoutData);
+            // const savedLayout = await saveSeatingLayout(userId, newLayoutData);
+            const savedLayout = { ...newLayoutData, id: `temp-layout-${Date.now()}`, createdAt: new Date() };
             toast({ title: "Layout lagret", description: `"${name}" er lagret.`});
-            onSave(savedLayout);
+            onSave(savedLayout as any);
         } catch (error) {
             console.error(error);
             toast({ title: "Feil", description: "Kunne ikke lagre layout.", variant: "destructive" });
@@ -180,7 +183,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 };
 
 // --- Main Component ---
-export default function SeatingChart({ userId, students, seatingChart, onSeatingChartChange, settings, onSettingsChange, history, appSettings, onAppSettingsChange }: SeatingChartProps) {
+export default function SeatingChart({ userId, students, seatingChart, onSeatingChartChange, settings, onSettingsChange, history, appSettings, onAppSettingsChange, layouts, onLayoutsChange }: SeatingChartProps) {
   const [avoidPairs, setAvoidPairs] = useState<AvoidPair[]>([]);
   const [avoidSameNeighbors, setAvoidSameNeighbors] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -188,7 +191,6 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
   const [selectedStudent1, setSelectedStudent1] = useState<string>("");
   const [selectedStudent2, setSelectedStudent2] = useState<string>("");
   const [isDesignerOpen, setIsDesignerOpen] = useState(false);
-  const [layouts, setLayouts] = useState<SeatingLayout[]>([]);
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(appSettings.selectedSeatingLayoutId || null);
   const { toast } = useToast();
   
@@ -197,8 +199,9 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
 
 
   useEffect(() => {
-    getSeatingLayouts(userId).then(setLayouts);
-  }, [userId]);
+    // getSeatingLayouts(userId).then(onLayoutsChange);
+    console.log("Loading layouts (not implemented yet)");
+  }, [userId, onLayoutsChange]);
 
   const handleSelectedLayoutChange = (layoutId: string) => {
     setSelectedLayoutId(layoutId);
@@ -334,14 +337,15 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
   };
 
   const handleLayoutSaved = (newLayout: SeatingLayout) => {
-      setLayouts(prev => [newLayout, ...prev.filter(l => l.id !== newLayout.id)]);
+      onLayoutsChange([newLayout, ...layouts.filter(l => l.id !== newLayout.id)]);
       handleSelectedLayoutChange(newLayout.id);
       setIsDesignerOpen(false);
   }
 
   const handleDeleteLayout = async (id: string) => {
-    await deleteSeatingLayout(userId, id);
-    setLayouts(layouts.filter(l => l.id !== id));
+    console.log("Deleting layout (not implemented yet):", id);
+    // await deleteSeatingLayout(userId, id);
+    onLayoutsChange(layouts.filter(l => l.id !== id));
     if (selectedLayoutId === id) {
         handleSelectedLayoutChange('');
     }

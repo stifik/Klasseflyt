@@ -60,7 +60,6 @@ export type SeatingLayout = {
   rows: number;
   cols: number;
   layout: boolean[][]; 
-  layoutJson: string; // Stored as a JSON string
   seatCount: number;
   createdAt: Date;
 };

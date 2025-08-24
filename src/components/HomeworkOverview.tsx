@@ -13,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { addHomework, setSubmission, batchAddSubmissions } from "@/lib/firestore";
 import { Input } from "./ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -192,9 +191,10 @@ export default function HomeworkOverview({ userId, students, subjects, homeworkL
     }
 
     try {
-        const savedSubmission = await setSubmission(userId, submissionData);
+        console.log("Saving status (not implemented yet):", submissionData);
+        // const savedSubmission = await setSubmission(userId, submissionData);
         // Update local state with the actual data from firestore, including the real ID
-        setLocalSubmissions(prev => prev.map(s => (s.id === submissionData.id ? savedSubmission : s)));
+        // setLocalSubmissions(prev => prev.map(s => (s.id === submissionData.id ? savedSubmission : s)));
 
     } catch (error) {
         // Revert on error
@@ -234,8 +234,9 @@ export default function HomeworkOverview({ userId, students, subjects, homeworkL
     setCurrentComment("");
 
     try {
-        const savedSubmission = await setSubmission(userId, submissionData);
-        setLocalSubmissions(prev => prev.map(s => (s.id === submissionData.id ? savedSubmission : s)));
+        console.log("Saving comment (not implemented yet):", submissionData);
+        // const savedSubmission = await setSubmission(userId, submissionData);
+        // setLocalSubmissions(prev => prev.map(s => (s.id === submissionData.id ? savedSubmission : s)));
         toast({ title: "Kommentar lagret" });
     } catch(error) {
         setLocalSubmissions(previousSubmissions);
@@ -259,17 +260,20 @@ export default function HomeworkOverview({ userId, students, subjects, homeworkL
     };
     
     try {
-        const newHomework = await addHomework(userId, newHomeworkData);
+        console.log("Adding homework (not implemented yet):", newHomeworkData);
+        // const newHomework = await addHomework(userId, newHomeworkData);
         toast({ title: "Lekse lagt til", description: `"${title}" er lagt til i oversikten.` });
 
         if (defaultStatus !== "none") {
             const newSubmissions: Omit<Submission, 'id'>[] = students.map(student => ({
                 studentId: student.id,
-                homeworkId: newHomework.id,
+                // homeworkId: newHomework.id,
+                homeworkId: 'temp-hw-id',
                 status: defaultStatus,
                 comment: ""
             }));
-            await batchAddSubmissions(userId, newSubmissions);
+            // await batchAddSubmissions(userId, newSubmissions);
+            console.log("Adding batch submissions (not implemented yet):", newSubmissions);
             toast({ title: "Standardstatus satt", description: `Alle elever er satt til "${defaultStatus}".` });
         }
         onUpdate();
@@ -286,7 +290,8 @@ export default function HomeworkOverview({ userId, students, subjects, homeworkL
       const newHwData = { ...hwData, week: getWeekNumber(newDate), date: newDate };
       
       try {
-        await addHomework(userId, newHwData);
+        console.log("Copying homework (not implemented yet):", newHwData);
+        // await addHomework(userId, newHwData);
         onUpdate();
         toast({ title: "Lekse kopiert", description: `En ny versjon av "${hwToCopy.title}" er opprettet for denne uken.`});
       } catch(error) {

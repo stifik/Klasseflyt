@@ -1,6 +1,8 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
+import { MsalProvider } from "@azure/msal-react";
+import { msalInstance } from "@/auth/msal";
 
 export const metadata: Metadata = {
   title: 'Leksehjelperen',
@@ -20,8 +22,10 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        {children}
-        <Toaster />
+        <MsalProvider instance={msalInstance}>
+          {children}
+          <Toaster />
+        </MsalProvider>
       </body>
     </html>
   );

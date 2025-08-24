@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { addStudent, deleteStudent, addSubject, deleteSubject, resetAndSeedDatabase } from "@/lib/firestore";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -124,7 +123,8 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
   const handleAddStudent = async () => {
     if (newStudent.trim()) {
       try {
-        await addStudent(userId, { name: newStudent.trim() });
+        console.log("Adding student (not implemented yet):", newStudent.trim());
+        // await addStudent(userId, { name: newStudent.trim() });
         setNewStudent("");
         onUpdate(); 
         toast({ title: "Elev lagt til", description: `${newStudent.trim()} er lagt til i klasselisten.` });
@@ -137,7 +137,8 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
   const handleAddSubject = async () => {
     if (newSubject.trim()) {
       try {
-        await addSubject(userId, { name: newSubject.trim() });
+        console.log("Adding subject (not implemented yet):", newSubject.trim());
+        // await addSubject(userId, { name: newSubject.trim() });
         setNewSubject("");
         onUpdate();
         toast({ title: "Fag lagt til", description: `${newSubject.trim()} er lagt til i faglisten.` });
@@ -150,7 +151,8 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
   const handleDeleteStudent = async (id: string) => {
     const studentName = initialStudents.find(s => s.id === id)?.name;
     try {
-      await deleteStudent(userId, id);
+      console.log("Deleting student (not implemented yet):", id);
+      // await deleteStudent(userId, id);
       onUpdate();
       toast({ title: "Elev slettet", description: `${studentName} er fjernet.`, variant: "destructive" });
     } catch (error) {
@@ -161,7 +163,8 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
   const handleDeleteSubject = async (id: string) => {
     const subjectName = initialSubjects.find(s => s.id === id)?.name;
     try {
-      await deleteSubject(userId, id);
+      console.log("Deleting subject (not implemented yet):", id);
+      // await deleteSubject(userId, id);
       onUpdate();
       toast({ title: "Fag slettet", description: `${subjectName} er fjernet.`, variant: "destructive" });
     } catch (error) {
@@ -186,7 +189,8 @@ export default function Settings({ userId, initialStudents, initialSubjects, onU
   const handleResetDatabase = async () => {
     setIsSeeding(true);
     try {
-      await resetAndSeedDatabase(userId);
+      console.log("Resetting database (not implemented yet)");
+      // await resetAndSeedDatabase(userId);
       toast({
         title: "Database nullstilt og fylt!",
         description: "Databasen er fylt med fersk demodata for din bruker.",

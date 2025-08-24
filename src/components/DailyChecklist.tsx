@@ -11,7 +11,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { setDailyCheck, deleteDailyCheckByStudentAndDate } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 type IpadStatus = "OK" | "NotCharged" | "NotBrought";
@@ -82,11 +81,11 @@ export default function DailyChecklist({ userId, students, initialChecks, onUpda
     }
 
     try {
-        if (newStatus === 'OK') {
-            await deleteDailyCheckByStudentAndDate(userId, studentId, date);
-        } else if (newCheckData) {
-            await setDailyCheck(userId, newCheckData);
-        }
+        // Data saving logic will be re-implemented here
+        console.log("Saving new status (not implemented yet):", newStatus, newCheckData);
+        // await deleteDailyCheckByStudentAndDate(userId, studentId, date);
+        // await setDailyCheck(userId, newCheckData);
+        
         // Wait for the database operation to complete, THEN trigger the update.
         onUpdate();
     } catch (error) {

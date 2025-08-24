@@ -11,7 +11,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { addRemark, deleteRemark } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose, DialogFooter } from "./ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
@@ -144,9 +143,10 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
     setRemarks(prev => [...prev, optimisticRemark]);
     
     try {
-      const savedRemark = await addRemark(userId, newRemarkData);
+      console.log("Adding remark (not implemented yet):", newRemarkData);
+      // const savedRemark = await addRemark(userId, newRemarkData);
       // Replace temp remark with real one from Firestore
-      setRemarks(prev => prev.map(r => r.id === tempId ? savedRemark : r));
+      // setRemarks(prev => prev.map(r => r.id === tempId ? savedRemark : r));
     } catch (error) {
       console.error(error);
       // Revert optimistic update on error
@@ -167,7 +167,8 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
     setRemarks(prev => prev.filter(r => r.id !== lastRemark.id));
     
     try {
-      await deleteRemark(userId, lastRemark.id);
+      console.log("Deleting remark (not implemented yet):", lastRemark.id);
+      // await deleteRemark(userId, lastRemark.id);
     } catch (error) {
       console.error(error);
       // Revert optimistic update
@@ -344,5 +345,3 @@ export default function Remarks({ userId, students, initialRemarks, onUpdate, se
     </div>
   );
 }
-
-    
