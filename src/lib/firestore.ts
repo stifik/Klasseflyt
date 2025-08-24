@@ -1,9 +1,10 @@
 
+
 "use server";
 
 import { db } from './firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, Timestamp, writeBatch, limit, orderBy } from 'firebase/firestore';
-import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, SeatingChartRecord, SeatingChartData, Remark } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, SeatingChartRecord, SeatingChartData, Remark, SeatingLayout } from './types';
 import { getWeekNumber } from './utils';
 
 // Helper to convert Firestore Timestamps to JS Dates in nested objects
@@ -41,7 +42,8 @@ const docToData = <T>(docSnap: any): T => {
 // Generic fetch function for a user's subcollection
 async function fetchUserCollection<T>(userId: string, collectionName: string): Promise<T[]> {
   const collectionRef = collection(db, 'users', userId, collectionName);
-  const querySnapshot = await getDocs(collectionRef);
+  const q = query(collectionRef, orderBy('createdAt', 'desc'));
+  const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => docToData<T>(doc));
 }
 
@@ -66,24 +68,36 @@ async function deleteUserDocument(userId: string, collectionName: string, id: st
 }
 
 // Student functions
-export async function getStudents(userId: string): Promise<Student[]> { return fetchUserCollection<Student>(userId, 'students'); }
+export async function getStudents(userId: string): Promise<Student[]> { 
+  const collectionRef = collection(db, 'users', userId, 'students');
+  const querySnapshot = await getDocs(collectionRef);
+  return querySnapshot.docs.map(doc => docToData<Student>(doc));
+}
 export async function addStudent(userId: string, student: Omit<Student, 'id'>) { return addUserDocument(userId, 'students', student); }
 export async function deleteStudent(userId: string, id: string) { return deleteUserDocument(userId, 'students', id); }
 
 // Subject functions
-export async function getSubjects(userId: string): Promise<Subject[]> { return fetchUserCollection<Subject>(userId, 'subjects'); }
+export async function getSubjects(userId: string): Promise<Subject[]> { 
+    const collectionRef = collection(db, 'users', userId, 'subjects');
+    const querySnapshot = await getDocs(collectionRef);
+    return querySnapshot.docs.map(doc => docToData<Subject>(doc));
+}
 export async function addSubject(userId: string, subject: Omit<Subject, 'id'>) { return addUserDocument(userId, 'subjects', subject); }
 export async function deleteSubject(userId: string, id: string) { return deleteUserDocument(userId, 'subjects', id); }
 
 // Homework functions
 export async function getHomework(userId: string): Promise<Homework[]> { return fetchUserCollection<Homework>(userId, 'homework'); }
 export async function addHomework(userId: string, homework: Omit<Homework, 'id'>) { 
-    const homeworkWithTimestamp = { ...homework, date: Timestamp.fromDate(homework.date) };
+    const homeworkWithTimestamp = { ...homework, date: Timestamp.fromDate(homework.date), createdAt: Timestamp.now() };
     return addUserDocument(userId, 'homework', homeworkWithTimestamp);
 }
 
 // Submission functions
-export async function getSubmissions(userId: string): Promise<Submission[]> { return fetchUserCollection<Submission>(userId, 'submissions'); }
+export async function getSubmissions(userId: string): Promise<Submission[]> { 
+    const collectionRef = collection(db, 'users', userId, 'submissions');
+    const querySnapshot = await getDocs(collectionRef);
+    return querySnapshot.docs.map(doc => docToData<Submission>(doc));
+}
 export async function setSubmission(userId: string, submission: Partial<Submission>): Promise<Submission> {
     const { studentId, homeworkId, ...rest } = submission;
     if (!studentId || !homeworkId) {
@@ -99,7 +113,7 @@ export async function setSubmission(userId: string, submission: Partial<Submissi
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
-        const newSubmissionData = { studentId, homeworkId, status: rest.status || 'Godkjent', comment: rest.comment || "", ...rest };
+        const newSubmissionData = { studentId, homeworkId, status: rest.status || 'Godkjent', comment: rest.comment || "", ...rest, createdAt: Timestamp.now() };
         if ('id' in newSubmissionData) delete (newSubmissionData as any).id;
         return addUserDocument(userId, 'submissions', newSubmissionData);
     } else {
@@ -115,14 +129,18 @@ export async function batchAddSubmissions(userId: string, submissions: Omit<Subm
     const submissionsCollection = collection(db, 'users', userId, 'submissions');
     submissions.forEach(submission => {
         const docRef = doc(submissionsCollection);
-        batch.set(docRef, submission);
+        batch.set(docRef, {...submission, createdAt: Timestamp.now() });
     });
     await batch.commit();
 }
 
 
 // DailyCheck functions
-export async function getDailyChecks(userId: string): Promise<DailyCheck[]> { return fetchUserCollection<DailyCheck>(userId, 'dailyChecks'); }
+export async function getDailyChecks(userId: string): Promise<DailyCheck[]> { 
+    const collectionRef = collection(db, 'users', userId, 'dailyChecks');
+    const querySnapshot = await getDocs(collectionRef);
+    return querySnapshot.docs.map(doc => docToData<DailyCheck>(doc));
+}
 export async function setDailyCheck(userId: string, check: Omit<DailyCheck, 'id'>): Promise<DailyCheck> {
     const { studentId, date, ...rest } = check;
     const dateOnly = new Date(date);
@@ -132,7 +150,7 @@ export async function setDailyCheck(userId: string, check: Omit<DailyCheck, 'id'
     const q = query(checksRef, where('studentId', '==', studentId));
     const querySnapshot = await getDocs(q);
     
-    const checkWithTimestamp = { ...check, date: Timestamp.fromDate(new Date(date)) };
+    const checkWithTimestamp = { ...check, date: Timestamp.fromDate(new Date(date)), createdAt: Timestamp.now() };
     
     const existingDoc = querySnapshot.docs.find(doc => {
         const checkData = docToData<DailyCheck>(doc);
@@ -175,14 +193,30 @@ export async function deleteDailyCheckByStudentAndDate(userId: string, studentId
 }
 
 // Remark functions
-export async function getRemarks(userId: string): Promise<Remark[]> { return fetchUserCollection<Remark>(userId, 'remarks'); }
+export async function getRemarks(userId: string): Promise<Remark[]> {
+    const collectionRef = collection(db, 'users', userId, 'remarks');
+    const querySnapshot = await getDocs(collectionRef);
+    return querySnapshot.docs.map(doc => docToData<Remark>(doc));
+}
 export async function addRemark(userId: string, remark: Omit<Remark, 'id'>): Promise<Remark> {
-    const remarkWithTimestamp = { ...remark, date: Timestamp.fromDate(new Date(remark.date)) };
+    const remarkWithTimestamp = { ...remark, date: Timestamp.fromDate(new Date(remark.date)), createdAt: Timestamp.now() };
     return addUserDocument(userId, 'remarks', remarkWithTimestamp);
 }
 export async function deleteRemark(userId: string, id: string) { return deleteUserDocument(userId, 'remarks', id); }
 
-// Seating Chart functions
+// Seating Chart Layout functions
+export async function getSeatingLayouts(userId: string): Promise<SeatingLayout[]> {
+    return fetchUserCollection<SeatingLayout>(userId, 'seatingLayouts');
+}
+export async function saveSeatingLayout(userId: string, layout: Omit<SeatingLayout, 'id' | 'createdAt'>): Promise<SeatingLayout> {
+    const layoutWithTimestamp = { ...layout, createdAt: Timestamp.now() };
+    return addUserDocument(userId, 'seatingLayouts', layoutWithTimestamp);
+}
+export async function deleteSeatingLayout(userId: string, id: string) {
+    return deleteUserDocument(userId, 'seatingLayouts', id);
+}
+
+// Seating Chart History functions
 type SeatingChartSettings = { rows: number; cols: number; groupSize: number };
 export async function getLatestSeatingChart(userId: string): Promise<{ chart: SeatingChartData; settings: SeatingChartSettings } | null> {
     const chartsRef = collection(db, 'users', userId, 'seatingCharts');
@@ -242,6 +276,7 @@ export async function resetAndSeedDatabase(userId: string) {
   await clearUserCollection(userId, 'submissions');
   await clearUserCollection(userId, 'dailyChecks');
   await clearUserCollection(userId, 'seatingCharts');
+  await clearUserCollection(userId, 'seatingLayouts');
   await clearUserCollection(userId, 'remarks');
   await clearUserCollection(userId, 'settings');
   await seedDatabase(userId);
@@ -289,6 +324,7 @@ async function seedDatabase(userId: string) {
         subjectId: subjectId,
         week,
         date: Timestamp.fromDate(date),
+        createdAt: Timestamp.fromDate(date)
       };
       dataBatch.set(newHomeworkRef, newHomework);
 
@@ -301,10 +337,11 @@ async function seedDatabase(userId: string) {
         else if (randomStatus < 0.16) status = 'Glemt bok';
         
         const newSubmissionRef = doc(submissionsRef);
-        const newSubmission: Omit<Submission, 'id' | 'comment'> & { comment?: string } = {
+        const newSubmission: Omit<Submission, 'id' | 'comment'> & { comment?: string, createdAt: Timestamp } = {
           studentId: studentId,
           homeworkId: newHomeworkRef.id,
           status,
+          createdAt: Timestamp.fromDate(date)
         };
 
         if (status !== 'Godkjent' && Math.random() < 0.5) {
@@ -323,6 +360,7 @@ async function seedDatabase(userId: string) {
               date: Timestamp.fromDate(date),
               ipadCharged: randomCheck > 0.05,
               ipadBrought: randomCheck < 0.05 ? false : true,
+              createdAt: Timestamp.fromDate(date)
           });
       }
       if (Math.random() < 0.02) {
@@ -331,6 +369,7 @@ async function seedDatabase(userId: string) {
           studentId: studentId,
           date: Timestamp.fromDate(date),
           period: Math.floor(Math.random() * 6) + 1,
+          createdAt: Timestamp.fromDate(date)
         });
       }
     });
@@ -338,5 +377,3 @@ async function seedDatabase(userId: string) {
 
   await dataBatch.commit();
 }
-
-    

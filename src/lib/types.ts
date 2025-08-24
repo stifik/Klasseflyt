@@ -1,4 +1,5 @@
 
+
 export type Student = {
   id: string;
   name: string;
@@ -51,6 +52,16 @@ export type SeatingChartRecord = {
   rows: number;
   cols: number;
   groupSize: number;
+  createdAt: Date;
+};
+
+export type SeatingLayout = {
+  id: string;
+  name: string;
+  rows: number;
+  cols: number;
+  layout: boolean[][]; // true represents a desk, false is empty space
+  seatCount: number;
   createdAt: Date;
 };
 
