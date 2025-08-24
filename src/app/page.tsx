@@ -171,6 +171,17 @@ function Home({ userId }: { userId: string }) {
     studentPicker: { students, seatingChart, activeLayout },
   };
 
+  const appViewProps = {
+    userId,
+    settings,
+    componentProps,
+    initialStudents: students,
+    initialSubjects: subjects,
+    onUpdate: handleDataUpdate,
+    onSettingsChange: saveSettings,
+  };
+
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 border-b bg-background sm:px-6">
@@ -193,23 +204,16 @@ function Home({ userId }: { userId: string }) {
         {activeView === 'dashboard' && <Dashboard settings={settings} onNavigate={navigateToTab} />}
         {activeView === 'app' && (
             <AppView 
-                settings={settings}
+                {...appViewProps}
                 activeTab={activeTab}
-                componentProps={componentProps}
                 onTabChange={setActiveTab}
             />
         )}
          {activeView === 'settings' && (
             <AppView 
-                settings={settings}
+                {...appViewProps}
                 activeTab={null} // or a specific string like 'settings'
-                componentProps={componentProps}
                 forceSettingsView={true}
-                 initialStudents={students}
-                initialSubjects={subjects}
-                onUpdate={handleDataUpdate}
-                onSettingsChange={saveSettings}
-                userId={userId}
             />
         )}
       </main>

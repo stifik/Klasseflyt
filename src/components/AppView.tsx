@@ -35,30 +35,29 @@ const tabLabels: Record<TabKey, string> = {
 };
 
 interface AppViewProps {
+    userId: string;
     settings: AppSettings;
     activeTab: TabKey | null;
     componentProps: any;
+    initialStudents: Student[];
+    initialSubjects: Subject[];
+    onUpdate: () => void;
+    onSettingsChange: (newSettings: AppSettings) => void;
     onTabChange?: (tab: TabKey | null) => void;
     forceSettingsView?: boolean;
-    // Props needed for settings view
-    userId?: string;
-    initialStudents?: Student[];
-    initialSubjects?: Subject[];
-    onUpdate?: () => void;
-    onSettingsChange?: (newSettings: AppSettings) => void;
 }
 
 const AppView: FC<AppViewProps> = ({ 
+    userId,
     settings, 
     activeTab, 
     componentProps, 
-    onTabChange, 
-    forceSettingsView = false,
-    userId,
     initialStudents,
     initialSubjects,
     onUpdate,
-    onSettingsChange
+    onSettingsChange,
+    onTabChange, 
+    forceSettingsView = false,
 }) => {
   const visibleTabs = settings.tabOrder.filter(tabKey => settings.tabs[tabKey]);
   const defaultTab = forceSettingsView ? 'settings' : activeTab || visibleTabs[0] || 'settings';
@@ -92,12 +91,12 @@ const AppView: FC<AppViewProps> = ({
 
       <TabsContent value="settings">
         <Settings
-          userId={userId!}
-          initialStudents={initialStudents!}
-          initialSubjects={initialSubjects!}
-          onUpdate={onUpdate!}
+          userId={userId}
+          initialStudents={initialStudents}
+          initialSubjects={initialSubjects}
+          onUpdate={onUpdate}
           settings={settings}
-          onSettingsChange={onSettingsChange!}
+          onSettingsChange={onSettingsChange}
         />
       </TabsContent>
     </Tabs>
