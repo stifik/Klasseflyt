@@ -26,6 +26,7 @@ const defaultSettings: AppSettings = {
     closing: "Vennlig hilsen,",
     teacherName: "Læreren"
   },
+  selectedSeatingLayoutId: null,
 };
 
 export function useSettings(userId: string) {
@@ -62,7 +63,8 @@ export function useSettings(userId: string) {
           reportSettings: {
             ...defaultSettings.reportSettings,
             ...(data.reportSettings || {}),
-          }
+          },
+          selectedSeatingLayoutId: data.selectedSeatingLayoutId || null,
         };
         setSettings(mergedSettings);
       } else {

@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import type { Student, SeatingChartRecord, SeatingLayout } from "@/lib/types";
+import type { Student, SeatingChartRecord, SeatingLayout, AppSettings } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,8 @@ interface SeatingChartProps {
   settings: SeatingChartSettings;
   onSettingsChange: (settings: SeatingChartSettings) => void;
   history: SeatingChartRecord[];
+  appSettings: AppSettings;
+  onAppSettingsChange: (newSettings: AppSettings) => void;
 }
 
 // --- Draggable Components ---
@@ -178,7 +180,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 };
 
 // --- Main Component ---
-export default function SeatingChart({ userId, students, seatingChart, onSeatingChartChange, settings, onSettingsChange, history }: SeatingChartProps) {
+export default function SeatingChart({ userId, students, seatingChart, onSeatingChartChange, settings, onSettingsChange, history, appSettings, onAppSettingsChange }: SeatingChartProps) {
   const [avoidPairs, setAvoidPairs] = useState<AvoidPair[]>([]);
   const [avoidSameNeighbors, setAvoidSameNeighbors] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -187,7 +189,7 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
   const [selectedStudent2, setSelectedStudent2] = useState<string>("");
   const [isDesignerOpen, setIsDesignerOpen] = useState(false);
   const [layouts, setLayouts] = useState<SeatingLayout[]>([]);
-  const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
+  const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(appSettings.selectedSeatingLayoutId || null);
   const { toast } = useToast();
   
   const activeLayout = useMemo(() => layouts.find(l => l.id === selectedLayoutId), [layouts, selectedLayoutId]);
@@ -197,6 +199,12 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
   useEffect(() => {
     getSeatingLayouts(userId).then(setLayouts);
   }, [userId]);
+
+  const handleSelectedLayoutChange = (layoutId: string) => {
+    setSelectedLayoutId(layoutId);
+    onAppSettingsChange({ ...appSettings, selectedSeatingLayoutId: layoutId });
+  };
+
 
   const handleAddAvoidPair = () => {
     if (selectedStudent1 && selectedStudent2 && selectedStudent1 !== selectedStudent2) {
@@ -327,7 +335,7 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
 
   const handleLayoutSaved = (newLayout: SeatingLayout) => {
       setLayouts(prev => [newLayout, ...prev.filter(l => l.id !== newLayout.id)]);
-      setSelectedLayoutId(newLayout.id);
+      handleSelectedLayoutChange(newLayout.id);
       setIsDesignerOpen(false);
   }
 
@@ -335,7 +343,7 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
     await deleteSeatingLayout(userId, id);
     setLayouts(layouts.filter(l => l.id !== id));
     if (selectedLayoutId === id) {
-        setSelectedLayoutId(null);
+        handleSelectedLayoutChange('');
     }
     toast({ title: "Layout slettet", variant: "destructive" });
   };
@@ -357,7 +365,7 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
               </CardHeader>
               <CardContent className="space-y-4">
                   <div className="flex gap-2">
-                    <Select value={selectedLayoutId || ""} onValueChange={setSelectedLayoutId}>
+                    <Select value={selectedLayoutId || ""} onValueChange={handleSelectedLayoutChange}>
                         <SelectTrigger><SelectValue placeholder="Velg layout..." /></SelectTrigger>
                         <SelectContent>
                             {layouts.map(l => <SelectItem key={l.id} value={l.id}>{l.name} ({l.seatCount} plasser)</SelectItem>)}
@@ -475,5 +483,3 @@ export default function SeatingChart({ userId, students, seatingChart, onSeating
     </div>
   );
 }
-
-    

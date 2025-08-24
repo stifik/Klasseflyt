@@ -81,4 +81,5 @@ export type AppSettings = {
   tabs: Record<TabKey, boolean>;
   tabOrder: TabKey[];
   reportSettings: ReportSettings;
+  selectedSeatingLayoutId?: string | null;
 };
