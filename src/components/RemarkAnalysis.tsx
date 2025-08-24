@@ -18,19 +18,26 @@ const dayOfWeekMap = [
     { name: 'Søn', value: 0 }, { name: 'Man', value: 1 }, { name: 'Tir', value: 2 },
     { name: 'Ons', value: 3 }, { name: 'Tor', value: 4 }, { name: 'Fre', value: 5 }, { name: 'Lør', value: 6 },
 ];
+const dayOfWeekArray = ['Søn', 'Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør'];
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1919'];
 
+interface FilterState {
+  day?: number;
+  period?: number;
+}
+
 export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnalysisProps) {
   const [selectedStudentId, setSelectedStudentId] = useState<string>("whole-class");
-  const [filter, setFilter] = useState<{ type: 'day' | 'period' | null; value: number | string | null }>({ type: null, value: null });
+  const [filter, setFilter] = useState<FilterState>({});
 
   const analysisData = useMemo(() => {
     const isWholeClass = selectedStudentId === "whole-class";
-    const relevantRemarks = isWholeClass 
+    let relevantRemarks = isWholeClass 
       ? initialRemarks 
       : initialRemarks.filter(r => r.studentId === selectedStudentId);
 
+    // Initial charts data
     const remarksByPeriod = Array.from({ length: 6 }, (_, i) => ({ name: `Time ${i + 1}`, value: i + 1, Antall: 0 }));
     relevantRemarks.forEach(remark => {
       if (remark.period >= 1 && remark.period <= 6) {
@@ -52,71 +59,100 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
 
     const pieChartData = Object.entries(remarksByType).map(([name, value]) => ({ name, value }));
     
-    let drillDownData = null;
+    // Drill-down logic
+    let drillDownData: any[] | null = null;
     let drillDownTitle = "";
+    let drillDownSubtitle = "";
+    
+    const getStudentName = (id: string) => students.find(s => s.id === id)?.name || 'Ukjent';
 
-    if (filter.type && filter.value !== null) {
-      if (isWholeClass) {
-        let filteredRemarks: Remark[];
-        if (filter.type === 'day') {
-          drillDownTitle = `Elever med anmerkninger på ${dayOfWeekMap.find(d => d.value === filter.value)?.name || ''}`;
-          filteredRemarks = relevantRemarks.filter(r => new Date(r.date).getDay() === filter.value);
-        } else { // period
-          drillDownTitle = `Elever med anmerkninger i time ${filter.value}`;
-          filteredRemarks = relevantRemarks.filter(r => r.period === filter.value);
-        }
-        const studentCounts = filteredRemarks.reduce((acc, remark) => {
-            const studentName = students.find(s => s.id === remark.studentId)?.name || 'Ukjent';
-            acc[studentName] = (acc[studentName] || 0) + 1;
+    if (filter.day !== undefined) {
+      const dayName = dayOfWeekArray[filter.day];
+      relevantRemarks = relevantRemarks.filter(r => new Date(r.date).getDay() === filter.day);
+      
+      if (filter.period !== undefined) {
+        drillDownTitle = `Anmerkninger på ${dayName}, Time ${filter.period}`;
+        relevantRemarks = relevantRemarks.filter(r => r.period === filter.period);
+        
+        const studentCounts = relevantRemarks.reduce((acc, remark) => {
+            acc[remark.studentId] = (acc[remark.studentId] || 0) + 1;
             return acc;
         }, {} as Record<string, number>);
 
         drillDownData = Object.entries(studentCounts)
-            .map(([name, Antall]) => ({ name, Antall }))
+            .map(([studentId, Antall]) => ({ name: getStudentName(studentId), Antall }))
             .sort((a,b) => b.Antall - a.Antall);
 
-      } else { // Individual student drill-down
-          if (filter.type === 'day') {
-            drillDownTitle = `Fordeling for ${dayOfWeekMap.find(d => d.value === filter.value)?.name}`;
-            const filteredRemarks = relevantRemarks.filter(r => new Date(r.date).getDay() === filter.value);
-            drillDownData = Array.from({ length: 6 }, (_, i) => ({ name: `Time ${i + 1}`, Antall: 0 }));
-            filteredRemarks.forEach(r => {
-              if (r.period >= 1 && r.period <= 6) {
-                (drillDownData as any[])[r.period - 1].Antall++;
-              }
-            });
-          } else if (filter.type === 'period') {
-            drillDownTitle = `Fordeling for Time ${filter.value}`;
-            const filteredRemarks = relevantRemarks.filter(r => r.period === filter.value);
-            drillDownData = Array.from({ length: 5 }, (_, i) => ({ name: dayOfWeekMap.find(d => d.value === i + 1)?.name, Antall: 0 }));
-            filteredRemarks.forEach(r => {
-              const day = new Date(r.date).getDay();
-              if (day >= 1 && day <= 5) { // Man-Fre
-                (drillDownData as any[])[day - 1].Antall++;
-              }
-            });
+      } else {
+        drillDownTitle = `Analyse for ${dayName}`;
+        drillDownSubtitle = `Fordeling per time og elev. Klikk på en time for å filtrere videre.`;
+        
+        const periodCounts = Array.from({ length: 6 }, (_, i) => ({ name: `Time ${i + 1}`, value: i + 1, Antall: 0 }));
+        relevantRemarks.forEach(remark => {
+          if (remark.period >= 1 && remark.period <= 6) {
+            periodCounts[remark.period - 1].Antall++;
           }
+        });
+
+        const studentCounts = relevantRemarks.reduce((acc, remark) => {
+            acc[remark.studentId] = (acc[remark.studentId] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+        
+        const studentList = Object.entries(studentCounts)
+            .map(([studentId, Antall]) => ({ name: getStudentName(studentId), Antall }))
+            .sort((a, b) => b.Antall - a.Antall);
+
+        drillDownData = [
+          { type: 'chart', title: 'Fordeling per time', data: periodCounts.filter(p => p.Antall > 0), chartType: 'period' },
+          { type: 'chart', title: 'Elever med flest anmerkninger', data: studentList, chartType: 'student' }
+        ];
       }
+    } else if (filter.period !== undefined) {
+      drillDownTitle = `Analyse for Time ${filter.period}`;
+      relevantRemarks = relevantRemarks.filter(r => r.period === filter.period);
+
+      const studentCounts = relevantRemarks.reduce((acc, remark) => {
+          acc[remark.studentId] = (acc[remark.studentId] || 0) + 1;
+          return acc;
+      }, {} as Record<string, number>);
+        
+      drillDownData = Object.entries(studentCounts)
+            .map(([studentId, Antall]) => ({ name: getStudentName(studentId), Antall }))
+            .sort((a,b) => b.Antall - a.Antall);
     }
 
+
     return {
-      total: relevantRemarks.length,
+      total: isWholeClass ? initialRemarks.length : relevantRemarks.length,
       byPeriod: remarksByPeriod.filter(p => p.Antall > 0),
       byDay: remarksByDay.filter(d => d.name !== 'Lør' && d.name !== 'Søn' && d.Antall > 0),
       byType: pieChartData,
       drillDownData,
       drillDownTitle,
+      drillDownSubtitle,
     };
   }, [selectedStudentId, initialRemarks, filter, students]);
   
-  const handleBarClick = (data: any, type: 'day' | 'period') => {
+  const handleBarClick = (data: any, type: 'day' | 'period' | 'student') => {
     if (data && data.activePayload && data.activePayload.length > 0) {
       const payload = data.activePayload[0].payload;
-      setFilter({ type, value: payload.value });
+      
+      if (isWholeClass) {
+        if (type === 'day') {
+          setFilter({ day: payload.value });
+        } else if (type === 'period' && filter.day !== undefined) {
+          // Drill down from day -> period
+          setFilter({ ...filter, period: payload.value });
+        } else if (type === 'period') {
+           setFilter({ period: payload.value });
+        }
+      }
     }
   };
-
-  const currentTitle = selectedStudentId === 'whole-class' 
+  
+  const isWholeClass = selectedStudentId === "whole-class";
+  const currentTitle = isWholeClass 
     ? 'Analyse for Hele Klassen' 
     : `Analyse for ${students.find(s => s.id === selectedStudentId)?.name || ''}`;
 
@@ -128,7 +164,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
                 <CardTitle>{currentTitle}</CardTitle>
                 <CardDescription>Velg en elev eller se data for hele klassen. Klikk på søyler for å drille ned i data.</CardDescription>
             </div>
-            <Select value={selectedStudentId} onValueChange={(id) => { setSelectedStudentId(id); setFilter({type: null, value: null}); }}>
+            <Select value={selectedStudentId} onValueChange={(id) => { setSelectedStudentId(id); setFilter({}); }}>
               <SelectTrigger className="w-full mt-2 sm:mt-0 sm:w-[280px]">
                 <SelectValue placeholder="Velg elev..." />
               </SelectTrigger>
@@ -142,114 +178,142 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
         </div>
       </CardHeader>
       <CardContent>
-        {analysisData ? (
+        {initialRemarks.length > 0 ? (
           <div className="space-y-6">
-             <div className="grid gap-6 md:grid-cols-2">
-                 <Card>
-                    <CardHeader>
-                        <CardTitle className="text-xl">Oversikt</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-4xl font-bold">{analysisData.total} <span className="text-lg font-normal text-muted-foreground">anmerkninger</span></p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Fordeling per type</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {analysisData.byType.length > 0 ? (
-                            <div className="h-[150px] -ml-4">
-                               <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie data={analysisData.byType} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} fill="#8884d8">
-                                            {analysisData.byType.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                                        </Pie>
-                                        <Tooltip />
-                                        <Legend />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                        ) : (
-                             <p className="text-muted-foreground">Ingen data å vise.</p>
-                        )}
-                    </CardContent>
-                </Card>
-             </div>
-            <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                    <CardHeader><CardTitle>Fordeling per time</CardTitle></CardHeader>
-                    <CardContent>
-                        {analysisData.byPeriod.length > 0 ? (
-                             <div className="h-[250px] -ml-4">
+            {!filter.day && !filter.period ? (
+                <>
+                <div className="grid gap-6 md:grid-cols-2">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-xl">Oversikt</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-4xl font-bold">{analysisData.total} <span className="text-lg font-normal text-muted-foreground">anmerkninger</span></p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Fordeling per type</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {analysisData.byType.length > 0 ? (
+                                <div className="h-[150px] -ml-4">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={analysisData.byPeriod} margin={{ top: 5, right: 20, left: 0, bottom: 5 }} onClick={(d) => handleBarClick(d, 'period')}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="name" fontSize={12} />
-                                        <YAxis allowDecimals={false} fontSize={12} />
-                                        <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', fontSize: '12px' }} />
-                                        <Bar dataKey="Antall" fill="hsl(var(--primary))" className="cursor-pointer" />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        ) : <p className="text-muted-foreground">Ingen data å vise.</p>}
-                    </CardContent>
-                </Card>
+                                        <PieChart>
+                                            <Pie data={analysisData.byType} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} fill="#8884d8">
+                                                {analysisData.byType.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                            </Pie>
+                                            <Tooltip />
+                                            <Legend />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            ) : (
+                                <p className="text-muted-foreground">Ingen data å vise.</p>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+                <div className="grid gap-6 md:grid-cols-2">
+                    <Card>
+                        <CardHeader><CardTitle>Fordeling per time</CardTitle></CardHeader>
+                        <CardContent>
+                            {analysisData.byPeriod.length > 0 ? (
+                                <div className="h-[250px] -ml-4">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={analysisData.byPeriod} margin={{ top: 5, right: 20, left: 0, bottom: 5 }} onClick={(d) => isWholeClass && handleBarClick(d, 'period')}>
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <XAxis dataKey="name" fontSize={12} />
+                                            <YAxis allowDecimals={false} fontSize={12} />
+                                            <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', fontSize: '12px' }} />
+                                            <Bar dataKey="Antall" fill="hsl(var(--primary))" className={isWholeClass ? "cursor-pointer" : ""} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            ) : <p className="text-muted-foreground">Ingen data å vise.</p>}
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader><CardTitle>Fordeling per ukedag</CardTitle></CardHeader>
+                        <CardContent>
+                            {analysisData.byDay.length > 0 ? (
+                                <div className="h-[250px] -ml-4">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={analysisData.byDay} margin={{ top: 5, right: 20, left: 0, bottom: 5 }} onClick={(d) => isWholeClass && handleBarClick(d, 'day')}>
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <XAxis dataKey="name" fontSize={12} />
+                                            <YAxis allowDecimals={false} fontSize={12} />
+                                            <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', fontSize: '12px' }} />
+                                            <Bar dataKey="Antall" fill="hsl(var(--primary))" className={isWholeClass ? "cursor-pointer" : ""} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            ) : <p className="text-muted-foreground">Ingen data å vise.</p>}
+                        </CardContent>
+                    </Card>
+                </div>
+                </>
+            ) : (
                  <Card>
-                    <CardHeader><CardTitle>Fordeling per ukedag</CardTitle></CardHeader>
-                    <CardContent>
-                        {analysisData.byDay.length > 0 ? (
-                             <div className="h-[250px] -ml-4">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={analysisData.byDay} margin={{ top: 5, right: 20, left: 0, bottom: 5 }} onClick={(d) => handleBarClick(d, 'day')}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="name" fontSize={12} />
-                                        <YAxis allowDecimals={false} fontSize={12} />
-                                        <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', fontSize: '12px' }} />
-                                        <Bar dataKey="Antall" fill="hsl(var(--primary))" className="cursor-pointer" />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        ) : <p className="text-muted-foreground">Ingen data å vise.</p>}
-                    </CardContent>
-                </Card>
-            </div>
-            {filter.type && analysisData.drillDownData && (
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
+                    <CardHeader className="flex flex-row items-start justify-between">
                         <div>
-                            <CardTitle>Detaljert visning</CardTitle>
-                            <CardDescription>{analysisData.drillDownTitle}</CardDescription>
+                            <CardTitle>{analysisData.drillDownTitle}</CardTitle>
+                            {analysisData.drillDownSubtitle && <CardDescription>{analysisData.drillDownSubtitle}</CardDescription>}
                         </div>
-                        <Button variant="ghost" size="icon" onClick={() => setFilter({type: null, value: null})}>
+                        <Button variant="ghost" size="icon" onClick={() => setFilter({})}>
                             <XIcon className="w-4 h-4" />
+                            <span className="sr-only">Lukk detaljvisning</span>
                         </Button>
                     </CardHeader>
                     <CardContent>
-                        {(analysisData.drillDownData as any[]).length > 0 ? (
-                            <div className="h-[250px] -ml-4">
-                               <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={analysisData.drillDownData as any[]} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="name" fontSize={12} />
-                                        <YAxis allowDecimals={false} fontSize={12} />
-                                        <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', fontSize: '12px' }} />
-                                        <Bar dataKey="Antall" fill="hsl(var(--accent))" />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        ) : <p className="text-muted-foreground">Ingen anmerkninger å vise for dette utvalget.</p>}
+                        {analysisData.drillDownData && analysisData.drillDownData.length > 0 ? (
+                            Array.isArray(analysisData.drillDownData[0]?.data) ? (
+                                // Multi-chart view (e.g., day breakdown)
+                                <div className="grid gap-6 md:grid-cols-2">
+                                    {(analysisData.drillDownData as any[]).map((chartInfo, index) => (
+                                        <Card key={index}>
+                                            <CardHeader><CardTitle>{chartInfo.title}</CardTitle></CardHeader>
+                                            <CardContent className="h-[250px] -ml-4">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                     <BarChart data={chartInfo.data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }} onClick={(d) => handleBarClick(d, chartInfo.chartType)}>
+                                                        <CartesianGrid strokeDasharray="3 3" />
+                                                        <XAxis dataKey="name" fontSize={12} />
+                                                        <YAxis allowDecimals={false} fontSize={12} />
+                                                        <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', fontSize: '12px' }} />
+                                                        <Bar dataKey="Antall" fill="hsl(var(--accent))" className={chartInfo.chartType === 'period' ? 'cursor-pointer' : ''} />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
+                            ) : (
+                                // Single chart view
+                                <div className="h-[250px] -ml-4">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={analysisData.drillDownData as any[]} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <XAxis dataKey="name" fontSize={12} />
+                                            <YAxis allowDecimals={false} fontSize={12} />
+                                            <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', fontSize: '12px' }} />
+                                            <Bar dataKey="Antall" fill="hsl(var(--accent))" />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            )
+                        ) : (
+                            <p className="text-muted-foreground">Ingen anmerkninger å vise for dette utvalget.</p>
+                        )}
                     </CardContent>
                 </Card>
             )}
           </div>
         ) : (
           <div className="flex items-center justify-center h-64 text-muted-foreground">
-            <p>Velg en elev fra menyen for å se statistikk.</p>
+            <p>Ingen anmerkninger er registrert ennå.</p>
           </div>
         )}
       </CardContent>
     </Card>
   );
 }
-
