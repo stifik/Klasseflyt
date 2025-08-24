@@ -4,8 +4,8 @@ import { Toaster } from "@/components/ui/toaster"
 import { Providers } from '@/components/Providers';
 
 export const metadata: Metadata = {
-  title: 'Leksehjelperen',
-  description: 'En app for lærere for å holde oversikt over elevers lekser.',
+  title: 'Klasseflyt',
+  description: 'En app for lærere for å administrere klasserommet effektivt.',
 };
 
 export default function RootLayout({

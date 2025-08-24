@@ -156,7 +156,7 @@ function Home() {
         <div className="flex items-center gap-2">
           <button onClick={() => setActiveView('dashboard')} className="flex items-center gap-2">
             <BookOpenCheck className="w-8 h-8 text-primary" />
-            <h1 className="text-xl font-bold text-foreground">Leksehjelperen</h1>
+            <h1 className="text-xl font-bold text-foreground">Klasseflyt</h1>
           </button>
         </div>
         <div className="flex items-center gap-2">

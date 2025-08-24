@@ -10,14 +10,14 @@ export default function PrivacyPolicyPage() {
     <div className="flex items-center justify-center min-h-screen bg-background p-4 sm:p-6">
       <Card className="w-full max-w-4xl">
         <CardHeader>
-          <CardTitle>Personvernerklæring for Leksehjelperen</CardTitle>
+          <CardTitle>Personvernerklæring for Klasseflyt</CardTitle>
           <CardDescription>
             Sist oppdatert: {lastUpdated}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 text-sm text-foreground">
           <p>
-            Denne personvernerklæringen beskriver hvordan Leksehjelperen ("vi", "oss", "appen") behandler personopplysninger. Denne versjonen av appen er designet for å <strong>ikke</strong> bruke eksterne skytjenester for lagring av elevdata, men heller synkronisere data mot din egen Microsoft OneDrive.
+            Denne personvernerklæringen beskriver hvordan Klasseflyt ("vi", "oss", "appen") behandler personopplysninger. Denne versjonen av appen er designet for å <strong>ikke</strong> bruke eksterne skytjenester for lagring av elevdata, men heller synkronisere data mot din egen Microsoft OneDrive.
           </p>
 
           <div className="p-4 border-l-4 border-primary bg-primary/10 rounded-r-lg">
