@@ -291,7 +291,7 @@ const ReportDetails = ({ stat }: { stat: ReturnType<typeof useStudentStats>[0] }
 
 const FullReportCard = ({ stat, isOpen, isPrintVersion = false }: { stat: ReturnType<typeof useStudentStats>[0], isOpen: boolean, isPrintVersion?: boolean }) => (
      <Card className={cn(
-        isPrintVersion ? "border-none shadow-none" : "",
+        "print:shadow-none print:border-none",
         isPrintVersion && "border-b border-t"
      )}>
         <CardHeader>
@@ -429,7 +429,7 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
 export default function Reports(props: ReportsProps) {
     return (
         <Tabs defaultValue="summary" className="w-full space-y-4">
-            <TabsList className="no-print grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-3 no-print">
                 <TabsTrigger value="summary">Ukesoppsummering</TabsTrigger>
                 <TabsTrigger value="analysis">Analyse</TabsTrigger>
                 <TabsTrigger value="student-report">Elevrapporter</TabsTrigger>
