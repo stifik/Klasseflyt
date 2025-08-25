@@ -58,12 +58,12 @@ const defaultSettings: AppSettings = {
     includePositiveFeedback: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
   },
   schedule: [
-    { period: 1, startTime: "08:30", endTime: "09:30" },
-    { period: 2, startTime: "09:45", endTime: "10:45" },
-    { period: 3, startTime: "11:30", endTime: "12:30" },
-    { period: 4, startTime: "12:45", endTime: "13:45" },
-    { period: 5, startTime: "14:00", endTime: "15:00" },
-    { period: 6, startTime: "", endTime: "" },
+    { period: 1, startTime: "08:30", endTime: "09:00" },
+    { period: 2, startTime: "09:00", endTime: "10:00" },
+    { period: 3, startTime: "10:30", endTime: "11:00" },
+    { period: 4, startTime: "11:00", endTime: "12:00" },
+    { period: 5, startTime: "12:30", endTime: "13:30" },
+    { period: 6, startTime: "13:30", endTime: "14:00" },
   ],
   selectedSeatingLayoutId: null,
   remarkTypes: ["Generell", "Forstyrrer andre", "Mangler utstyr", "Upassende språk", "Gjorde en god innsats"],
