@@ -454,10 +454,28 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                     <ul className="space-y-2 max-h-60 overflow-y-auto pr-2">
                         {initialStudents?.map((student) => (
                             <li key={student.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
-                            <span>{student.name}</span>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteStudent(student.id!)}>
-                                <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
+                              <span>{student.name}</span>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Dette vil permanent slette eleven {student.name} og all relatert data. Handlingen kan ikke angres.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteStudent(student.id!)}>
+                                      Ja, slett elev
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </li>
                         ))}
                     </ul>
@@ -479,9 +497,27 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                       {initialSubjects?.map((subject) => (
                         <li key={subject.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
                           <span>{subject.name}</span>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteSubject(subject.id!)}>
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
+                           <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Dette vil permanent slette faget {subject.name}. Handlingen kan ikke angres.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteSubject(subject.id!)}>
+                                  Ja, slett fag
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </li>
                       ))}
                     </ul>
@@ -577,3 +613,5 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
     </div>
   );
 }
+
+    
