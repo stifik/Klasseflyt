@@ -68,13 +68,11 @@ const AddRemarkDialog = ({ student, onAdd, remarkTypes, children }: { student: S
   );
 };
 
-export default function Remarks({ students, initialRemarks, onUpdate, seatingChart, settings }: RemarksProps) {
+export default function Remarks({ students, initialRemarks: remarks, onUpdate, seatingChart, settings }: RemarksProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [currentPeriod, setCurrentPeriod] = useState<number>(1);
   const { toast } = useToast();
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
-  
-  const remarks = useLiveQuery(() => db.remarks.toArray(), initialRemarks);
   
   useEffect(() => {
     const { schedule } = settings;
