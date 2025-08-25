@@ -119,7 +119,7 @@ function Home() {
       if(layouts.length > 0) await db.seatingLayouts.bulkPut(layouts);
   }
 
-  if (initialLoading || !students || !subjects || !homework || !submissions || !dailyChecks || !remarks || !seatingLayouts || !settings) {
+  if (students === undefined || subjects === undefined || homework === undefined || submissions === undefined || dailyChecks === undefined || remarks === undefined || seatingLayouts === undefined) {
     return (
       <div className="flex flex-col min-h-screen bg-background items-center justify-center">
         <Loader2 className="w-12 h-12 animate-spin mb-4" />

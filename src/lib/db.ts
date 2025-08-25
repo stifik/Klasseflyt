@@ -49,6 +49,7 @@ const defaultSettings: AppSettings = {
   tabs: {
     overview: true, dailyCheck: true, remarks: true, reports: true,
     seatingChart: true, groupTool: true, studentPicker: true, remarkAnalysis: true,
+    settings: true,
   },
   tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'groupTool', 'studentPicker', 'remarkAnalysis'],
   reportSettings: {
@@ -71,7 +72,8 @@ const defaultSettings: AppSettings = {
 export async function clearDatabase() {
      await db.transaction('rw', db.tables, async () => {
         await Promise.all(db.tables.map(table => table.clear()));
-        console.log("Database has been cleared.");
+        await db.settings.put({ id: 'userSettings', ...defaultSettings });
+        console.log("Database has been cleared and default settings have been applied.");
      });
 }
 
