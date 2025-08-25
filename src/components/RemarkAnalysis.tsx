@@ -36,8 +36,6 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
 
   const analysisData = useMemo(() => {
     const studentMap = new Map(students.map(s => [s.id, s.name]));
-    const getStudentName = (id: string) => studentMap.get(id) || 'Ukjent';
-
     const isWholeClass = selectedStudentId === "whole-class";
     
     const now = new Date();
@@ -86,19 +84,19 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
 
     if (filter.day !== undefined) {
       const dayName = dayOfWeekArray[filter.day];
-      relevantRemarks = relevantRemarks.filter(r => new Date(r.date).getDay() === filter.day);
+      let dayRemarks = relevantRemarks.filter(r => new Date(r.date).getDay() === filter.day);
       
       if (filter.period !== undefined) {
         drillDownTitle = `Anmerkninger på ${dayName}, Time ${filter.period}`;
-        relevantRemarks = relevantRemarks.filter(r => r.period === filter.period);
+        let periodRemarks = dayRemarks.filter(r => r.period === filter.period);
         
-        const studentCounts = relevantRemarks.reduce((acc, remark) => {
+        const studentCounts = periodRemarks.reduce((acc, remark) => {
             acc[remark.studentId] = (acc[remark.studentId] || 0) + 1;
             return acc;
         }, {} as Record<string, number>);
 
         drillDownData = Object.entries(studentCounts)
-            .map(([studentId, Antall]) => ({ name: getStudentName(studentId), Antall }))
+            .map(([studentId, Antall]) => ({ name: studentMap.get(studentId) || 'Ukjent', Antall }))
             .sort((a,b) => b.Antall - a.Antall);
 
       } else {
@@ -106,19 +104,19 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
         drillDownSubtitle = `Fordeling per time og elev. Klikk på en time for å filtrere videre.`;
         
         const periodCounts = Array.from({ length: 6 }, (_, i) => ({ name: `Time ${i + 1}`, value: i + 1, Antall: 0 }));
-        relevantRemarks.forEach(remark => {
+        dayRemarks.forEach(remark => {
           if (remark.period >= 1 && remark.period <= 6) {
             periodCounts[remark.period - 1].Antall++;
           }
         });
 
-        const studentCounts = relevantRemarks.reduce((acc, remark) => {
+        const studentCounts = dayRemarks.reduce((acc, remark) => {
             acc[remark.studentId] = (acc[remark.studentId] || 0) + 1;
             return acc;
         }, {} as Record<string, number>);
         
         const studentList = Object.entries(studentCounts)
-            .map(([studentId, Antall]) => ({ name: getStudentName(studentId), Antall }))
+            .map(([studentId, Antall]) => ({ name: studentMap.get(studentId) || 'Ukjent', Antall }))
             .sort((a, b) => b.Antall - a.Antall);
 
         drillDownData = [
@@ -128,15 +126,15 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
       }
     } else if (filter.period !== undefined) {
       drillDownTitle = `Analyse for Time ${filter.period}`;
-      relevantRemarks = relevantRemarks.filter(r => r.period === filter.period);
+      let periodRemarks = relevantRemarks.filter(r => r.period === filter.period);
 
-      const studentCounts = relevantRemarks.reduce((acc, remark) => {
+      const studentCounts = periodRemarks.reduce((acc, remark) => {
           acc[remark.studentId] = (acc[remark.studentId] || 0) + 1;
           return acc;
       }, {} as Record<string, number>);
         
       drillDownData = Object.entries(studentCounts)
-            .map(([studentId, Antall]) => ({ name: getStudentName(studentId), Antall }))
+            .map(([studentId, Antall]) => ({ name: studentMap.get(studentId) || 'Ukjent', Antall }))
             .sort((a,b) => b.Antall - a.Antall);
     }
 
