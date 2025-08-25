@@ -64,7 +64,7 @@ export type SeatingLayout = {
   createdAt: Date;
 };
 
-export type TabKey = 'overview' | 'dailyCheck' | 'remarks' | 'reports' | 'seatingChart' | 'groupTool' | 'studentPicker' | 'remarkAnalysis' | 'settings';
+export type TabKey = 'overview' | 'dailyCheck' | 'remarks' | 'reports' | 'seatingChart' | 'groupTool' | 'studentPicker' | 'settings' | 'remarkAnalysis';
 
 export type ReportSettings = {
   includeHomework: boolean;

@@ -89,7 +89,7 @@ export async function resetDatabase() {
         await Promise.all(db.tables.map(table => table.clear()));
 
         // Add settings
-        await db.settings.put({ id: 'userSettings', ...defaultSettings, onboardingCompleted: true }); // Mark onboarding as completed for demo data
+        await db.settings.put({ id: 'userSettings', ...defaultSettings, onboardingCompleted: true, tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'groupTool', 'studentPicker'] });
 
         // Add students and subjects
         await db.students.bulkAdd(mockStudents);

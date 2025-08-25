@@ -4,14 +4,14 @@
 import { FC } from 'react';
 import type { AppSettings, TabKey } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Shuffle, Hand, AreaChart } from 'lucide-react';
+import { BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Shuffle, Hand } from 'lucide-react';
 
 interface DashboardProps {
   settings: AppSettings;
   onNavigate: (tab: TabKey) => void;
 }
 
-const tabInfo: Record<TabKey, { label: string; description: string; icon: React.ElementType }> = {
+const tabInfo: Partial<Record<TabKey, { label: string; description: string; icon: React.ElementType }>> = {
   overview: {
     label: "Lekseoversikt",
     description: "Full oversikt over lekser og innleveringer.",
@@ -28,7 +28,7 @@ const tabInfo: Record<TabKey, { label: string; description: string; icon: React.
     icon: Megaphone,
   },
   reports: {
-    label: "Rapporter",
+    label: "Rapporter & Analyse",
     description: "Analyser data og generer ukesmeldinger.",
     icon: BarChart2,
   },
@@ -47,15 +47,10 @@ const tabInfo: Record<TabKey, { label: string; description: string; icon: React.
     description: "Trekk en tilfeldig elev fra klassen.",
     icon: Hand,
   },
-  remarkAnalysis: {
-    label: "Anmerkningsanalyse",
-    description: "Analyser mønstre i anmerkninger.",
-    icon: AreaChart,
-  },
 };
 
 const Dashboard: FC<DashboardProps> = ({ settings, onNavigate }) => {
-  const visibleTabs = settings.tabOrder.filter(tabKey => settings.tabs[tabKey]);
+  const visibleTabs = settings.tabOrder.filter(tabKey => settings.tabs[tabKey] && tabInfo[tabKey]);
 
   return (
     <div className="space-y-6">
@@ -66,6 +61,7 @@ const Dashboard: FC<DashboardProps> = ({ settings, onNavigate }) => {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {visibleTabs.map(tabKey => {
           const info = tabInfo[tabKey];
+          if (!info) return null;
           const Icon = info.icon;
           return (
             <Card 

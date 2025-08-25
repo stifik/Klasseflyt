@@ -49,15 +49,14 @@ interface SettingsProps {
   onSettingsChange: (newSettings: AppSettings) => void;
 }
 
-const tabLabels: Record<TabKey, string> = {
+const tabLabels: Partial<Record<TabKey, string>> = {
   overview: "Lekseoversikt",
   dailyCheck: "Daglig Sjekk",
   remarks: "Anmerkninger",
-  reports: "Rapporter",
+  reports: "Rapporter & Analyse",
   seatingChart: "Klassekart",
   groupTool: "Gruppeverktøy",
   studentPicker: "Elev-trekker",
-  remarkAnalysis: "Anmerkningsanalyse",
   settings: "Innstillinger"
 };
 
