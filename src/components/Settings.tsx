@@ -7,7 +7,7 @@ import type { Student, Subject, AppSettings, TabKey } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText } from "lucide-react";
+import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Sun, Moon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -40,6 +40,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Separator } from "./ui/separator";
 import { db, resetDatabase, clearDatabase } from "@/lib/db";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { useTheme } from "next-themes";
 
 
 interface SettingsProps {
@@ -94,6 +95,41 @@ const SortableTabItem = ({ id, onToggle, settings }: { id: TabKey, onToggle: (ta
     </div>
   );
 };
+
+const ThemeSwitcher = () => {
+    const { theme, setTheme } = useTheme();
+    // To prevent hydration mismatch, we need to make sure the toggle is only rendered on the client
+    const [mounted, setMounted] = React.useState(false)
+    React.useEffect(() => setMounted(true), [])
+
+    if (!mounted) {
+        return null
+    }
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Tema</CardTitle>
+                <CardDescription>Velg mellom lyst og mørkt tema.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                         {theme === 'light' ? <Sun /> : <Moon />}
+                         <Label htmlFor="theme-toggle" className="font-medium">
+                            {theme === 'light' ? 'Lyst Tema' : 'Mørkt Tema'}
+                        </Label>
+                    </div>
+                    <Switch 
+                        id="theme-toggle"
+                        checked={theme === 'dark'}
+                        onCheckedChange={(isChecked) => setTheme(isChecked ? 'dark' : 'light')}
+                    />
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
 
 export default function Settings({ initialStudents, initialSubjects, settings: initialSettings, onSettingsChange }: SettingsProps) {
   const [newStudent, setNewStudent] = useState("");
@@ -272,28 +308,33 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
   return (
     <div className="space-y-6">
        <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center"><SettingsIcon className="mr-2" />Faneinnstillinger</CardTitle>
-                    <CardDescription>Velg hvilke faner du vil ha synlig, og dra for å endre rekkefølgen.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleDragEnd}
-                    >
-                        <SortableContext
-                            items={localSettings.tabOrder}
-                            strategy={verticalListSortingStrategy}
+            <div>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center"><SettingsIcon className="mr-2" />Faneinnstillinger</CardTitle>
+                        <CardDescription>Velg hvilke faner du vil ha synlig, og dra for å endre rekkefølgen.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
                         >
-                            {localSettings.tabOrder.map((tabKey) => (
-                                <SortableTabItem key={tabKey} id={tabKey} onToggle={handleTabToggle} settings={localSettings} />
-                            ))}
-                        </SortableContext>
-                    </DndContext>
-                </CardContent>
-            </Card>
+                            <SortableContext
+                                items={localSettings.tabOrder}
+                                strategy={verticalListSortingStrategy}
+                            >
+                                {localSettings.tabOrder.map((tabKey) => (
+                                    <SortableTabItem key={tabKey} id={tabKey} onToggle={handleTabToggle} settings={localSettings} />
+                                ))}
+                            </SortableContext>
+                        </DndContext>
+                    </CardContent>
+                </Card>
+                <div className="mt-6">
+                   <ThemeSwitcher />
+                </div>
+            </div>
 
             <div className="space-y-6">
                 <Card>
