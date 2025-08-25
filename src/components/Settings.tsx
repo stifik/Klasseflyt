@@ -7,7 +7,7 @@ import type { Student, Subject, AppSettings, TabKey } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -58,6 +58,7 @@ const tabLabels: Record<TabKey, string> = {
   groupTool: "Gruppeverktøy",
   studentPicker: "Elev-trekker",
   remarkAnalysis: "Anmerkningsanalyse",
+  settings: "Innstillinger"
 };
 
 const SortableTabItem = ({ id, onToggle, settings }: { id: TabKey, onToggle: (tab: TabKey) => void, settings: AppSettings }) => {
@@ -74,6 +75,8 @@ const SortableTabItem = ({ id, onToggle, settings }: { id: TabKey, onToggle: (ta
     transition,
   };
   
+  if (!tabLabels[id]) return null;
+
   return (
     <div ref={setNodeRef} style={style} className="flex items-center justify-between p-3 border rounded-lg bg-background touch-none">
       <div className="flex items-center">
@@ -397,7 +400,7 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
         <CardContent>
             <Accordion type="multiple" className="w-full">
               <AccordionItem value="students">
-                <AccordionTrigger>Administrer Elever ({initialStudents.length})</AccordionTrigger>
+                <AccordionTrigger>Administrer Elever ({initialStudents?.length || 0})</AccordionTrigger>
                 <AccordionContent>
                     <div className="flex gap-2 mb-4">
                         <Input
@@ -409,10 +412,10 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                         <Button onClick={handleAddStudent}><Plus className="mr-2"/> Legg til</Button>
                     </div>
                     <ul className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                        {initialStudents.map((student) => (
+                        {initialStudents?.map((student) => (
                             <li key={student.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
                             <span>{student.name}</span>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteStudent(student.id)}>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteStudent(student.id!)}>
                                 <Trash2 className="w-4 h-4 text-destructive" />
                             </Button>
                             </li>
@@ -421,7 +424,7 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="subjects">
-                <AccordionTrigger>Administrer Fag ({initialSubjects.length})</AccordionTrigger>
+                <AccordionTrigger>Administrer Fag ({initialSubjects?.length || 0})</AccordionTrigger>
                 <AccordionContent>
                    <div className="flex gap-2 mb-4">
                       <Input
@@ -433,10 +436,10 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                       <Button onClick={handleAddSubject}><Plus className="mr-2"/> Legg til</Button>
                     </div>
                     <ul className="space-y-2">
-                      {initialSubjects.map((subject) => (
+                      {initialSubjects?.map((subject) => (
                         <li key={subject.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
                           <span>{subject.name}</span>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteSubject(subject.id)}>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteSubject(subject.id!)}>
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
                         </li>

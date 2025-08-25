@@ -8,18 +8,21 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Trash2, UserPlus, BookPlus, PartyPopper } from "lucide-react";
+import { Trash2, UserPlus, BookPlus, PartyPopper, User } from "lucide-react";
+import type { AppSettings } from "@/lib/types";
 
 interface OnboardingProps {
-    onFinish: () => void;
+    onFinish: (settings: AppSettings) => void;
+    initialSettings: AppSettings;
 }
 
-const steps = ["welcome", "students", "subjects", "done"];
+const steps = ["welcome", "teacherName", "students", "subjects", "done"];
 
-export default function Onboarding({ onFinish }: OnboardingProps) {
+export default function Onboarding({ onFinish, initialSettings }: OnboardingProps) {
     const [step, setStep] = useState(0);
     const [newStudent, setNewStudent] = useState("");
     const [newSubject, setNewSubject] = useState("");
+    const [teacherName, setTeacherName] = useState(initialSettings.reportSettings.teacherName || "");
     const { toast } = useToast();
 
     const students = useLiveQuery(() => db.students.toArray(), []);
@@ -48,11 +51,15 @@ export default function Onboarding({ onFinish }: OnboardingProps) {
     };
 
     const nextStep = () => {
-        if (step === 1 && (!students || students.length === 0)) {
+        if (step === 1 && !teacherName.trim()) {
+             toast({ title: "Navn mangler", description: "Vennligst skriv inn navnet ditt for å fortsette.", variant: "destructive"});
+            return;
+        }
+        if (step === 2 && (!students || students.length === 0)) {
             toast({ title: "Mangler elever", description: "Legg til minst én elev for å fortsette.", variant: "destructive"});
             return;
         }
-        if (step === 2 && (!subjects || subjects.length === 0)) {
+        if (step === 3 && (!subjects || subjects.length === 0)) {
             toast({ title: "Mangler fag", description: "Legg til minst ett fag for å fortsette.", variant: "destructive"});
             return;
         }
@@ -65,6 +72,18 @@ export default function Onboarding({ onFinish }: OnboardingProps) {
         if (step > 0) {
             setStep(s => s - 1);
         }
+    };
+    
+    const handleFinish = () => {
+        const finalSettings = {
+            ...initialSettings,
+            reportSettings: {
+                ...initialSettings.reportSettings,
+                teacherName: teacherName.trim(),
+            },
+            onboardingCompleted: true,
+        };
+        onFinish(finalSettings);
     };
 
     const currentStep = steps[step];
@@ -86,11 +105,35 @@ export default function Onboarding({ onFinish }: OnboardingProps) {
                         </DialogFooter>
                     </>
                 )}
+
+                {currentStep === "teacherName" && (
+                    <>
+                        <DialogHeader>
+                            <DialogTitle>Hva heter du?</DialogTitle>
+                            <DialogDescription>
+                               Skriv inn navnet ditt. Dette vil bli brukt som standard signatur i ukesmeldingene du genererer.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex gap-2 items-center">
+                           <User className="text-muted-foreground" />
+                           <Input 
+                                value={teacherName} 
+                                onChange={(e) => setTeacherName(e.target.value)} 
+                                placeholder="Ditt navn..."
+                                onKeyDown={(e) => e.key === 'Enter' && nextStep()}
+                            />
+                        </div>
+                        <DialogFooter className="justify-between">
+                            <Button variant="outline" onClick={prevStep}>Tilbake</Button>
+                            <Button onClick={nextStep}>Neste</Button>
+                        </DialogFooter>
+                    </>
+                )}
                 
                 {currentStep === "students" && (
                      <>
                         <DialogHeader>
-                            <DialogTitle>1. Legg til elevene dine</DialogTitle>
+                            <DialogTitle>Legg til elevene dine</DialogTitle>
                             <DialogDescription>
                                Skriv inn navnet på en elev og trykk "Legg til". Gjenta for hele klassen.
                             </DialogDescription>
@@ -122,7 +165,7 @@ export default function Onboarding({ onFinish }: OnboardingProps) {
                 {currentStep === "subjects" && (
                      <>
                         <DialogHeader>
-                            <DialogTitle>2. Legg til fagene dine</DialogTitle>
+                            <DialogTitle>Legg til fagene dine</DialogTitle>
                             <DialogDescription>
                                Legg til fagene du underviser i, f.eks. "Norsk", "Matematikk", "Engelsk".
                             </DialogDescription>
@@ -163,7 +206,7 @@ export default function Onboarding({ onFinish }: OnboardingProps) {
                             </DialogDescription>
                         </DialogHeader>
                         <DialogFooter>
-                            <Button onClick={onFinish}>Begynn å bruke appen</Button>
+                            <Button onClick={handleFinish}>Begynn å bruke appen</Button>
                         </DialogFooter>
                     </>
                 )}

@@ -28,6 +28,10 @@ export class MySubClassedDexie extends Dexie {
             seatingLayouts: '++id, name',
             settings: 'id' // primary key is 'id', which will be 'userSettings'
         });
+        
+        this.on('populate', async () => {
+            await this.settings.add({ id: 'userSettings', ...defaultSettings });
+        });
     }
 }
 
@@ -74,8 +78,7 @@ const defaultSettings: AppSettings = {
 export async function clearDatabase() {
      await db.transaction('rw', db.tables, async () => {
         await Promise.all(db.tables.map(table => table.clear()));
-        await db.settings.put({ id: 'userSettings', ...defaultSettings });
-        console.log("Database has been cleared and default settings have been applied.");
+        // After clearing, Dexie's "populate" event will re-add the default settings.
      });
 }
 
@@ -89,13 +92,10 @@ export async function resetDatabase() {
         await db.settings.put({ id: 'userSettings', ...defaultSettings, onboardingCompleted: true }); // Mark onboarding as completed for demo data
 
         // Add students and subjects
-        await db.students.bulkAdd(mockStudents);
-        await db.subjects.bulkAdd(mockSubjects);
-
-        // Fetch them back to get their generated IDs
-        const students = await db.students.toArray();
+        const studentIds = await db.students.bulkAdd(mockStudents, { returning: true }) as string[];
+        const subjectIds = await db.subjects.bulkAdd(mockSubjects, { returning: true }) as string[];
+        
         const subjects = await db.subjects.toArray();
-        const studentIds = students.map(s => s.id!);
 
         // --- Create Mock Homework ---
         const today = new Date();
@@ -106,6 +106,7 @@ export async function resetDatabase() {
             { title: "Oppg. 3.1-3.5", subjectId: subjects.find(s => s.name === 'Matematikk')?.id!, week: thisWeek, date: new Date() },
             { title: "Verdensrommet", subjectId: subjects.find(s => s.name === 'Naturfag')?.id!, week: thisWeek - 1, date: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000) },
         ];
+        
         await db.homework.bulkAdd(homeworkToAdd);
         const allHomework = await db.homework.toArray();
         const homeworkIds = allHomework.map(h => h.id!);

@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import AppView from "@/components/AppView";
 import Dashboard from "@/components/Dashboard";
 import { useIsAuthenticated, useMsal } from "@azure/msal-react";
-import { db, resetDatabase } from "@/lib/db";
+import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import Onboarding from "@/components/Onboarding";
 
@@ -61,11 +61,11 @@ function Home() {
 
   useEffect(() => {
     // This effect now only controls the initial loading state.
-    // It waits until the students array is no longer undefined.
-    if (students !== undefined) {
+    // It waits until the settings object is no longer undefined.
+    if (settings !== undefined) {
         setInitialLoading(false);
     }
-  }, [students]);
+  }, [settings]);
 
 
   const handleLogout = async () => {
@@ -121,11 +121,11 @@ function Home() {
       if(layouts.length > 0) await db.seatingLayouts.bulkPut(layouts);
   }
   
-  const handleOnboardingComplete = async () => {
-    await handleSettingsChange({ ...currentSettings, onboardingCompleted: true });
+  const handleOnboardingComplete = async (finalSettings: AppSettings) => {
+    await handleSettingsChange(finalSettings);
   }
 
-  if (students === undefined || subjects === undefined || homework === undefined || submissions === undefined || dailyChecks === undefined || remarks === undefined || seatingLayouts === undefined || settings === undefined) {
+  if (initialLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-background items-center justify-center">
         <Loader2 className="w-12 h-12 animate-spin mb-4" />
@@ -135,7 +135,7 @@ function Home() {
   }
   
   if (!currentSettings.onboardingCompleted) {
-      return <Onboarding onFinish={handleOnboardingComplete} />;
+      return <Onboarding onFinish={handleOnboardingComplete} initialSettings={currentSettings} />;
   }
 
   const componentProps = {
