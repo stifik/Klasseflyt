@@ -240,7 +240,7 @@ export default function Remarks({ students, initialRemarks: remarks, onUpdate, s
   );
   
   const displayedChart = isFlipped 
-    ? seatingChart?.map(row => [...row].reverse()) 
+    ? seatingChart?.map(row => [...row].reverse()).reverse() 
     : seatingChart;
 
   return (

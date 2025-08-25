@@ -102,7 +102,7 @@ export default function DailyChecklist({ students, initialChecks, onUpdate, seat
   );
   
   const displayedChart = isFlipped 
-    ? seatingChart?.map(row => [...row].reverse()) 
+    ? seatingChart?.map(row => [...row].reverse()).reverse() 
     : seatingChart;
 
   return (
