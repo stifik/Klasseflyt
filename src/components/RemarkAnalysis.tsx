@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import type { Student, Remark } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -34,7 +34,10 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
   const [filter, setFilter] = useState<FilterState>({});
   const [dateFilter, setDateFilter] = useState<string>("all-time");
 
-  const getStudentName = (id: string) => students.find(s => s.id === id)?.name || 'Ukjent';
+  const getStudentName = useCallback(
+    (id: string) => students.find(s => s.id === id)?.name || 'Ukjent',
+    [students]
+  );
 
   const analysisData = useMemo(() => {
     const isWholeClass = selectedStudentId === "whole-class";
@@ -149,7 +152,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
       drillDownTitle,
       drillDownSubtitle,
     };
-  }, [selectedStudentId, initialRemarks, filter, students, dateFilter, getStudentName]);
+  }, [selectedStudentId, initialRemarks, filter, dateFilter, getStudentName]);
   
   const handleBarClick = (data: any, type: 'day' | 'period' | 'student') => {
     if (data && data.activePayload && data.activePayload.length > 0) {
