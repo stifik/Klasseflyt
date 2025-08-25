@@ -29,6 +29,11 @@ export class MySubClassedDexie extends Dexie {
             settings: 'id' // primary key is 'id', which will be 'userSettings'
         });
         
+        // Version 2: Added isDelayed to submissions
+        this.version(2).stores({
+            submissions: '++id, &[studentId+homeworkId], studentId, homeworkId, isDelayed',
+        });
+        
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
         });
@@ -53,10 +58,10 @@ const mockSubjects = [ { name: 'Norsk' }, { name: 'Matematikk' }, { name: 'Engel
 const defaultSettings: AppSettings = {
   tabs: {
     overview: true, dailyCheck: true, remarks: true, reports: true,
-    seatingChart: true, groupTool: true, studentPicker: true, remarkAnalysis: true,
+    seatingChart: true, groupTool: true, studentPicker: true, 
     settings: true,
   },
-  tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'groupTool', 'studentPicker', 'remarkAnalysis'],
+  tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'groupTool', 'studentPicker'],
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
     includePositiveFeedback: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
@@ -121,13 +126,15 @@ export async function resetDatabase() {
                 const chance = Math.random();
                 if (chance > 0.1) { // 90% chance of a submission
                     let status: HomeworkStatus = "Godkjent";
-                    if (chance < 0.2) status = "Ikke levert";
-                    else if (chance < 0.25) status = "Må rettes";
+                    let isDelayed = false;
+                    if (chance < 0.2) { status = "Ikke levert"; isDelayed = true; }
+                    else if (chance < 0.25) { status = "Må rettes"; isDelayed = true; }
                     submissionsToAdd.push({
                         studentId,
                         homeworkId,
                         status,
                         comment: status === "Må rettes" ? "Gjør oppgavene på nytt." : undefined,
+                        isDelayed,
                     });
                 }
             });

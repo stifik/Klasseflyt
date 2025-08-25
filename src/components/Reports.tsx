@@ -102,9 +102,10 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
     const [isGenerating, setIsGenerating] = useState(false);
     
     const uniqueWeeks = useMemo(() => {
-        const homeworkWeeks = homework.map(h => h.week);
-        const checkWeeks = dailyChecks.map(c => getWeekNumber(new Date(c.date)));
-        const remarkWeeks = remarks.map(r => getWeekNumber(new Date(r.date)));
+        if (!homework && !dailyChecks && !remarks) return [];
+        const homeworkWeeks = homework?.map(h => h.week) || [];
+        const checkWeeks = dailyChecks?.map(c => getWeekNumber(new Date(c.date))) || [];
+        const remarkWeeks = remarks?.map(r => getWeekNumber(new Date(r.date))) || [];
         return [...new Set([...homeworkWeeks, ...checkWeeks, ...remarkWeeks])].sort((a,b) => b-a);
     }, [homework, dailyChecks, remarks]);
   
@@ -255,7 +256,9 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
                 return acc;
             }, {} as Record<HomeworkStatus, number>);
             const totalHomework = studentSubmissions.length;
-            const totalDelays = (totalStatusCounts['Ikke levert'] || 0) + (totalStatusCounts['Må rettes'] || 0) + (totalStatusCounts['Glemt bok'] || 0);
+            
+            // This is the new logic for delays
+            const totalDelays = studentSubmissions.filter(s => s.isDelayed).length;
 
             const statsBySubject = subjects.map(subject => {
                 const subjectHomeworkIds = new Set(homework.filter(h => h.subjectId === subject.id).map(h => h.id));
@@ -275,13 +278,15 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
                         status: s.status,
                     }))
                     .filter(s => s.title);
+                
+                const subjectDelays = subjectSubmissions.filter(s => s.isDelayed).length;
 
                 return {
                     subjectId: subject.id,
                     subjectName: subject.name,
                     statusCounts,
                     totalSubmissions: subjectSubmissions.length,
-                    delays: (statusCounts['Ikke levert'] || 0) + (statusCounts['Må rettes'] || 0) + (statusCounts['Glemt bok'] || 0),
+                    delays: subjectDelays,
                     problemSubmissions,
                 };
             }).filter(s => s.totalSubmissions > 0);
@@ -353,6 +358,7 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
                                     <Card key={subStat.subjectId}>
                                         <CardHeader>
                                             <CardTitle className="text-base">{subStat.subjectName} ({subStat.totalSubmissions})</CardTitle>
+
                                         </CardHeader>
                                         <CardContent className="space-y-3">
                                             <StatusBar stats={subStat.statusCounts} total={subStat.totalSubmissions} />
@@ -396,7 +402,7 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
 export default function Reports(props: ReportsProps) {
     return (
         <Tabs defaultValue="summary" className="w-full space-y-4">
-            <TabsList className="no-print">
+            <TabsList className="no-print grid w-full grid-cols-3">
                 <TabsTrigger value="summary">Ukesoppsummering</TabsTrigger>
                 <TabsTrigger value="analysis">Anmerkningsanalyse</TabsTrigger>
                 <TabsTrigger value="student-report">Elevrapporter</TabsTrigger>

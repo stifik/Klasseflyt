@@ -26,6 +26,7 @@ export type Submission = {
   homeworkId: number;
   status: HomeworkStatus;
   comment?: string;
+  isDelayed?: boolean; // New field to track if it was ever late/incomplete
 };
 
 export type DailyCheck = {
@@ -64,7 +65,7 @@ export type SeatingLayout = {
   createdAt: Date;
 };
 
-export type TabKey = 'overview' | 'dailyCheck' | 'remarks' | 'reports' | 'seatingChart' | 'groupTool' | 'studentPicker' | 'settings' | 'remarkAnalysis';
+export type TabKey = 'overview' | 'dailyCheck' | 'remarks' | 'reports' | 'seatingChart' | 'groupTool' | 'studentPicker' | 'settings';
 
 export type ReportSettings = {
   includeHomework: boolean;

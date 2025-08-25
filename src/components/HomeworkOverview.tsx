@@ -162,16 +162,29 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
   const [filters, setFilters] = useState<{ subject: string; week: string; showProblems: boolean }>({ subject: "all", week: "all", showProblems: false });
   const { toast } = useToast();
   
-  const getSubmission = (studentId: string, homeworkId: string) => submissions.find(s => s.studentId === studentId && s.homeworkId === homeworkId);
+  const getSubmission = (studentId: string, homeworkId: string) => submissions.find(s => s.studentId === studentId && s.homeworkId === parseInt(homeworkId, 10));
 
   const handleStatusChange = async (studentId: string, homeworkId: string, status: HomeworkStatus) => {
     const existingSubmission = getSubmission(studentId, homeworkId);
+    const problemStatuses: HomeworkStatus[] = ["Ikke levert", "Må rettes", "Glemt bok"];
+    const isNowDelayed = problemStatuses.includes(status);
 
     try {
         if (existingSubmission) {
-            await db.submissions.update(existingSubmission.id!, { status });
+            const updateData: Partial<Submission> = { status };
+            // Only set isDelayed if it's not already set and the new status is a delay status.
+            if (isNowDelayed && !existingSubmission.isDelayed) {
+                updateData.isDelayed = true;
+            }
+            await db.submissions.update(existingSubmission.id!, updateData);
         } else {
-            await db.submissions.add({ studentId, homeworkId, status, comment: "" });
+            await db.submissions.add({ 
+                studentId, 
+                homeworkId: parseInt(homeworkId, 10), 
+                status, 
+                comment: "",
+                isDelayed: isNowDelayed 
+            });
         }
     } catch (error) {
         toast({ title: "Feil", description: "Kunne ikke lagre status.", variant: "destructive" });
@@ -181,6 +194,7 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
   const handleCommentSave = async () => {
     if (!commentModal.studentId || !commentModal.homeworkId) return;
     const { studentId, homeworkId } = commentModal;
+    const homeworkIdNum = parseInt(homeworkId, 10);
 
     const existingSubmission = getSubmission(studentId, homeworkId);
     
@@ -188,8 +202,13 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
         if (existingSubmission) {
             await db.submissions.update(existingSubmission.id!, { comment: currentComment });
         } else {
-            // If there's no existing submission, the status must be set. Defaulting to 'Godkjent'.
-            await db.submissions.add({ studentId, homeworkId, status: 'Godkjent', comment: currentComment });
+            await db.submissions.add({ 
+                studentId, 
+                homeworkId: homeworkIdNum, 
+                status: 'Godkjent', 
+                comment: currentComment,
+                isDelayed: false
+            });
         }
         setCommentModal({ open: false });
         setCurrentComment("");
@@ -218,11 +237,14 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
         toast({ title: "Lekse lagt til", description: `"${title}" er lagt til i oversikten.` });
 
         if (defaultStatus !== "none") {
+            const problemStatuses: HomeworkStatus[] = ["Ikke levert", "Må rettes", "Glemt bok"];
+            const isDelayed = problemStatuses.includes(defaultStatus);
             const newSubmissions = students.map(student => ({
                 studentId: student.id,
                 homeworkId: newHomeworkId,
                 status: defaultStatus,
-                comment: ""
+                comment: "",
+                isDelayed: isDelayed
             }));
             await db.submissions.bulkAdd(newSubmissions);
             toast({ title: "Standardstatus satt", description: `Alle elever er satt til "${defaultStatus}".` });
@@ -232,7 +254,7 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
     }
   };
 
-  const handleCopyHomework = async (homeworkId: string) => {
+  const handleCopyHomework = async (homeworkId: number) => {
     const hwToCopy = homeworkList.find(h => h.id === homeworkId);
     if(hwToCopy) {
       const { id, ...hwData } = hwToCopy;
@@ -278,7 +300,7 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
 
     return sortedStudents.filter(student => {
       return filteredHomework.some(hw => {
-        const submission = getSubmission(student.id, hw.id);
+        const submission = getSubmission(student.id, String(hw.id));
         return !submission || problemStatuses.includes(submission.status);
       });
     });
@@ -340,7 +362,7 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
                   <div>{subjects.find(s => s.id === hw.subjectId)?.name}</div>
                   <div className="font-normal">{hw.title}</div>
                   <div className="text-xs font-light text-muted-foreground">Uke {hw.week}</div>
-                  <Button variant="ghost" size="icon" className="absolute top-0 right-0 invisible h-6 w-6 group-hover:visible" onClick={() => handleCopyHomework(hw.id)}>
+                  <Button variant="ghost" size="icon" className="absolute top-0 right-0 invisible h-6 w-6 group-hover:visible" onClick={() => handleCopyHomework(hw.id!)}>
                     <Copy className="h-4 w-4"/>
                   </Button>
                 </TableHead>
@@ -352,14 +374,14 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
               <TableRow key={student.id}>
                 <TableCell className="sticky left-0 z-10 font-medium bg-background">{student.name}</TableCell>
                 {filteredHomework.map(hw => {
-                  const submission = getSubmission(student.id, hw.id);
+                  const submission = getSubmission(student.id, String(hw.id));
                   return (
                     <TableCell key={hw.id} className="p-0 text-center">
                       <StatusPopover 
                         submission={submission}
                         hasComment={!!submission?.comment}
-                        onStatusChange={(status) => handleStatusChange(student.id, hw.id, status)}
-                        onComment={() => openCommentModal(student.id, hw.id)}
+                        onStatusChange={(status) => handleStatusChange(student.id, String(hw.id), status)}
+                        onComment={() => openCommentModal(student.id, String(hw.id))}
                       />
                     </TableCell>
                   )
