@@ -44,35 +44,49 @@ function Home() {
   const [activeView, setActiveView] = useState<'dashboard' | 'app'>('dashboard');
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
   
-  const { toast } = useToast();
-  const router = useRouter();
-  const { instance } = useMsal();
-  const isAuthenticated = useIsAuthenticated();
+  const [students, setStudents] = useState<Student[] | undefined>(undefined);
+  const [subjects, setSubjects] = useState<Subject[] | undefined>(undefined);
+  const [settings, setSettings] = useState<AppSettings | undefined>(undefined);
 
-  // Load essential data first
-  const students = useLiveQuery(() => db.students.toArray(), []);
-  const subjects = useLiveQuery(() => db.subjects.toArray(), []);
-  const settings = useLiveQuery(() => db.settings.get('userSettings'), []);
+  const { toast } = useToast();
+  const { instance } = useMsal();
+
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const [studentsData, subjectsData, settingsData] = await Promise.all([
+          db.students.toArray(),
+          db.subjects.toArray(),
+          db.settings.get('userSettings')
+        ]);
+        setStudents(studentsData);
+        setSubjects(subjectsData);
+        setSettings(settingsData);
+      } catch (error) {
+        console.error("Failed to fetch initial data", error);
+        // Set empty arrays on error to avoid getting stuck
+        setStudents([]);
+        setSubjects([]);
+        setSettings(undefined);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    fetchInitialData();
+  }, []);
   
   const currentSettings = settings || defaultSettings;
-  
-  useEffect(() => {
-    // Wait for all essential queries to be resolved (not undefined) before hiding the loader.
-    if (settings !== undefined && students !== undefined && subjects !== undefined) {
-      setInitialLoading(false);
-    }
-  }, [settings, students, subjects]);
 
-
-  const handleLogout = async () => {
-    try {
-        await instance.logoutPopup();
-    } catch (error) {
-        console.error(error);
-        toast({ title: "Utloggingsfeil", description: "Kunne ikke logge ut.", variant: "destructive"});
-    }
-  };
+  const handleSettingsChange = async (newSettings: AppSettings) => {
+    await db.settings.put({ id: 'userSettings', ...newSettings });
+    setSettings(newSettings);
+  }
   
+  const handleOnboardingComplete = async (finalSettings: AppSettings) => {
+    await handleSettingsChange(finalSettings);
+  }
+
   const navigateToTab = (tab: TabKey) => {
     setActiveTab(tab);
     setActiveView('app');
@@ -82,16 +96,8 @@ function Home() {
       setActiveTab('settings');
       setActiveView('app');
   }
-  
-  const handleSettingsChange = async (newSettings: AppSettings) => {
-    await db.settings.put({ id: 'userSettings', ...newSettings });
-  }
-  
-  const handleOnboardingComplete = async (finalSettings: AppSettings) => {
-    await handleSettingsChange(finalSettings);
-  }
 
-  if (initialLoading) {
+  if (initialLoading || students === undefined) {
     return (
       <div className="flex flex-col min-h-screen bg-background items-center justify-center">
         <Loader2 className="w-12 h-12 animate-spin mb-4" />
