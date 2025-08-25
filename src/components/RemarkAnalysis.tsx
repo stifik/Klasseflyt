@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import type { Student, Remark } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { Button } from "./ui/button";
 import { X as XIcon } from "lucide-react";
-import { subDays, startOfDay } from 'date-fns';
+import { subDays } from 'date-fns';
 
 interface RemarkAnalysisProps {
   students: Student[];
@@ -22,7 +22,6 @@ const dayOfWeekMap = [
 const dayOfWeekArray = ['Søn', 'Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør'];
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1919', '#4dd0e1', '#ffcdd2', '#d1c4e9'];
-
 
 interface FilterState {
   day?: number;
@@ -198,7 +197,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
                 <SelectContent>
                   <SelectItem value="whole-class">Hele Klassen</SelectItem>
                   {students.map(student => (
-                    <SelectItem key={student.id} value={student.id}>{student.name}</SelectItem>
+                    <SelectItem key={student.id} value={student.id!}>{student.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
