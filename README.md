@@ -29,7 +29,7 @@ Kjør følgende kommando i terminalen i prosjektmappen. Dette vil laste ned alle
 npm install
 ```
 
-**OBS for Windows-brukere:** Hvis du får en feilmelding om `Execution Policies`, se [denne guiden for hvordan du løser det](https://learn.microsoft.com/en/powershell/module/microsoft.powershell.security/set-executionpolicy). En vanlig løsning er å åpne PowerShell som administrator og kjøre: `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`.
+**OBS for Windows-brukere:** Hvis du får en feilmelding om `Execution Policies`, se [denne guiden for hvordan du løser det](https://learn.microsoft.com/en-powershell/module/microsoft.powershell.security/set-executionpolicy). En vanlig løsning er å åpne PowerShell som administrator og kjøre: `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`.
 
 ### 3. Start appen
 
