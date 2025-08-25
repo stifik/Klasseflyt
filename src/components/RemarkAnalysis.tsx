@@ -116,7 +116,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
         }, {} as Record<string, number>);
         
         const studentList = Object.entries(studentCounts)
-            .map(([studentId, Antall]) => ({ name: studentMap.get(studentId) || 'Ukjent', Antall }))
+            .map(([studentId, Antall]) => ({ name: studentMap.get(studentId) || 'Ukjent Elev', Antall }))
             .sort((a, b) => b.Antall - a.Antall);
 
         drillDownData = [
