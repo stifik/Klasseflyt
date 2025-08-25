@@ -92,9 +92,11 @@ export async function resetDatabase() {
         await db.settings.put({ id: 'userSettings', ...defaultSettings, onboardingCompleted: true }); // Mark onboarding as completed for demo data
 
         // Add students and subjects
-        const studentIds = await db.students.bulkAdd(mockStudents, { returning: true }) as string[];
-        const subjectIds = await db.subjects.bulkAdd(mockSubjects, { returning: true }) as string[];
+        await db.students.bulkAdd(mockStudents);
+        await db.subjects.bulkAdd(mockSubjects);
         
+        const allStudents = await db.students.toArray();
+        const studentIds = allStudents.map(s => s.id!);
         const subjects = await db.subjects.toArray();
 
         // --- Create Mock Homework ---
