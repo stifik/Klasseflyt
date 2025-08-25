@@ -67,6 +67,7 @@ const defaultSettings: AppSettings = {
   ],
   selectedSeatingLayoutId: null,
   remarkTypes: ["Generell", "Forstyrrer andre", "Mangler utstyr", "Upassende språk", "Gjorde en god innsats"],
+  onboardingCompleted: false,
 };
 
 // Function to clear all data from the database
@@ -85,7 +86,7 @@ export async function resetDatabase() {
         await Promise.all(db.tables.map(table => table.clear()));
 
         // Add settings
-        await db.settings.put({ id: 'userSettings', ...defaultSettings });
+        await db.settings.put({ id: 'userSettings', ...defaultSettings, onboardingCompleted: true }); // Mark onboarding as completed for demo data
 
         // Add students and subjects
         await db.students.bulkAdd(mockStudents);

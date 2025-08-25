@@ -89,4 +89,5 @@ export type AppSettings = {
   schedule: PeriodTime[];
   selectedSeatingLayoutId?: string | null;
   remarkTypes?: string[];
+  onboardingCompleted?: boolean;
 };

@@ -12,6 +12,7 @@ import Dashboard from "@/components/Dashboard";
 import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { db, resetDatabase } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
+import Onboarding from "@/components/Onboarding";
 
 
 const defaultSettings: AppSettings = {
@@ -28,6 +29,7 @@ const defaultSettings: AppSettings = {
   schedule: Array.from({ length: 6 }, (_, i) => ({ period: i + 1, startTime: "", endTime: "" })),
   selectedSeatingLayoutId: null,
   remarkTypes: ["Generell", "Forstyrrer andre", "Mangler utstyr", "Upassende språk"],
+  onboardingCompleted: false,
 };
 
 function Home() {
@@ -118,14 +120,22 @@ function Home() {
       if(toDelete.length > 0) await db.seatingLayouts.bulkDelete(toDelete);
       if(layouts.length > 0) await db.seatingLayouts.bulkPut(layouts);
   }
+  
+  const handleOnboardingComplete = async () => {
+    await handleSettingsChange({ ...currentSettings, onboardingCompleted: true });
+  }
 
-  if (students === undefined || subjects === undefined || homework === undefined || submissions === undefined || dailyChecks === undefined || remarks === undefined || seatingLayouts === undefined) {
+  if (students === undefined || subjects === undefined || homework === undefined || submissions === undefined || dailyChecks === undefined || remarks === undefined || seatingLayouts === undefined || settings === undefined) {
     return (
       <div className="flex flex-col min-h-screen bg-background items-center justify-center">
         <Loader2 className="w-12 h-12 animate-spin mb-4" />
         <p>Laster database...</p>
       </div>
     );
+  }
+  
+  if (!currentSettings.onboardingCompleted) {
+      return <Onboarding onFinish={handleOnboardingComplete} />;
   }
 
   const componentProps = {
@@ -159,7 +169,8 @@ function Home() {
           </button>
         </div>
         <div className="flex items-center gap-2">
-          {isAuthenticated && (
+          {/*
+          isAuthenticated && (
             <>
               <Button variant="outline">Synkronisert</Button>
               <Button variant="ghost" size="icon" onClick={handleLogout}>
@@ -167,7 +178,8 @@ function Home() {
                   <span className="sr-only">Logg ut</span>
               </Button>
             </>
-          )}
+          )
+          */}
           <Button variant="ghost" size="icon" onClick={navigateToSettings}>
               <SettingsIcon />
               <span className="sr-only">Innstillinger</span>
