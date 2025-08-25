@@ -159,7 +159,7 @@ function Home() {
           </button>
         </div>
         <div className="flex items-center gap-2">
-          {isAuthenticated ? (
+          {isAuthenticated && (
             <>
               <Button variant="outline">Synkronisert</Button>
               <Button variant="ghost" size="icon" onClick={handleLogout}>
@@ -167,8 +167,6 @@ function Home() {
                   <span className="sr-only">Logg ut</span>
               </Button>
             </>
-          ) : (
-            <Button onClick={() => router.push('/login')}>Logg inn for å synkronisere</Button>
           )}
           <Button variant="ghost" size="icon" onClick={navigateToSettings}>
               <SettingsIcon />
