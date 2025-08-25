@@ -63,10 +63,21 @@ const AppView: FC<AppViewProps> = ({
   const visibleTabs = settings.tabOrder.filter(tabKey => settings.tabs[tabKey]);
   const defaultTab = forceSettingsView ? 'settings' : activeTab || visibleTabs[0] || 'settings';
 
+  if (forceSettingsView) {
+    return (
+        <Settings
+          initialStudents={initialStudents}
+          initialSubjects={initialSubjects}
+          settings={settings}
+          onSettingsChange={onSettingsChange}
+        />
+    )
+  }
+
   return (
     <Tabs 
         defaultValue={defaultTab} 
-        value={defaultTab} 
+        value={activeTab ?? undefined}
         onValueChange={(value) => onTabChange && onTabChange(value as TabKey)} 
         className="w-full"
     >
@@ -75,7 +86,6 @@ const AppView: FC<AppViewProps> = ({
           {visibleTabs.map(tabKey => (
             <TabsTrigger key={tabKey} value={tabKey}>{tabLabels[tabKey]}</TabsTrigger>
           ))}
-          <TabsTrigger value="settings">Innstillinger</TabsTrigger>
         </TabsList>
         <ScrollBar orientation="horizontal" className="invisible" />
       </ScrollArea>
@@ -90,14 +100,6 @@ const AppView: FC<AppViewProps> = ({
           );
       })}
 
-      <TabsContent value="settings">
-        <Settings
-          initialStudents={initialStudents}
-          initialSubjects={initialSubjects}
-          settings={settings}
-          onSettingsChange={onSettingsChange}
-        />
-      </TabsContent>
     </Tabs>
   );
 };
