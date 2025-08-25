@@ -1,16 +1,17 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, FC } from 'react';
 import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
-import { Printer, Copy, Loader2, BookX } from 'lucide-react';
+import { Printer, Copy, Loader2, BookX, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { getWeekNumber } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RemarkAnalysis from './RemarkAnalysis';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 
 interface ReportsProps {
   students: Student[];
@@ -24,15 +25,14 @@ interface ReportsProps {
 
 const statusColors: Record<HomeworkStatus, string> = {
   "Godkjent": "#22c55e",
-  "Ikke levert": "#ef4444",
   "Må rettes": "#f59e0b",
-  "Syk/Fravær": "#3b82f6",
   "Glemt bok": "#f97316",
+  "Ikke levert": "#ef4444",
+  "Syk/Fravær": "#3b82f6",
 };
 
 const statusOrder: HomeworkStatus[] = ["Godkjent", "Må rettes", "Glemt bok", "Ikke levert", "Syk/Fravær"];
 
-// Lokal funksjon for å generere melding
 const generateSummaryMessage = (
     studentName: string,
     week: number,
@@ -97,50 +97,43 @@ const generateSummaryMessage = (
 
 const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks, remarks, settings }: ReportsProps) => {
     const { toast } = useToast();
-    const [selectedWeek, setSelectedWeek] = useState<number | null>(() => getWeekNumber(new Date()));
+    const [selectedWeek, setSelectedWeek] = useState<number>(() => getWeekNumber(new Date()));
     const [generatedMessages, setGeneratedMessages] = useState<Array<{ studentName: string; message: string }>>([]);
     const [isGenerating, setIsGenerating] = useState(false);
-    const uniqueWeeks = [...new Set(homework.map(h => h.week))].sort((a,b) => b-a);
+    
+    const uniqueWeeks = useMemo(() => {
+        const homeworkWeeks = homework.map(h => h.week);
+        const checkWeeks = dailyChecks.map(c => getWeekNumber(new Date(c.date)));
+        const remarkWeeks = remarks.map(r => getWeekNumber(new Date(r.date)));
+        return [...new Set([...homeworkWeeks, ...checkWeeks, ...remarkWeeks])].sort((a,b) => b-a);
+    }, [homework, dailyChecks, remarks]);
   
-    useEffect(() => {
-        const currentWeek = getWeekNumber(new Date());
-        if (!uniqueWeeks.includes(currentWeek) && uniqueWeeks.length > 0) {
-        setSelectedWeek(uniqueWeeks[0]);
-        } else {
-        setSelectedWeek(currentWeek);
-        }
-    }, [homework]);
-
-    const handleGenerateSummaries = async () => {
-        if (!selectedWeek) {
-        toast({ title: "Mangler uke", description: "Vennligst velg en uke for å generere sammendrag.", variant: "destructive" });
-        return;
-        }
+    const handleGenerateSummaries = () => {
         setIsGenerating(true);
         setGeneratedMessages([]);
 
         const weekHomeworkIds = new Set(homework.filter(h => h.week === selectedWeek).map(h => h.id));
 
         const studentsToReport = students.map(student => {
-        const studentWeekSubmissions = submissions.filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
-        const studentWeekChecks = dailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
-        const studentWeekRemarks = remarks.filter(r => r.studentId === student.id && getWeekNumber(new Date(r.date)) === selectedWeek);
+            const studentWeekSubmissions = submissions.filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
+            const studentWeekChecks = dailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
+            const studentWeekRemarks = remarks.filter(r => r.studentId === student.id && getWeekNumber(new Date(r.date)) === selectedWeek);
 
-        const hasHomeworkIssues = settings.includeHomework && studentWeekSubmissions.some(s => 
-            s.status === 'Ikke levert' || s.status === 'Må rettes' || s.status === 'Glemt bok'
-        );
-        const hasIpadIssues = settings.includeIpad && studentWeekChecks.some(c => !c.ipadBrought || !c.ipadCharged);
-        const hasRemarks = settings.includeRemarks && studentWeekRemarks.length > 0;
-        
-        const hasAnyIssues = hasHomeworkIssues || hasIpadIssues || hasRemarks;
-        
-        const onlyAbsence = !hasIpadIssues && !hasRemarks && studentWeekSubmissions.length > 0 && studentWeekSubmissions.every(s => s.status === 'Syk/Fravær');
+            const hasHomeworkIssues = settings.includeHomework && studentWeekSubmissions.some(s => 
+                s.status === 'Ikke levert' || s.status === 'Må rettes' || s.status === 'Glemt bok'
+            );
+            const hasIpadIssues = settings.includeIpad && studentWeekChecks.some(c => !c.ipadBrought || !c.ipadCharged);
+            const hasRemarks = settings.includeRemarks && studentWeekRemarks.length > 0;
+            
+            const hasAnyIssues = hasHomeworkIssues || hasIpadIssues || hasRemarks;
+            
+            const onlyAbsence = !hasIpadIssues && !hasRemarks && studentWeekSubmissions.length > 0 && studentWeekSubmissions.every(s => s.status === 'Syk/Fravær');
 
-        if (onlyAbsence) return null;
-        if (hasAnyIssues || settings.includePositiveFeedback) {
-            return { student, hasAnyIssues, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks };
-        }
-        return null;
+            if (onlyAbsence) return null;
+            if (hasAnyIssues || settings.includePositiveFeedback) {
+                return { student, hasAnyIssues, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks };
+            }
+            return null;
         }).filter(Boolean);
 
         if (studentsToReport.length === 0) {
@@ -189,7 +182,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
             </CardHeader>
             <CardContent>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Select value={selectedWeek ? String(selectedWeek) : ''} onValueChange={(v) => setSelectedWeek(parseInt(v))}>
+                <Select value={String(selectedWeek)} onValueChange={(v) => setSelectedWeek(parseInt(v))}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Velg uke" />
                 </SelectTrigger>
@@ -197,7 +190,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
                     {uniqueWeeks.map(w => <SelectItem key={w} value={String(w)}>Uke {w}</SelectItem>)}
                 </SelectContent>
                 </Select>
-                <Button onClick={handleGenerateSummaries} disabled={isGenerating || !selectedWeek} className="w-full sm:w-auto">
+                <Button onClick={handleGenerateSummaries} disabled={isGenerating} className="w-full sm:w-auto">
                 {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 Generer Oppsummering
                 </Button>
@@ -223,148 +216,173 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
     )
 }
 
+const StatusBar: FC<{ stats: Record<HomeworkStatus, number>, total: number }> = ({ stats, total }) => {
+    if (total === 0) return null;
+    return (
+        <div className="w-full h-4 flex rounded-full overflow-hidden bg-gray-200">
+            {statusOrder.map(status => {
+                const count = stats[status] || 0;
+                if (count === 0) return null;
+                const percentage = (count / total) * 100;
+                return (
+                    <div
+                        key={status}
+                        className="h-full"
+                        style={{
+                        width: `${percentage}%`,
+                        backgroundColor: statusColors[status],
+                        }}
+                        title={`${status}: ${count}`}
+                    />
+                );
+            })}
+        </div>
+    );
+};
+
+
 const StudentReport = ({ students, subjects, homework, submissions, dailyChecks, remarks }: Omit<ReportsProps, 'settings'>) => {
+    const [openStudents, setOpenStudents] = useState<Record<string, boolean>>({});
+
     const studentStats = useMemo(() => {
         return students.map(student => {
-        const studentSubmissions = submissions.filter(s => s.studentId === student.id);
-        const studentChecks = dailyChecks.filter(c => c.studentId === student.id);
-        const studentRemarks = remarks.filter(r => r.studentId === student.id);
+            const studentSubmissions = submissions.filter(s => s.studentId === student.id);
+            const studentChecks = dailyChecks.filter(c => c.studentId === student.id);
+            const studentRemarks = remarks.filter(r => r.studentId === student.id);
 
-        const delays = studentSubmissions.filter(s => s.status === 'Ikke levert' || s.status === 'Må rettes').length;
-
-        const statsBySubject = subjects.map(subject => {
-            const subjectHomeworkIds = new Set(homework.filter(h => h.subjectId === subject.id).map(h => h.id));
-            const subjectSubmissions = studentSubmissions.filter(s => subjectHomeworkIds.has(s.homeworkId));
-            
-            const statusCounts = subjectSubmissions.reduce((acc, sub) => {
-            acc[sub.status] = (acc[sub.status] || 0) + 1;
-            return acc;
+            const totalStatusCounts = studentSubmissions.reduce((acc, sub) => {
+                acc[sub.status] = (acc[sub.status] || 0) + 1;
+                return acc;
             }, {} as Record<HomeworkStatus, number>);
-            
-            const totalSubmissions = subjectSubmissions.length;
+            const totalHomework = studentSubmissions.length;
+            const totalDelays = (totalStatusCounts['Ikke levert'] || 0) + (totalStatusCounts['Må rettes'] || 0) + (totalStatusCounts['Glemt bok'] || 0);
 
-            const problemSubmissions = subjectSubmissions
-                .filter(s => s.status === "Må rettes")
-                .map(s => ({
-                    week: homework.find(h => h.id === s.homeworkId)?.week,
-                    title: homework.find(h => h.id === s.homeworkId)?.title,
-                    comment: s.comment
-                }))
-                .filter(s => s.title);
+            const statsBySubject = subjects.map(subject => {
+                const subjectHomeworkIds = new Set(homework.filter(h => h.subjectId === subject.id).map(h => h.id));
+                const subjectSubmissions = studentSubmissions.filter(s => subjectHomeworkIds.has(s.homeworkId));
+                
+                const statusCounts = subjectSubmissions.reduce((acc, sub) => {
+                    acc[sub.status] = (acc[sub.status] || 0) + 1;
+                    return acc;
+                }, {} as Record<HomeworkStatus, number>);
+                
+                const problemSubmissions = subjectSubmissions
+                    .filter(s => s.status === "Må rettes" || s.status === "Glemt bok")
+                    .map(s => ({
+                        week: homework.find(h => h.id === s.homeworkId)?.week,
+                        title: homework.find(h => h.id === s.homeworkId)?.title,
+                        comment: s.comment,
+                        status: s.status,
+                    }))
+                    .filter(s => s.title);
+
+                return {
+                    subjectId: subject.id,
+                    subjectName: subject.name,
+                    statusCounts,
+                    totalSubmissions: subjectSubmissions.length,
+                    delays: (statusCounts['Ikke levert'] || 0) + (statusCounts['Må rettes'] || 0) + (statusCounts['Glemt bok'] || 0),
+                    problemSubmissions,
+                };
+            }).filter(s => s.totalSubmissions > 0);
 
             return {
-            subjectId: subject.id,
-            subjectName: subject.name,
-            statusCounts,
-            totalSubmissions,
-            problemSubmissions,
+                studentId: student.id,
+                studentName: student.name,
+                statsBySubject,
+                totalHomework,
+                totalStatusCounts,
+                totalDelays,
+                ipadNotCharged: studentChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
+                ipadNotBrought: studentChecks.filter(c => !c.ipadBrought).length,
+                totalRemarks: studentRemarks.length,
             };
-        });
-
-        return {
-            studentId: student.id,
-            studentName: student.name,
-            statsBySubject,
-            totalDelays: delays,
-            ipadNotCharged: studentChecks.filter(c => !c.ipadCharged).length,
-            ipadNotBrought: studentChecks.filter(c => !c.ipadBrought).length,
-            totalRemarks: studentRemarks.length,
-        };
-        });
+        }).sort((a,b) => a.studentName.localeCompare(b.studentName));
     }, [students, subjects, homework, submissions, dailyChecks, remarks]);
     
+    const toggleStudent = (studentId: string) => {
+        setOpenStudents(prev => ({ ...prev, [studentId]: !prev[studentId] }));
+    };
+
     return (
         <Card>
             <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between no-print">
                     <div>
                         <CardTitle>Elevrapporter</CardTitle>
                         <CardDescription>Oversikt over hver enkelt elevs fremgang og ansvarsområder.</CardDescription>
                     </div>
-                    <Button onClick={() => window.print()} className="no-print"><Printer className="mr-2 h-4 w-4" /> Skriv ut rapport</Button>
+                    <Button onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" /> Skriv ut alle</Button>
                 </div>
             </CardHeader>
             <CardContent className="space-y-4 printable-area">
                 {studentStats.map(stat => (
-                <Card key={stat.studentId} className="page-break">
-                    <CardHeader>
-                        <div className="flex justify-between w-full pr-4">
-                            <CardTitle>{stat.studentName}</CardTitle>
-                            <div className="flex gap-4 text-sm text-muted-foreground">
-                            <span>Leksemangler: {stat.totalDelays}</span>
-                            <span>Anmerkninger: {stat.totalRemarks}</span>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-4 space-y-4 pt-0">
-                    <div className="grid gap-4 md:grid-cols-2">
-                        {stat.statsBySubject.map(subStat => (
-                        <Card key={subStat.subjectId}>
-                            <CardHeader>
-                            <CardTitle className="text-base">{subStat.subjectName} ({subStat.totalSubmissions})</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                            {subStat.totalSubmissions > 0 ? (
-                                <div className="w-full h-4 flex rounded-full overflow-hidden bg-gray-200">
-                                {statusOrder.map(status => {
-                                    const count = subStat.statusCounts[status] || 0;
-                                    if (count === 0) return null;
-                                    const percentage = (count / subStat.totalSubmissions) * 100;
-                                    return (
-                                    <div
-                                        key={status}
-                                        className="h-full progress-bar-segment"
-                                        style={{
-                                        width: `${percentage}%`,
-                                        backgroundColor: statusColors[status],
-                                        }}
-                                        title={`${status}: ${count}`}
-                                    />
-                                    );
-                                })}
+                <Collapsible open={openStudents[stat.studentId] || false} onOpenChange={() => toggleStudent(stat.studentId)} key={stat.studentId} asChild>
+                    <Card className="page-break">
+                        <CardHeader>
+                           <div className="flex justify-between items-start">
+                                <div>
+                                    <CardTitle>{stat.studentName}</CardTitle>
+                                    <CardDescription>Totaloversikt ({stat.totalHomework} lekser)</CardDescription>
                                 </div>
-                            ) : <p className="text-sm text-muted-foreground">Ingen leksedata for dette faget.</p>}
+                                <CollapsibleTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="no-print">
+                                        {openStudents[stat.studentId] ? "Skjul detaljer" : "Vis detaljer"}
+                                        {openStudents[stat.studentId] ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
+                                    </Button>
+                                </CollapsibleTrigger>
+                           </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <StatusBar stats={stat.totalStatusCounts} total={stat.totalHomework} />
+                            {stat.totalDelays > 0 && <p className="text-sm text-muted-foreground flex items-center"><Clock className="mr-2 h-4 w-4" />{stat.totalDelays} forsinkelser totalt</p>}
                             
-                            {subStat.problemSubmissions.length > 0 && (
-                                    <div className="pt-2 border-t">
-                                        <h4 className="font-semibold text-sm flex items-center gap-2"><BookX className="w-4 h-4 text-yellow-600" /> Lekser som må rettes</h4>
-                                        <ul className="pl-4 mt-1 text-sm list-disc space-y-1">
-                                            {subStat.problemSubmissions.map((c, i) => 
-                                                <li key={i}>
-                                                    <strong>Uke {c.week}: {c.title}</strong>
-                                                    {c.comment && <p className="text-xs text-muted-foreground pl-2 italic">"{c.comment}"</p>}
-                                                </li>
+                            <CollapsibleContent className="space-y-4">
+                                 <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                                    <CardHeader>
+                                        <CardTitle className="text-base text-blue-900 dark:text-blue-200">iPad-ansvar</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="text-sm text-blue-800 dark:text-blue-300">
+                                        <p>Glemt å lade: <strong>{stat.ipadNotCharged}</strong> gang(er)</p>
+                                        <p>Glemt å ta med: <strong>{stat.ipadNotBrought}</strong> gang(er)</p>
+                                    </CardContent>
+                                </Card>
+
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    {stat.statsBySubject.map(subStat => (
+                                    <Card key={subStat.subjectId}>
+                                        <CardHeader>
+                                            <CardTitle className="text-base">{subStat.subjectName} ({subStat.totalSubmissions})</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-3">
+                                            <StatusBar stats={subStat.statusCounts} total={subStat.totalSubmissions} />
+                                            {subStat.delays > 0 && <p className="text-xs text-muted-foreground flex items-center"><Clock className="mr-2 h-3 w-3" />{subStat.delays} forsinkelser</p>}
+                                        
+                                            {subStat.problemSubmissions.length > 0 && (
+                                                <div className="pt-2 border-t">
+                                                    <ul className="pl-1 mt-1 text-sm space-y-1">
+                                                        {subStat.problemSubmissions.map((c, i) => 
+                                                            <li key={i} className="text-xs">
+                                                                <strong>Uke {c.week}: </strong>
+                                                                {c.status === 'Glemt bok' ? 'Glemt bok' : c.title}
+                                                                {c.comment && <p className="text-xs text-muted-foreground pl-2 italic">"{c.comment}"</p>}
+                                                            </li>
+                                                        )}
+                                                    </ul>
+                                                </div>
                                             )}
-                                        </ul>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                        ))}
-                    </div>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <Card>
-                            <CardHeader><CardTitle className="text-base">iPad-ansvar</CardTitle></CardHeader>
-                            <CardContent className="text-sm">
-                            <p>Glemt å lade: <strong>{stat.ipadNotCharged}</strong> gang(er)</p>
-                            <p>Glemt å ta med: <strong>{stat.ipadNotBrought}</strong> gang(er)</p>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader><CardTitle className="text-base">Anmerkninger ({stat.totalRemarks} totalt)</CardTitle></CardHeader>
-                            <CardContent>
-                            {stat.totalRemarks > 0 ? (
-                                <p className="text-sm text-muted-foreground">Detaljert statistikk er tilgjengelig i fanen "Anmerkningsanalyse".</p>
-                            ) : <p className="text-sm text-muted-foreground">Ingen anmerkninger registrert.</p>}
-                            </CardContent>
-                        </Card>
-                    </div>
-                    <div className="pt-4 text-xs text-center text-muted-foreground">
-                        Tegnforklaring: 
-                        {statusOrder.map((name) => <span key={name} className="inline-flex items-center ml-4"><span className="w-3 h-3 mr-1 rounded-full" style={{backgroundColor: statusColors[name]}}></span>{name}</span>)}
-                    </div>
-                    </CardContent>
-                </Card>
+                                        </CardContent>
+                                    </Card>
+                                    ))}
+                                </div>
+                                <div className="pt-4 text-xs text-center text-muted-foreground print-only">
+                                    Tegnforklaring: 
+                                    {statusOrder.map((name) => <span key={name} className="inline-flex items-center ml-4"><span className="w-3 h-3 mr-1 rounded-full" style={{backgroundColor: statusColors[name]}}></span>{name}</span>)}
+                                </div>
+                            </CollapsibleContent>
+                        </CardContent>
+                    </Card>
+                </Collapsible>
                 ))}
                 <div className="pt-4 text-xs text-center text-muted-foreground no-print">
                     -- Slutt på rapport --
@@ -374,10 +392,11 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
     );
 }
 
+
 export default function Reports(props: ReportsProps) {
     return (
         <Tabs defaultValue="summary" className="w-full space-y-4">
-            <TabsList>
+            <TabsList className="no-print">
                 <TabsTrigger value="summary">Ukesoppsummering</TabsTrigger>
                 <TabsTrigger value="analysis">Anmerkningsanalyse</TabsTrigger>
                 <TabsTrigger value="student-report">Elevrapporter</TabsTrigger>
