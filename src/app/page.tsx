@@ -18,10 +18,10 @@ import Onboarding from "@/components/Onboarding";
 const defaultSettings: AppSettings = {
   tabs: {
     overview: true, dailyCheck: true, remarks: true, reports: true,
-    seatingChart: true, groupTool: true, studentPicker: true, remarkAnalysis: true,
+    seatingChart: true, groupTool: true, studentPicker: true,
     settings: true,
   },
-  tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'groupTool', 'studentPicker', 'remarkAnalysis'],
+  tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'groupTool', 'studentPicker'],
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
     includePositiveFeedback: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
@@ -112,7 +112,7 @@ function Home() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 border-b bg-background sm:px-6">
+      <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 border-b bg-background sm:px-6 no-print">
         <div className="flex items-center gap-2">
           <button onClick={() => setActiveView('dashboard')} className="flex items-center gap-2">
             <BookOpenCheck className="w-8 h-8 text-primary" />

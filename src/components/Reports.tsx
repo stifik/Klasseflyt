@@ -176,7 +176,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
     };
     
     return (
-        <Card className="no-print">
+        <Card>
             <CardHeader>
             <CardTitle>Ukesoppsummering for Meldinger</CardTitle>
             <CardDescription>Generer automatisk meldinger til foresatte for elever med anmerkninger for en valgt uke.</CardDescription>
@@ -228,7 +228,7 @@ const StatusBar: FC<{ stats: Record<HomeworkStatus, number>, total: number }> = 
                 return (
                     <div
                         key={status}
-                        className="h-full"
+                        className="h-full progress-bar-segment"
                         style={{
                         width: `${percentage}%`,
                         backgroundColor: statusColors[status],
@@ -257,7 +257,6 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
             }, {} as Record<HomeworkStatus, number>);
             const totalHomework = studentSubmissions.length;
             
-            // This is the new logic for delays
             const totalDelays = studentSubmissions.filter(s => s.isDelayed).length;
 
             const statsBySubject = subjects.map(subject => {
@@ -311,8 +310,8 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
 
     return (
         <Card>
-            <CardHeader>
-                <div className="flex items-center justify-between no-print">
+            <CardHeader className="no-print">
+                <div className="flex items-center justify-between">
                     <div>
                         <CardTitle>Elevrapporter</CardTitle>
                         <CardDescription>Oversikt over hver enkelt elevs fremgang og ansvarsområder.</CardDescription>
@@ -322,73 +321,75 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
             </CardHeader>
             <CardContent className="space-y-4 printable-area">
                 {studentStats.map(stat => (
-                <Collapsible open={openStudents[stat.studentId] || false} onOpenChange={() => toggleStudent(stat.studentId)} key={stat.studentId} asChild>
-                    <Card className="page-break">
-                        <CardHeader>
-                           <div className="flex justify-between items-start">
-                                <div>
-                                    <CardTitle>{stat.studentName}</CardTitle>
-                                    <CardDescription>Totaloversikt ({stat.totalHomework} lekser)</CardDescription>
-                                </div>
-                                <CollapsibleTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="no-print">
-                                        {openStudents[stat.studentId] ? "Skjul detaljer" : "Vis detaljer"}
-                                        {openStudents[stat.studentId] ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
-                                    </Button>
-                                </CollapsibleTrigger>
-                           </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <StatusBar stats={stat.totalStatusCounts} total={stat.totalHomework} />
-                            {stat.totalDelays > 0 && <p className="text-sm text-muted-foreground flex items-center"><Clock className="mr-2 h-4 w-4" />{stat.totalDelays} forsinkelser totalt</p>}
-                            
-                            <CollapsibleContent className="space-y-4">
-                                 <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-                                    <CardHeader>
-                                        <CardTitle className="text-base text-blue-900 dark:text-blue-200">iPad-ansvar</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="text-sm text-blue-800 dark:text-blue-300">
-                                        <p>Glemt å lade: <strong>{stat.ipadNotCharged}</strong> gang(er)</p>
-                                        <p>Glemt å ta med: <strong>{stat.ipadNotBrought}</strong> gang(er)</p>
-                                    </CardContent>
-                                </Card>
-
-                                <div className="grid gap-4 md:grid-cols-2">
-                                    {stat.statsBySubject.map(subStat => (
-                                    <Card key={subStat.subjectId}>
+                <div key={stat.studentId} className="page-break">
+                    <Collapsible open={openStudents[stat.studentId] || false} onOpenChange={() => toggleStudent(stat.studentId)} asChild>
+                        <Card>
+                            <CardHeader>
+                               <div className="flex justify-between items-start">
+                                    <div>
+                                        <CardTitle>{stat.studentName}</CardTitle>
+                                        <CardDescription>Totaloversikt ({stat.totalHomework} lekser)</CardDescription>
+                                    </div>
+                                    <CollapsibleTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="no-print">
+                                            {openStudents[stat.studentId] ? "Skjul detaljer" : "Vis detaljer"}
+                                            {openStudents[stat.studentId] ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
+                                        </Button>
+                                    </CollapsibleTrigger>
+                               </div>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <StatusBar stats={stat.totalStatusCounts} total={stat.totalHomework} />
+                                {stat.totalDelays > 0 && <p className="text-sm text-muted-foreground flex items-center"><Clock className="mr-2 h-4 w-4" />{stat.totalDelays} forsinkelser totalt</p>}
+                                
+                                <CollapsibleContent className="space-y-4 print:block">
+                                     <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
                                         <CardHeader>
-                                            <CardTitle className="text-base">{subStat.subjectName} ({subStat.totalSubmissions})</CardTitle>
-
+                                            <CardTitle className="text-base text-blue-900 dark:text-blue-200">iPad-ansvar</CardTitle>
                                         </CardHeader>
-                                        <CardContent className="space-y-3">
-                                            <StatusBar stats={subStat.statusCounts} total={subStat.totalSubmissions} />
-                                            {subStat.delays > 0 && <p className="text-xs text-muted-foreground flex items-center"><Clock className="mr-2 h-3 w-3" />{subStat.delays} forsinkelser</p>}
-                                        
-                                            {subStat.problemSubmissions.length > 0 && (
-                                                <div className="pt-2 border-t">
-                                                    <ul className="pl-1 mt-1 text-sm space-y-1">
-                                                        {subStat.problemSubmissions.map((c, i) => 
-                                                            <li key={i} className="text-xs">
-                                                                <strong>Uke {c.week}: </strong>
-                                                                {c.status === 'Glemt bok' ? 'Glemt bok' : c.title}
-                                                                {c.comment && <p className="text-xs text-muted-foreground pl-2 italic">"{c.comment}"</p>}
-                                                            </li>
-                                                        )}
-                                                    </ul>
-                                                </div>
-                                            )}
+                                        <CardContent className="text-sm text-blue-800 dark:text-blue-300">
+                                            <p>Glemt å lade: <strong>{stat.ipadNotCharged}</strong> gang(er)</p>
+                                            <p>Glemt å ta med: <strong>{stat.ipadNotBrought}</strong> gang(er)</p>
                                         </CardContent>
                                     </Card>
-                                    ))}
-                                </div>
-                                <div className="pt-4 text-xs text-center text-muted-foreground print-only">
-                                    Tegnforklaring: 
-                                    {statusOrder.map((name) => <span key={name} className="inline-flex items-center ml-4"><span className="w-3 h-3 mr-1 rounded-full" style={{backgroundColor: statusColors[name]}}></span>{name}</span>)}
-                                </div>
-                            </CollapsibleContent>
-                        </CardContent>
-                    </Card>
-                </Collapsible>
+
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        {stat.statsBySubject.map(subStat => (
+                                        <Card key={subStat.subjectId}>
+                                            <CardHeader>
+                                                <CardTitle className="text-base">{subStat.subjectName} ({subStat.totalSubmissions})</CardTitle>
+
+                                            </CardHeader>
+                                            <CardContent className="space-y-3">
+                                                <StatusBar stats={subStat.statusCounts} total={subStat.totalSubmissions} />
+                                                {subStat.delays > 0 && <p className="text-xs text-muted-foreground flex items-center"><Clock className="mr-2 h-3 w-3" />{subStat.delays} forsinkelser</p>}
+                                            
+                                                {subStat.problemSubmissions.length > 0 && (
+                                                    <div className="pt-2 border-t">
+                                                        <ul className="pl-1 mt-1 text-sm space-y-1">
+                                                            {subStat.problemSubmissions.map((c, i) => 
+                                                                <li key={i} className="text-xs">
+                                                                    <strong>Uke {c.week}: </strong>
+                                                                    {c.status === 'Glemt bok' ? 'Glemt bok' : c.title}
+                                                                    {c.comment && <p className="text-xs text-muted-foreground pl-2 italic">"{c.comment}"</p>}
+                                                                </li>
+                                                            )}
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                            </CardContent>
+                                        </Card>
+                                        ))}
+                                    </div>
+                                    <div className="pt-4 text-xs text-center text-muted-foreground print-only">
+                                        Tegnforklaring: 
+                                        {statusOrder.map((name) => <span key={name} className="inline-flex items-center ml-4"><span className="w-3 h-3 mr-1 rounded-full" style={{backgroundColor: statusColors[name]}}></span>{name}</span>)}
+                                    </div>
+                                </CollapsibleContent>
+                            </CardContent>
+                        </Card>
+                    </Collapsible>
+                </div>
                 ))}
                 <div className="pt-4 text-xs text-center text-muted-foreground no-print">
                     -- Slutt på rapport --
