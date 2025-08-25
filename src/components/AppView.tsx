@@ -24,6 +24,7 @@ const tabComponents: Record<TabKey, React.FC<any>> = {
   groupTool: GroupTool,
   studentPicker: StudentPicker,
   remarkAnalysis: RemarkAnalysis,
+  settings: Settings,
 };
 
 const tabLabels: Record<TabKey, string> = {
@@ -35,6 +36,7 @@ const tabLabels: Record<TabKey, string> = {
   groupTool: "Gruppeverktøy",
   studentPicker: "Elev-trekker",
   remarkAnalysis: "Anmerkningsanalyse",
+  settings: "Innstillinger",
 };
 
 interface AppViewProps {
@@ -46,38 +48,25 @@ interface AppViewProps {
     onUpdate: () => void;
     onSettingsChange: (newSettings: AppSettings) => void;
     onTabChange?: (tab: TabKey | null) => void;
-    forceSettingsView?: boolean;
 }
 
 const AppView: FC<AppViewProps> = ({ 
     settings, 
     activeTab, 
     componentProps, 
-    initialStudents,
-    initialSubjects,
-    onUpdate,
-    onSettingsChange,
     onTabChange, 
-    forceSettingsView = false,
 }) => {
   const visibleTabs = settings.tabOrder.filter(tabKey => settings.tabs[tabKey]);
-  const defaultTab = forceSettingsView ? 'settings' : activeTab || visibleTabs[0] || 'settings';
+  const defaultTab = activeTab || visibleTabs[0];
 
-  if (forceSettingsView) {
-    return (
-        <Settings
-          initialStudents={initialStudents}
-          initialSubjects={initialSubjects}
-          settings={settings}
-          onSettingsChange={onSettingsChange}
-        />
-    )
+  const allPossibleTabs: TabKey[] = [...visibleTabs];
+  if (activeTab === 'settings' && !visibleTabs.includes('settings')) {
+      allPossibleTabs.push('settings');
   }
 
   return (
     <Tabs 
-        defaultValue={defaultTab} 
-        value={activeTab ?? undefined}
+        value={activeTab ?? defaultTab}
         onValueChange={(value) => onTabChange && onTabChange(value as TabKey)} 
         className="w-full"
     >
@@ -86,11 +75,14 @@ const AppView: FC<AppViewProps> = ({
           {visibleTabs.map(tabKey => (
             <TabsTrigger key={tabKey} value={tabKey}>{tabLabels[tabKey]}</TabsTrigger>
           ))}
+          {activeTab === 'settings' && (
+             <TabsTrigger value="settings">Innstillinger</TabsTrigger>
+          )}
         </TabsList>
         <ScrollBar orientation="horizontal" className="invisible" />
       </ScrollArea>
 
-      {visibleTabs.map(tabKey => {
+      {allPossibleTabs.map(tabKey => {
           const Component = tabComponents[tabKey];
           const props = componentProps[tabKey];
           return (

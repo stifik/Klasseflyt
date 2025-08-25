@@ -18,6 +18,7 @@ const defaultSettings: AppSettings = {
   tabs: {
     overview: true, dailyCheck: true, remarks: true, reports: true,
     seatingChart: true, groupTool: true, studentPicker: true, remarkAnalysis: true,
+    settings: false, // Settings is not a user-toggleable tab
   },
   tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'groupTool', 'studentPicker', 'remarkAnalysis'],
   reportSettings: {
@@ -31,7 +32,7 @@ const defaultSettings: AppSettings = {
 
 function Home() {
   const [initialLoading, setInitialLoading] = useState(true);
-  const [activeView, setActiveView] = useState<'dashboard' | 'app' | 'settings'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'app'>('dashboard');
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
   
   const { toast } = useToast();
@@ -88,7 +89,8 @@ function Home() {
   };
 
   const navigateToSettings = () => {
-      setActiveView('settings');
+      setActiveTab('settings');
+      setActiveView('app');
   }
   
   const handleDataUpdate = async (tableName: string) => {
@@ -143,6 +145,7 @@ function Home() {
     groupTool: { students },
     studentPicker: { students, seatingChart, activeLayout: seatingLayouts.find(l => l.id === currentSettings.selectedSeatingLayoutId) },
     remarkAnalysis: { students, initialRemarks: remarks },
+    settings: { initialStudents: students, initialSubjects: subjects, settings: currentSettings, onSettingsChange: handleSettingsChange }
   };
 
   const appViewProps = {
@@ -188,14 +191,6 @@ function Home() {
                 {...appViewProps}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
-                onUpdate={() => {}}
-            />
-        )}
-         {activeView === 'settings' && (
-            <AppView 
-                {...appViewProps}
-                activeTab={null}
-                forceSettingsView={true}
                 onUpdate={() => {}}
             />
         )}
