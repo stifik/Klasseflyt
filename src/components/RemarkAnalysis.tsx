@@ -34,12 +34,10 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
   const [filter, setFilter] = useState<FilterState>({});
   const [dateFilter, setDateFilter] = useState<string>("all-time");
 
-  const getStudentName = useCallback(
-    (id: string) => students.find(s => s.id === id)?.name || 'Ukjent',
-    [students]
-  );
-
   const analysisData = useMemo(() => {
+    const studentMap = new Map(students.map(s => [s.id, s.name]));
+    const getStudentName = (id: string) => studentMap.get(id) || 'Ukjent';
+
     const isWholeClass = selectedStudentId === "whole-class";
     
     const now = new Date();
@@ -152,7 +150,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
       drillDownTitle,
       drillDownSubtitle,
     };
-  }, [selectedStudentId, initialRemarks, filter, dateFilter, getStudentName]);
+  }, [selectedStudentId, initialRemarks, students, filter, dateFilter]);
   
   const handleBarClick = (data: any, type: 'day' | 'period' | 'student') => {
     if (data && data.activePayload && data.activePayload.length > 0) {
