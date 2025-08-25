@@ -5,7 +5,7 @@ import { useState, useMemo } from "react";
 import type { Student, Remark } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Text } from "recharts";
 import { Button } from "./ui/button";
 import { X as XIcon } from "lucide-react";
 import { subDays } from 'date-fns';
@@ -27,6 +27,18 @@ interface FilterState {
   period?: number;
 }
 
+const CustomTick = (props: any) => {
+    const { x, y, payload } = props;
+    return (
+        <g transform={`translate(${x},${y})`}>
+            <text x={0} y={0} dy={16} textAnchor="end" fill="#666" transform="rotate(-35)">
+                {payload.value}
+            </text>
+        </g>
+    );
+};
+
+
 export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnalysisProps) {
   const [selectedStudentId, setSelectedStudentId] = useState<string>("whole-class");
   const [filter, setFilter] = useState<FilterState>({});
@@ -35,10 +47,9 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
   const analysisData = useMemo(() => {
     // 1. Create a definitive map of currently existing students and their IDs. This is the foundation.
     const studentMap = new Map(students.filter(s => s.id).map(s => [s.id!, s.name]));
-    const studentIdSet = new Set(studentMap.keys());
     
-    // 2. Filter out remarks from deleted students. This is the crucial step to prevent "Unknown Student".
-    const validRemarks = initialRemarks.filter(r => studentIdSet.has(r.studentId));
+    // 2. Filter out remarks from deleted students.
+    const validRemarks = initialRemarks.filter(r => studentMap.has(r.studentId));
 
     // 3. Apply date filter
     const now = new Date();
@@ -76,21 +87,22 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
 
     if (filter.day !== undefined) {
       const dayName = dayOfWeekMap.find(d => d.value === filter.day)!.name;
-      const dayRemarks = relevantRemarks.filter(r => new Date(r.date).getDay() === filter.day);
-      
       drillDownTitle = `Analyse for ${dayName}`;
       drillDownSubtitle = `Fordeling per time og elev.`;
-
+      
+      const dayRemarks = relevantRemarks.filter(r => new Date(r.date).getDay() === filter.day);
+      
       const periodCounts = Array.from({ length: 6 }, (_, i) => ({ name: `Time ${i + 1}`, value: i + 1, Antall: 0 }));
       dayRemarks.forEach(r => { if (r.period >= 1 && r.period <= 6) periodCounts[r.period - 1].Antall++; });
 
       const studentCounts = dayRemarks.reduce((acc, r) => {
-          acc[r.studentId] = (acc[r.studentId] || 0) + 1;
+          const name = studentMap.get(r.studentId) || 'Ukjent';
+          acc[name] = (acc[name] || 0) + 1;
           return acc;
       }, {} as Record<string, number>);
         
       const studentList = Object.entries(studentCounts)
-          .map(([studentId, Antall]) => ({ name: studentMap.get(studentId), Antall }))
+          .map(([name, Antall]) => ({ name, Antall }))
           .sort((a, b) => b.Antall - a.Antall);
       
       drillDownData = [
@@ -99,17 +111,19 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
       ];
 
     } else if (filter.period !== undefined) {
-      drillDownTitle = `Analyse for Time ${filter.period}`;
-      const periodRemarks = relevantRemarks.filter(r => r.period === filter.period);
+        drillDownTitle = `Analyse for Time ${filter.period}`;
+        drillDownSubtitle = `Elever med flest anmerkninger i denne timen.`;
+        const periodRemarks = relevantRemarks.filter(r => r.period === filter.period);
 
-      const studentCounts = periodRemarks.reduce((acc, r) => {
-          acc[r.studentId] = (acc[r.studentId] || 0) + 1;
-          return acc;
-      }, {} as Record<string, number>);
-        
-      drillDownData = Object.entries(studentCounts)
-            .map(([studentId, Antall]) => ({ name: studentMap.get(studentId), Antall }))
-            .sort((a,b) => b.Antall - a.Antall);
+        const studentCounts = periodRemarks.reduce((acc, r) => {
+            const name = studentMap.get(r.studentId) || 'Ukjent';
+            acc[name] = (acc[name] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+            
+        drillDownData = Object.entries(studentCounts)
+                .map(([name, Antall]) => ({ name, Antall }))
+                .sort((a,b) => b.Antall - a.Antall);
     }
 
     return {
@@ -133,9 +147,10 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
   };
   
   const isWholeClass = selectedStudentId === "whole-class";
+  const studentName = students.find(s => s.id === selectedStudentId)?.name || '';
   const currentTitle = isWholeClass 
     ? 'Analyse for Hele Klassen' 
-    : `Analyse for ${students.find(s => s.id === selectedStudentId)?.name || ''}`;
+    : `Analyse for ${studentName}`;
   const hasDrillDown = filter.day !== undefined || filter.period !== undefined;
 
   return (
@@ -257,9 +272,9 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
                                         <CardHeader><CardTitle>{chartInfo.title}</CardTitle></CardHeader>
                                         <CardContent className="h-[250px] -ml-4">
                                             <ResponsiveContainer width="100%" height="100%">
-                                                 <BarChart data={chartInfo.data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                                                 <BarChart data={chartInfo.data} margin={{ top: 5, right: 20, left: 10, bottom: 40 }}>
                                                     <CartesianGrid strokeDasharray="3 3" />
-                                                    <XAxis dataKey="name" fontSize={12} />
+                                                    <XAxis dataKey="name" fontSize={12} interval={0} tick={<CustomTick />} />
                                                     <YAxis allowDecimals={false} fontSize={12} />
                                                     <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', fontSize: '12px' }} />
                                                     <Bar dataKey="Antall">
@@ -272,11 +287,11 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
                                 ))}
                             </div>
                         ) : (
-                            <div className="h-[250px] -ml-4">
+                            <div className="h-[300px] -ml-4">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={analysisData.drillDownData as any[]} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                                    <BarChart data={analysisData.drillDownData as any[]} margin={{ top: 5, right: 20, left: 10, bottom: 40 }}>
                                         <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="name" fontSize={12} />
+                                        <XAxis dataKey="name" fontSize={12} interval={0} tick={<CustomTick />} />
                                         <YAxis allowDecimals={false} fontSize={12} />
                                         <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', fontSize: '12px' }} />
                                         <Bar dataKey="Antall">
@@ -295,5 +310,3 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
     </Card>
   );
 }
-
-    
