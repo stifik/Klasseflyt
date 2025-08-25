@@ -35,6 +35,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
 
   const analysisData = useMemo(() => {
     const studentMap = new Map(students.map(s => [s.id, s.name]));
+    const studentIdSet = new Set(students.map(s => s.id));
     const isWholeClass = selectedStudentId === "whole-class";
     
     const now = new Date();
@@ -49,9 +50,11 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
         return true; // "all-time"
     });
 
+    const remarksFromExistingStudents = filteredRemarksByDate.filter(r => studentIdSet.has(r.studentId));
+
     let relevantRemarks = isWholeClass 
-      ? filteredRemarksByDate 
-      : filteredRemarksByDate.filter(r => r.studentId === selectedStudentId);
+      ? remarksFromExistingStudents 
+      : remarksFromExistingStudents.filter(r => r.studentId === selectedStudentId);
 
     // Initial charts data
     const remarksByPeriod = Array.from({ length: 6 }, (_, i) => ({ name: `Time ${i + 1}`, value: i + 1, Antall: 0 }));
