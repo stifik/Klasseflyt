@@ -57,16 +57,20 @@ function Home() {
   }, []);
 
   useEffect(() => {
+    // This effect runs only when the `students` array has been loaded from the database.
+    // `students` will be `undefined` initially, then an empty array `[]` or an array with data.
     const checkDb = async () => {
-      const studentCount = await db.students.count();
-      if (studentCount === 0) {
-        // This is a fresh install, let's seed the database with defaults.
+      if (students && students.length === 0) {
+        // This is a fresh install or an empty database. Let's seed it.
         await resetDatabase();
       }
-      setInitialLoading(false);
+      // We can stop the initial loading screen once we know the state of the students table.
+      if (students !== undefined) {
+          setInitialLoading(false);
+      }
     }
     checkDb();
-  }, []);
+  }, [students]);
 
 
   const handleLogout = async () => {
