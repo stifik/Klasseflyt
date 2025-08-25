@@ -58,19 +58,16 @@ const AppView: FC<AppViewProps> = ({
   const visibleTabs = settings.tabOrder.filter(tabKey => settings.tabs[tabKey] && tabLabels[tabKey]);
   const defaultTab = activeTab || visibleTabs[0];
 
-  const homework = useLiveQuery(() => activeTab === 'overview' || activeTab === 'reports' ? db.homework.toArray() : undefined, [activeTab], []);
-  const submissions = useLiveQuery(() => activeTab === 'overview' || activeTab === 'reports' ? db.submissions.toArray() : undefined, [activeTab], []);
-  const dailyChecks = useLiveQuery(() => activeTab === 'dailyCheck' || activeTab === 'reports' ? db.dailyChecks.toArray() : undefined, [activeTab], []);
-  const remarks = useLiveQuery(() => activeTab === 'remarks' || activeTab === 'reports' ? db.remarks.toArray() : undefined, [activeTab], []);
-  const seatingChartHistory = useLiveQuery(() => activeTab === 'seatingChart' ? db.seatingChartHistory.orderBy('createdAt').reverse().toArray() : undefined, [activeTab], []);
-  const seatingLayouts = useLiveQuery(() => activeTab === 'seatingChart' || activeTab === 'studentPicker' ? db.seatingLayouts.toArray() : undefined, [activeTab], []);
+  const homework = useLiveQuery(() => db.homework.toArray(), [], []);
+  const submissions = useLiveQuery(() => db.submissions.toArray(), [], []);
+  const dailyChecks = useLiveQuery(() => db.dailyChecks.toArray(), [], []);
+  const remarks = useLiveQuery(() => db.remarks.toArray(), [], []);
+  const seatingChartHistory = useLiveQuery(() => db.seatingChartHistory.orderBy('createdAt').reverse().toArray(), [], []);
+  const seatingLayouts = useLiveQuery(() => db.seatingLayouts.toArray(), [], []);
   const seatingChart = useLiveQuery(async () => {
-    if (activeTab === 'dailyCheck' || activeTab === 'remarks' || activeTab === 'seatingChart' || activeTab === 'studentPicker') {
-        const latest = await db.seatingChartHistory.orderBy('createdAt').last();
-        return latest ? JSON.parse(latest.chartJson) : null;
-    }
-    return undefined;
-  }, [activeTab]);
+    const latest = await db.seatingChartHistory.orderBy('createdAt').last();
+    return latest ? JSON.parse(latest.chartJson) : null;
+  }, []);
 
 
   const handleSeatingChartChange = async (newChart: SeatingLayout | null, source: 'generation' | 'drag' | 'load') => {
@@ -119,7 +116,7 @@ const AppView: FC<AppViewProps> = ({
         onValueChange={(value) => onTabChange && onTabChange(value as TabKey)} 
         className="w-full"
     >
-      <ScrollArea className="w-full whitespace-nowrap">
+      <ScrollArea className="w-full whitespace-nowrap no-print">
         <TabsList className="inline-flex w-auto mb-4">
           {visibleTabs.map(tabKey => (
             <TabsTrigger key={tabKey} value={tabKey}>{tabLabels[tabKey]}</TabsTrigger>

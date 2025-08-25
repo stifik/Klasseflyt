@@ -7,11 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
-import { Printer, Copy, Loader2, BookX, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { getWeekNumber } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RemarkAnalysis from './RemarkAnalysis';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
+import { cn } from '@/lib/utils';
 
 interface ReportsProps {
   students: Student[];
@@ -289,7 +290,7 @@ const ReportDetails = ({ stat }: { stat: ReturnType<typeof useStudentStats>[0] }
 
 
 const FullReportCard = ({ stat, isOpen, isPrintVersion = false }: { stat: ReturnType<typeof useStudentStats>[0], isOpen: boolean, isPrintVersion?: boolean }) => (
-    <Card className={isPrintVersion ? "border-none shadow-none" : ""}>
+     <Card className={cn(isPrintVersion ? "border-none shadow-none" : "", isPrintVersion && "border-t first:border-t-0")}>
         <CardHeader>
             <div className="flex justify-between items-start">
                 <div>
@@ -409,11 +410,11 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
                     </Collapsible>
                 ))}
             </CardContent>
-            {/* Hidden, print-only version */}
+             {/* Hidden, print-only version */}
             <div className="hidden print-only">
-                 {studentStats.map(stat => (
+                {studentStats.map(stat => (
                     <div key={stat.studentId} className="page-break">
-                        <FullReportCard stat={stat} isOpen={true} isPrintVersion={true} />
+                         <FullReportCard stat={stat} isOpen={true} isPrintVersion={true} />
                     </div>
                 ))}
             </div>
@@ -427,7 +428,7 @@ export default function Reports(props: ReportsProps) {
         <Tabs defaultValue="summary" className="w-full space-y-4">
             <TabsList className="no-print grid w-full grid-cols-3">
                 <TabsTrigger value="summary">Ukesoppsummering</TabsTrigger>
-                <TabsTrigger value="analysis">Anmerkningsanalyse</TabsTrigger>
+                <TabsTrigger value="analysis">Analyse</TabsTrigger>
                 <TabsTrigger value="student-report">Elevrapporter</TabsTrigger>
             </TabsList>
             <TabsContent value="summary">
@@ -442,5 +443,3 @@ export default function Reports(props: ReportsProps) {
         </Tabs>
     )
 }
-
-    
