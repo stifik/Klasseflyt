@@ -79,4 +79,10 @@ body {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+  .print-only {
+    display: block !important;
+  }
+  .screen-only {
+    display: none !important;
+  }
 }

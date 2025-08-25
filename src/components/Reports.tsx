@@ -308,6 +308,78 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
         setOpenStudents(prev => ({ ...prev, [studentId]: !prev[studentId] }));
     };
 
+    const FullReportCard = ({ stat, isPrintVersion = false }: { stat: typeof studentStats[0], isPrintVersion?: boolean }) => (
+        <Card className={isPrintVersion ? "border-none shadow-none" : ""}>
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>{stat.studentName}</CardTitle>
+                        <CardDescription>Totaloversikt ({stat.totalHomework} lekser)</CardDescription>
+                    </div>
+                    {!isPrintVersion && (
+                        <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="sm" className="no-print">
+                                {openStudents[stat.studentId] ? "Skjul detaljer" : "Vis detaljer"}
+                                {openStudents[stat.studentId] ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
+                            </Button>
+                        </CollapsibleTrigger>
+                    )}
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <StatusBar stats={stat.totalStatusCounts} total={stat.totalHomework} />
+                {stat.totalDelays > 0 && <p className="text-sm text-muted-foreground flex items-center"><Clock className="mr-2 h-4 w-4" />{stat.totalDelays} forsinkelser totalt</p>}
+                
+                <div className={isPrintVersion ? "block" : ""}>
+                    <CollapsibleContent className="space-y-4 print:block">
+                        <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                            <CardHeader>
+                                <CardTitle className="text-base text-blue-900 dark:text-blue-200">iPad-ansvar</CardTitle>
+                            </CardHeader>
+                            <CardContent className="text-sm text-blue-800 dark:text-blue-300">
+                                <p>Glemt å lade: <strong>{stat.ipadNotCharged}</strong> gang(er)</p>
+                                <p>Glemt å ta med: <strong>{stat.ipadNotBrought}</strong> gang(er)</p>
+                            </CardContent>
+                        </Card>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {stat.statsBySubject.map(subStat => (
+                            <Card key={subStat.subjectId}>
+                                <CardHeader>
+                                    <CardTitle className="text-base">{subStat.subjectName} ({subStat.totalSubmissions})</CardTitle>
+
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <StatusBar stats={subStat.statusCounts} total={subStat.totalSubmissions} />
+                                    {subStat.delays > 0 && <p className="text-xs text-muted-foreground flex items-center"><Clock className="mr-2 h-3 w-3" />{subStat.delays} forsinkelser</p>}
+                                
+                                    {subStat.problemSubmissions.length > 0 && (
+                                        <div className="pt-2 border-t">
+                                            <ul className="pl-1 mt-1 text-sm space-y-1">
+                                                {subStat.problemSubmissions.map((c, i) => 
+                                                    <li key={i} className="text-xs">
+                                                        <strong>Uke {c.week}: </strong>
+                                                        {c.status === 'Glemt bok' ? 'Glemt bok' : c.title}
+                                                        {c.comment && <p className="text-xs text-muted-foreground pl-2 italic">"{c.comment}"</p>}
+                                                    </li>
+                                                )}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                            ))}
+                        </div>
+                        <div className="pt-4 text-xs text-center text-muted-foreground">
+                            Tegnforklaring: 
+                            {statusOrder.map((name) => <span key={name} className="inline-flex items-center ml-4"><span className="w-3 h-3 mr-1 rounded-full" style={{backgroundColor: statusColors[name]}}></span>{name}</span>)}
+                        </div>
+                    </CollapsibleContent>
+                </div>
+            </CardContent>
+        </Card>
+    );
+
     return (
         <Card>
             <CardHeader className="no-print">
@@ -319,82 +391,21 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
                     <Button onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" /> Skriv ut alle</Button>
                 </div>
             </CardHeader>
-            <CardContent className="space-y-4 printable-area">
+            <CardContent className="space-y-4 screen-only">
                 {studentStats.map(stat => (
-                <div key={stat.studentId} className="page-break">
-                    <Collapsible open={openStudents[stat.studentId] || false} onOpenChange={() => toggleStudent(stat.studentId)} asChild>
-                        <Card>
-                            <CardHeader>
-                               <div className="flex justify-between items-start">
-                                    <div>
-                                        <CardTitle>{stat.studentName}</CardTitle>
-                                        <CardDescription>Totaloversikt ({stat.totalHomework} lekser)</CardDescription>
-                                    </div>
-                                    <CollapsibleTrigger asChild>
-                                        <Button variant="ghost" size="sm" className="no-print">
-                                            {openStudents[stat.studentId] ? "Skjul detaljer" : "Vis detaljer"}
-                                            {openStudents[stat.studentId] ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
-                                        </Button>
-                                    </CollapsibleTrigger>
-                               </div>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <StatusBar stats={stat.totalStatusCounts} total={stat.totalHomework} />
-                                {stat.totalDelays > 0 && <p className="text-sm text-muted-foreground flex items-center"><Clock className="mr-2 h-4 w-4" />{stat.totalDelays} forsinkelser totalt</p>}
-                                
-                                <CollapsibleContent className="space-y-4 print:block">
-                                     <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-                                        <CardHeader>
-                                            <CardTitle className="text-base text-blue-900 dark:text-blue-200">iPad-ansvar</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="text-sm text-blue-800 dark:text-blue-300">
-                                            <p>Glemt å lade: <strong>{stat.ipadNotCharged}</strong> gang(er)</p>
-                                            <p>Glemt å ta med: <strong>{stat.ipadNotBrought}</strong> gang(er)</p>
-                                        </CardContent>
-                                    </Card>
-
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        {stat.statsBySubject.map(subStat => (
-                                        <Card key={subStat.subjectId}>
-                                            <CardHeader>
-                                                <CardTitle className="text-base">{subStat.subjectName} ({subStat.totalSubmissions})</CardTitle>
-
-                                            </CardHeader>
-                                            <CardContent className="space-y-3">
-                                                <StatusBar stats={subStat.statusCounts} total={subStat.totalSubmissions} />
-                                                {subStat.delays > 0 && <p className="text-xs text-muted-foreground flex items-center"><Clock className="mr-2 h-3 w-3" />{subStat.delays} forsinkelser</p>}
-                                            
-                                                {subStat.problemSubmissions.length > 0 && (
-                                                    <div className="pt-2 border-t">
-                                                        <ul className="pl-1 mt-1 text-sm space-y-1">
-                                                            {subStat.problemSubmissions.map((c, i) => 
-                                                                <li key={i} className="text-xs">
-                                                                    <strong>Uke {c.week}: </strong>
-                                                                    {c.status === 'Glemt bok' ? 'Glemt bok' : c.title}
-                                                                    {c.comment && <p className="text-xs text-muted-foreground pl-2 italic">"{c.comment}"</p>}
-                                                                </li>
-                                                            )}
-                                                        </ul>
-                                                    </div>
-                                                )}
-                                            </CardContent>
-                                        </Card>
-                                        ))}
-                                    </div>
-                                    <div className="pt-4 text-xs text-center text-muted-foreground print-only">
-                                        Tegnforklaring: 
-                                        {statusOrder.map((name) => <span key={name} className="inline-flex items-center ml-4"><span className="w-3 h-3 mr-1 rounded-full" style={{backgroundColor: statusColors[name]}}></span>{name}</span>)}
-                                    </div>
-                                </CollapsibleContent>
-                            </CardContent>
-                        </Card>
+                    <Collapsible key={stat.studentId} open={openStudents[stat.studentId] || false} onOpenChange={() => toggleStudent(stat.studentId)}>
+                        <FullReportCard stat={stat} />
                     </Collapsible>
-                </div>
                 ))}
-                <div className="pt-4 text-xs text-center text-muted-foreground no-print">
-                    -- Slutt på rapport --
-                </div>
             </CardContent>
+            {/* Hidden, print-only version */}
+            <div className="hidden print-only">
+                 {studentStats.map(stat => (
+                    <div key={stat.studentId} className="page-break">
+                        <FullReportCard stat={stat} isPrintVersion={true} />
+                    </div>
+                ))}
+            </div>
         </Card>
     );
 }
