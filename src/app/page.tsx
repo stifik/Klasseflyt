@@ -57,9 +57,9 @@ function Home() {
   const currentSettings = settings || defaultSettings;
   
   useEffect(() => {
-    // Wait for essential data before hiding the loader
+    // Wait for all essential queries to be resolved (not undefined) before hiding the loader.
     if (settings !== undefined && students !== undefined && subjects !== undefined) {
-        setInitialLoading(false);
+      setInitialLoading(false);
     }
   }, [settings, students, subjects]);
 
