@@ -35,6 +35,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
   const [dateFilter, setDateFilter] = useState<string>("all-time");
 
   const analysisData = useMemo(() => {
+    const getStudentName = (id: string) => students.find(s => s.id === id)?.name || 'Ukjent';
     const isWholeClass = selectedStudentId === "whole-class";
     
     const now = new Date();
@@ -80,7 +81,6 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
     let drillDownTitle = "";
     let drillDownSubtitle = "";
     
-    const getStudentName = (id: string | undefined) => students.find(s => s.id === id)?.name || 'Ukjent';
 
     if (filter.day !== undefined) {
       const dayName = dayOfWeekArray[filter.day];
