@@ -18,7 +18,7 @@ const defaultSettings: AppSettings = {
   tabs: {
     overview: true, dailyCheck: true, remarks: true, reports: true,
     seatingChart: true, groupTool: true, studentPicker: true, remarkAnalysis: true,
-    settings: false, // Settings is not a user-toggleable tab
+    settings: true,
   },
   tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'groupTool', 'studentPicker', 'remarkAnalysis'],
   reportSettings: {
@@ -58,19 +58,11 @@ function Home() {
   }, []);
 
   useEffect(() => {
-    // This effect runs only when the `students` array has been loaded from the database.
-    // `students` will be `undefined` initially, then an empty array `[]` or an array with data.
-    const checkDb = async () => {
-      if (students && students.length === 0) {
-        // This is a fresh install or an empty database. Let's seed it.
-        await resetDatabase();
-      }
-      // We can stop the initial loading screen once we know the state of the students table.
-      if (students !== undefined) {
-          setInitialLoading(false);
-      }
+    // This effect now only controls the initial loading state.
+    // It waits until the students array is no longer undefined.
+    if (students !== undefined) {
+        setInitialLoading(false);
     }
-    checkDb();
   }, [students]);
 
 
@@ -143,7 +135,7 @@ function Home() {
     reports: { students, subjects, homework, submissions, dailyChecks, remarks, settings: currentSettings.reportSettings },
     seatingChart: { students, seatingChart, onSeatingChartChange: handleSeatingChartChange, history: seatingChartHistory || [], appSettings: currentSettings, onAppSettingsChange: handleSettingsChange, layouts: seatingLayouts, onLayoutsChange: handleLayoutsChange },
     groupTool: { students },
-    studentPicker: { students, seatingChart, activeLayout: seatingLayouts.find(l => l.id === currentSettings.selectedSeatingLayoutId) },
+    studentPicker: { students, seatingChart, activeLayout: seatingLayouts?.find(l => l.id === currentSettings.selectedSeatingLayoutId) },
     remarkAnalysis: { students, initialRemarks: remarks },
     settings: { initialStudents: students, initialSubjects: subjects, settings: currentSettings, onSettingsChange: handleSettingsChange }
   };
