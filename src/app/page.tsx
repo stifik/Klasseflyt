@@ -26,7 +26,14 @@ const defaultSettings: AppSettings = {
     includeHomework: true, includeIpad: true, includeRemarks: true,
     includePositiveFeedback: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
   },
-  schedule: Array.from({ length: 6 }, (_, i) => ({ period: i + 1, startTime: "", endTime: "" })),
+  schedule: [
+    { period: 1, startTime: "08:30", endTime: "09:00" },
+    { period: 2, startTime: "09:00", endTime: "10:00" },
+    { period: 3, startTime: "10:30", endTime: "11:00" },
+    { period: 4, startTime: "11:00", endTime: "12:00" },
+    { period: 5, startTime: "12:30", endTime: "13:30" },
+    { period: 6, startTime: "13:30", endTime: "14:00" },
+  ],
   selectedSeatingLayoutId: null,
   remarkTypes: ["Generell", "Forstyrrer andre", "Mangler utstyr", "Upassende språk"],
   onboardingCompleted: false,
@@ -42,30 +49,19 @@ function Home() {
   const { instance } = useMsal();
   const isAuthenticated = useIsAuthenticated();
 
-  // Live queries that automatically update when data changes
+  // Load essential data first
   const students = useLiveQuery(() => db.students.toArray(), []);
   const subjects = useLiveQuery(() => db.subjects.toArray(), []);
-  const homework = useLiveQuery(() => db.homework.toArray(), []);
-  const submissions = useLiveQuery(() => db.submissions.toArray(), []);
-  const dailyChecks = useLiveQuery(() => db.dailyChecks.toArray(), []);
-  const remarks = useLiveQuery(() => db.remarks.toArray(), []);
-  const seatingChartHistory = useLiveQuery(() => db.seatingChartHistory.orderBy('createdAt').reverse().toArray(), []);
-  const seatingLayouts = useLiveQuery(() => db.seatingLayouts.toArray(), []);
   const settings = useLiveQuery(() => db.settings.get('userSettings'), []);
   
   const currentSettings = settings || defaultSettings;
-  const seatingChart = useLiveQuery(async () => {
-      const latest = await db.seatingChartHistory.orderBy('createdAt').last();
-      return latest ? JSON.parse(latest.chartJson) : null;
-  }, []);
-
+  
   useEffect(() => {
-    // This effect now only controls the initial loading state.
-    // It waits until the settings object is no longer undefined.
-    if (settings !== undefined) {
+    // Wait for essential data before hiding the loader
+    if (settings !== undefined && students !== undefined && subjects !== undefined) {
         setInitialLoading(false);
     }
-  }, [settings]);
+  }, [settings, students, subjects]);
 
 
   const handleLogout = async () => {
@@ -87,38 +83,8 @@ function Home() {
       setActiveView('app');
   }
   
-  const handleDataUpdate = async (tableName: string) => {
-    // This function can be used to trigger re-renders if needed,
-    // but useLiveQuery should handle most cases.
-    console.log(`${tableName} was updated.`);
-  };
-
-  const handleSeatingChartChange = async (newChart: SeatingChartData | null, source: 'generation' | 'drag' | 'load') => {
-    if (newChart) {
-        const activeLayout = seatingLayouts?.find(l => l.id === currentSettings.selectedSeatingLayoutId);
-        if (activeLayout) {
-             await db.seatingChartHistory.add({
-                chartJson: JSON.stringify(newChart),
-                rows: activeLayout.rows,
-                cols: activeLayout.cols,
-                createdAt: new Date(),
-            });
-        }
-    }
-  };
-  
   const handleSettingsChange = async (newSettings: AppSettings) => {
     await db.settings.put({ id: 'userSettings', ...newSettings });
-  }
-
-  const handleLayoutsChange = async (layouts: SeatingLayout[]) => {
-      // This is a simplified handler. In a real scenario, you'd handle create/update/delete.
-      const currentIds = new Set(layouts.map(l => l.id));
-      const dbLayouts = await db.seatingLayouts.toArray();
-      const toDelete = dbLayouts.filter(dbl => !currentIds.has(dbl.id)).map(l => l.id as string);
-      
-      if(toDelete.length > 0) await db.seatingLayouts.bulkDelete(toDelete);
-      if(layouts.length > 0) await db.seatingLayouts.bulkPut(layouts);
   }
   
   const handleOnboardingComplete = async (finalSettings: AppSettings) => {
@@ -138,27 +104,6 @@ function Home() {
       return <Onboarding onFinish={handleOnboardingComplete} initialSettings={currentSettings} />;
   }
 
-  const componentProps = {
-    overview: { students, subjects, homeworkList: homework, submissions, onUpdate: () => handleDataUpdate('homework') },
-    dailyCheck: { students, initialChecks: dailyChecks, onUpdate: () => handleDataUpdate('dailyChecks'), seatingChart },
-    remarks: { students, initialRemarks: remarks, onUpdate: () => handleDataUpdate('remarks'), seatingChart, settings: currentSettings },
-    reports: { students, subjects, homework, submissions, dailyChecks, remarks, settings: currentSettings.reportSettings },
-    seatingChart: { students, seatingChart, onSeatingChartChange: handleSeatingChartChange, history: seatingChartHistory || [], appSettings: currentSettings, onAppSettingsChange: handleSettingsChange, layouts: seatingLayouts, onLayoutsChange: handleLayoutsChange },
-    groupTool: { students },
-    studentPicker: { students, seatingChart, activeLayout: seatingLayouts?.find(l => l.id === currentSettings.selectedSeatingLayoutId) },
-    remarkAnalysis: { students, initialRemarks: remarks },
-    settings: { initialStudents: students, initialSubjects: subjects, settings: currentSettings, onSettingsChange: handleSettingsChange }
-  };
-
-  const appViewProps = {
-    settings: currentSettings,
-    componentProps,
-    initialStudents: students,
-    initialSubjects: subjects,
-    onSettingsChange: handleSettingsChange,
-  };
-
-
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 border-b bg-background sm:px-6">
@@ -169,17 +114,6 @@ function Home() {
           </button>
         </div>
         <div className="flex items-center gap-2">
-          {/*
-          isAuthenticated && (
-            <>
-              <Button variant="outline">Synkronisert</Button>
-              <Button variant="ghost" size="icon" onClick={handleLogout}>
-                  <LogOut />
-                  <span className="sr-only">Logg ut</span>
-              </Button>
-            </>
-          )
-          */}
           <Button variant="ghost" size="icon" onClick={navigateToSettings}>
               <SettingsIcon />
               <span className="sr-only">Innstillinger</span>
@@ -190,10 +124,12 @@ function Home() {
         {activeView === 'dashboard' && <Dashboard settings={currentSettings} onNavigate={navigateToTab} />}
         {activeView === 'app' && (
             <AppView 
-                {...appViewProps}
+                settings={currentSettings}
+                students={students || []}
+                subjects={subjects || []}
+                onSettingsChange={handleSettingsChange}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
-                onUpdate={() => {}}
             />
         )}
       </main>
