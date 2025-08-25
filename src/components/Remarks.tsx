@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Label } from "./ui/label";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
+import { Switch } from "./ui/switch";
 
 const NUMBER_OF_PERIODS = 6;
 
@@ -71,6 +72,7 @@ const AddRemarkDialog = ({ student, onAdd, remarkTypes, children }: { student: S
 export default function Remarks({ students, initialRemarks: remarks, onUpdate, seatingChart, settings }: RemarksProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [currentPeriod, setCurrentPeriod] = useState<number>(1);
+  const [isFlipped, setIsFlipped] = useState(false);
   const { toast } = useToast();
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
   
@@ -236,23 +238,33 @@ export default function Remarks({ students, initialRemarks: remarks, onUpdate, s
   const EmptyDesk = () => (
     <div className="w-28 h-20" />
   );
+  
+  const displayedChart = isFlipped 
+    ? seatingChart?.map(row => [...row].reverse()) 
+    : seatingChart;
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <CardTitle>Registrer anmerkninger</CardTitle>
               <CardDescription>
                 Klikk for generell, + for type. Langt trykk/høyreklikk for å fjerne siste.
               </CardDescription>
+               {seatingChart && (
+                <div className="flex items-center space-x-2 mt-4">
+                    <Switch id="flip-view-remarks" checked={isFlipped} onCheckedChange={setIsFlipped} />
+                    <Label htmlFor="flip-view-remarks">Speilvendt visning (lærerperspektiv)</Label>
+                </div>
+              )}
             </div>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant={"outline"}
-                  className="w-full mt-2 sm:mt-0 sm:w-[280px] justify-start text-left font-normal"
+                  className="w-full sm:w-[280px] justify-start text-left font-normal"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {date ? format(date, "PPP", { locale: nb }) : <span>Velg en dato</span>}
@@ -276,9 +288,9 @@ export default function Remarks({ students, initialRemarks: remarks, onUpdate, s
           </div>
         </CardHeader>
         <CardContent>
-          {seatingChart ? (
+          {displayedChart ? (
               <div className="grid gap-y-4">
-                  {seatingChart.map((row, rowIndex) => (
+                  {displayedChart.map((row, rowIndex) => (
                       <div key={rowIndex} className="flex flex-wrap justify-start gap-x-4 gap-y-4">
                           {row.map((desk, deskIndex) => (
                              <div key={deskIndex} className="flex gap-1">
@@ -291,7 +303,11 @@ export default function Remarks({ students, initialRemarks: remarks, onUpdate, s
                       </div>
                   ))}
               </div>
-          ) : (
+          ) : seatingChart ? (
+            <div className="flex items-center justify-center h-48 text-muted-foreground">
+                <p>Klassekartet er tomt. Gå til "Klassekart" for å generere et.</p>
+            </div>
+           ) : (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {students.map((student) => <StudentButton key={student.id} student={student} />)}
             </div>

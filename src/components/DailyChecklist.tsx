@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { Student, DailyCheck, SeatingChartData } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -13,6 +13,8 @@ import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/db";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
 
 type IpadStatus = "OK" | "NotCharged" | "NotBrought";
 
@@ -25,6 +27,7 @@ interface DailyChecklistProps {
 
 export default function DailyChecklist({ students, initialChecks, onUpdate, seatingChart }: DailyChecklistProps) {
   const [date, setDate] = useState<Date>(new Date());
+  const [isFlipped, setIsFlipped] = useState(false);
   const { toast } = useToast();
 
   const getCheckForDate = (studentId: string, checkDate: Date) => {
@@ -97,22 +100,32 @@ export default function DailyChecklist({ students, initialChecks, onUpdate, seat
   const EmptyDesk = () => (
     <div className="w-28 h-20" />
   );
+  
+  const displayedChart = isFlipped 
+    ? seatingChart?.map(row => [...row].reverse()) 
+    : seatingChart;
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle>Daglig iPad-sjekk</CardTitle>
             <CardDescription>
               {seatingChart ? "Visningen matcher klassekartet." : "Registrer status for hver elevs iPad."}
             </CardDescription>
+             {seatingChart && (
+                <div className="flex items-center space-x-2 mt-4">
+                    <Switch id="flip-view-daily" checked={isFlipped} onCheckedChange={setIsFlipped} />
+                    <Label htmlFor="flip-view-daily">Speilvendt visning (lærerperspektiv)</Label>
+                </div>
+            )}
           </div>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant={"outline"}
-                className="w-full mt-2 sm:mt-0 sm:w-[280px] justify-start text-left font-normal"
+                className="w-full sm:w-[280px] justify-start text-left font-normal"
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {date ? format(date, "PPP", { locale: nb }) : <span>Velg en dato</span>}
@@ -125,9 +138,9 @@ export default function DailyChecklist({ students, initialChecks, onUpdate, seat
         </div>
       </CardHeader>
       <CardContent>
-        {seatingChart ? (
+        {displayedChart ? (
             <div className="grid gap-y-4">
-                {seatingChart.map((row, rowIndex) => (
+                {displayedChart.map((row, rowIndex) => (
                     <div key={rowIndex} className="flex flex-wrap justify-start gap-x-4 gap-y-4">
                         {row.map((desk, deskIndex) => (
                            <div key={deskIndex} className="flex gap-1">
@@ -139,6 +152,10 @@ export default function DailyChecklist({ students, initialChecks, onUpdate, seat
                         ))}
                     </div>
                 ))}
+            </div>
+        ) : seatingChart ? (
+             <div className="flex items-center justify-center h-48 text-muted-foreground">
+                <p>Klassekartet er tomt. Gå til "Klassekart" for å generere et.</p>
             </div>
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
