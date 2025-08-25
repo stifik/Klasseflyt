@@ -5,47 +5,55 @@ import { FC } from 'react';
 import type { AppSettings, TabKey } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Shuffle, Hand } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface DashboardProps {
   settings: AppSettings;
   onNavigate: (tab: TabKey) => void;
 }
 
-const tabInfo: Partial<Record<TabKey, { label: string; description: string; icon: React.ElementType }>> = {
+const tabInfo: Partial<Record<TabKey, { label: string; description: string; icon: React.ElementType, color: string }>> = {
   overview: {
     label: "Lekseoversikt",
     description: "Full oversikt over lekser og innleveringer.",
     icon: BookOpen,
+    color: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
   },
   dailyCheck: {
     label: "Daglig Sjekk",
     description: "Registrer iPad-status for hver elev.",
     icon: CalendarCheck,
+    color: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400",
   },
   remarks: {
     label: "Anmerkninger",
     description: "Loggfør anmerkninger raskt og enkelt.",
     icon: Megaphone,
+    color: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
   },
   reports: {
     label: "Rapporter & Analyse",
     description: "Analyser data og generer ukesmeldinger.",
     icon: BarChart2,
+    color: "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400",
   },
   seatingChart: {
     label: "Klassekart",
     description: "Design klasserom og generer sitteplasser.",
     icon: Users,
+    color: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400",
   },
   groupTool: {
     label: "Gruppeverktøy",
     description: "Lag tilfeldige grupper for samarbeid.",
     icon: Shuffle,
+    color: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400",
   },
   studentPicker: {
     label: "Elev-trekker",
     description: "Trekk en tilfeldig elev fra klassen.",
     icon: Hand,
+    color: "bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400",
   },
 };
 
@@ -67,10 +75,12 @@ const Dashboard: FC<DashboardProps> = ({ settings, onNavigate }) => {
             <Card 
               key={tabKey} 
               onClick={() => onNavigate(tabKey)}
-              className="cursor-pointer hover:border-primary hover:shadow-lg transition-all"
+              className="cursor-pointer hover:border-primary/50 hover:shadow-lg transition-all"
             >
               <CardHeader className="flex flex-row items-center gap-4">
-                <Icon className="w-8 h-8 text-primary" />
+                <div className={cn("p-3 rounded-full", info.color)}>
+                    <Icon className="w-6 h-6" />
+                </div>
                 <div>
                   <CardTitle>{info.label}</CardTitle>
                   <CardDescription>{info.description}</CardDescription>
