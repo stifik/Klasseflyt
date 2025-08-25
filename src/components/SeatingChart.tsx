@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger, DialogClose } from "@/components/ui/dialog";
-import { Loader2, Users, Shuffle, Plus, X, Trash2, LayoutTemplate } from "lucide-react";
+import { Loader2, Users, Shuffle, Plus, X, Trash2, LayoutTemplate, Pin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -21,6 +21,7 @@ import { db } from "@/lib/db";
 
 type SeatingChartData = (string[] | null)[][];
 type AvoidPair = [string, string];
+type PlacementRule = { studentName: string; placement: 'front' | 'back' };
 
 interface SeatingChartProps {
   students: Student[];
@@ -178,11 +179,14 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 // --- Main Component ---
 export default function SeatingChart({ students, seatingChart, onSeatingChartChange, history, appSettings, onAppSettingsChange, layouts, onLayoutsChange }: SeatingChartProps) {
   const [avoidPairs, setAvoidPairs] = useState<AvoidPair[]>([]);
+  const [placementRules, setPlacementRules] = useState<PlacementRule[]>([]);
   const [avoidSameNeighbors, setAvoidSameNeighbors] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [selectedStudent1, setSelectedStudent1] = useState<string>("");
   const [selectedStudent2, setSelectedStudent2] = useState<string>("");
+  const [selectedStudentForRule, setSelectedStudentForRule] = useState<string>("");
+  const [selectedPlacement, setSelectedPlacement] = useState<'front' | 'back'>('front');
   const [isDesignerOpen, setIsDesignerOpen] = useState(false);
   
   const { toast } = useToast();
@@ -210,6 +214,19 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     setAvoidPairs(avoidPairs.filter(p => p[0] !== pairToRemove[0] || p[1] !== pairToRemove[1]));
   };
 
+  const handleAddPlacementRule = () => {
+    if (selectedStudentForRule) {
+      // Remove existing rule for the student, if any, then add the new one
+      const newRules = placementRules.filter(r => r.studentName !== selectedStudentForRule);
+      setPlacementRules([...newRules, { studentName: selectedStudentForRule, placement: selectedPlacement }]);
+      setSelectedStudentForRule("");
+    }
+  };
+
+  const handleRemovePlacementRule = (studentNameToRemove: string) => {
+    setPlacementRules(placementRules.filter(r => r.studentName !== studentNameToRemove));
+  };
+
   const getNeighbors = (r: number, c: number, chart: SeatingChartData): (string | null)[] => {
     const neighbors: (string | null)[] = [];
     const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // Top, Bottom, Left, Right
@@ -224,57 +241,90 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
   };
 
   const generateChartWithLogic = (): SeatingChartData | null => {
-     if (!activeLayout) {
+    if (!activeLayout) {
         toast({ title: "Ingen layout valgt", description: "Vennligst velg en klasserom-layout først.", variant: "destructive" });
         return null;
     }
-    
+
+    const { layout, rows, cols } = activeLayout;
+    let deskCoords: { r: number, c: number }[] = [];
+    layout.forEach((row, r) => row.forEach((isDesk, c) => {
+        if (isDesk) deskCoords.push({ r, c });
+    }));
+
+    const frontRowDesks = deskCoords.filter(({ r }) => r === 0);
+    const backRowDesks = deskCoords.filter(({ r }) => {
+        const lastRowWithDesk = Math.max(...deskCoords.map(d => d.r));
+        return r === lastRowWithDesk;
+    });
+
+    const studentsWithRules = placementRules.map(r => r.studentName);
+    const studentsWithoutRules = students.map(s => s.name).filter(name => !studentsWithRules.includes(name));
+
+    const frontRowStudents = shuffleArray(placementRules.filter(r => r.placement === 'front').map(r => r.studentName));
+    const backRowStudents = shuffleArray(placementRules.filter(r => r.placement === 'back').map(r => r.studentName));
+    const otherStudents = shuffleArray(studentsWithoutRules);
+
+    if (frontRowStudents.length > frontRowDesks.length) {
+        toast({ title: "For mange elever foran", description: "Det er ikke nok pulter på første rad for alle med 'må sitte foran'-regelen.", variant: "destructive" });
+        return null;
+    }
+     if (backRowStudents.length > backRowDesks.length) {
+        toast({ title: "For mange elever bakerst", description: "Det er ikke nok pulter på bakerste rad for alle med 'må sitte bakerst'-regelen.", variant: "destructive" });
+        return null;
+    }
+
     let attempts = 0;
-    while(attempts < 20) {
-        const shuffledStudents = shuffleArray(students.map(s => s.name));
-        const chart: SeatingChartData = JSON.parse(JSON.stringify(activeLayout.layout)).map((row: boolean[]) => row.map(isDesk => isDesk ? [] : null));
+    while (attempts < 20) {
+        const chart: SeatingChartData = JSON.parse(JSON.stringify(layout)).map((row: boolean[]) => row.map(isDesk => isDesk ? [] : null));
         
-        const deskCoords: {r: number, c: number}[] = [];
-        activeLayout.layout.forEach((row, r) => row.forEach((isDesk, c) => {
-            if(isDesk) deskCoords.push({r, c});
-        }));
+        const placeStudent = (student: string, availableDesks: {r: number, c: number}[]): {r: number, c: number} | null => {
+            for (const { r, c } of shuffleArray(availableDesks)) {
+                if (chart[r][c]?.length === 0) {
+                    const neighbors = getNeighbors(r, c, chart);
+                    const hasAvoidPair = neighbors.some(n => n && avoidPairs.some(p => (p.includes(student) && p.includes(n))));
+                    if(hasAvoidPair) continue;
 
-        const placeStudent = (studentIndex: number, availableDesks: typeof deskCoords): boolean => {
-            if (studentIndex >= shuffledStudents.length) return true;
-            const student = shuffledStudents[studentIndex];
-            
-            for (let i = 0; i < availableDesks.length; i++) {
-                const {r, c} = availableDesks[i];
-                
-                // Check avoid pairs
-                const neighbors = getNeighbors(r, c, chart);
-                const hasAvoidPair = neighbors.some(n => n && avoidPairs.some(p => (p.includes(student) && p.includes(n))));
-                if(hasAvoidPair) continue;
-
-                // Check same neighbors
-                if (avoidSameNeighbors && lastChart) {
-                    const lastStudentPos = lastChart.flat().findIndex((s: string[] | null) => s?.[0] === student);
-                    if(lastStudentPos > -1) {
-                         const lastR = Math.floor(lastStudentPos / lastChart[0].length);
-                         const lastC = lastStudentPos % lastChart[0].length;
-                         const lastNeighbors = getNeighbors(lastR, lastC, lastChart);
-                         if (neighbors.some(n => n && lastNeighbors.includes(n))) {
-                            if (Math.random() > 0.2) continue;
-                         }
+                    if (avoidSameNeighbors && lastChart) {
+                        const lastStudentPos = lastChart.flat().findIndex((s: string[] | null) => s?.[0] === student);
+                        if (lastStudentPos > -1) {
+                            const lastR = Math.floor(lastStudentPos / cols);
+                            const lastC = lastStudentPos % cols;
+                            const lastNeighbors = getNeighbors(lastR, lastC, lastChart);
+                            if (neighbors.some(n => n && lastNeighbors.includes(n)) && Math.random() > 0.2) continue;
+                        }
                     }
+                    chart[r][c] = [student];
+                    return { r, c };
                 }
-                
-                chart[r][c] = [student];
-                const remainingDesks = [...availableDesks.slice(0, i), ...availableDesks.slice(i+1)];
-                if (placeStudent(studentIndex + 1, remainingDesks)) return true;
-                chart[r][c] = []; // backtrack
             }
-            return false;
+            return null;
         };
+
+        let success = true;
+        let remainingDesks = [...deskCoords];
         
-        if (placeStudent(0, shuffleArray(deskCoords))) {
-            return chart;
+        for (const student of frontRowStudents) {
+            const pos = placeStudent(student, frontRowDesks);
+            if (!pos) { success = false; break; }
+            remainingDesks = remainingDesks.filter(d => d.r !== pos.r || d.c !== pos.c);
         }
+        if (!success) { attempts++; continue; }
+
+        for (const student of backRowStudents) {
+            const pos = placeStudent(student, backRowDesks);
+            if (!pos) { success = false; break; }
+            remainingDesks = remainingDesks.filter(d => d.r !== pos.r || d.c !== pos.c);
+        }
+        if (!success) { attempts++; continue; }
+
+        for (const student of otherStudents) {
+            const pos = placeStudent(student, remainingDesks);
+            if (!pos) { success = false; break; }
+            remainingDesks = remainingDesks.filter(d => d.r !== pos.r || d.c !== pos.c);
+        }
+
+        if (success) return chart;
         attempts++;
     }
     
@@ -397,6 +447,33 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                             <div key={index} className="flex items-center justify-between p-2 text-sm rounded-md bg-secondary">
                                 <span>{pair.join(' og ')}</span>
                                 <Button size="icon" variant="ghost" onClick={() => handleRemoveAvoidPair(pair)}><X className="w-4 h-4" /></Button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                 <div>
+                    <Label>Plasseringsregler</Label>
+                     <div className="flex gap-2 mt-1">
+                        <Select value={selectedStudentForRule} onValueChange={setSelectedStudentForRule}>
+                            <SelectTrigger className="w-full"><SelectValue placeholder="Velg elev..." /></SelectTrigger>
+                            <SelectContent>{students.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                         <Select value={selectedPlacement} onValueChange={(v) => setSelectedPlacement(v as 'front' | 'back')}>
+                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                               <SelectItem value="front">Må sitte foran</SelectItem>
+                               <SelectItem value="back">Må sitte bakerst</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={handleAddPlacementRule} size="icon"><Plus /></Button>
+                    </div>
+                </div>
+                 {placementRules.length > 0 && (
+                    <div className="space-y-2">
+                        {placementRules.map((rule, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 text-sm rounded-md bg-secondary">
+                                <span className="flex items-center gap-2"><Pin className="w-4 h-4" /> {rule.studentName} ({rule.placement === 'front' ? 'Foran' : 'Bakerst'})</span>
+                                <Button size="icon" variant="ghost" onClick={() => handleRemovePlacementRule(rule.studentName)}><X className="w-4 h-4" /></Button>
                             </div>
                         ))}
                     </div>
