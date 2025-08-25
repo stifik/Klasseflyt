@@ -290,7 +290,10 @@ const ReportDetails = ({ stat }: { stat: ReturnType<typeof useStudentStats>[0] }
 
 
 const FullReportCard = ({ stat, isOpen, isPrintVersion = false }: { stat: ReturnType<typeof useStudentStats>[0], isOpen: boolean, isPrintVersion?: boolean }) => (
-     <Card className={cn(isPrintVersion ? "border-none shadow-none" : "", isPrintVersion && "border-t first:border-t-0")}>
+     <Card className={cn(
+        isPrintVersion ? "border-none shadow-none" : "",
+        isPrintVersion && "border-b border-t"
+     )}>
         <CardHeader>
             <div className="flex justify-between items-start">
                 <div>
@@ -411,7 +414,7 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
                 ))}
             </CardContent>
              {/* Hidden, print-only version */}
-            <div className="hidden print-only">
+            <div className="hidden print-only printable-area">
                 {studentStats.map(stat => (
                     <div key={stat.studentId} className="page-break">
                          <FullReportCard stat={stat} isOpen={true} isPrintVersion={true} />
