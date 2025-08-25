@@ -35,7 +35,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
 
   const analysisData = useMemo(() => {
     const studentMap = new Map(students.map(s => [s.id, s.name]));
-    const studentIdSet = new Set(students.map(s => s.id));
+    const studentIdSet = new Set(students.map(s => s.id!));
     const isWholeClass = selectedStudentId === "whole-class";
     
     const now = new Date();
@@ -99,6 +99,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
 
         drillDownData = Object.entries(studentCounts)
             .map(([studentId, Antall]) => ({ name: studentMap.get(studentId) || 'Ukjent', Antall }))
+            .filter(item => item.name !== 'Ukjent') // Ensure unknown students are filtered out
             .sort((a,b) => b.Antall - a.Antall);
 
       } else {
@@ -119,6 +120,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
         
         const studentList = Object.entries(studentCounts)
             .map(([studentId, Antall]) => ({ name: studentMap.get(studentId) || 'Ukjent Elev', Antall }))
+            .filter(item => item.name !== 'Ukjent Elev') // Ensure unknown students are filtered out
             .sort((a, b) => b.Antall - a.Antall);
 
         drillDownData = [
@@ -137,6 +139,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
         
       drillDownData = Object.entries(studentCounts)
             .map(([studentId, Antall]) => ({ name: studentMap.get(studentId) || 'Ukjent', Antall }))
+            .filter(item => item.name !== 'Ukjent') // Ensure unknown students are filtered out
             .sort((a,b) => b.Antall - a.Antall);
     }
 
