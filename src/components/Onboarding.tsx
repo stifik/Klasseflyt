@@ -148,7 +148,7 @@ export default function Onboarding({ onFinish, initialSettings }: OnboardingProp
                            <Button onClick={handleAddStudent}><UserPlus className="mr-2" /> Legg til</Button>
                         </div>
                         <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-                            {students?.map(s => (
+                            {students?.slice().reverse().map(s => (
                                 <div key={s.id} className="flex justify-between items-center bg-secondary p-2 rounded-md">
                                     <span>{s.name}</span>
                                     <Button size="icon" variant="ghost" onClick={() => s.id && handleDeleteStudent(s.id)}><Trash2 className="text-destructive w-4 h-4" /></Button>
@@ -180,7 +180,7 @@ export default function Onboarding({ onFinish, initialSettings }: OnboardingProp
                            <Button onClick={handleAddSubject}><BookPlus className="mr-2" /> Legg til</Button>
                         </div>
                          <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-                            {subjects?.map(s => (
+                            {subjects?.slice().reverse().map(s => (
                                 <div key={s.id} className="flex justify-between items-center bg-secondary p-2 rounded-md">
                                     <span>{s.name}</span>
                                     <Button size="icon" variant="ghost" onClick={() => s.id && handleDeleteSubject(s.id)}><Trash2 className="text-destructive w-4 h-4" /></Button>
