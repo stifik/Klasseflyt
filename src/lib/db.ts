@@ -105,7 +105,9 @@ export async function resetDatabase() {
             { title: "Oppg. 3.1-3.5", subjectId: subjects.find(s => s.name === 'Matematikk')?.id!, week: thisWeek, date: new Date() },
             { title: "Verdensrommet", subjectId: subjects.find(s => s.name === 'Naturfag')?.id!, week: thisWeek - 1, date: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000) },
         ];
-        const homeworkIds = await db.homework.bulkAdd(homeworkToAdd, { returning: true }) as number[];
+        await db.homework.bulkAdd(homeworkToAdd);
+        const allHomework = await db.homework.toArray();
+        const homeworkIds = allHomework.map(h => h.id!);
 
         // --- Create Mock Submissions ---
         const submissionsToAdd: Omit<Submission, 'id'>[] = [];
