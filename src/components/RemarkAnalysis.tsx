@@ -80,7 +80,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
     let drillDownTitle = "";
     let drillDownSubtitle = "";
     
-    const getStudentName = (id: string) => students.find(s => s.id === id)?.name || 'Ukjent';
+    const getStudentName = (id: string | undefined) => students.find(s => s.id === id)?.name || 'Ukjent';
 
     if (filter.day !== undefined) {
       const dayName = dayOfWeekArray[filter.day];
