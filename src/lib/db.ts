@@ -1,6 +1,7 @@
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus } from './types';
+import { getWeekNumber } from './utils';
 
 // Define the database schema
 export class MySubClassedDexie extends Dexie {
@@ -83,10 +84,80 @@ export async function resetDatabase() {
         // Clear all tables
         await Promise.all(db.tables.map(table => table.clear()));
 
-        // Add mock data
-        await db.students.bulkAdd(mockStudents);
-        await db.subjects.bulkAdd(mockSubjects);
+        // Add settings
         await db.settings.put({ id: 'userSettings', ...defaultSettings });
-        console.log("Database has been reset and seeded.");
+
+        // Add students and subjects and get their IDs
+        const studentIds = await db.students.bulkAdd(mockStudents, { returning: true }) as string[];
+        const subjectIds = await db.subjects.bulkAdd(mockSubjects, { returning: true }) as string[];
+        const subjectsWithName = await db.subjects.toArray();
+
+        // --- Create Mock Homework ---
+        const today = new Date();
+        const thisWeek = getWeekNumber(today);
+        const homeworkToAdd: Omit<Homework, 'id'>[] = [
+            { title: "Lesing kap. 2", subjectId: subjectsWithName.find(s => s.name === 'Norsk')?.id!, week: thisWeek, date: new Date() },
+            { title: "Gloser", subjectId: subjectsWithName.find(s => s.name === 'Engelsk')?.id!, week: thisWeek, date: new Date() },
+            { title: "Oppg. 3.1-3.5", subjectId: subjectsWithName.find(s => s.name === 'Matematikk')?.id!, week: thisWeek, date: new Date() },
+            { title: "Verdensrommet", subjectId: subjectsWithName.find(s => s.name === 'Naturfag')?.id!, week: thisWeek - 1, date: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000) },
+        ];
+        const homeworkIds = await db.homework.bulkAdd(homeworkToAdd, { returning: true }) as number[];
+
+        // --- Create Mock Submissions ---
+        const submissionsToAdd: Omit<Submission, 'id'>[] = [];
+        const statuses: HomeworkStatus[] = ["Godkjent", "Ikke levert", "Må rettes", "Syk/Fravær", "Glemt bok"];
+        studentIds.forEach(studentId => {
+            homeworkIds.forEach(homeworkId => {
+                const chance = Math.random();
+                if (chance > 0.1) { // 90% chance of a submission
+                    let status: HomeworkStatus = "Godkjent";
+                    if (chance < 0.2) status = "Ikke levert";
+                    else if (chance < 0.25) status = "Må rettes";
+                    submissionsToAdd.push({
+                        studentId,
+                        homeworkId,
+                        status,
+                        comment: status === "Må rettes" ? "Gjør oppgavene på nytt." : undefined,
+                    });
+                }
+            });
+        });
+        await db.submissions.bulkAdd(submissionsToAdd);
+
+        // --- Create Mock Daily Checks ---
+        const dailyChecksToAdd: Omit<DailyCheck, 'id'>[] = [];
+        for (let i = 0; i < 5; i++) { // Last 5 days
+            const date = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
+            studentIds.forEach(studentId => {
+                const chance = Math.random();
+                if (chance < 0.1) {
+                    dailyChecksToAdd.push({ studentId, date, ipadCharged: true, ipadBrought: false });
+                } else if (chance < 0.2) {
+                    dailyChecksToAdd.push({ studentId, date, ipadCharged: false, ipadBrought: true });
+                }
+                // No entry means OK
+            });
+        }
+        await db.dailyChecks.bulkAdd(dailyChecksToAdd);
+
+        // --- Create Mock Remarks ---
+        const remarksToAdd: Omit<Remark, 'id'>[] = [];
+        const remarkTypes = defaultSettings.remarkTypes || ["Generell"];
+        for (let i = 0; i < 14; i++) { // Last 14 days
+            const date = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
+            if (date.getDay() === 0 || date.getDay() === 6) continue; // Skip weekends
+
+            for (let j = 0; j < Math.floor(Math.random() * 5); j++) { // 0-4 remarks per day
+                remarksToAdd.push({
+                    studentId: studentIds[Math.floor(Math.random() * studentIds.length)],
+                    date,
+                    period: Math.floor(Math.random() * 5) + 1,
+                    type: remarkTypes[Math.floor(Math.random() * remarkTypes.length)]
+                });
+            }
+        }
+        await db.remarks.bulkAdd(remarksToAdd);
+
+        console.log("Database has been reset and seeded with extensive demo data.");
     });
 }
