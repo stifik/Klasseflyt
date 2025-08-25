@@ -45,13 +45,16 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
   const [dateFilter, setDateFilter] = useState<string>("all-time");
 
   const analysisData = useMemo(() => {
-    // 1. Create a definitive map of currently existing students and their IDs. This is the foundation.
-    const studentMap = new Map(students.filter(s => s.id).map(s => [s.id!, s.name]));
+    // 1. Create a definitive set of valid, existing student IDs.
+    const studentIdSet = new Set(students.filter(s => s.id).map(s => s.id!));
     
-    // 2. Filter out remarks from deleted students.
-    const validRemarks = initialRemarks.filter(r => studentMap.has(r.studentId));
+    // 2. Filter out remarks from deleted students. This is the source of truth for all further calculations.
+    const validRemarks = initialRemarks.filter(r => studentIdSet.has(r.studentId));
+    
+    // 3. Create a map for quick name lookups.
+    const studentMap = new Map(students.map(s => [s.id!, s.name]));
 
-    // 3. Apply date filter
+    // 4. Apply date filter
     const now = new Date();
     const remarksFilteredByDate = validRemarks.filter(r => {
         const remarkDate = new Date(r.date);
@@ -60,13 +63,13 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
         return true; // "all-time"
     });
 
-    // 4. Apply student filter (whole class or specific student)
+    // 5. Apply student filter (whole class or specific student)
     const isWholeClass = selectedStudentId === "whole-class";
     const relevantRemarks = isWholeClass 
       ? remarksFilteredByDate 
       : remarksFilteredByDate.filter(r => r.studentId === selectedStudentId);
 
-    // 5. Calculate data for the main overview charts
+    // 6. Calculate data for the main overview charts
     const remarksByPeriod = Array.from({ length: 6 }, (_, i) => ({ name: `Time ${i + 1}`, value: i + 1, Antall: 0 }));
     relevantRemarks.forEach(r => { if (r.period >= 1 && r.period <= 6) remarksByPeriod[r.period - 1].Antall++; });
     
@@ -80,7 +83,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
     }, {} as Record<string, number>);
     const pieChartData = Object.entries(remarksByType).map(([name, value]) => ({ name, value }));
     
-    // 6. Handle drill-down logic
+    // 7. Handle drill-down logic
     let drillDownData: any[] | null = null;
     let drillDownTitle = "";
     let drillDownSubtitle = "";
@@ -96,8 +99,8 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
       dayRemarks.forEach(r => { if (r.period >= 1 && r.period <= 6) periodCounts[r.period - 1].Antall++; });
 
       const studentCounts = dayRemarks.reduce((acc, r) => {
-          const name = studentMap.get(r.studentId) || 'Ukjent';
-          acc[name] = (acc[name] || 0) + 1;
+          const name = studentMap.get(r.studentId);
+          if (name) acc[name] = (acc[name] || 0) + 1;
           return acc;
       }, {} as Record<string, number>);
         
@@ -116,8 +119,8 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
         const periodRemarks = relevantRemarks.filter(r => r.period === filter.period);
 
         const studentCounts = periodRemarks.reduce((acc, r) => {
-            const name = studentMap.get(r.studentId) || 'Ukjent';
-            acc[name] = (acc[name] || 0) + 1;
+            const name = studentMap.get(r.studentId);
+            if (name) acc[name] = (acc[name] || 0) + 1;
             return acc;
         }, {} as Record<string, number>);
             
@@ -272,7 +275,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
                                         <CardHeader><CardTitle>{chartInfo.title}</CardTitle></CardHeader>
                                         <CardContent className="h-[250px] -ml-4">
                                             <ResponsiveContainer width="100%" height="100%">
-                                                 <BarChart data={chartInfo.data} margin={{ top: 5, right: 20, left: 10, bottom: 40 }}>
+                                                 <BarChart data={chartInfo.data} margin={{ top: 5, right: 20, left: 10, bottom: 60 }}>
                                                     <CartesianGrid strokeDasharray="3 3" />
                                                     <XAxis dataKey="name" fontSize={12} interval={0} tick={<CustomTick />} />
                                                     <YAxis allowDecimals={false} fontSize={12} />
@@ -289,7 +292,7 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
                         ) : (
                             <div className="h-[300px] -ml-4">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={analysisData.drillDownData as any[]} margin={{ top: 5, right: 20, left: 10, bottom: 40 }}>
+                                    <BarChart data={analysisData.drillDownData as any[]} margin={{ top: 5, right: 20, left: 10, bottom: 60 }}>
                                         <CartesianGrid strokeDasharray="3 3" />
                                         <XAxis dataKey="name" fontSize={12} interval={0} tick={<CustomTick />} />
                                         <YAxis allowDecimals={false} fontSize={12} />
