@@ -34,8 +34,9 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
   const [dateFilter, setDateFilter] = useState<string>("all-time");
 
   const analysisData = useMemo(() => {
-    const studentMap = new Map(students.map(s => [s.id, s.name]));
-    const studentIdSet = new Set(students.map(s => s.id!));
+    const existingStudents = students.filter(s => s.id);
+    const studentMap = new Map(existingStudents.map(s => [s.id!, s.name]));
+    const studentIdSet = new Set(existingStudents.map(s => s.id!));
     const isWholeClass = selectedStudentId === "whole-class";
     
     const now = new Date();
