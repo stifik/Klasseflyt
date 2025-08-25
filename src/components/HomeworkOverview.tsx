@@ -14,7 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "./ui/input";
-import { Label } from "@/components/ui/label";
+import { Label } from "./ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { getWeekNumber } from "@/lib/utils";
 import { db } from "@/lib/db";
@@ -262,23 +262,27 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
 
   const problemStatuses: HomeworkStatus[] = ["Ikke levert", "Må rettes", "Glemt bok"];
 
+  const sortedStudents = useMemo(() => {
+    return [...students].sort((a, b) => a.name.localeCompare(b.name, 'nb'));
+  }, [students]);
+
   const filteredStudents = useMemo(() => {
     if (!filters.showProblems) {
-      return students;
+      return sortedStudents;
     }
     
     const visibleHomeworkIds = new Set(filteredHomework.map(hw => hw.id));
     if (visibleHomeworkIds.size === 0) {
-      return students; // If no homework is visible, don't filter students
+      return sortedStudents; // If no homework is visible, don't filter students
     }
 
-    return students.filter(student => {
+    return sortedStudents.filter(student => {
       return filteredHomework.some(hw => {
         const submission = getSubmission(student.id, hw.id);
         return !submission || problemStatuses.includes(submission.status);
       });
     });
-  }, [students, filters.showProblems, filteredHomework, submissions]);
+  }, [sortedStudents, filters.showProblems, filteredHomework, submissions]);
   
   const uniqueWeeks = [...new Set(homeworkList.map(h => h.week))].sort((a,b) => b-a);
   
