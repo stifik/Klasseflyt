@@ -26,12 +26,34 @@ export class MySubClassedDexie extends Dexie {
             remarks: '++id, studentId, date, period',
             seatingChartHistory: '++id, createdAt',
             seatingLayouts: '++id, name',
-            settings: 'id' // primary key is 'id', which will be 'userSettings'
+            settings: 'id'
         });
         
         // Version 2: Added isDelayed to submissions
         this.version(2).stores({
             submissions: '++id, &[studentId+homeworkId], studentId, homeworkId, isDelayed',
+        });
+
+        // Version 3: Correctly add classroomTools to default settings on upgrade
+        this.version(3).stores({}).upgrade(async (tx) => {
+            const userSettings = await tx.table('settings').get('userSettings');
+            if (userSettings) {
+                // If classroomTools tab setting doesn't exist, add it.
+                if (userSettings.tabs.classroomTools === undefined) {
+                    userSettings.tabs.classroomTools = true;
+                }
+                // If classroomTools is not in tabOrder, add it.
+                if (!userSettings.tabOrder.includes('classroomTools')) {
+                    // Place it before settings if possible, otherwise at the end.
+                    const settingsIndex = userSettings.tabOrder.indexOf('settings');
+                    if (settingsIndex !== -1) {
+                        userSettings.tabOrder.splice(settingsIndex, 0, 'classroomTools');
+                    } else {
+                        userSettings.tabOrder.push('classroomTools');
+                    }
+                }
+                await tx.table('settings').put(userSettings);
+            }
         });
         
         this.on('populate', async () => {
