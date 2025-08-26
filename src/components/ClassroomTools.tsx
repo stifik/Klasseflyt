@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { FC } from "react";
+import { FC, useEffect } from "react";
 import type { SeatingChartData, SeatingLayout, Student, SeatingChartRecord, AppSettings } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import GroupTool from "./GroupTool";
@@ -27,6 +27,14 @@ const ClassroomTools: FC<ClassroomToolsProps> = (props) => {
   const { students, seatingChart, activeLayout, activeSubTab, onSubTabChange } = props;
 
   const defaultSubTab = "seating-chart";
+  
+  // This useEffect ensures the component reacts to external navigation changes
+  useEffect(() => {
+    if (activeSubTab && ["seating-chart", "group-tool", "student-picker"].includes(activeSubTab)) {
+      onSubTabChange(activeSubTab);
+    }
+  }, [activeSubTab, onSubTabChange]);
+
 
   return (
     <Tabs 
