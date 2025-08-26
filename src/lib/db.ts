@@ -149,12 +149,15 @@ export async function resetDatabase() {
 
         // Add students and subjects
         const studentIds = await db.students.bulkAdd(mockStudents, { returning: true }) as string[];
-        const subjects = await db.subjects.bulkAdd(mockSubjects, { returning: true });
+        const subjectIds = await db.subjects.bulkAdd(mockSubjects, { returning: true }) as string[];
         
-        const norskSubject = subjects.find(s => s.name === 'Norsk');
-        const engelskSubject = subjects.find(s => s.name === 'Engelsk');
-        const matteSubject = subjects.find(s => s.name === 'Matematikk');
-        const naturfagSubject = subjects.find(s => s.name === 'Naturfag');
+        // Re-fetch subjects to get full objects
+        const subjects = await db.subjects.bulkGet(subjectIds);
+
+        const norskSubject = subjects.find(s => s?.name === 'Norsk');
+        const engelskSubject = subjects.find(s => s?.name === 'Engelsk');
+        const matteSubject = subjects.find(s => s?.name === 'Matematikk');
+        const naturfagSubject = subjects.find(s => s?.name === 'Naturfag');
 
         // --- Create Mock Homework ---
         const today = new Date();
