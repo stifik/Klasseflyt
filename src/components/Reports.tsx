@@ -38,6 +38,7 @@ const generateSummaryMessage = (
     studentName: string,
     week: number,
     hasIssues: boolean,
+    approvedAssignments: string[],
     missingAssignments: string[],
     incompleteAssignments: string[],
     forgottenBooks: string[],
@@ -63,7 +64,11 @@ const generateSummaryMessage = (
           }
 
           if (homeworkIssues.length > 0) {
-              message += `Lekser:\n- ${homeworkIssues.join('\n- ')}\n\n`;
+              message += `Status for lekser:\n`;
+              if (approvedAssignments.length > 0) {
+                  message += `- Godkjent: ${approvedAssignments.join(', ')}\n`;
+              }
+              message += `- ${homeworkIssues.join('\n- ')}\n\n`;
           }
       }
 
@@ -151,16 +156,17 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
             const formatHomeworkWithSubject = (s: Submission) => {
                 const hw = homework.find(h => h.id === s.homeworkId);
                 const subject = subjects.find(sub => sub.id === hw?.subjectId);
-                return `${subject?.name || 'Ukjent fag'} (${hw?.title || ''})`;
+                return `${subject?.name || 'Ukjent'} (${hw?.title || ''})`;
             };
 
             const message = generateSummaryMessage(
                 student.name,
                 selectedWeek,
                 hasAnyIssues,
+                studentWeekSubmissions.filter(s => s.status === 'Godkjent').map(formatHomeworkWithSubject),
                 studentWeekSubmissions.filter(s => s.status === 'Ikke levert').map(formatHomeworkWithSubject),
                 studentWeekSubmissions.filter(s => s.status === 'Må rettes').map(formatHomeworkWithSubject),
-                studentWeekSubmissions.filter(s => s.status === 'Glemt bok').map(s => subjects.find(sub => sub.id === homework.find(h => h.id === s.homeworkId)?.subjectId)?.name || ''),
+                studentWeekSubmissions.filter(s => s.status === 'Glemt bok').map(formatHomeworkWithSubject),
                 studentWeekChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
                 studentWeekChecks.filter(c => !c.ipadBrought).length,
                 studentWeekRemarks.length,
