@@ -8,7 +8,7 @@ import type { Student, Subject, AppSettings, TabKey, BehaviorType, DashboardTool
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Eye, LayoutDashboard } from "lucide-react";
+import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Eye, LayoutDashboard, Group } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -65,6 +65,16 @@ const allToolLabels: Record<DashboardToolKey, string> = {
     'reports.studentReports': "Elevrapporter",
     'reports.analysis': "Analyse",
 };
+
+const allTabLabels: Record<TabKey, string> = {
+  'overview': 'Lekseoversikt',
+  'dailyCheck': 'Daglig Sjekk',
+  'observations': 'Observasjoner',
+  'classroomTools': 'Klasseverktøy',
+  'reports': 'Analyse',
+  'settings': 'Innstillinger',
+};
+
 
 const availableIcons = [
     'Smile', 'Annoyed', 'Handshake', 'Star', 'ThumbsUp', 'ThumbsDown', 'Award', 'BookOpen', 
@@ -258,6 +268,24 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
           setLocalSettings(current => ({...current, ...update}));
       }
   }
+  
+  const handleTabToggle = (key: TabKey) => {
+    handleSettingChange(current => ({
+        ...current,
+        tabs: { ...current.tabs, [key]: !current.tabs[key] }
+    }));
+  };
+
+  const handleTabDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+        handleSettingChange(current => {
+            const oldIndex = current.tabOrder.findIndex(t => t === active.id);
+            const newIndex = current.tabOrder.findIndex(t => t === over!.id);
+            return { ...current, tabOrder: arrayMove(current.tabOrder, oldIndex, newIndex) };
+        });
+    }
+  };
 
   const handleDashboardToolToggle = (key: DashboardToolKey) => {
     handleSettingChange(current => ({
@@ -302,32 +330,50 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
        <div className="lg:col-span-1">
-            <Card>
+             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center"><LayoutDashboard className="mr-2" />Dashbord-innstillinger</CardTitle>
-                    <CardDescription>Velg hvilke verktøy som skal vises på dashbordet, og dra for å endre rekkefølgen.</CardDescription>
+                    <CardTitle className="flex items-center"><LayoutDashboard className="mr-2" />Dashbord & Faner</CardTitle>
+                    <CardDescription>Velg hvilke faner og verktøy som skal vises, og dra for å endre rekkefølgen.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                    <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleDashboardDragEnd}
-                    >
-                        <SortableContext
-                            items={localSettings.dashboardTools.map(t => t.key)}
-                            strategy={verticalListSortingStrategy}
-                        >
-                            {localSettings.dashboardTools.map((tool) => (
-                                <SortableItem 
-                                    key={tool.key} 
-                                    id={tool.key} 
-                                    label={allToolLabels[tool.key]} 
-                                    isChecked={tool.visible}
-                                    onToggle={() => handleDashboardToolToggle(tool.key)}
-                                />
-                            ))}
-                        </SortableContext>
-                    </DndContext>
+                <CardContent className="space-y-4">
+                    <Accordion type="multiple" className="w-full">
+                        <AccordionItem value="tabs">
+                            <AccordionTrigger>Hovedfaner</AccordionTrigger>
+                            <AccordionContent className="space-y-2">
+                                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleTabDragEnd}>
+                                    <SortableContext items={localSettings.tabOrder} strategy={verticalListSortingStrategy}>
+                                        {localSettings.tabOrder.map(tabKey => (
+                                            <SortableItem
+                                                key={tabKey}
+                                                id={tabKey}
+                                                label={allTabLabels[tabKey as TabKey] || tabKey}
+                                                isChecked={localSettings.tabs[tabKey as TabKey]}
+                                                onToggle={() => handleTabToggle(tabKey as TabKey)}
+                                            />
+                                        ))}
+                                    </SortableContext>
+                                </DndContext>
+                            </AccordionContent>
+                        </AccordionItem>
+                        <AccordionItem value="dashboard-tools">
+                             <AccordionTrigger>Dashbord-verktøy</AccordionTrigger>
+                             <AccordionContent className="space-y-2">
+                                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDashboardDragEnd}>
+                                    <SortableContext items={localSettings.dashboardTools.map(t => t.key)} strategy={verticalListSortingStrategy}>
+                                        {localSettings.dashboardTools.map((tool) => (
+                                            <SortableItem 
+                                                key={tool.key} 
+                                                id={tool.key} 
+                                                label={allToolLabels[tool.key]} 
+                                                isChecked={tool.visible}
+                                                onToggle={() => handleDashboardToolToggle(tool.key)}
+                                            />
+                                        ))}
+                                    </SortableContext>
+                                </DndContext>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
                 </CardContent>
             </Card>
         </div>
