@@ -43,6 +43,7 @@ const defaultSettings: AppSettings = {
 function Home() {
   const [activeView, setActiveView] = useState<'dashboard' | 'app'>('dashboard');
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
+  const [activeSubTab, setActiveSubTab] = useState<string | null>(null);
   
   const students = useLiveQuery(() => db.students.toArray());
   const subjects = useLiveQuery(() => db.subjects.toArray());
@@ -74,8 +75,9 @@ function Home() {
       });
   }
 
-  const navigateToTab = (tab: TabKey) => {
+  const navigateToTab = (tab: TabKey, subTab?: string) => {
     setActiveTab(tab);
+    setActiveSubTab(subTab || null);
     setActiveView('app');
   };
 
@@ -126,6 +128,7 @@ function Home() {
                 subjects={subjects || []}
                 onSettingsChange={handleSettingsChange}
                 activeTab={activeTab}
+                activeSubTab={activeSubTab}
                 onTabChange={setActiveTab}
             />
         )}

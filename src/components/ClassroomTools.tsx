@@ -19,13 +19,21 @@ interface ClassroomToolsProps {
   onAppSettingsChange: (newSettings: AppSettings) => void;
   layouts: SeatingLayout[];
   onLayoutsChange: (layouts: SeatingLayout[]) => void;
+  activeSubTab?: string | null;
+  onSubTabChange: (subTab: string) => void;
 }
 
 const ClassroomTools: FC<ClassroomToolsProps> = (props) => {
-  const { students, seatingChart, activeLayout } = props;
+  const { students, seatingChart, activeLayout, activeSubTab, onSubTabChange } = props;
+
+  const defaultSubTab = "seating-chart";
 
   return (
-    <Tabs defaultValue="seating-chart" className="w-full">
+    <Tabs 
+      value={activeSubTab || defaultSubTab} 
+      onValueChange={onSubTabChange}
+      className="w-full"
+    >
       <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="seating-chart">Klassekart</TabsTrigger>
         <TabsTrigger value="group-tool">Gruppeverktøy</TabsTrigger>

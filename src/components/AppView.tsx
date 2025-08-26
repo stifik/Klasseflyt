@@ -1,7 +1,7 @@
 
 'use client';
 
-import { FC } from 'react';
+import { FC, useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import HomeworkOverview from "@/components/HomeworkOverview";
 import DailyChecklist from "@/components/DailyChecklist";
@@ -35,6 +35,7 @@ const tabLabels: Partial<Record<TabKey, string>> = {
 interface AppViewProps {
     settings: AppSettings;
     activeTab: TabKey | null;
+    activeSubTab?: string | null;
     students: Student[];
     subjects: Subject[];
     onSettingsChange: (newSettings: AppSettings) => void;
@@ -44,11 +45,18 @@ interface AppViewProps {
 const AppView: FC<AppViewProps> = ({ 
     settings, 
     activeTab, 
+    activeSubTab,
     students,
     subjects,
     onSettingsChange,
     onTabChange, 
 }) => {
+  const [internalActiveSubTab, setInternalActiveSubTab] = useState<string | null>(null);
+
+  useEffect(() => {
+    setInternalActiveSubTab(activeSubTab || null);
+  }, [activeSubTab, activeTab]);
+  
   const visibleTabs = settings.tabOrder.filter(tabKey => settings.tabs[tabKey] && tabLabels[tabKey]);
   const defaultTab = activeTab || visibleTabs[0];
 
@@ -93,9 +101,9 @@ const AppView: FC<AppViewProps> = ({
   const componentProps: Record<string, any> = {
     overview: { students, subjects, homeworkList: homework, submissions, onUpdate: () => {} },
     dailyCheck: { students, initialChecks: dailyChecks, onUpdate: () => {}, seatingChart: seatingChartData },
-    observations: { students, initialHourlyChecks: hourlyChecks, initialRemarks: remarks, onUpdate: () => {}, seatingChart: seatingChartData, settings },
-    reports: { students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks, settings: settings },
-    classroomTools: { students, seatingChart: seatingChartData, onSeatingChartChange: handleSeatingChartChange, history: seatingChartHistory || [], appSettings: settings, onAppSettingsChange: onSettingsChange, layouts: seatingLayouts, onLayoutsChange: handleLayoutsChange, activeLayout },
+    observations: { students, initialHourlyChecks: hourlyChecks, initialRemarks: remarks, onUpdate: () => {}, seatingChart: seatingChartData, settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
+    reports: { students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks, settings: settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
+    classroomTools: { students, seatingChart: seatingChartData, onSeatingChartChange: handleSeatingChartChange, history: seatingChartHistory || [], appSettings: settings, onAppSettingsChange: onSettingsChange, layouts: seatingLayouts, onLayoutsChange: handleLayoutsChange, activeLayout, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
     settings: { initialStudents: students, initialSubjects: subjects, settings: settings, onSettingsChange: onSettingsChange }
   };
 
@@ -108,7 +116,10 @@ const AppView: FC<AppViewProps> = ({
   return (
     <Tabs 
         value={activeTab ?? defaultTab}
-        onValueChange={(value) => onTabChange && onTabChange(value as TabKey)} 
+        onValueChange={(value) => {
+          onTabChange && onTabChange(value as TabKey);
+          setInternalActiveSubTab(null); // Reset sub-tab when main tab changes
+        }}
         className="w-full"
     >
       <ScrollArea className="w-full whitespace-nowrap no-print">
@@ -129,7 +140,7 @@ const AppView: FC<AppViewProps> = ({
           const props = componentProps[tabKey];
           
           const isDataReady = Object.entries(props).every(([key, value]) => {
-              if (key === 'seatingChart') return value !== undefined; // Can be null
+              if (['seatingChart', 'activeSubTab'].includes(key)) return value !== undefined; // Can be null
               if (key === 'activeLayout') return seatingLayouts !== undefined; // Based on seatingLayouts query
               return value !== undefined;
           });
