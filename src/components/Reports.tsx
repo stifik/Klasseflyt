@@ -147,13 +147,19 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
         const messages = studentsToReport.map(report => {
             if (!report) return null;
             const { student, hasAnyIssues, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks } = report;
+            
+            const formatHomeworkWithSubject = (s: Submission) => {
+                const hw = homework.find(h => h.id === s.homeworkId);
+                const subject = subjects.find(sub => sub.id === hw?.subjectId);
+                return `${subject?.name || 'Ukjent fag'} (${hw?.title || ''})`;
+            };
 
             const message = generateSummaryMessage(
                 student.name,
                 selectedWeek,
                 hasAnyIssues,
-                studentWeekSubmissions.filter(s => s.status === 'Ikke levert').map(s => homework.find(h => h.id === s.homeworkId)?.title || ''),
-                studentWeekSubmissions.filter(s => s.status === 'Må rettes').map(s => homework.find(h => h.id === s.homeworkId)?.title || ''),
+                studentWeekSubmissions.filter(s => s.status === 'Ikke levert').map(formatHomeworkWithSubject),
+                studentWeekSubmissions.filter(s => s.status === 'Må rettes').map(formatHomeworkWithSubject),
                 studentWeekSubmissions.filter(s => s.status === 'Glemt bok').map(s => subjects.find(sub => sub.id === homework.find(h => h.id === s.homeworkId)?.subjectId)?.name || ''),
                 studentWeekChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
                 studentWeekChecks.filter(c => !c.ipadBrought).length,
