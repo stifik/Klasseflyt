@@ -139,10 +139,17 @@ export async function resetDatabase() {
 
         // Add settings
         const settingsToPut = { 
-            id: 'userSettings', 
-            ...defaultSettings, 
-            onboardingCompleted: true, 
-            reportSettings: {...defaultSettings.reportSettings, teacherName: 'Læreren'}
+            id: 'userSettings',
+            tabs: defaultSettings.tabs,
+            tabOrder: defaultSettings.tabOrder,
+            reportSettings: {
+                ...defaultSettings.reportSettings,
+                teacherName: 'Læreren'
+            },
+            schedule: defaultSettings.schedule,
+            selectedSeatingLayoutId: defaultSettings.selectedSeatingLayoutId,
+            remarkTypes: defaultSettings.remarkTypes,
+            onboardingCompleted: true,
         };
         await db.settings.put(settingsToPut);
         
