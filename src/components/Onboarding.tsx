@@ -1,18 +1,16 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { db } from "@/lib/db";
-import { useLiveQuery } from "dexie-react-hooks";
 import { Trash2, UserPlus, BookPlus, PartyPopper, User } from "lucide-react";
 import type { AppSettings, Student, Subject } from "@/lib/types";
 
 interface OnboardingProps {
-    onFinish: (settings: AppSettings) => void;
+    onFinish: (settings: AppSettings, teacherName: string, students: Student[], subjects: Subject[]) => void;
     initialSettings: AppSettings;
 }
 
@@ -23,31 +21,30 @@ export default function Onboarding({ onFinish, initialSettings }: OnboardingProp
     const [newStudent, setNewStudent] = useState("");
     const [newSubject, setNewSubject] = useState("");
     const [teacherName, setTeacherName] = useState(initialSettings.reportSettings.teacherName || "");
+    const [students, setStudents] = useState<Student[]>([]);
+    const [subjects, setSubjects] = useState<Subject[]>([]);
     const { toast } = useToast();
-
-    const students = useLiveQuery(() => db.students.toArray(), []);
-    const subjects = useLiveQuery(() => db.subjects.toArray(), []);
     
-    const handleAddStudent = async () => {
+    const handleAddStudent = () => {
         if (newStudent.trim()) {
-            await db.students.add({ name: newStudent.trim() });
+            setStudents(prev => [...prev, { name: newStudent.trim() }]);
             setNewStudent("");
         }
     };
     
-    const handleDeleteStudent = async (id: string) => {
-        await db.students.delete(id);
+    const handleDeleteStudent = (index: number) => {
+        setStudents(prev => prev.filter((_, i) => i !== index));
     };
     
-    const handleAddSubject = async () => {
+    const handleAddSubject = () => {
         if (newSubject.trim()) {
-            await db.subjects.add({ name: newSubject.trim() });
+            setSubjects(prev => [...prev, { name: newSubject.trim() }]);
             setNewSubject("");
         }
     };
 
-    const handleDeleteSubject = async (id: string) => {
-        await db.subjects.delete(id);
+    const handleDeleteSubject = (index: number) => {
+        setSubjects(prev => prev.filter((_, i) => i !== index));
     };
 
     const nextStep = () => {
@@ -55,11 +52,11 @@ export default function Onboarding({ onFinish, initialSettings }: OnboardingProp
              toast({ title: "Navn mangler", description: "Vennligst skriv inn navnet ditt for å fortsette.", variant: "destructive"});
             return;
         }
-        if (step === 2 && (!students || students.length === 0)) {
+        if (step === 2 && students.length === 0) {
             toast({ title: "Mangler elever", description: "Legg til minst én elev for å fortsette.", variant: "destructive"});
             return;
         }
-        if (step === 3 && (!subjects || subjects.length === 0)) {
+        if (step === 3 && subjects.length === 0) {
             toast({ title: "Mangler fag", description: "Legg til minst ett fag for å fortsette.", variant: "destructive"});
             return;
         }
@@ -70,20 +67,12 @@ export default function Onboarding({ onFinish, initialSettings }: OnboardingProp
     
     const prevStep = () => {
         if (step > 0) {
-            setStep(s => s + 1);
+            setStep(s => s - 1);
         }
     };
     
     const handleFinish = () => {
-        const finalSettings = {
-            ...initialSettings,
-            reportSettings: {
-                ...initialSettings.reportSettings,
-                teacherName: teacherName.trim(),
-            },
-            onboardingCompleted: true,
-        };
-        onFinish(finalSettings);
+        onFinish(initialSettings, teacherName.trim(), students, subjects);
     };
 
     const currentStep = steps[step];
@@ -148,10 +137,10 @@ export default function Onboarding({ onFinish, initialSettings }: OnboardingProp
                            <Button onClick={handleAddStudent}><UserPlus className="mr-2" /> Legg til</Button>
                         </div>
                         <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-                            {students?.slice().reverse().map(s => (
-                                <div key={s.id} className="flex justify-between items-center bg-secondary p-2 rounded-md">
+                            {students.slice().reverse().map((s, i) => (
+                                <div key={i} className="flex justify-between items-center bg-secondary p-2 rounded-md">
                                     <span>{s.name}</span>
-                                    <Button size="icon" variant="ghost" onClick={() => s.id && handleDeleteStudent(s.id)}><Trash2 className="text-destructive w-4 h-4" /></Button>
+                                    <Button size="icon" variant="ghost" onClick={() => handleDeleteStudent(students.length - 1 - i)}><Trash2 className="text-destructive w-4 h-4" /></Button>
                                 </div>
                             ))}
                         </div>
@@ -180,10 +169,10 @@ export default function Onboarding({ onFinish, initialSettings }: OnboardingProp
                            <Button onClick={handleAddSubject}><BookPlus className="mr-2" /> Legg til</Button>
                         </div>
                          <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-                            {subjects?.slice().reverse().map(s => (
-                                <div key={s.id} className="flex justify-between items-center bg-secondary p-2 rounded-md">
+                            {subjects.slice().reverse().map((s, i) => (
+                                <div key={i} className="flex justify-between items-center bg-secondary p-2 rounded-md">
                                     <span>{s.name}</span>
-                                    <Button size="icon" variant="ghost" onClick={() => s.id && handleDeleteSubject(s.id)}><Trash2 className="text-destructive w-4 h-4" /></Button>
+                                    <Button size="icon" variant="ghost" onClick={() => handleDeleteSubject(subjects.length - 1 - i)}><Trash2 className="text-destructive w-4 h-4" /></Button>
                                 </div>
                             ))}
                         </div>

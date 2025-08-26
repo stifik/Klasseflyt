@@ -40,7 +40,6 @@ const defaultSettings: AppSettings = {
 };
 
 function Home() {
-  const [initialLoading, setInitialLoading] = useState(true);
   const [activeView, setActiveView] = useState<'dashboard' | 'app'>('dashboard');
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
   
@@ -52,21 +51,20 @@ function Home() {
   const { instance } = useMsal();
 
   useEffect(() => {
-    const checkData = async () => {
-      if (students !== undefined && subjects !== undefined && settings !== undefined) {
-        let finalSettings = settings;
-        if (finalSettings && finalSettings.tabs.classroomTools === undefined) {
-          finalSettings.tabs.classroomTools = true;
-          if (!finalSettings.tabOrder.includes('classroomTools')) {
-            finalSettings.tabOrder.push('classroomTools');
+    const checkAndUpgradeSettings = async () => {
+      if (settings && settings.tabs.classroomTools === undefined) {
+          const newSettings = { ...settings };
+          newSettings.tabs.classroomTools = true;
+          if (!newSettings.tabOrder.includes('classroomTools')) {
+            newSettings.tabOrder.push('classroomTools');
           }
-          await db.settings.put({ id: 'userSettings', ...finalSettings });
-        }
-        setInitialLoading(false);
+          await db.settings.put({ id: 'userSettings', ...newSettings });
       }
     };
-    checkData();
-  }, [students, subjects, settings]);
+    if(settings !== undefined) {
+        checkAndUpgradeSettings();
+    }
+  }, [settings]);
   
   const currentSettings = settings || defaultSettings;
 
@@ -74,8 +72,18 @@ function Home() {
     await db.settings.put({ id: 'userSettings', ...newSettings });
   }
   
-  const handleOnboardingComplete = async (finalSettings: AppSettings) => {
-    await handleSettingsChange(finalSettings);
+  const handleOnboardingComplete = async (finalSettings: AppSettings, teacherName: string, students: Student[], subjects: Subject[]) => {
+      await db.students.bulkPut(students);
+      await db.subjects.bulkPut(subjects);
+      const newSettings = {
+          ...finalSettings,
+          reportSettings: {
+              ...finalSettings.reportSettings,
+              teacherName,
+          },
+          onboardingCompleted: true,
+      };
+      await handleSettingsChange(newSettings);
   }
 
   const navigateToTab = (tab: TabKey) => {
@@ -88,7 +96,9 @@ function Home() {
       setActiveView('app');
   }
 
-  if (initialLoading || students === undefined) {
+  const isLoading = students === undefined || subjects === undefined || settings === undefined;
+
+  if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-background items-center justify-center">
         <Loader2 className="w-12 h-12 animate-spin mb-4" />
