@@ -10,7 +10,7 @@ import StudentPicker from "./StudentPicker";
 interface ClassroomToolsProps {
   students: Student[];
   seatingChart: SeatingChartData | null;
-  activeLayout: SeatingLayout | null;
+  activeLayout: SeatingLayout | null | undefined;
 }
 
 const ClassroomTools: FC<ClassroomToolsProps> = ({ students, seatingChart, activeLayout }) => {
