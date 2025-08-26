@@ -13,6 +13,7 @@ import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import Onboarding from "@/components/Onboarding";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 
 const defaultSettings: AppSettings = {
@@ -109,6 +110,7 @@ function Home() {
           </button>
         </div>
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <Button variant="ghost" size="icon" onClick={navigateToSettings}>
               <SettingsIcon />
               <span className="sr-only">Innstillinger</span>
