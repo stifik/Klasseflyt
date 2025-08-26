@@ -6,7 +6,7 @@ import type { Student, HourlyCheck, BehaviorType, SeatingChartData, AppSettings 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Smile, Annoyed, Handshake, CheckCircle2, Star, MessageSquareWarning, Hand } from "lucide-react";
+import { Calendar as CalendarIcon, CheckCircle2, Star } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -15,6 +15,7 @@ import { db } from "@/lib/db";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
 import { cn } from "@/lib/utils";
+import * as LucideIcons from "lucide-react";
 
 const NUMBER_OF_PERIODS = 6;
 
@@ -26,35 +27,19 @@ interface HourlyCheckProps {
   settings: AppSettings;
 }
 
-const iconMap: Record<string, React.ElementType> = {
-    workedWell: Smile,
-    disturbed: Annoyed,
-    helpedOthers: Handshake,
-    default: Star,
-    warning: MessageSquareWarning,
-    participated: Hand,
+const colorConfig: Record<BehaviorType['color'], { text: string, bg: string, border: string }> = {
+    green: { text: 'text-green-800', bg: 'bg-green-100', border: 'border-green-300' },
+    yellow: { text: 'text-yellow-800', bg: 'bg-yellow-100', border: 'border-yellow-300' },
+    blue: { text: 'text-blue-800', bg: 'bg-blue-100', border: 'border-blue-300' },
+    red: { text: 'text-red-800', bg: 'bg-red-100', border: 'border-red-300' },
+    purple: { text: 'text-purple-800', bg: 'bg-purple-100', border: 'border-purple-300' },
+    gray: { text: 'text-gray-800', bg: 'bg-gray-100', border: 'border-gray-300' },
 };
 
-const behaviorConfig = (behaviorTypes: BehaviorType[] = []) => {
-    const config: Record<string, { icon: React.ElementType, label: string, color: string, selectedColor: string }> = {};
-    
-    behaviorTypes.forEach(bt => {
-        let icon = iconMap.default;
-        if(bt.id in iconMap) icon = iconMap[bt.id];
-
-        config[bt.id] = {
-            icon,
-            label: bt.label,
-            color: "text-gray-600", 
-            selectedColor: "bg-blue-100 border-blue-300"
-        };
-    });
-    // Override specific default colors if they exist
-    if(config.workedWell) { config.workedWell.color = "text-green-600"; config.workedWell.selectedColor = "bg-green-100 border-green-300"; }
-    if(config.disturbed) { config.disturbed.color = "text-yellow-600"; config.disturbed.selectedColor = "bg-yellow-100 border-yellow-300"; }
-    if(config.helpedOthers) { config.helpedOthers.color = "text-blue-600"; config.helpedOthers.selectedColor = "bg-blue-100 border-blue-300"; }
-
-    return config;
+const Icon = ({ name, className }: { name: string, className?: string }) => {
+    const LucideIcon = (LucideIcons as any)[name];
+    if (!LucideIcon) return <LucideIcons.Star className={className} />;
+    return <LucideIcon className={className} />;
 }
 
 export default function HourlyCheck({ students, initialChecks, onUpdate, seatingChart, settings }: HourlyCheckProps) {
@@ -175,11 +160,11 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
     }
   };
 
-  const currentBehaviorConfig = behaviorConfig(behaviorTypes);
-
   const StudentButton = ({ student }: { student: Student }) => {
     const checksForPeriod = getChecksForStudent(student.id, date, currentPeriod);
-    const hasActiveBehavior = checksForPeriod.some(c => c.behaviorId === activeBehaviorId);
+    const activeBehaviorType = behaviorTypes.find(bt => bt.id === activeBehaviorId);
+    const hasActiveBehavior = checksForPeriod.some(c => c.id === activeBehaviorId);
+    const selectedColorClasses = activeBehaviorType ? colorConfig[activeBehaviorType.color] : null;
 
     return (
         <button
@@ -187,17 +172,16 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
             className={cn(
                 "flex flex-col items-center justify-center p-2 text-center border rounded-lg w-28 h-20 transition-all",
                 "bg-secondary hover:bg-muted",
-                { [currentBehaviorConfig[activeBehaviorId!]?.selectedColor || '']: hasActiveBehavior }
+                { [cn(selectedColorClasses?.bg, selectedColorClasses?.border)]: hasActiveBehavior && selectedColorClasses }
             )}
         >
              <span className="mb-1 text-xs font-semibold">{student.name}</span>
              <div className="flex gap-2">
                 {behaviorTypes.map(bt => {
-                    const config = currentBehaviorConfig[bt.id];
                     const isChecked = checksForPeriod.some(c => c.behaviorId === bt.id);
-                    if (!isChecked || !config) return null;
-                    const Icon = config.icon;
-                    return <Icon key={bt.id} className={cn("h-4 w-4", config.color)} />;
+                    if (!isChecked) return null;
+                    const color = colorConfig[bt.color]?.text || 'text-gray-600';
+                    return <Icon key={bt.id} name={bt.icon} className={cn("h-4 w-4", color)} />;
                 })}
              </div>
         </button>
@@ -259,21 +243,19 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
           <Label className="font-semibold">Velg atferd:</Label>
           <div className="flex flex-wrap gap-2">
             {behaviorTypes.length > 0 ? behaviorTypes.map(bt => {
-              const config = currentBehaviorConfig[bt.id];
-              if (!config) return null;
-              const Icon = config.icon;
               const isActive = activeBehaviorId === bt.id;
+              const colors = colorConfig[bt.color];
               return (
                   <Button
                       key={bt.id}
                       variant={isActive ? "secondary" : "ghost"}
                       size="sm"
                       onClick={() => setActiveBehaviorId(bt.id)}
-                      className={cn("justify-start", { [config.selectedColor]: isActive })}
+                      className={cn("justify-start", { [cn(colors.bg, colors.border)]: isActive })}
                   >
                       {isActive && <CheckCircle2 className="mr-2 h-4 w-4" />}
-                      <Icon className={cn("mr-2 h-4 w-4", config.color)} />
-                      {config.label}
+                      <Icon name={bt.icon} className={cn("mr-2 h-4 w-4", colors.text)} />
+                      {bt.label}
                   </Button>
               );
             }) : <p className="text-sm text-muted-foreground">Ingen atferdstyper definert. Gå til Innstillinger for å legge til.</p>}

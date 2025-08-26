@@ -48,6 +48,8 @@ export type Remark = {
 export type BehaviorType = {
   id: string;
   label: string;
+  icon: string;
+  color: 'green' | 'yellow' | 'blue' | 'red' | 'purple' | 'gray';
 };
 
 export type HourlyCheck = {

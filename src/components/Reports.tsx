@@ -1,8 +1,9 @@
 
+
 "use client";
 
 import { useState, useMemo, FC } from 'react';
-import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings, HourlyCheck, BehaviorType } from '@/lib/types';
+import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings, HourlyCheck, BehaviorType, AppSettings } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RemarkAnalysis from './RemarkAnalysis';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { cn } from '@/lib/utils';
+import * as LucideIcons from "lucide-react";
 
 interface ReportsProps {
   students: Student[];
@@ -255,6 +257,12 @@ const StatusBar: FC<{ stats: Record<HomeworkStatus, number>, total: number }> = 
     );
 };
 
+const Icon = ({ name, className }: { name: string, className?: string }) => {
+    const LucideIcon = (LucideIcons as any)[name];
+    if (!LucideIcon) return <LucideIcons.Star className={className} />;
+    return <LucideIcon className={className} />;
+}
+
 const ReportDetails = ({ stat, behaviorTypes }: { stat: ReturnType<typeof useStudentStats>[0], behaviorTypes: BehaviorType[] }) => (
     <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
@@ -274,9 +282,10 @@ const ReportDetails = ({ stat, behaviorTypes }: { stat: ReturnType<typeof useStu
                 <CardContent className="text-sm text-teal-800 dark:text-teal-300 space-y-1">
                      {behaviorTypes.map(bt => {
                         const count = stat.behaviorCounts[bt.id] || 0;
+                        if (count === 0) return null;
                         return (
                             <p key={bt.id} className="flex items-center">
-                                <Star className="mr-2 w-4 h-4 text-yellow-500" />
+                                <Icon name={bt.icon} className="mr-2 w-4 h-4 text-teal-600" />
                                 {bt.label}: <strong>{count}</strong> gang(er)
                             </p>
                         );

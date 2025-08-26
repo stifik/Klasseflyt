@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -7,7 +8,7 @@ import type { Student, Subject, AppSettings, TabKey, BehaviorType } from "@/lib/
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText } from "lucide-react";
+import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Palette, Smile } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -41,7 +42,9 @@ import { Separator } from "./ui/separator";
 import { db, resetDatabase, clearDatabase } from "@/lib/db";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { v4 as uuidv4 } from 'uuid';
-
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { cn } from "@/lib/utils";
+import * as LucideIcons from "lucide-react";
 
 interface SettingsProps {
   initialStudents: Student[];
@@ -60,6 +63,23 @@ const tabLabels: Partial<Record<TabKey, string>> = {
   classroomTools: "Klasseverktøy",
   settings: "Innstillinger"
 };
+
+const availableIcons = [
+    'Smile', 'Annoyed', 'Handshake', 'Star', 'ThumbsUp', 'ThumbsDown', 'Award', 'BookOpen', 
+    'MessageSquareWarning', 'Hand', 'Heart', 'Sparkles', 'Zap', 'Wind', 'CheckCircle2'
+];
+
+const availableColors: BehaviorType['color'][] = ['green', 'yellow', 'blue', 'red', 'purple', 'gray'];
+const colorClasses: Record<BehaviorType['color'], string> = {
+    green: 'bg-green-500', yellow: 'bg-yellow-500', blue: 'bg-blue-500', 
+    red: 'bg-red-500', purple: 'bg-purple-500', gray: 'bg-gray-500',
+};
+
+const Icon = ({ name, className }: { name: string, className?: string }) => {
+    const LucideIcon = (LucideIcons as any)[name];
+    if (!LucideIcon) return <LucideIcons.Star className={className} />;
+    return <LucideIcon className={className} />;
+}
 
 const SortableTabItem = ({ id, onToggle, settings }: { id: TabKey, onToggle: (tab: TabKey) => void, settings: AppSettings }) => {
   const {
@@ -100,7 +120,11 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
   const [newStudent, setNewStudent] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [newRemarkType, setNewRemarkType] = useState("");
-  const [newBehaviorType, setNewBehaviorType] = useState("");
+  
+  const [newBehaviorLabel, setNewBehaviorLabel] = useState("");
+  const [newBehaviorIcon, setNewBehaviorIcon] = useState<string>(availableIcons[0]);
+  const [newBehaviorColor, setNewBehaviorColor] = useState<BehaviorType['color']>(availableColors[0]);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [localSettings, setLocalSettings] = useState(initialSettings);
 
@@ -183,11 +207,16 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
   };
   
   const handleAddBehaviorType = () => {
-    if (newBehaviorType.trim()) {
-        const newType: BehaviorType = { id: uuidv4(), label: newBehaviorType.trim() };
+    if (newBehaviorLabel.trim()) {
+        const newType: BehaviorType = { 
+            id: uuidv4(), 
+            label: newBehaviorLabel.trim(),
+            icon: newBehaviorIcon,
+            color: newBehaviorColor
+        };
         const updatedTypes = [...(localSettings.behaviorTypes || []), newType];
         handleSettingChange({ behaviorTypes: updatedTypes });
-        setNewBehaviorType("");
+        setNewBehaviorLabel("");
     }
   };
 
@@ -522,25 +551,62 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                         </ul>
                     </AccordionContent>
                   </AccordionItem>
-                  <AccordionItem value="behaviorTypes">
+                   <AccordionItem value="behaviorTypes">
                     <AccordionTrigger>Administrer Atferdstyper ({(localSettings.behaviorTypes || []).length})</AccordionTrigger>
                     <AccordionContent>
-                        <div className="flex gap-2 mb-4">
+                        <div className="p-2 space-y-3 border-b mb-4">
                             <Input
-                                value={newBehaviorType}
-                                onChange={(e) => setNewBehaviorType(e.target.value)}
+                                value={newBehaviorLabel}
+                                onChange={(e) => setNewBehaviorLabel(e.target.value)}
                                 placeholder="Ny atferdstype..."
-                                onKeyDown={(e) => e.key === 'Enter' && handleAddBehaviorType()}
                             />
-                            <Button onClick={handleAddBehaviorType}><Plus className="mr-2"/> Legg til</Button>
+                            <div className="flex items-center gap-2">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className="justify-start">
+                                            <Icon name={newBehaviorIcon} className="w-4 h-4 mr-2" />
+                                            Velg ikon
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-2">
+                                        <div className="grid grid-cols-5 gap-1">
+                                            {availableIcons.map(icon => (
+                                                <Button key={icon} variant={newBehaviorIcon === icon ? "secondary" : "ghost"} size="icon" onClick={() => setNewBehaviorIcon(icon)}>
+                                                    <Icon name={icon} />
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                                 <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className="justify-start">
+                                            <div className={cn("w-4 h-4 rounded-full mr-2", colorClasses[newBehaviorColor])} />
+                                            Velg farge
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-2">
+                                        <div className="flex gap-1">
+                                            {availableColors.map(color => (
+                                                <button key={color} onClick={() => setNewBehaviorColor(color)} className={cn("w-6 h-6 rounded-full", colorClasses[color], { 'ring-2 ring-ring ring-offset-2': newBehaviorColor === color })} />
+                                            ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                             <Button onClick={handleAddBehaviorType} className="w-full"><Plus className="mr-2"/> Legg til</Button>
                         </div>
                         <ul className="space-y-2">
                             {(localSettings.behaviorTypes || []).map((type) => (
                                 <li key={type.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
-                                <span>{type.label}</span>
-                                <Button variant="ghost" size="icon" onClick={() => handleDeleteBehaviorType(type.id)}>
-                                    <Trash2 className="w-4 h-4 text-destructive" />
-                                </Button>
+                                    <div className="flex items-center gap-2">
+                                        <Icon name={type.icon} className="w-4 h-4" />
+                                        <div className={cn("w-3 h-3 rounded-full", colorClasses[type.color])} />
+                                        <span>{type.label}</span>
+                                    </div>
+                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteBehaviorType(type.id)}>
+                                        <Trash2 className="w-4 h-4 text-destructive" />
+                                    </Button>
                                 </li>
                             ))}
                         </ul>

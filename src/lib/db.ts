@@ -1,6 +1,7 @@
 
+
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -101,6 +102,31 @@ export class MySubClassedDexie extends Dexie {
             }
         });
 
+        // Version 6: Add icon and color to BehaviorType
+        this.version(6).stores({}).upgrade(async (tx) => {
+            const userSettings = await tx.table('settings').get('userSettings');
+            if (userSettings && userSettings.behaviorTypes) {
+                const updatedTypes = userSettings.behaviorTypes.map((type: any) => {
+                    // If type is a string, convert to object with defaults
+                    if (typeof type === 'string') {
+                        return { id: uuidv4(), label: type, icon: 'Star', color: 'gray' };
+                    }
+                    // If it's an object but lacks new properties, add them
+                    if (!type.icon || !type.color) {
+                        let icon = 'Star';
+                        let color: BehaviorType['color'] = 'blue';
+                        if (type.id === 'workedWell') { icon = 'Smile'; color = 'green'; }
+                        if (type.id === 'disturbed') { icon = 'Annoyed'; color = 'yellow'; }
+                        if (type.id === 'helpedOthers') { icon = 'Handshake'; color = 'blue'; }
+                        return { ...type, icon, color };
+                    }
+                    return type;
+                });
+                userSettings.behaviorTypes = updatedTypes;
+                await tx.table('settings').put(userSettings);
+            }
+        });
+
 
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
@@ -123,10 +149,10 @@ const mockStudents = [
 
 const mockSubjects = [ { name: 'Norsk' }, { name: 'Matematikk' }, { name: 'Engelsk' }, { name: 'Samfunnsfag' }, { name: 'Naturfag' }];
 
-const defaultBehaviorTypes = [
-    { id: 'workedWell', label: 'Jobbet godt' },
-    { id: 'disturbed', label: 'Forstyrret' },
-    { id: 'helpedOthers', label: 'Hjalp andre' }
+const defaultBehaviorTypes: BehaviorType[] = [
+    { id: 'workedWell', label: 'Jobbet godt', icon: 'Smile', color: 'green' },
+    { id: 'disturbed', label: 'Forstyrret', icon: 'Annoyed', color: 'yellow' },
+    { id: 'helpedOthers', label: 'Hjalp andre', icon: 'Handshake', color: 'blue' }
 ];
 
 const defaultSettings: AppSettings = {
@@ -188,13 +214,11 @@ export async function resetDatabase() {
         
 
         // Add students and subjects
-        await db.students.bulkAdd(mockStudents);
-        await db.subjects.bulkAdd(mockSubjects);
-        
-        // Re-fetch students and subjects to get full objects with IDs
-        const allStudents = await db.students.toArray();
+        const studentIds = await db.students.bulkAdd(mockStudents, { returning: true }) as string[];
+        const subjectIds = await db.subjects.bulkAdd(mockSubjects, { returning: true }) as string[];
+
         const allSubjects = await db.subjects.toArray();
-        const studentIds = allStudents.map(s => s.id!);
+        const allStudents = await db.students.toArray();
 
         const norskSubject = allSubjects.find(s => s.name === 'Norsk');
         const engelskSubject = allSubjects.find(s => s.name === 'Engelsk');
@@ -215,7 +239,7 @@ export async function resetDatabase() {
 
         // --- Create Mock Submissions ---
         const submissionsToAdd: Omit<Submission, 'id'>[] = [];
-        studentIds.forEach(studentId => {
+        allStudents.forEach(student => {
             homeworkIds.forEach(homeworkId => {
                 const chance = Math.random();
                 if (chance > 0.1) { // 90% chance of a submission
@@ -224,7 +248,7 @@ export async function resetDatabase() {
                     if (chance < 0.2) { status = "Ikke levert"; isDelayed = true; }
                     else if (chance < 0.25) { status = "Må rettes"; isDelayed = true; }
                     submissionsToAdd.push({
-                        studentId,
+                        studentId: student.id!,
                         homeworkId,
                         status,
                         comment: status === "Må rettes" ? "Gjør oppgavene på nytt." : undefined,
@@ -239,12 +263,12 @@ export async function resetDatabase() {
         const dailyChecksToAdd: Omit<DailyCheck, 'id'>[] = [];
         for (let i = 0; i < 5; i++) { // Last 5 days
             const date = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
-            studentIds.forEach(studentId => {
+            allStudents.forEach(student => {
                 const chance = Math.random();
                 if (chance < 0.1) {
-                    dailyChecksToAdd.push({ studentId, date, ipadCharged: true, ipadBrought: false });
+                    dailyChecksToAdd.push({ studentId: student.id!, date, ipadCharged: true, ipadBrought: false });
                 } else if (chance < 0.2) {
-                    dailyChecksToAdd.push({ studentId, date, ipadCharged: false, ipadBrought: true });
+                    dailyChecksToAdd.push({ studentId: student.id!, date, ipadCharged: false, ipadBrought: true });
                 }
                 // No entry means OK
             });
@@ -260,7 +284,7 @@ export async function resetDatabase() {
 
             for (let j = 0; j < Math.floor(Math.random() * 5); j++) { // 0-4 remarks per day
                 remarksToAdd.push({
-                    studentId: studentIds[Math.floor(Math.random() * studentIds.length)],
+                    studentId: allStudents[Math.floor(Math.random() * allStudents.length)].id!,
                     date,
                     period: Math.floor(Math.random() * 5) + 1,
                     type: remarkTypes[Math.floor(Math.random() * remarkTypes.length)]
@@ -277,16 +301,16 @@ export async function resetDatabase() {
             if (date.getDay() === 0 || date.getDay() === 6) continue;
             
             for (let period = 1; period <= 6; period++) {
-                studentIds.forEach(studentId => {
+                allStudents.forEach(student => {
                     const chance = Math.random();
                      if (chance < 0.6) {
-                        hourlyChecksToAdd.push({ studentId, date, period, behaviorId: behaviorTypes.find(b => b.id === 'workedWell')?.id || 'workedWell' });
+                        hourlyChecksToAdd.push({ studentId: student.id!, date, period, behaviorId: behaviorTypes.find(b => b.id === 'workedWell')?.id || 'workedWell' });
                     }
                     if (chance > 0.9) {
-                        hourlyChecksToAdd.push({ studentId, date, period, behaviorId: behaviorTypes.find(b => b.id === 'disturbed')?.id || 'disturbed' });
+                        hourlyChecksToAdd.push({ studentId: student.id!, date, period, behaviorId: behaviorTypes.find(b => b.id === 'disturbed')?.id || 'disturbed' });
                     }
                     if (chance > 0.5 && chance < 0.55) {
-                        hourlyChecksToAdd.push({ studentId, date, period, behaviorId: behaviorTypes.find(b => b.id === 'helpedOthers')?.id || 'helpedOthers' });
+                        hourlyChecksToAdd.push({ studentId: student.id!, date, period, behaviorId: behaviorTypes.find(b => b.id === 'helpedOthers')?.id || 'helpedOthers' });
                     }
                 });
             }
