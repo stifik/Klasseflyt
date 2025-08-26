@@ -5,6 +5,7 @@ import { FC } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import HomeworkOverview from "@/components/HomeworkOverview";
 import DailyChecklist from "@/components/DailyChecklist";
+import HourlyCheck from '@/components/HourlyCheck';
 import Reports from "@/components/Reports";
 import Settings from "@/components/Settings";
 import SeatingChart from "@/components/SeatingChart";
@@ -18,6 +19,7 @@ import { db } from '@/lib/db';
 const tabComponents: Partial<Record<TabKey, FC<any>>> = {
   overview: HomeworkOverview,
   dailyCheck: DailyChecklist,
+  hourlyCheck: HourlyCheck,
   remarks: Remarks,
   reports: Reports,
   seatingChart: SeatingChart,
@@ -28,6 +30,7 @@ const tabComponents: Partial<Record<TabKey, FC<any>>> = {
 const tabLabels: Partial<Record<TabKey, string>> = {
   overview: "Lekseoversikt",
   dailyCheck: "Daglig Sjekk",
+  hourlyCheck: "Timeinnsjekk",
   remarks: "Anmerkninger",
   reports: "Rapporter & Analyse",
   seatingChart: "Klassekart",
@@ -58,6 +61,7 @@ const AppView: FC<AppViewProps> = ({
   const homework = useLiveQuery(() => db.homework.toArray(), [], undefined);
   const submissions = useLiveQuery(() => db.submissions.toArray(), [], undefined);
   const dailyChecks = useLiveQuery(() => db.dailyChecks.toArray(), [], undefined);
+  const hourlyChecks = useLiveQuery(() => db.hourlyChecks.toArray(), [], undefined);
   const remarks = useLiveQuery(() => db.remarks.toArray(), [], undefined);
   const seatingChartHistory = useLiveQuery(() => db.seatingChartHistory.orderBy('createdAt').reverse().toArray(), [], undefined);
   const seatingLayouts = useLiveQuery(() => db.seatingLayouts.toArray(), [], undefined);
@@ -95,8 +99,9 @@ const AppView: FC<AppViewProps> = ({
   const componentProps: Record<string, any> = {
     overview: { students, subjects, homeworkList: homework, submissions, onUpdate: () => {} },
     dailyCheck: { students, initialChecks: dailyChecks, onUpdate: () => {}, seatingChart: seatingChartData },
+    hourlyCheck: { students, initialChecks: hourlyChecks, onUpdate: () => {}, seatingChart: seatingChartData, settings },
     remarks: { students, initialRemarks: remarks, onUpdate: () => {}, seatingChart: seatingChartData, settings },
-    reports: { students, subjects, homework, submissions, dailyChecks, remarks, settings: settings.reportSettings },
+    reports: { students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks, settings: settings.reportSettings },
     seatingChart: { students, seatingChart: seatingChartData, onSeatingChartChange: handleSeatingChartChange, history: seatingChartHistory || [], appSettings: settings, onAppSettingsChange: onSettingsChange, layouts: seatingLayouts, onLayoutsChange: handleLayoutsChange },
     classroomTools: { students, seatingChart: seatingChartData, activeLayout },
     settings: { initialStudents: students, initialSubjects: subjects, settings: settings, onSettingsChange: onSettingsChange }

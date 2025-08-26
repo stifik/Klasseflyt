@@ -1,6 +1,6 @@
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck } from './types';
 import { getWeekNumber } from './utils';
 
 // Define the database schema
@@ -11,6 +11,7 @@ export class MySubClassedDexie extends Dexie {
     submissions!: Table<Submission, number>;
     dailyChecks!: Table<DailyCheck, number>;
     remarks!: Table<Remark, number>;
+    hourlyChecks!: Table<HourlyCheck, number>;
     seatingChartHistory!: Table<SeatingChartRecord, number>;
     seatingLayouts!: Table<SeatingLayout, string>;
     settings!: Table<AppSettings & { id: string }, string>;
@@ -56,6 +57,26 @@ export class MySubClassedDexie extends Dexie {
             }
         });
         
+        this.version(4).stores({
+            hourlyChecks: '++id, &[studentId+date+period], studentId, date, period'
+        }).upgrade(async (tx) => {
+             const userSettings = await tx.table('settings').get('userSettings');
+             if (userSettings) {
+                if (userSettings.tabs.hourlyCheck === undefined) {
+                    userSettings.tabs.hourlyCheck = true;
+                }
+                if (!userSettings.tabOrder.includes('hourlyCheck')) {
+                    const remarksIndex = userSettings.tabOrder.indexOf('remarks');
+                    if (remarksIndex !== -1) {
+                        userSettings.tabOrder.splice(remarksIndex, 0, 'hourlyCheck');
+                    } else {
+                        userSettings.tabOrder.push('hourlyCheck');
+                    }
+                }
+                await tx.table('settings').put(userSettings);
+            }
+        });
+
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
         });
@@ -79,11 +100,11 @@ const mockSubjects = [ { name: 'Norsk' }, { name: 'Matematikk' }, { name: 'Engel
 
 const defaultSettings: AppSettings = {
   tabs: {
-    overview: true, dailyCheck: true, remarks: true, reports: true,
+    overview: true, dailyCheck: true, hourlyCheck: true, remarks: true, reports: true,
     seatingChart: true, classroomTools: true,
     settings: true,
   },
-  tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'classroomTools'],
+  tabOrder: ['overview', 'dailyCheck', 'hourlyCheck', 'remarks', 'reports', 'seatingChart', 'classroomTools'],
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
     includePositiveFeedback: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
@@ -199,6 +220,30 @@ export async function resetDatabase() {
             }
         }
         await db.remarks.bulkAdd(remarksToAdd);
+        
+        // --- Create Mock Hourly Checks ---
+        const hourlyChecksToAdd: Omit<HourlyCheck, 'id'>[] = [];
+        for (let i = 0; i < 7; i++) { // Last 7 days
+            const date = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
+            if (date.getDay() === 0 || date.getDay() === 6) continue;
+            
+            for (let period = 1; period <= 6; period++) {
+                studentIds.forEach(studentId => {
+                    const chance = Math.random();
+                     if (chance < 0.6) {
+                        hourlyChecksToAdd.push({ studentId, date, period, behavior: 'WorkedWell' });
+                    }
+                    if (chance > 0.9) {
+                        hourlyChecksToAdd.push({ studentId, date, period, behavior: 'Disturbed' });
+                    }
+                    if (chance > 0.5 && chance < 0.55) {
+                        hourlyChecksToAdd.push({ studentId, date, period, behavior: 'HelpedOthers' });
+                    }
+                });
+            }
+        }
+        await db.hourlyChecks.bulkAdd(hourlyChecksToAdd);
+
 
         console.log("Database has been reset and seeded with extensive demo data.");
     });

@@ -45,6 +45,17 @@ export type Remark = {
   type?: string;
 };
 
+export type BehaviorType = 'WorkedWell' | 'Disturbed' | 'HelpedOthers';
+
+export type HourlyCheck = {
+    id?: number;
+    studentId: string;
+    date: Date;
+    period: number;
+    behavior: BehaviorType;
+};
+
+
 export type SeatingChartData = (string[] | null)[][];
 
 export type SeatingChartRecord = {
@@ -65,7 +76,7 @@ export type SeatingLayout = {
   createdAt: Date;
 };
 
-export type TabKey = 'overview' | 'dailyCheck' | 'remarks' | 'reports' | 'seatingChart' | 'classroomTools' | 'settings';
+export type TabKey = 'overview' | 'dailyCheck' | 'hourlyCheck' | 'remarks' | 'reports' | 'seatingChart' | 'classroomTools' | 'settings';
 
 export type ReportSettings = {
   includeHomework: boolean;

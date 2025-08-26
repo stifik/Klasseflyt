@@ -53,6 +53,7 @@ interface SettingsProps {
 const tabLabels: Partial<Record<TabKey, string>> = {
   overview: "Lekseoversikt",
   dailyCheck: "Daglig Sjekk",
+  hourlyCheck: "Timeinnsjekk",
   remarks: "Anmerkninger",
   reports: "Rapporter & Analyse",
   seatingChart: "Klassekart",
@@ -612,5 +613,3 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
     </div>
   );
 }
-
-    

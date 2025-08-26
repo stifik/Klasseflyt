@@ -2,12 +2,12 @@
 "use client";
 
 import { useState, useMemo, FC } from 'react';
-import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings } from '@/lib/types';
+import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings, HourlyCheck } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
-import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp, Smile, Annoyed, Handshake } from 'lucide-react';
 import { getWeekNumber } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RemarkAnalysis from './RemarkAnalysis';
@@ -21,6 +21,7 @@ interface ReportsProps {
   submissions: Submission[];
   dailyChecks: DailyCheck[];
   remarks: Remark[];
+  hourlyChecks: HourlyCheck[];
   settings: ReportSettings;
 }
 
@@ -256,15 +257,27 @@ const StatusBar: FC<{ stats: Record<HomeworkStatus, number>, total: number }> = 
 
 const ReportDetails = ({ stat }: { stat: ReturnType<typeof useStudentStats>[0] }) => (
     <div className="space-y-4">
-        <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-            <CardHeader>
-                <CardTitle className="text-base text-blue-900 dark:text-blue-200">iPad-ansvar</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-blue-800 dark:text-blue-300">
-                <p>Glemt å lade: <strong>{stat.ipadNotCharged}</strong> gang(er)</p>
-                <p>Glemt å ta med: <strong>{stat.ipadNotBrought}</strong> gang(er)</p>
-            </CardContent>
-        </Card>
+        <div className="grid gap-4 md:grid-cols-2">
+             <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                <CardHeader>
+                    <CardTitle className="text-base text-blue-900 dark:text-blue-200">iPad-ansvar</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-blue-800 dark:text-blue-300">
+                    <p>Glemt å lade: <strong>{stat.ipadNotCharged}</strong> gang(er)</p>
+                    <p>Glemt å ta med: <strong>{stat.ipadNotBrought}</strong> gang(er)</p>
+                </CardContent>
+            </Card>
+            <Card className="bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800">
+                <CardHeader>
+                    <CardTitle className="text-base text-teal-900 dark:text-teal-200">Innsats i timen</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-teal-800 dark:text-teal-300 space-y-1">
+                    <p className="flex items-center"><Smile className="mr-2 w-4 h-4 text-green-600" />Jobbet godt: <strong>{stat.workedWell}</strong> gang(er)</p>
+                    <p className="flex items-center"><Handshake className="mr-2 w-4 h-4 text-blue-600" />Hjulpet andre: <strong>{stat.helpedOthers}</strong> gang(er)</p>
+                    <p className="flex items-center"><Annoyed className="mr-2 w-4 h-4 text-yellow-600" />Forstyrret: <strong>{stat.disturbed}</strong> gang(er)</p>
+                </CardContent>
+            </Card>
+        </div>
 
         <div className="grid gap-4 md:grid-cols-2">
             {stat.statsBySubject.map(subStat => (
@@ -337,11 +350,12 @@ const FullReportCard = ({ stat, isOpen, isPrintVersion = false }: { stat: Return
     </Card>
 );
 
-const useStudentStats = (students: Student[], subjects: Subject[], homework: Homework[], submissions: Submission[], dailyChecks: DailyCheck[], remarks: Remark[]) => {
+const useStudentStats = (students: Student[], subjects: Subject[], homework: Homework[], submissions: Submission[], dailyChecks: DailyCheck[], remarks: Remark[], hourlyChecks: HourlyCheck[]) => {
     return useMemo(() => {
         return students.map(student => {
             const studentSubmissions = submissions.filter(s => s.studentId === student.id);
-            const studentChecks = dailyChecks.filter(c => c.studentId === student.id);
+            const studentDailyChecks = dailyChecks.filter(c => c.studentId === student.id);
+            const studentHourlyChecks = hourlyChecks.filter(c => c.studentId === student.id);
             const studentRemarks = remarks.filter(r => r.studentId === student.id);
 
             const totalStatusCounts = studentSubmissions.reduce((acc, sub) => {
@@ -390,18 +404,21 @@ const useStudentStats = (students: Student[], subjects: Subject[], homework: Hom
                 totalHomework,
                 totalStatusCounts,
                 totalDelays,
-                ipadNotCharged: studentChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
-                ipadNotBrought: studentChecks.filter(c => !c.ipadBrought).length,
+                ipadNotCharged: studentDailyChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
+                ipadNotBrought: studentDailyChecks.filter(c => !c.ipadBrought).length,
+                workedWell: studentHourlyChecks.filter(c => c.behavior === 'WorkedWell').length,
+                disturbed: studentHourlyChecks.filter(c => c.behavior === 'Disturbed').length,
+                helpedOthers: studentHourlyChecks.filter(c => c.behavior === 'HelpedOthers').length,
                 totalRemarks: studentRemarks.length,
             };
         }).sort((a,b) => a.studentName.localeCompare(b.studentName));
-    }, [students, subjects, homework, submissions, dailyChecks, remarks]);
+    }, [students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks]);
 };
 
 
-const StudentReport = ({ students, subjects, homework, submissions, dailyChecks, remarks }: Omit<ReportsProps, 'settings'>) => {
+const StudentReport = ({ students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks }: Omit<ReportsProps, 'settings'>) => {
     const [openStudents, setOpenStudents] = useState<Record<string, boolean>>({});
-    const studentStats = useStudentStats(students, subjects, homework, submissions, dailyChecks, remarks);
+    const studentStats = useStudentStats(students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks);
     
     const toggleStudent = (studentId: string) => {
         setOpenStudents(prev => ({ ...prev, [studentId]: !prev[studentId] }));
