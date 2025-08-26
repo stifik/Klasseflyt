@@ -27,14 +27,17 @@ const defaultSettings: AppSettings = {
   dashboardTools: [
     { key: 'overview', visible: true },
     { key: 'dailyCheck', visible: true },
-    { key: 'observations.hourly', visible: true },
+    { key: 'observations', visible: true },
+    { key: 'classroomTools', visible: true },
+    { key: 'reports', visible: true },
+    { key: 'observations.hourly', visible: false },
     { key: 'observations.remarks', visible: false },
-    { key: 'classroomTools.seatingChart', visible: true },
-    { key: 'classroomTools.groupTool', visible: true },
-    { key: 'classroomTools.studentPicker', visible: true },
+    { key: 'classroomTools.seatingChart', visible: false },
+    { key: 'classroomTools.groupTool', visible: false },
+    { key: 'classroomTools.studentPicker', visible: false },
     { key: 'reports.summary', visible: false },
     { key: 'reports.studentReports', visible: false },
-    { key: 'reports.analysis', visible: true },
+    { key: 'reports.analysis', visible: false },
   ],
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
@@ -66,6 +69,19 @@ function Home() {
   const { instance } = useMsal();
   
   const currentSettings = settings || defaultSettings;
+
+  // Ensure 'classroomTools' exists in dashboardTools for existing users
+  if (settings && settings.dashboardTools && !settings.dashboardTools.find(t => t.key === 'classroomTools')) {
+      const updatedTools = [ ...settings.dashboardTools ];
+      const observationsIndex = updatedTools.findIndex(t => t.key === 'observations');
+      if (observationsIndex !== -1) {
+          updatedTools.splice(observationsIndex + 1, 0, { key: 'classroomTools', visible: true });
+      } else {
+          updatedTools.push({ key: 'classroomTools', visible: true });
+      }
+      db.settings.update('userSettings', { dashboardTools: updatedTools });
+  }
+
 
   const handleSettingsChange = async (newSettings: AppSettings) => {
     await db.settings.put({ id: 'userSettings', ...newSettings });
