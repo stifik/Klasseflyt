@@ -55,12 +55,12 @@ const AppView: FC<AppViewProps> = ({
   const visibleTabs = settings.tabOrder.filter(tabKey => settings.tabs[tabKey] && tabLabels[tabKey]);
   const defaultTab = activeTab || visibleTabs[0];
 
-  const homework = useLiveQuery(() => db.homework.toArray(), [], []);
-  const submissions = useLiveQuery(() => db.submissions.toArray(), [], []);
-  const dailyChecks = useLiveQuery(() => db.dailyChecks.toArray(), [], []);
-  const remarks = useLiveQuery(() => db.remarks.toArray(), [], []);
-  const seatingChartHistory = useLiveQuery(() => db.seatingChartHistory.orderBy('createdAt').reverse().toArray(), [], []);
-  const seatingLayouts = useLiveQuery(() => db.seatingLayouts.toArray(), [], []);
+  const homework = useLiveQuery(() => db.homework.toArray(), [], undefined);
+  const submissions = useLiveQuery(() => db.submissions.toArray(), [], undefined);
+  const dailyChecks = useLiveQuery(() => db.dailyChecks.toArray(), [], undefined);
+  const remarks = useLiveQuery(() => db.remarks.toArray(), [], undefined);
+  const seatingChartHistory = useLiveQuery(() => db.seatingChartHistory.orderBy('createdAt').reverse().toArray(), [], undefined);
+  const seatingLayouts = useLiveQuery(() => db.seatingLayouts.toArray(), [], undefined);
   const seatingChartData = useLiveQuery(async () => {
     const latest = await db.seatingChartHistory.orderBy('createdAt').last();
     return latest ? JSON.parse(latest.chartJson) : null;
@@ -90,13 +90,15 @@ const AppView: FC<AppViewProps> = ({
       if(layouts.length > 0) await db.seatingLayouts.bulkPut(layouts);
   }
 
+  const activeLayout = seatingLayouts?.find(l => l.id === settings.selectedSeatingLayoutId);
+
   const componentProps: Record<string, any> = {
     overview: { students, subjects, homeworkList: homework, submissions, onUpdate: () => {} },
     dailyCheck: { students, initialChecks: dailyChecks, onUpdate: () => {}, seatingChart: seatingChartData },
     remarks: { students, initialRemarks: remarks, onUpdate: () => {}, seatingChart: seatingChartData, settings },
     reports: { students, subjects, homework, submissions, dailyChecks, remarks, settings: settings.reportSettings },
     seatingChart: { students, seatingChart: seatingChartData, onSeatingChartChange: handleSeatingChartChange, history: seatingChartHistory || [], appSettings: settings, onAppSettingsChange: onSettingsChange, layouts: seatingLayouts, onLayoutsChange: handleLayoutsChange },
-    classroomTools: { students, seatingChart: seatingChartData, activeLayout: seatingLayouts?.find(l => l.id === settings.selectedSeatingLayoutId) },
+    classroomTools: { students, seatingChart: seatingChartData, activeLayout },
     settings: { initialStudents: students, initialSubjects: subjects, settings: settings, onSettingsChange: onSettingsChange }
   };
 
@@ -129,10 +131,9 @@ const AppView: FC<AppViewProps> = ({
           if (!Component) return null;
           const props = componentProps[tabKey];
           
-          // A more robust check to ensure that live queries are not undefined during initial render.
           const isDataReady = Object.entries(props).every(([key, value]) => {
-              // Special handling for seatingChartData, which can be `null` legitimately.
-              if (key === 'seatingChart') return value !== undefined;
+              if (key === 'seatingChart') return value !== undefined; // Can be null
+              if (key === 'activeLayout') return seatingLayouts !== undefined; // Based on seatingLayouts query
               return value !== undefined;
           });
 
