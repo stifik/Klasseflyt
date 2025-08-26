@@ -475,7 +475,7 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
 
 export default function Reports(props: ReportsProps) {
     return (
-        <Tabs defaultValue="summary" className="w-full space-y-4">
+        <Tabs defaultValue="summary" className="w-full">
             <TabsList className="grid w-full grid-cols-3 no-print">
                 <TabsTrigger value="summary">Ukesoppsummering</TabsTrigger>
                 <TabsTrigger value="student-report">Elevrapporter</TabsTrigger>
