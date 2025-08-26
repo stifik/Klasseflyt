@@ -58,10 +58,10 @@ const mockSubjects = [ { name: 'Norsk' }, { name: 'Matematikk' }, { name: 'Engel
 const defaultSettings: AppSettings = {
   tabs: {
     overview: true, dailyCheck: true, remarks: true, reports: true,
-    seatingChart: true, groupTool: true, studentPicker: true, 
+    seatingChart: true, classroomTools: true,
     settings: true,
   },
-  tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'groupTool', 'studentPicker'],
+  tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'classroomTools'],
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
     includePositiveFeedback: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
@@ -94,7 +94,7 @@ export async function resetDatabase() {
         await Promise.all(db.tables.map(table => table.clear()));
 
         // Add settings
-        await db.settings.put({ id: 'userSettings', ...defaultSettings, onboardingCompleted: true, tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'groupTool', 'studentPicker'] });
+        await db.settings.put({ id: 'userSettings', ...defaultSettings, onboardingCompleted: true, tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'classroomTools'] });
 
         // Add students and subjects
         await db.students.bulkAdd(mockStudents);
