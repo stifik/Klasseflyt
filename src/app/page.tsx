@@ -58,8 +58,8 @@ function Home() {
   
   const handleOnboardingComplete = async (finalSettings: AppSettings, teacherName: string, students: Omit<Student, 'id'>[], subjects: Omit<Subject, 'id'>[]) => {
       await db.transaction('rw', db.students, db.subjects, db.settings, async () => {
-        await db.students.bulkAdd(students);
-        await db.subjects.bulkAdd(subjects);
+        await db.students.bulkAdd(students.map(s => ({name: s.name})));
+        await db.subjects.bulkAdd(subjects.map(s => ({name: s.name})));
         
         const newSettings = {
             ...finalSettings,
@@ -85,9 +85,6 @@ function Home() {
 
   // A more robust loading check
   const isLoading = students === undefined || subjects === undefined || settings === undefined;
-  
-  // A specific check to see if settings exist, to direct to onboarding
-  const isReadyForOnboardingCheck = settings !== undefined;
 
   if (isLoading) {
     return (
@@ -98,7 +95,7 @@ function Home() {
     );
   }
   
-  if (isReadyForOnboardingCheck && !currentSettings.onboardingCompleted) {
+  if (!currentSettings.onboardingCompleted) {
       return <Onboarding onFinish={handleOnboardingComplete} initialSettings={currentSettings} />;
   }
 

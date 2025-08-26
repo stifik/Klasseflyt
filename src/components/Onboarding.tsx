@@ -10,7 +10,7 @@ import { Trash2, UserPlus, BookPlus, PartyPopper, User } from "lucide-react";
 import type { AppSettings, Student, Subject } from "@/lib/types";
 
 interface OnboardingProps {
-    onFinish: (settings: AppSettings, teacherName: string, students: Student[], subjects: Subject[]) => void;
+    onFinish: (settings: AppSettings, teacherName: string, students: Omit<Student, 'id'>[], subjects: Omit<Subject, 'id'>[]) => void;
     initialSettings: AppSettings;
 }
 
@@ -21,8 +21,8 @@ export default function Onboarding({ onFinish, initialSettings }: OnboardingProp
     const [newStudent, setNewStudent] = useState("");
     const [newSubject, setNewSubject] = useState("");
     const [teacherName, setTeacherName] = useState(initialSettings.reportSettings.teacherName || "");
-    const [students, setStudents] = useState<Student[]>([]);
-    const [subjects, setSubjects] = useState<Subject[]>([]);
+    const [students, setStudents] = useState<Omit<Student, 'id'>[]>([]);
+    const [subjects, setSubjects] = useState<Omit<Subject, 'id'>[]>([]);
     const { toast } = useToast();
     
     const handleAddStudent = () => {
