@@ -1,13 +1,14 @@
 
+
 "use client";
 
 import * as React from "react";
 import { useState, useEffect } from "react";
-import type { Student, Subject, AppSettings, TabKey, BehaviorType } from "@/lib/types";
+import type { Student, Subject, AppSettings, TabKey, BehaviorType, DashboardToolKey, DashboardConfig } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Eye } from "lucide-react";
+import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Eye, LayoutDashboard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -52,13 +53,17 @@ interface SettingsProps {
   onSettingsChange: (newSettings: AppSettings) => void;
 }
 
-const tabLabels: Partial<Record<TabKey, string>> = {
-  overview: "Lekseoversikt",
-  dailyCheck: "Daglig Sjekk",
-  observations: "Observasjoner",
-  reports: "Analyse",
-  classroomTools: "Klasseverktøy",
-  settings: "Innstillinger"
+const allToolLabels: Record<DashboardToolKey, string> = {
+    'overview': "Lekseoversikt",
+    'dailyCheck': "Daglig Sjekk",
+    'observations.hourly': "Timeinnsjekk",
+    'observations.remarks': "Anmerkninger",
+    'classroomTools.seatingChart': "Klassekart",
+    'classroomTools.groupTool': "Gruppeverktøy",
+    'classroomTools.studentPicker': "Elev-trekker",
+    'reports.summary': "Ukesoppsummering",
+    'reports.studentReports': "Elevrapporter",
+    'reports.analysis': "Analyse",
 };
 
 const availableIcons = [
@@ -78,39 +83,21 @@ const Icon = ({ name, className }: { name: string, className?: string }) => {
     return <LucideIcon className={className} />;
 }
 
-const SortableTabItem = ({ id, onToggle, settings }: { id: TabKey, onToggle: (tab: TabKey) => void, settings: AppSettings }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-  
-  if (!tabLabels[id]) return null;
-
-  return (
-    <div ref={setNodeRef} style={style} className="flex items-center justify-between p-3 border rounded-lg bg-background touch-none">
-      <div className="flex items-center">
-        <button {...attributes} {...listeners} className="p-2 cursor-grab">
-          <GripVertical className="w-5 h-5 text-muted-foreground" />
-        </button>
-        <Label htmlFor={`tab-${id}`} className="font-medium">
-          {tabLabels[id]}
-        </Label>
-      </div>
-      <Switch
-        id={`tab-${id}`}
-        checked={settings.tabs[id]}
-        onCheckedChange={() => onToggle(id)}
-      />
-    </div>
-  );
+const SortableItem = ({ id, label, isChecked, onToggle }: { id: string; label: string; isChecked: boolean; onToggle: (id: any) => void; }) => {
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+    const style = { transform: CSS.Transform.toString(transform), transition };
+    
+    return (
+        <div ref={setNodeRef} style={style} className="flex items-center justify-between p-3 border rounded-lg bg-background touch-none">
+            <div className="flex items-center">
+                <button {...attributes} {...listeners} className="p-2 cursor-grab">
+                    <GripVertical className="w-5 h-5 text-muted-foreground" />
+                </button>
+                <Label htmlFor={`item-${id}`} className="font-medium">{label}</Label>
+            </div>
+            <Switch id={`item-${id}`} checked={isChecked} onCheckedChange={() => onToggle(id)} />
+        </div>
+    );
 };
 
 export default function Settings({ initialStudents, initialSubjects, settings: initialSettings, onSettingsChange }: SettingsProps) {
@@ -126,7 +113,7 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
   const [localSettings, setLocalSettings] = useState(initialSettings);
 
   const { toast } = useToast();
-  const sensors = useSensors(useSensor(PointerSensor));
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   // Debounce saving
   useEffect(() => {
@@ -260,7 +247,7 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
             variant: "destructive",
         });
     } finally {
-        setIsProcessing(false);
+      setIsProcessing(false);
     }
   };
 
@@ -272,24 +259,26 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
       }
   }
 
-  const handleTabToggle = (tab: TabKey) => {
+  const handleDashboardToolToggle = (key: DashboardToolKey) => {
     handleSettingChange(current => ({
-      ...current,
-      tabs: { ...current.tabs, [tab]: !current.tabs[tab] }
+        ...current,
+        dashboardTools: current.dashboardTools.map(tool => 
+            tool.key === key ? { ...tool, visible: !tool.visible } : tool
+        )
     }));
   };
-
-  const handleDragEnd = (event: DragEndEvent) => {
+  
+  const handleDashboardDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-
     if (active.id !== over?.id) {
-      handleSettingChange(current => {
-        const oldIndex = current.tabOrder.indexOf(active.id as TabKey);
-        const newIndex = current.tabOrder.indexOf(over!.id as TabKey);
-        return { ...current, tabOrder: arrayMove(current.tabOrder, oldIndex, newIndex) };
-      });
+        handleSettingChange(current => {
+            const oldIndex = current.dashboardTools.findIndex(t => t.key === active.id);
+            const newIndex = current.dashboardTools.findIndex(t => t.key === over!.id);
+            return { ...current, dashboardTools: arrayMove(current.dashboardTools, oldIndex, newIndex) };
+        });
     }
   };
+
   
   const handleReportSettingChange = (setting: keyof AppSettings['reportSettings'], value: any) => {
     handleSettingChange(current => ({
@@ -315,21 +304,27 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
        <div className="lg:col-span-1">
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center"><SettingsIcon className="mr-2" />Faneinnstillinger</CardTitle>
-                    <CardDescription>Velg hvilke faner du vil ha synlig, og dra for å endre rekkefølgen.</CardDescription>
+                    <CardTitle className="flex items-center"><LayoutDashboard className="mr-2" />Dashbord-innstillinger</CardTitle>
+                    <CardDescription>Velg hvilke verktøy som skal vises på dashbordet, og dra for å endre rekkefølgen.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
-                        onDragEnd={handleDragEnd}
+                        onDragEnd={handleDashboardDragEnd}
                     >
                         <SortableContext
-                            items={localSettings.tabOrder}
+                            items={localSettings.dashboardTools.map(t => t.key)}
                             strategy={verticalListSortingStrategy}
                         >
-                            {localSettings.tabOrder.map((tabKey) => (
-                                <SortableTabItem key={tabKey} id={tabKey} onToggle={handleTabToggle} settings={localSettings} />
+                            {localSettings.dashboardTools.map((tool) => (
+                                <SortableItem 
+                                    key={tool.key} 
+                                    id={tool.key} 
+                                    label={allToolLabels[tool.key]} 
+                                    isChecked={tool.visible}
+                                    onToggle={() => handleDashboardToolToggle(tool.key)}
+                                />
                             ))}
                         </SortableContext>
                     </DndContext>

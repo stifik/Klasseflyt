@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -150,6 +150,15 @@ export class MySubClassedDexie extends Dexie {
                 await tx.table('settings').put(userSettings);
              }
         });
+        
+        // Version 8: Add dashboard configuration
+        this.version(8).stores({}).upgrade(async (tx) => {
+            const userSettings = await tx.table('settings').get('userSettings');
+            if (userSettings && !userSettings.dashboardTools) {
+                userSettings.dashboardTools = defaultDashboardTools;
+                await tx.table('settings').put(userSettings);
+            }
+        });
 
 
         this.on('populate', async () => {
@@ -179,6 +188,19 @@ const defaultBehaviorTypes: BehaviorType[] = [
     { id: 'helpedOthers', label: 'Hjalp andre', icon: 'Handshake', color: 'blue' }
 ];
 
+const defaultDashboardTools: DashboardConfig[] = [
+    { key: 'overview', visible: true },
+    { key: 'dailyCheck', visible: true },
+    { key: 'observations.hourly', visible: true },
+    { key: 'observations.remarks', visible: false },
+    { key: 'classroomTools.seatingChart', visible: true },
+    { key: 'classroomTools.groupTool', visible: true },
+    { key: 'classroomTools.studentPicker', visible: true },
+    { key: 'reports.summary', visible: false },
+    { key: 'reports.studentReports', visible: false },
+    { key: 'reports.analysis', visible: true },
+];
+
 const defaultSettings: AppSettings = {
   tabs: {
     overview: true, dailyCheck: true, observations: true, reports: true,
@@ -186,6 +208,7 @@ const defaultSettings: AppSettings = {
     settings: true,
   },
   tabOrder: ['overview', 'dailyCheck', 'observations', 'classroomTools', 'reports'],
+  dashboardTools: defaultDashboardTools,
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
     includePositiveFeedback: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
@@ -224,6 +247,7 @@ export async function resetDatabase() {
             id: 'userSettings',
             tabs: defaultSettings.tabs,
             tabOrder: defaultSettings.tabOrder,
+            dashboardTools: defaultSettings.dashboardTools,
             reportSettings: {
                 ...defaultSettings.reportSettings,
                 teacherName: 'Læreren'
@@ -259,7 +283,10 @@ export async function resetDatabase() {
         if (matteSubject?.id) homeworkToAdd.push({ title: "Oppg. 3.1-3.5", subjectId: matteSubject.id, week: thisWeek, date: new Date() });
         if (naturfagSubject?.id) homeworkToAdd.push({ title: "Verdensrommet", subjectId: naturfagSubject.id, week: thisWeek - 1, date: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000) });
         
-        const homeworkIds = await db.homework.bulkAdd(homeworkToAdd, { returning: true }) as number[];
+        await db.homework.bulkAdd(homeworkToAdd);
+        const addedHomework = await db.homework.toArray();
+        const homeworkIds = addedHomework.map(h => h.id!);
+
 
         // --- Create Mock Submissions ---
         const submissionsToAdd: Omit<Submission, 'id'>[] = [];

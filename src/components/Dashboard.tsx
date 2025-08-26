@@ -1,10 +1,14 @@
 
+
 'use client';
 
 import type {FC} from 'react';
-import type {AppSettings, TabKey} from '@/lib/types';
+import type {AppSettings, TabKey, DashboardToolKey} from '@/lib/types';
 import {Card, CardHeader, CardTitle, CardDescription} from '@/components/ui/card';
-import {BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed, Eye, Shuffle, UserCheck} from 'lucide-react';
+import {
+    BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed, 
+    Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare
+} from 'lucide-react';
 import {cn} from '@/lib/utils';
 
 interface DashboardProps {
@@ -12,10 +16,9 @@ interface DashboardProps {
   onNavigate: (tab: TabKey, subTab?: string) => void;
 }
 
-const mainTools: {key: string; tab: TabKey; subTab?: string; label: string; description: string; icon: React.ElementType; color: string}[] = [
+const allTools: {key: DashboardToolKey; label: string; description: string; icon: React.ElementType; color: string}[] = [
   {
     key: 'overview',
-    tab: 'overview',
     label: 'Lekseoversikt',
     description: 'Full oversikt over lekser og innleveringer.',
     icon: BookOpen,
@@ -23,52 +26,64 @@ const mainTools: {key: string; tab: TabKey; subTab?: string; label: string; desc
   },
   {
     key: 'dailyCheck',
-    tab: 'dailyCheck',
     label: 'Daglig Sjekk',
     description: 'Registrer iPad-status for hver elev.',
     icon: CalendarCheck,
     color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
   },
   {
-    key: 'observations',
-    tab: 'observations',
-    label: 'Observasjoner',
-    description: 'Loggfør atferd og anmerkninger i timen.',
-    icon: Eye,
+    key: 'observations.hourly',
+    label: 'Timeinnsjekk',
+    description: 'Loggfør arbeidsinnsats i sanntid.',
+    icon: CheckSquare,
     color: 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400',
   },
   {
-    key: 'seating-chart',
-    tab: 'classroomTools',
-    subTab: 'seating-chart',
+    key: 'observations.remarks',
+    label: 'Anmerkninger',
+    description: 'Loggfør spesifikke hendelser raskt.',
+    icon: Megaphone,
+    color: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
+  },
+  {
+    key: 'classroomTools.seatingChart',
     label: 'Klassekart',
     description: 'Design klasserom og generer sitteplasser.',
     icon: Blocks,
     color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
   },
    {
-    key: 'group-tool',
-    tab: 'classroomTools',
-    subTab: 'group-tool',
+    key: 'classroomTools.groupTool',
     label: 'Gruppeverktøy',
     description: 'Lag tilfeldige grupper raskt og enkelt.',
     icon: Shuffle,
     color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
   },
   {
-    key: 'student-picker',
-    tab: 'classroomTools',
-    subTab: 'student-picker',
+    key: 'classroomTools.studentPicker',
     label: 'Elev-trekker',
     description: 'Trekk en tilfeldig elev fra klassekartet.',
     icon: UserCheck,
     color: 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400',
   },
   {
-    key: 'reports',
-    tab: 'reports',
+    key: 'reports.summary',
+    label: 'Ukesoppsummering',
+    description: 'Generer ukesmeldinger til foresatte.',
+    icon: FileText,
+    color: 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400',
+  },
+  {
+    key: 'reports.studentReports',
+    label: 'Elevrapporter',
+    description: 'Se detaljerte rapporter per elev.',
+    icon: NotebookText,
+    color: 'bg-lime-100 text-lime-600 dark:bg-lime-900/30 dark:text-lime-400',
+  },
+  {
+    key: 'reports.analysis',
     label: 'Analyse',
-    description: 'Analyser data og generer ukesmeldinger.',
+    description: 'Analyser data og se trender over tid.',
     icon: BarChart2,
     color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
   },
@@ -76,10 +91,22 @@ const mainTools: {key: string; tab: TabKey; subTab?: string; label: string; desc
 
 
 const Dashboard: FC<DashboardProps> = ({settings, onNavigate}) => {
-  const visibleTabs = new Set(settings.tabOrder.filter((tabKey) => settings.tabs[tabKey]));
   const teacherName = settings.reportSettings.teacherName;
   
-  const visibleTools = mainTools.filter(tool => visibleTabs.has(tool.tab));
+  const visibleTools = settings.dashboardTools
+    .filter(toolConfig => toolConfig.visible)
+    .map(toolConfig => {
+        const toolData = allTools.find(t => t.key === toolConfig.key);
+        if (!toolData) return null;
+
+        const [tab, subTab] = toolData.key.split('.') as [TabKey, string | undefined];
+        
+        return {
+            ...toolData,
+            tab,
+            subTab,
+        };
+    }).filter(Boolean);
 
 
   return (
@@ -90,6 +117,7 @@ const Dashboard: FC<DashboardProps> = ({settings, onNavigate}) => {
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {visibleTools.map((tool) => {
+          if (!tool) return null;
           const Icon = tool.icon;
           return (
             <Card

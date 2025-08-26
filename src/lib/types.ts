@@ -83,6 +83,23 @@ export type SeatingLayout = {
 
 export type TabKey = 'overview' | 'dailyCheck' | 'observations' | 'reports' | 'classroomTools' | 'settings';
 
+export type DashboardToolKey = 
+  | 'overview' 
+  | 'dailyCheck' 
+  | 'observations.hourly' 
+  | 'observations.remarks' 
+  | 'classroomTools.seatingChart' 
+  | 'classroomTools.groupTool' 
+  | 'classroomTools.studentPicker' 
+  | 'reports.summary' 
+  | 'reports.studentReports' 
+  | 'reports.analysis';
+
+export type DashboardConfig = {
+    key: DashboardToolKey;
+    visible: boolean;
+};
+
 export type ReportSettings = {
   includeHomework: boolean;
   includeIpad: boolean;
@@ -102,6 +119,7 @@ export type PeriodTime = {
 export type AppSettings = {
   tabs: Record<TabKey, boolean>;
   tabOrder: TabKey[];
+  dashboardTools: DashboardConfig[];
   reportSettings: ReportSettings;
   schedule: PeriodTime[];
   selectedSeatingLayoutId?: string | null;

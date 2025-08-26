@@ -1,10 +1,11 @@
 
+
 'use client'
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { BookOpenCheck, Loader2, LogOut, Settings as SettingsIcon } from "lucide-react";
-import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark, TabKey, AppSettings, SeatingLayout } from "@/lib/types";
+import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark, TabKey, AppSettings, SeatingLayout, DashboardConfig } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import AppView from "@/components/AppView";
@@ -18,11 +19,23 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 
 const defaultSettings: AppSettings = {
   tabs: {
-    overview: true, dailyCheck: true, remarks: true, reports: true,
-    seatingChart: true, classroomTools: true,
+    overview: true, dailyCheck: true, observations: true, reports: true,
+    classroomTools: true,
     settings: true,
   },
-  tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'classroomTools'],
+  tabOrder: ['overview', 'dailyCheck', 'observations', 'classroomTools', 'reports'],
+  dashboardTools: [
+    { key: 'overview', visible: true },
+    { key: 'dailyCheck', visible: true },
+    { key: 'observations.hourly', visible: true },
+    { key: 'observations.remarks', visible: false },
+    { key: 'classroomTools.seatingChart', visible: true },
+    { key: 'classroomTools.groupTool', visible: true },
+    { key: 'classroomTools.studentPicker', visible: true },
+    { key: 'reports.summary', visible: false },
+    { key: 'reports.studentReports', visible: false },
+    { key: 'reports.analysis', visible: true },
+  ],
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
     includePositiveFeedback: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
