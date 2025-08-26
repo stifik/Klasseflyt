@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Trash2, UserPlus, BookPlus, PartyPopper, User } from "lucide-react";
-import type { AppSettings } from "@/lib/types";
+import type { AppSettings, Student, Subject } from "@/lib/types";
 
 interface OnboardingProps {
     onFinish: (settings: AppSettings) => void;
@@ -70,7 +70,7 @@ export default function Onboarding({ onFinish, initialSettings }: OnboardingProp
     
     const prevStep = () => {
         if (step > 0) {
-            setStep(s => s - 1);
+            setStep(s => s + 1);
         }
     };
     

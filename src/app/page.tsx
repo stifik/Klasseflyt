@@ -44,56 +44,34 @@ function Home() {
   const [activeView, setActiveView] = useState<'dashboard' | 'app'>('dashboard');
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
   
-  const [students, setStudents] = useState<Student[] | undefined>(undefined);
-  const [subjects, setSubjects] = useState<Subject[] | undefined>(undefined);
-  const [settings, setSettings] = useState<AppSettings | undefined>(undefined);
+  const students = useLiveQuery(() => db.students.toArray());
+  const subjects = useLiveQuery(() => db.subjects.toArray());
+  const settings = useLiveQuery(() => db.settings.get('userSettings'));
 
   const { toast } = useToast();
   const { instance } = useMsal();
 
   useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const [studentsData, subjectsData, settingsData] = await Promise.all([
-          db.students.toArray(),
-          db.subjects.toArray(),
-          db.settings.get('userSettings')
-        ]);
-
-        let finalSettings = settingsData;
-        // This is the fix: check if the new tab exists and add it if not.
+    const checkData = async () => {
+      if (students !== undefined && subjects !== undefined && settings !== undefined) {
+        let finalSettings = settings;
         if (finalSettings && finalSettings.tabs.classroomTools === undefined) {
           finalSettings.tabs.classroomTools = true;
           if (!finalSettings.tabOrder.includes('classroomTools')) {
             finalSettings.tabOrder.push('classroomTools');
           }
-          // Save the updated settings back to the DB
           await db.settings.put({ id: 'userSettings', ...finalSettings });
         }
-        
-        setStudents(studentsData);
-        setSubjects(subjectsData);
-        setSettings(finalSettings);
-
-      } catch (error) {
-        console.error("Failed to fetch initial data", error);
-        // Set empty arrays on error to avoid getting stuck
-        setStudents([]);
-        setSubjects([]);
-        setSettings(undefined);
-      } finally {
         setInitialLoading(false);
       }
     };
-
-    fetchInitialData();
-  }, []);
+    checkData();
+  }, [students, subjects, settings]);
   
   const currentSettings = settings || defaultSettings;
 
   const handleSettingsChange = async (newSettings: AppSettings) => {
     await db.settings.put({ id: 'userSettings', ...newSettings });
-    setSettings(newSettings);
   }
   
   const handleOnboardingComplete = async (finalSettings: AppSettings) => {
