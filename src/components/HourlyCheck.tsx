@@ -32,13 +32,20 @@ const behaviorConfig: Record<BehaviorType, { icon: React.ElementType, label: str
     HelpedOthers: { icon: Handshake, label: "Hjalp andre", color: "text-blue-600", selectedColor: "bg-blue-100 border-blue-300" }
 };
 
-export default function HourlyCheck({ students, initialChecks: checks, onUpdate, seatingChart, settings }: HourlyCheckProps) {
+export default function HourlyCheck({ students, initialChecks, onUpdate, seatingChart, settings }: HourlyCheckProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [currentPeriod, setCurrentPeriod] = useState<number>(1);
   const [isFlipped, setIsFlipped] = useState(false);
   const [activeBehavior, setActiveBehavior] = useState<BehaviorType>('WorkedWell');
   const { toast } = useToast();
   
+  // Use local state derived from props instead of useLiveQuery
+  const [localChecks, setLocalChecks] = useState(initialChecks || []);
+  useEffect(() => {
+    setLocalChecks(initialChecks || []);
+  }, [initialChecks]);
+
+
   useEffect(() => {
     const { schedule } = settings;
 
@@ -86,14 +93,12 @@ export default function HourlyCheck({ students, initialChecks: checks, onUpdate,
            d1Date.getDate() === d2Date.getDate();
   }
   
-  const getChecksForStudent = (studentId: string, checkDate: Date, period: number, behavior?: BehaviorType): HourlyCheck[] => {
-    if (!checks) return [];
-    return checks.filter(
+  const getChecksForStudent = (studentId: string, checkDate: Date, period: number): HourlyCheck[] => {
+    return localChecks.filter(
       (c) =>
         c.studentId === studentId &&
         isSameDay(c.date, checkDate) &&
-        c.period === period &&
-        (behavior === undefined || c.behavior === behavior)
+        c.period === period
     );
   };
 
@@ -102,30 +107,44 @@ export default function HourlyCheck({ students, initialChecks: checks, onUpdate,
     const dateStartOfDay = new Date(date);
     dateStartOfDay.setHours(0, 0, 0, 0);
 
-    try {
-        await db.transaction('rw', db.hourlyChecks, async () => {
-            const existingCheck = await db.hourlyChecks
-                .where({
-                    studentId,
-                    period: currentPeriod,
-                    behavior: activeBehavior,
-                })
-                .and(record => isSameDay(record.date, dateStartOfDay))
-                .first();
+    const existingCheck = localChecks.find(c => 
+        c.studentId === studentId &&
+        c.period === currentPeriod &&
+        c.behavior === activeBehavior &&
+        isSameDay(c.date, dateStartOfDay)
+    );
 
-            if (existingCheck) {
-                // If it exists, remove it (toggle off)
-                await db.hourlyChecks.delete(existingCheck.id!);
-            } else {
-                // If it doesn't exist, add it (toggle on)
-                await db.hourlyChecks.add({ studentId, date, period: currentPeriod, behavior: activeBehavior });
-            }
-        });
-    } catch (error) {
-      console.error(error);
-      toast({ title: "Feil", description: `Kunne ikke lagre atferd for ${studentName}.`, variant: "destructive" });
+    if (existingCheck) {
+        // Optimistically update UI
+        setLocalChecks(prev => prev.filter(c => c.id !== existingCheck.id));
+        // Update database
+        try {
+            await db.hourlyChecks.delete(existingCheck.id!);
+        } catch (error) {
+             console.error(error);
+             toast({ title: "Feil", description: `Kunne ikke fjerne atferd for ${studentName}.`, variant: "destructive" });
+             // Revert UI change on error
+             setLocalChecks(prev => [...prev, existingCheck]);
+        }
+    } else {
+        const newCheck: Omit<HourlyCheck, 'id'> = { studentId, date, period: currentPeriod, behavior: activeBehavior };
+        // Optimistically update UI
+        const tempId = -1 * Date.now(); // Temporary ID for React key
+        setLocalChecks(prev => [...prev, { ...newCheck, id: tempId }]);
+         // Update database
+        try {
+            const newId = await db.hourlyChecks.add(newCheck as HourlyCheck);
+            // Replace temporary item with real one from DB
+            setLocalChecks(prev => prev.map(c => c.id === tempId ? { ...newCheck, id: newId } : c));
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Feil", description: `Kunne ikke lagre atferd for ${studentName}.`, variant: "destructive" });
+            // Revert UI change on error
+            setLocalChecks(prev => prev.filter(c => c.id !== tempId));
+        }
     }
   };
+
 
   const StudentButton = ({ student }: { student: Student }) => {
     const checksForPeriod = getChecksForStudent(student.id, date, currentPeriod);
@@ -189,7 +208,7 @@ export default function HourlyCheck({ students, initialChecks: checks, onUpdate,
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
-              <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
+              <Calendar mode="single" selected={date} onSelect={(d) => { if (d) { setDate(d); setLocalChecks(initialChecks); } }} initialFocus />
             </PopoverContent>
           </Popover>
         </div>
@@ -258,3 +277,4 @@ export default function HourlyCheck({ students, initialChecks: checks, onUpdate,
     </Card>
   );
 }
+
