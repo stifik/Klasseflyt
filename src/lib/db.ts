@@ -138,7 +138,7 @@ export async function resetDatabase() {
         await Promise.all(db.tables.map(table => table.clear()));
 
         // Add settings
-        const settingsToPut = { 
+        const settingsToPut: AppSettings & { id: string } = { 
             id: 'userSettings',
             tabs: defaultSettings.tabs,
             tabOrder: defaultSettings.tabOrder,
@@ -155,16 +155,18 @@ export async function resetDatabase() {
         
 
         // Add students and subjects
-        const studentIds = await db.students.bulkAdd(mockStudents, { returning: true }) as string[];
-        const subjectIds = await db.subjects.bulkAdd(mockSubjects, { returning: true }) as string[];
+        await db.students.bulkAdd(mockStudents);
+        await db.subjects.bulkAdd(mockSubjects);
         
-        // Re-fetch subjects to get full objects with IDs
-        const subjects = await db.subjects.bulkGet(subjectIds) as Subject[];
+        // Re-fetch students and subjects to get full objects with IDs
+        const allStudents = await db.students.toArray();
+        const allSubjects = await db.subjects.toArray();
+        const studentIds = allStudents.map(s => s.id!);
 
-        const norskSubject = subjects.find(s => s && s.name === 'Norsk');
-        const engelskSubject = subjects.find(s => s && s.name === 'Engelsk');
-        const matteSubject = subjects.find(s => s && s.name === 'Matematikk');
-        const naturfagSubject = subjects.find(s => s && s.name === 'Naturfag');
+        const norskSubject = allSubjects.find(s => s.name === 'Norsk');
+        const engelskSubject = allSubjects.find(s => s.name === 'Engelsk');
+        const matteSubject = allSubjects.find(s => s.name === 'Matematikk');
+        const naturfagSubject = allSubjects.find(s => s.name === 'Naturfag');
 
         // --- Create Mock Homework ---
         const today = new Date();
@@ -180,7 +182,6 @@ export async function resetDatabase() {
 
         // --- Create Mock Submissions ---
         const submissionsToAdd: Omit<Submission, 'id'>[] = [];
-        const statuses: HomeworkStatus[] = ["Godkjent", "Ikke levert", "Må rettes", "Syk/Fravær", "Glemt bok"];
         studentIds.forEach(studentId => {
             homeworkIds.forEach(homeworkId => {
                 const chance = Math.random();
