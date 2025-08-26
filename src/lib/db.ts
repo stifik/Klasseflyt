@@ -151,16 +151,21 @@ export async function resetDatabase() {
         const studentIds = await db.students.bulkAdd(mockStudents, { returning: true }) as string[];
         const subjects = await db.subjects.bulkAdd(mockSubjects, { returning: true });
         
+        const norskSubject = subjects.find(s => s.name === 'Norsk');
+        const engelskSubject = subjects.find(s => s.name === 'Engelsk');
+        const matteSubject = subjects.find(s => s.name === 'Matematikk');
+        const naturfagSubject = subjects.find(s => s.name === 'Naturfag');
 
         // --- Create Mock Homework ---
         const today = new Date();
         const thisWeek = getWeekNumber(today);
-        const homeworkToAdd: Omit<Homework, 'id'>[] = [
-            { title: "Lesing kap. 2", subjectId: subjects.find(s => s.name === 'Norsk')?.id!, week: thisWeek, date: new Date() },
-            { title: "Gloser", subjectId: subjects.find(s => s.name === 'Engelsk')?.id!, week: thisWeek, date: new Date() },
-            { title: "Oppg. 3.1-3.5", subjectId: subjects.find(s => s.name === 'Matematikk')?.id!, week: thisWeek, date: new Date() },
-            { title: "Verdensrommet", subjectId: subjects.find(s => s.name === 'Naturfag')?.id!, week: thisWeek - 1, date: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000) },
-        ];
+        const homeworkToAdd: Omit<Homework, 'id'>[] = [];
+
+        if (norskSubject) homeworkToAdd.push({ title: "Lesing kap. 2", subjectId: norskSubject.id!, week: thisWeek, date: new Date() });
+        if (engelskSubject) homeworkToAdd.push({ title: "Gloser", subjectId: engelskSubject.id!, week: thisWeek, date: new Date() });
+        if (matteSubject) homeworkToAdd.push({ title: "Oppg. 3.1-3.5", subjectId: matteSubject.id!, week: thisWeek, date: new Date() });
+        if (naturfagSubject) homeworkToAdd.push({ title: "Verdensrommet", subjectId: naturfagSubject.id!, week: thisWeek - 1, date: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000) });
+
         
         const homeworkIds = await db.homework.bulkAdd(homeworkToAdd, { returning: true }) as number[];
 
