@@ -83,7 +83,8 @@ const defaultSettings: AppSettings = {
 export async function clearDatabase() {
      await db.transaction('rw', db.tables, async () => {
         await Promise.all(db.tables.map(table => table.clear()));
-        // After clearing, Dexie's "populate" event will re-add the default settings.
+        // After clearing, re-populate with default settings
+        await db.settings.add({ id: 'userSettings', ...defaultSettings });
      });
 }
 
@@ -94,15 +95,19 @@ export async function resetDatabase() {
         await Promise.all(db.tables.map(table => table.clear()));
 
         // Add settings
-        await db.settings.put({ id: 'userSettings', ...defaultSettings, onboardingCompleted: true, tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'classroomTools'] });
+        const settingsToPut = { 
+            id: 'userSettings', 
+            ...defaultSettings, 
+            onboardingCompleted: true, 
+            reportSettings: {...defaultSettings.reportSettings, teacherName: 'Læreren'}
+        };
+        await db.settings.put(settingsToPut);
+        
 
         // Add students and subjects
-        await db.students.bulkAdd(mockStudents);
-        await db.subjects.bulkAdd(mockSubjects);
+        const studentIds = await db.students.bulkAdd(mockStudents, { returning: true }) as string[];
+        const subjects = await db.subjects.bulkAdd(mockSubjects, { returning: true });
         
-        const allStudents = await db.students.toArray();
-        const studentIds = allStudents.map(s => s.id!);
-        const subjects = await db.subjects.toArray();
 
         // --- Create Mock Homework ---
         const today = new Date();
@@ -114,9 +119,7 @@ export async function resetDatabase() {
             { title: "Verdensrommet", subjectId: subjects.find(s => s.name === 'Naturfag')?.id!, week: thisWeek - 1, date: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000) },
         ];
         
-        await db.homework.bulkAdd(homeworkToAdd);
-        const allHomework = await db.homework.toArray();
-        const homeworkIds = allHomework.map(h => h.id!);
+        const homeworkIds = await db.homework.bulkAdd(homeworkToAdd, { returning: true }) as number[];
 
         // --- Create Mock Submissions ---
         const submissionsToAdd: Omit<Submission, 'id'>[] = [];

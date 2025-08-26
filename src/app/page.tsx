@@ -49,22 +49,6 @@ function Home() {
 
   const { toast } = useToast();
   const { instance } = useMsal();
-
-  useEffect(() => {
-    const checkAndUpgradeSettings = async () => {
-      if (settings && settings.tabs.classroomTools === undefined) {
-          const newSettings = { ...settings };
-          newSettings.tabs.classroomTools = true;
-          if (!newSettings.tabOrder.includes('classroomTools')) {
-            newSettings.tabOrder.push('classroomTools');
-          }
-          await db.settings.put({ id: 'userSettings', ...newSettings });
-      }
-    };
-    if(settings !== undefined) {
-        checkAndUpgradeSettings();
-    }
-  }, [settings]);
   
   const currentSettings = settings || defaultSettings;
 
@@ -72,18 +56,21 @@ function Home() {
     await db.settings.put({ id: 'userSettings', ...newSettings });
   }
   
-  const handleOnboardingComplete = async (finalSettings: AppSettings, teacherName: string, students: Student[], subjects: Subject[]) => {
-      await db.students.bulkPut(students);
-      await db.subjects.bulkPut(subjects);
-      const newSettings = {
-          ...finalSettings,
-          reportSettings: {
-              ...finalSettings.reportSettings,
-              teacherName,
-          },
-          onboardingCompleted: true,
-      };
-      await handleSettingsChange(newSettings);
+  const handleOnboardingComplete = async (finalSettings: AppSettings, teacherName: string, students: Omit<Student, 'id'>[], subjects: Omit<Subject, 'id'>[]) => {
+      await db.transaction('rw', db.students, db.subjects, db.settings, async () => {
+        await db.students.bulkAdd(students);
+        await db.subjects.bulkAdd(subjects);
+        
+        const newSettings = {
+            ...finalSettings,
+            reportSettings: {
+                ...finalSettings.reportSettings,
+                teacherName,
+            },
+            onboardingCompleted: true,
+        };
+        await db.settings.put({ id: 'userSettings', ...newSettings });
+      });
   }
 
   const navigateToTab = (tab: TabKey) => {
@@ -96,7 +83,11 @@ function Home() {
       setActiveView('app');
   }
 
+  // A more robust loading check
   const isLoading = students === undefined || subjects === undefined || settings === undefined;
+  
+  // A specific check to see if settings exist, to direct to onboarding
+  const isReadyForOnboardingCheck = settings !== undefined;
 
   if (isLoading) {
     return (
@@ -107,7 +98,7 @@ function Home() {
     );
   }
   
-  if (!currentSettings.onboardingCompleted) {
+  if (isReadyForOnboardingCheck && !currentSettings.onboardingCompleted) {
       return <Onboarding onFinish={handleOnboardingComplete} initialSettings={currentSettings} />;
   }
 
