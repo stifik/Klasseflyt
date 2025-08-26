@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useState, useEffect } from "react";
-import type { Student, Subject, AppSettings, TabKey } from "@/lib/types";
+import type { Student, Subject, AppSettings, TabKey, BehaviorType } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ import { Separator } from "./ui/separator";
 import { db, resetDatabase, clearDatabase } from "@/lib/db";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useTheme } from "next-themes";
+import { v4 as uuidv4 } from 'uuid';
 
 
 interface SettingsProps {
@@ -135,6 +136,7 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
   const [newStudent, setNewStudent] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [newRemarkType, setNewRemarkType] = useState("");
+  const [newBehaviorType, setNewBehaviorType] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [localSettings, setLocalSettings] = useState(initialSettings);
 
@@ -215,7 +217,20 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
     const updatedTypes = localSettings.remarkTypes?.filter(t => t !== typeToDelete);
     handleSettingChange({ remarkTypes: updatedTypes });
   };
+  
+  const handleAddBehaviorType = () => {
+    if (newBehaviorType.trim()) {
+        const newType: BehaviorType = { id: uuidv4(), label: newBehaviorType.trim() };
+        const updatedTypes = [...(localSettings.behaviorTypes || []), newType];
+        handleSettingChange({ behaviorTypes: updatedTypes });
+        setNewBehaviorType("");
+    }
+  };
 
+  const handleDeleteBehaviorType = (idToDelete: string) => {
+      const updatedTypes = localSettings.behaviorTypes?.filter(t => t.id !== idToDelete);
+      handleSettingChange({ behaviorTypes: updatedTypes });
+  };
 
   const handleResetDatabase = async () => {
     setIsProcessing(true);
@@ -540,6 +555,30 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                             <li key={type} className="flex items-center justify-between p-2 rounded-md bg-secondary">
                             <span>{type}</span>
                             <Button variant="ghost" size="icon" onClick={() => handleDeleteRemarkType(type)}>
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                            </li>
+                        ))}
+                    </ul>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="behaviorTypes">
+                <AccordionTrigger>Administrer Atferdstyper ({(localSettings.behaviorTypes || []).length})</AccordionTrigger>
+                <AccordionContent>
+                    <div className="flex gap-2 mb-4">
+                        <Input
+                            value={newBehaviorType}
+                            onChange={(e) => setNewBehaviorType(e.target.value)}
+                            placeholder="Ny atferdstype..."
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddBehaviorType()}
+                        />
+                        <Button onClick={handleAddBehaviorType}><Plus className="mr-2"/> Legg til</Button>
+                    </div>
+                    <ul className="space-y-2">
+                        {(localSettings.behaviorTypes || []).map((type) => (
+                            <li key={type.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
+                            <span>{type.label}</span>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteBehaviorType(type.id)}>
                                 <Trash2 className="w-4 h-4 text-destructive" />
                             </Button>
                             </li>

@@ -45,14 +45,17 @@ export type Remark = {
   type?: string;
 };
 
-export type BehaviorType = 'WorkedWell' | 'Disturbed' | 'HelpedOthers';
+export type BehaviorType = {
+  id: string;
+  label: string;
+};
 
 export type HourlyCheck = {
     id?: number;
     studentId: string;
     date: Date;
     period: number;
-    behavior: BehaviorType;
+    behaviorId: string;
 };
 
 
@@ -101,5 +104,6 @@ export type AppSettings = {
   schedule: PeriodTime[];
   selectedSeatingLayoutId?: string | null;
   remarkTypes?: string[];
+  behaviorTypes?: BehaviorType[];
   onboardingCompleted?: boolean;
 };

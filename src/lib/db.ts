@@ -2,6 +2,8 @@
 import Dexie, { type Table } from 'dexie';
 import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck } from './types';
 import { getWeekNumber } from './utils';
+import { v4 as uuidv4 } from 'uuid';
+
 
 // Define the database schema
 export class MySubClassedDexie extends Dexie {
@@ -77,6 +79,29 @@ export class MySubClassedDexie extends Dexie {
             }
         });
 
+        // Version 5: Make HourlyCheck behavior configurable
+        this.version(5).stores({
+            hourlyChecks: '++id, studentId, date, period, behaviorId'
+        }).upgrade(async (tx) => {
+            // Rename 'behavior' to 'behaviorId' and set default value
+            await tx.table('hourlyChecks').toCollection().modify(check => {
+                if (check.behavior) {
+                    let behaviorId = 'workedWell'; // default
+                    if (check.behavior === 'Disturbed') behaviorId = 'disturbed';
+                    if (check.behavior === 'HelpedOthers') behaviorId = 'helpedOthers';
+                    check.behaviorId = behaviorId;
+                    delete check.behavior;
+                }
+            });
+            // Add default behaviorTypes to settings
+            const userSettings = await tx.table('settings').get('userSettings');
+            if (userSettings && !userSettings.behaviorTypes) {
+                userSettings.behaviorTypes = defaultBehaviorTypes;
+                await tx.table('settings').put(userSettings);
+            }
+        });
+
+
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
         });
@@ -97,6 +122,12 @@ const mockStudents = [
 ];
 
 const mockSubjects = [ { name: 'Norsk' }, { name: 'Matematikk' }, { name: 'Engelsk' }, { name: 'Samfunnsfag' }, { name: 'Naturfag' }];
+
+const defaultBehaviorTypes = [
+    { id: 'workedWell', label: 'Jobbet godt' },
+    { id: 'disturbed', label: 'Forstyrret' },
+    { id: 'helpedOthers', label: 'Hjalp andre' }
+];
 
 const defaultSettings: AppSettings = {
   tabs: {
@@ -119,6 +150,7 @@ const defaultSettings: AppSettings = {
   ],
   selectedSeatingLayoutId: null,
   remarkTypes: ["Generell", "Forstyrrer andre", "Mangler utstyr", "Upassende språk", "Gjorde en god innsats"],
+  behaviorTypes: defaultBehaviorTypes,
   onboardingCompleted: false,
 };
 
@@ -149,6 +181,7 @@ export async function resetDatabase() {
             schedule: defaultSettings.schedule,
             selectedSeatingLayoutId: defaultSettings.selectedSeatingLayoutId,
             remarkTypes: defaultSettings.remarkTypes,
+            behaviorTypes: defaultSettings.behaviorTypes,
             onboardingCompleted: true,
         };
         await db.settings.put(settingsToPut);
@@ -238,6 +271,7 @@ export async function resetDatabase() {
         
         // --- Create Mock Hourly Checks ---
         const hourlyChecksToAdd: Omit<HourlyCheck, 'id'>[] = [];
+        const behaviorTypes = defaultSettings.behaviorTypes || [];
         for (let i = 0; i < 7; i++) { // Last 7 days
             const date = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
             if (date.getDay() === 0 || date.getDay() === 6) continue;
@@ -246,13 +280,13 @@ export async function resetDatabase() {
                 studentIds.forEach(studentId => {
                     const chance = Math.random();
                      if (chance < 0.6) {
-                        hourlyChecksToAdd.push({ studentId, date, period, behavior: 'WorkedWell' });
+                        hourlyChecksToAdd.push({ studentId, date, period, behaviorId: behaviorTypes.find(b => b.id === 'workedWell')?.id || 'workedWell' });
                     }
                     if (chance > 0.9) {
-                        hourlyChecksToAdd.push({ studentId, date, period, behavior: 'Disturbed' });
+                        hourlyChecksToAdd.push({ studentId, date, period, behaviorId: behaviorTypes.find(b => b.id === 'disturbed')?.id || 'disturbed' });
                     }
                     if (chance > 0.5 && chance < 0.55) {
-                        hourlyChecksToAdd.push({ studentId, date, period, behavior: 'HelpedOthers' });
+                        hourlyChecksToAdd.push({ studentId, date, period, behaviorId: behaviorTypes.find(b => b.id === 'helpedOthers')?.id || 'helpedOthers' });
                     }
                 });
             }

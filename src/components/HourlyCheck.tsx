@@ -6,7 +6,7 @@ import type { Student, HourlyCheck, BehaviorType, SeatingChartData, AppSettings 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Smile, Annoyed, Handshake, CheckCircle2 } from "lucide-react";
+import { Calendar as CalendarIcon, Smile, Annoyed, Handshake, CheckCircle2, Star, MessageSquareWarning, Hand } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -26,24 +26,60 @@ interface HourlyCheckProps {
   settings: AppSettings;
 }
 
-const behaviorConfig: Record<BehaviorType, { icon: React.ElementType, label: string, color: string, selectedColor: string }> = {
-    WorkedWell: { icon: Smile, label: "Jobbet godt", color: "text-green-600", selectedColor: "bg-green-100 border-green-300" },
-    Disturbed: { icon: Annoyed, label: "Forstyrret", color: "text-yellow-600", selectedColor: "bg-yellow-100 border-yellow-300" },
-    HelpedOthers: { icon: Handshake, label: "Hjalp andre", color: "text-blue-600", selectedColor: "bg-blue-100 border-blue-300" }
+const iconMap: Record<string, React.ElementType> = {
+    workedWell: Smile,
+    disturbed: Annoyed,
+    helpedOthers: Handshake,
+    default: Star,
+    warning: MessageSquareWarning,
+    participated: Hand,
 };
+
+const behaviorConfig = (behaviorTypes: BehaviorType[] = []) => {
+    const config: Record<string, { icon: React.ElementType, label: string, color: string, selectedColor: string }> = {};
+    
+    behaviorTypes.forEach(bt => {
+        let icon = iconMap.default;
+        if(bt.id in iconMap) icon = iconMap[bt.id];
+
+        config[bt.id] = {
+            icon,
+            label: bt.label,
+            color: "text-gray-600", 
+            selectedColor: "bg-blue-100 border-blue-300"
+        };
+    });
+    // Override specific default colors if they exist
+    if(config.workedWell) { config.workedWell.color = "text-green-600"; config.workedWell.selectedColor = "bg-green-100 border-green-300"; }
+    if(config.disturbed) { config.disturbed.color = "text-yellow-600"; config.disturbed.selectedColor = "bg-yellow-100 border-yellow-300"; }
+    if(config.helpedOthers) { config.helpedOthers.color = "text-blue-600"; config.helpedOthers.selectedColor = "bg-blue-100 border-blue-300"; }
+
+    return config;
+}
 
 export default function HourlyCheck({ students, initialChecks, onUpdate, seatingChart, settings }: HourlyCheckProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [currentPeriod, setCurrentPeriod] = useState<number>(1);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [activeBehavior, setActiveBehavior] = useState<BehaviorType>('WorkedWell');
+  
+  const behaviorTypes = settings.behaviorTypes || [];
+  const [activeBehaviorId, setActiveBehaviorId] = useState<string | null>(behaviorTypes.length > 0 ? behaviorTypes[0].id : null);
+  
   const { toast } = useToast();
   
-  // Use local state derived from props instead of useLiveQuery
   const [localChecks, setLocalChecks] = useState(initialChecks || []);
   useEffect(() => {
     setLocalChecks(initialChecks || []);
   }, [initialChecks]);
+  
+  // Update active behavior if the list changes
+  useEffect(() => {
+    if (behaviorTypes.length > 0 && !behaviorTypes.find(bt => bt.id === activeBehaviorId)) {
+        setActiveBehaviorId(behaviorTypes[0].id);
+    } else if (behaviorTypes.length === 0) {
+        setActiveBehaviorId(null);
+    }
+  }, [behaviorTypes, activeBehaviorId]);
 
 
   useEffect(() => {
@@ -103,6 +139,7 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
   };
 
   const handleStudentClick = async (studentId: string) => {
+    if (!activeBehaviorId) return;
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
     const dateStartOfDay = new Date(date);
     dateStartOfDay.setHours(0, 0, 0, 0);
@@ -110,45 +147,39 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
     const existingCheck = localChecks.find(c => 
         c.studentId === studentId &&
         c.period === currentPeriod &&
-        c.behavior === activeBehavior &&
+        c.behaviorId === activeBehaviorId &&
         isSameDay(c.date, dateStartOfDay)
     );
 
     if (existingCheck) {
-        // Optimistically update UI
         setLocalChecks(prev => prev.filter(c => c.id !== existingCheck.id));
-        // Update database
         try {
             await db.hourlyChecks.delete(existingCheck.id!);
         } catch (error) {
              console.error(error);
              toast({ title: "Feil", description: `Kunne ikke fjerne atferd for ${studentName}.`, variant: "destructive" });
-             // Revert UI change on error
              setLocalChecks(prev => [...prev, existingCheck]);
         }
     } else {
-        const newCheck: Omit<HourlyCheck, 'id'> = { studentId, date, period: currentPeriod, behavior: activeBehavior };
-        // Optimistically update UI
-        const tempId = -1 * Date.now(); // Temporary ID for React key
+        const newCheck: Omit<HourlyCheck, 'id'> = { studentId, date, period: currentPeriod, behaviorId: activeBehaviorId };
+        const tempId = -1 * Date.now();
         setLocalChecks(prev => [...prev, { ...newCheck, id: tempId }]);
-         // Update database
         try {
             const newId = await db.hourlyChecks.add(newCheck as HourlyCheck);
-            // Replace temporary item with real one from DB
             setLocalChecks(prev => prev.map(c => c.id === tempId ? { ...newCheck, id: newId } : c));
         } catch (error) {
             console.error(error);
             toast({ title: "Feil", description: `Kunne ikke lagre atferd for ${studentName}.`, variant: "destructive" });
-            // Revert UI change on error
             setLocalChecks(prev => prev.filter(c => c.id !== tempId));
         }
     }
   };
 
+  const currentBehaviorConfig = behaviorConfig(behaviorTypes);
 
   const StudentButton = ({ student }: { student: Student }) => {
     const checksForPeriod = getChecksForStudent(student.id, date, currentPeriod);
-    const hasActiveBehavior = checksForPeriod.some(c => c.behavior === activeBehavior);
+    const hasActiveBehavior = checksForPeriod.some(c => c.behaviorId === activeBehaviorId);
 
     return (
         <button
@@ -156,17 +187,17 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
             className={cn(
                 "flex flex-col items-center justify-center p-2 text-center border rounded-lg w-28 h-20 transition-all",
                 "bg-secondary hover:bg-muted",
-                { [behaviorConfig[activeBehavior].selectedColor]: hasActiveBehavior }
+                { [currentBehaviorConfig[activeBehaviorId!]?.selectedColor || '']: hasActiveBehavior }
             )}
         >
              <span className="mb-1 text-xs font-semibold">{student.name}</span>
              <div className="flex gap-2">
-                {Object.keys(behaviorConfig).map(key => {
-                    const behavior = key as BehaviorType;
-                    const config = behaviorConfig[behavior];
-                    const isChecked = checksForPeriod.some(c => c.behavior === behavior);
-                    if (!isChecked) return null;
-                    return <config.icon key={behavior} className={cn("h-4 w-4", config.color)} />;
+                {behaviorTypes.map(bt => {
+                    const config = currentBehaviorConfig[bt.id];
+                    const isChecked = checksForPeriod.some(c => c.behaviorId === bt.id);
+                    if (!isChecked || !config) return null;
+                    const Icon = config.icon;
+                    return <Icon key={bt.id} className={cn("h-4 w-4", config.color)} />;
                 })}
              </div>
         </button>
@@ -227,24 +258,25 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Label className="font-semibold">Velg atferd:</Label>
           <div className="flex flex-wrap gap-2">
-            {Object.keys(behaviorConfig).map(key => {
-              const behavior = key as BehaviorType;
-              const config = behaviorConfig[behavior];
-              const isActive = activeBehavior === behavior;
+            {behaviorTypes.length > 0 ? behaviorTypes.map(bt => {
+              const config = currentBehaviorConfig[bt.id];
+              if (!config) return null;
+              const Icon = config.icon;
+              const isActive = activeBehaviorId === bt.id;
               return (
                   <Button
-                      key={behavior}
+                      key={bt.id}
                       variant={isActive ? "secondary" : "ghost"}
                       size="sm"
-                      onClick={() => setActiveBehavior(behavior)}
+                      onClick={() => setActiveBehaviorId(bt.id)}
                       className={cn("justify-start", { [config.selectedColor]: isActive })}
                   >
                       {isActive && <CheckCircle2 className="mr-2 h-4 w-4" />}
-                      <config.icon className={cn("mr-2 h-4 w-4", config.color)} />
+                      <Icon className={cn("mr-2 h-4 w-4", config.color)} />
                       {config.label}
                   </Button>
               );
-            })}
+            }) : <p className="text-sm text-muted-foreground">Ingen atferdstyper definert. Gå til Innstillinger for å legge til.</p>}
           </div>
         </div>
       </CardHeader>
@@ -277,4 +309,3 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
     </Card>
   );
 }
-

@@ -2,12 +2,12 @@
 "use client";
 
 import { useState, useMemo, FC } from 'react';
-import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings, HourlyCheck } from '@/lib/types';
+import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings, HourlyCheck, BehaviorType } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
-import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp, Smile, Annoyed, Handshake } from 'lucide-react';
+import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp, Smile, Annoyed, Handshake, Star } from 'lucide-react';
 import { getWeekNumber } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RemarkAnalysis from './RemarkAnalysis';
@@ -22,7 +22,7 @@ interface ReportsProps {
   dailyChecks: DailyCheck[];
   remarks: Remark[];
   hourlyChecks: HourlyCheck[];
-  settings: ReportSettings;
+  settings: AppSettings;
 }
 
 const statusColors: Record<HomeworkStatus, string> = {
@@ -127,18 +127,18 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
             const studentWeekChecks = dailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
             const studentWeekRemarks = remarks.filter(r => r.studentId === student.id && getWeekNumber(new Date(r.date)) === selectedWeek);
 
-            const hasHomeworkIssues = settings.includeHomework && studentWeekSubmissions.some(s => 
+            const hasHomeworkIssues = settings.reportSettings.includeHomework && studentWeekSubmissions.some(s => 
                 s.status === 'Ikke levert' || s.status === 'Må rettes' || s.status === 'Glemt bok'
             );
-            const hasIpadIssues = settings.includeIpad && studentWeekChecks.some(c => !c.ipadBrought || !c.ipadCharged);
-            const hasRemarks = settings.includeRemarks && studentWeekRemarks.length > 0;
+            const hasIpadIssues = settings.reportSettings.includeIpad && studentWeekChecks.some(c => !c.ipadBrought || !c.ipadCharged);
+            const hasRemarks = settings.reportSettings.includeRemarks && studentWeekRemarks.length > 0;
             
             const hasAnyIssues = hasHomeworkIssues || hasIpadIssues || hasRemarks;
             
             const onlyAbsence = !hasIpadIssues && !hasRemarks && studentWeekSubmissions.length > 0 && studentWeekSubmissions.every(s => s.status === 'Syk/Fravær');
 
             if (onlyAbsence) return null;
-            if (hasAnyIssues || settings.includePositiveFeedback) {
+            if (hasAnyIssues || settings.reportSettings.includePositiveFeedback) {
                 return { student, hasAnyIssues, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks };
             }
             return null;
@@ -171,7 +171,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
                 studentWeekChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
                 studentWeekChecks.filter(c => !c.ipadBrought).length,
                 studentWeekRemarks.length,
-                settings
+                settings.reportSettings
             );
             return { studentName: student.name, message };
         }).filter((item): item is { studentName: string; message: string } => item !== null && item.message !== "");
@@ -255,7 +255,7 @@ const StatusBar: FC<{ stats: Record<HomeworkStatus, number>, total: number }> = 
     );
 };
 
-const ReportDetails = ({ stat }: { stat: ReturnType<typeof useStudentStats>[0] }) => (
+const ReportDetails = ({ stat, behaviorTypes }: { stat: ReturnType<typeof useStudentStats>[0], behaviorTypes: BehaviorType[] }) => (
     <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
              <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
@@ -272,9 +272,15 @@ const ReportDetails = ({ stat }: { stat: ReturnType<typeof useStudentStats>[0] }
                     <CardTitle className="text-base text-teal-900 dark:text-teal-200">Innsats i timen</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-teal-800 dark:text-teal-300 space-y-1">
-                    <p className="flex items-center"><Smile className="mr-2 w-4 h-4 text-green-600" />Jobbet godt: <strong>{stat.workedWell}</strong> gang(er)</p>
-                    <p className="flex items-center"><Handshake className="mr-2 w-4 h-4 text-blue-600" />Hjulpet andre: <strong>{stat.helpedOthers}</strong> gang(er)</p>
-                    <p className="flex items-center"><Annoyed className="mr-2 w-4 h-4 text-yellow-600" />Forstyrret: <strong>{stat.disturbed}</strong> gang(er)</p>
+                     {behaviorTypes.map(bt => {
+                        const count = stat.behaviorCounts[bt.id] || 0;
+                        return (
+                            <p key={bt.id} className="flex items-center">
+                                <Star className="mr-2 w-4 h-4 text-yellow-500" />
+                                {bt.label}: <strong>{count}</strong> gang(er)
+                            </p>
+                        );
+                     })}
                 </CardContent>
             </Card>
         </div>
@@ -314,7 +320,7 @@ const ReportDetails = ({ stat }: { stat: ReturnType<typeof useStudentStats>[0] }
 );
 
 
-const FullReportCard = ({ stat, isOpen, isPrintVersion = false }: { stat: ReturnType<typeof useStudentStats>[0], isOpen: boolean, isPrintVersion?: boolean }) => (
+const FullReportCard = ({ stat, isOpen, isPrintVersion = false, behaviorTypes }: { stat: ReturnType<typeof useStudentStats>[0], isOpen: boolean, isPrintVersion?: boolean, behaviorTypes: BehaviorType[] }) => (
      <Card className={cn(
         "print:shadow-none print:border-none",
         isPrintVersion && "border-b border-t"
@@ -340,17 +346,17 @@ const FullReportCard = ({ stat, isOpen, isPrintVersion = false }: { stat: Return
             {stat.totalDelays > 0 && <p className="text-sm text-muted-foreground flex items-center"><Clock className="mr-2 h-4 w-4" />{stat.totalDelays} forsinkelser totalt</p>}
             
             {isPrintVersion ? (
-                <ReportDetails stat={stat} />
+                <ReportDetails stat={stat} behaviorTypes={behaviorTypes} />
             ) : (
                 <CollapsibleContent>
-                    <ReportDetails stat={stat} />
+                    <ReportDetails stat={stat} behaviorTypes={behaviorTypes} />
                 </CollapsibleContent>
             )}
         </CardContent>
     </Card>
 );
 
-const useStudentStats = (students: Student[], subjects: Subject[], homework: Homework[], submissions: Submission[], dailyChecks: DailyCheck[], remarks: Remark[], hourlyChecks: HourlyCheck[]) => {
+const useStudentStats = (students: Student[], subjects: Subject[], homework: Homework[], submissions: Submission[], dailyChecks: DailyCheck[], remarks: Remark[], hourlyChecks: HourlyCheck[], behaviorTypes: BehaviorType[]) => {
     return useMemo(() => {
         return students.map(student => {
             const studentSubmissions = submissions.filter(s => s.studentId === student.id);
@@ -396,6 +402,11 @@ const useStudentStats = (students: Student[], subjects: Subject[], homework: Hom
                     problemSubmissions,
                 };
             }).filter(s => s.totalSubmissions > 0);
+            
+            const behaviorCounts = studentHourlyChecks.reduce((acc, check) => {
+                acc[check.behaviorId] = (acc[check.behaviorId] || 0) + 1;
+                return acc;
+            }, {} as Record<string, number>);
 
             return {
                 studentId: student.id,
@@ -406,19 +417,18 @@ const useStudentStats = (students: Student[], subjects: Subject[], homework: Hom
                 totalDelays,
                 ipadNotCharged: studentDailyChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
                 ipadNotBrought: studentDailyChecks.filter(c => !c.ipadBrought).length,
-                workedWell: studentHourlyChecks.filter(c => c.behavior === 'WorkedWell').length,
-                disturbed: studentHourlyChecks.filter(c => c.behavior === 'Disturbed').length,
-                helpedOthers: studentHourlyChecks.filter(c => c.behavior === 'HelpedOthers').length,
+                behaviorCounts,
                 totalRemarks: studentRemarks.length,
             };
         }).sort((a,b) => a.studentName.localeCompare(b.studentName));
-    }, [students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks]);
+    }, [students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks, behaviorTypes]);
 };
 
 
-const StudentReport = ({ students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks }: Omit<ReportsProps, 'settings'>) => {
+const StudentReport = ({ students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks, settings }: Omit<ReportsProps, 'settings'> & { settings: AppSettings }) => {
     const [openStudents, setOpenStudents] = useState<Record<string, boolean>>({});
-    const studentStats = useStudentStats(students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks);
+    const behaviorTypes = settings.behaviorTypes || [];
+    const studentStats = useStudentStats(students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks, behaviorTypes);
     
     const toggleStudent = (studentId: string) => {
         setOpenStudents(prev => ({ ...prev, [studentId]: !prev[studentId] }));
@@ -438,7 +448,7 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
             <CardContent className="space-y-4 screen-only">
                 {studentStats.map(stat => (
                     <Collapsible key={stat.studentId} open={openStudents[stat.studentId] || false} onOpenChange={() => toggleStudent(stat.studentId)}>
-                        <FullReportCard stat={stat} isOpen={openStudents[stat.studentId] || false} />
+                        <FullReportCard stat={stat} isOpen={openStudents[stat.studentId] || false} behaviorTypes={behaviorTypes} />
                     </Collapsible>
                 ))}
             </CardContent>
@@ -446,7 +456,7 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
             <div className="hidden print-only printable-area">
                 {studentStats.map(stat => (
                     <div key={stat.studentId} className="page-break">
-                         <FullReportCard stat={stat} isOpen={true} isPrintVersion={true} />
+                         <FullReportCard stat={stat} isOpen={true} isPrintVersion={true} behaviorTypes={behaviorTypes} />
                     </div>
                 ))}
             </div>
