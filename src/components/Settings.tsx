@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -8,7 +7,7 @@ import type { Student, Subject, AppSettings, TabKey, BehaviorType } from "@/lib/
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Palette, Smile } from "lucide-react";
+import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -56,10 +55,8 @@ interface SettingsProps {
 const tabLabels: Partial<Record<TabKey, string>> = {
   overview: "Lekseoversikt",
   dailyCheck: "Daglig Sjekk",
-  hourlyCheck: "Timeinnsjekk",
-  remarks: "Anmerkninger",
-  reports: "Rapporter & Analyse",
-  seatingChart: "Klassekart",
+  observations: "Observasjoner",
+  reports: "Analyse",
   classroomTools: "Klasseverktøy",
   settings: "Innstillinger"
 };

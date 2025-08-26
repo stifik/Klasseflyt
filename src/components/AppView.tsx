@@ -5,12 +5,10 @@ import { FC } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import HomeworkOverview from "@/components/HomeworkOverview";
 import DailyChecklist from "@/components/DailyChecklist";
-import HourlyCheck from '@/components/HourlyCheck';
 import Reports from "@/components/Reports";
 import Settings from "@/components/Settings";
-import SeatingChart from "@/components/SeatingChart";
-import Remarks from "@/components/Remarks";
 import ClassroomTools from "@/components/ClassroomTools";
+import Observations from "@/components/Observations";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import type { AppSettings, SeatingLayout, Student, Subject, TabKey } from '@/lib/types';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -19,10 +17,8 @@ import { db } from '@/lib/db';
 const tabComponents: Partial<Record<TabKey, FC<any>>> = {
   overview: HomeworkOverview,
   dailyCheck: DailyChecklist,
-  hourlyCheck: HourlyCheck,
-  remarks: Remarks,
+  observations: Observations,
   reports: Reports,
-  seatingChart: SeatingChart,
   classroomTools: ClassroomTools,
   settings: Settings,
 };
@@ -30,10 +26,8 @@ const tabComponents: Partial<Record<TabKey, FC<any>>> = {
 const tabLabels: Partial<Record<TabKey, string>> = {
   overview: "Lekseoversikt",
   dailyCheck: "Daglig Sjekk",
-  hourlyCheck: "Timeinnsjekk",
-  remarks: "Anmerkninger",
-  reports: "Rapporter & Analyse",
-  seatingChart: "Klassekart",
+  observations: "Observasjoner",
+  reports: "Analyse",
   classroomTools: "Klasseverktøy",
   settings: "Innstillinger",
 };
@@ -99,11 +93,9 @@ const AppView: FC<AppViewProps> = ({
   const componentProps: Record<string, any> = {
     overview: { students, subjects, homeworkList: homework, submissions, onUpdate: () => {} },
     dailyCheck: { students, initialChecks: dailyChecks, onUpdate: () => {}, seatingChart: seatingChartData },
-    hourlyCheck: { students, initialChecks: hourlyChecks, onUpdate: () => {}, seatingChart: seatingChartData, settings },
-    remarks: { students, initialRemarks: remarks, onUpdate: () => {}, seatingChart: seatingChartData, settings },
-    reports: { students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks, settings: settings.reportSettings },
-    seatingChart: { students, seatingChart: seatingChartData, onSeatingChartChange: handleSeatingChartChange, history: seatingChartHistory || [], appSettings: settings, onAppSettingsChange: onSettingsChange, layouts: seatingLayouts, onLayoutsChange: handleLayoutsChange },
-    classroomTools: { students, seatingChart: seatingChartData, activeLayout },
+    observations: { students, initialHourlyChecks: hourlyChecks, initialRemarks: remarks, onUpdate: () => {}, seatingChart: seatingChartData, settings },
+    reports: { students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks, settings: settings },
+    classroomTools: { students, seatingChart: seatingChartData, onSeatingChartChange: handleSeatingChartChange, history: seatingChartHistory || [], appSettings: settings, onAppSettingsChange: onSettingsChange, layouts: seatingLayouts, onLayoutsChange: handleLayoutsChange, activeLayout },
     settings: { initialStudents: students, initialSubjects: subjects, settings: settings, onSettingsChange: onSettingsChange }
   };
 

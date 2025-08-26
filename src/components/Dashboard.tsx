@@ -4,7 +4,7 @@
 import type {FC} from 'react';
 import type {AppSettings, TabKey} from '@/lib/types';
 import {Card, CardHeader, CardTitle, CardDescription} from '@/components/ui/card';
-import {BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed} from 'lucide-react';
+import {BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed, Eye} from 'lucide-react';
 import {cn} from '@/lib/utils';
 
 interface DashboardProps {
@@ -25,35 +25,23 @@ const tabInfo: Partial<Record<TabKey, {label: string; description: string; icon:
     icon: CalendarCheck,
     color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
   },
-  hourlyCheck: {
-    label: 'Timeinnsjekk',
-    description: 'Loggfør arbeidsinnsats og atferd.',
-    icon: Smile,
+  observations: {
+    label: 'Observasjoner',
+    description: 'Loggfør atferd og anmerkninger i timen.',
+    icon: Eye,
     color: 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400',
   },
-  remarks: {
-    label: 'Anmerkninger',
-    description: 'Loggfør spesifikke hendelser raskt.',
-    icon: Megaphone,
-    color: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
-  },
   reports: {
-    label: 'Rapporter & Analyse',
+    label: 'Analyse',
     description: 'Analyser data og generer ukesmeldinger.',
     icon: BarChart2,
     color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
   },
-  seatingChart: {
-    label: 'Klassekart',
-    description: 'Design klasserom og generer sitteplasser.',
-    icon: Users,
-    color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
-  },
   classroomTools: {
     label: 'Klasseverktøy',
-    description: 'Lag grupper og trekk tilfeldige elever.',
-    icon: Blocks,
-    color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
+    description: 'Design klasserom, lag grupper og trekk elever.',
+    icon: Users,
+    color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
   },
 };
 

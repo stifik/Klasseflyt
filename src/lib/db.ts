@@ -126,6 +126,30 @@ export class MySubClassedDexie extends Dexie {
                 await tx.table('settings').put(userSettings);
             }
         });
+        
+        // Version 7: Restructure navigation
+        this.version(7).stores({}).upgrade(async (tx) => {
+             const userSettings = await tx.table('settings').get('userSettings');
+             if (userSettings) {
+                // Rename/remove old keys
+                userSettings.tabs.observations = userSettings.tabs.hourlyCheck || userSettings.tabs.remarks;
+                delete userSettings.tabs.hourlyCheck;
+                delete userSettings.tabs.remarks;
+                delete userSettings.tabs.seatingChart;
+                
+                // Update tabOrder
+                const newTabOrder: (string | undefined)[] = userSettings.tabOrder.map((tab: string) => {
+                    if (tab === 'hourlyCheck' || tab === 'remarks') return 'observations';
+                    if (tab === 'seatingChart') return undefined; // remove
+                    return tab;
+                });
+                
+                // Remove duplicates and undefined
+                userSettings.tabOrder = [...new Set(newTabOrder.filter(t => t))] as any[];
+
+                await tx.table('settings').put(userSettings);
+             }
+        });
 
 
         this.on('populate', async () => {
@@ -157,11 +181,11 @@ const defaultBehaviorTypes: BehaviorType[] = [
 
 const defaultSettings: AppSettings = {
   tabs: {
-    overview: true, dailyCheck: true, hourlyCheck: true, remarks: true, reports: true,
-    seatingChart: true, classroomTools: true,
+    overview: true, dailyCheck: true, observations: true, reports: true,
+    classroomTools: true,
     settings: true,
   },
-  tabOrder: ['overview', 'dailyCheck', 'hourlyCheck', 'remarks', 'reports', 'seatingChart', 'classroomTools'],
+  tabOrder: ['overview', 'dailyCheck', 'observations', 'classroomTools', 'reports'],
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
     includePositiveFeedback: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
@@ -214,8 +238,8 @@ export async function resetDatabase() {
         
 
         // Add students and subjects
-        const studentIds = await db.students.bulkAdd(mockStudents, { returning: true }) as string[];
-        const subjectIds = await db.subjects.bulkAdd(mockSubjects, { returning: true }) as string[];
+        await db.students.bulkAdd(mockStudents);
+        await db.subjects.bulkAdd(mockSubjects);
 
         const allSubjects = await db.subjects.toArray();
         const allStudents = await db.students.toArray();

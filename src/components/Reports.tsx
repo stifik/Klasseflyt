@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useMemo, FC } from 'react';
@@ -8,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
-import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp, Smile, Annoyed, Handshake, Star } from 'lucide-react';
+import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { getWeekNumber } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RemarkAnalysis from './RemarkAnalysis';
@@ -479,17 +478,17 @@ export default function Reports(props: ReportsProps) {
         <Tabs defaultValue="summary" className="w-full space-y-4">
             <TabsList className="grid w-full grid-cols-3 no-print">
                 <TabsTrigger value="summary">Ukesoppsummering</TabsTrigger>
-                <TabsTrigger value="analysis">Analyse</TabsTrigger>
                 <TabsTrigger value="student-report">Elevrapporter</TabsTrigger>
+                <TabsTrigger value="analysis">Anmerkningsanalyse</TabsTrigger>
             </TabsList>
             <TabsContent value="summary">
                 <WeeklySummary {...props} />
             </TabsContent>
-            <TabsContent value="analysis">
-                <RemarkAnalysis students={props.students} initialRemarks={props.remarks} />
-            </TabsContent>
             <TabsContent value="student-report">
                 <StudentReport {...props} />
+            </TabsContent>
+            <TabsContent value="analysis">
+                <RemarkAnalysis students={props.students} initialRemarks={props.remarks} />
             </TabsContent>
         </Tabs>
     )
