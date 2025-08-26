@@ -59,9 +59,22 @@ function Home() {
           db.subjects.toArray(),
           db.settings.get('userSettings')
         ]);
+
+        let finalSettings = settingsData;
+        // This is the fix: check if the new tab exists and add it if not.
+        if (finalSettings && finalSettings.tabs.classroomTools === undefined) {
+          finalSettings.tabs.classroomTools = true;
+          if (!finalSettings.tabOrder.includes('classroomTools')) {
+            finalSettings.tabOrder.push('classroomTools');
+          }
+          // Save the updated settings back to the DB
+          await db.settings.put({ id: 'userSettings', ...finalSettings });
+        }
+        
         setStudents(studentsData);
         setSubjects(subjectsData);
-        setSettings(settingsData);
+        setSettings(finalSettings);
+
       } catch (error) {
         console.error("Failed to fetch initial data", error);
         // Set empty arrays on error to avoid getting stuck
