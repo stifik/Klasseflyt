@@ -86,11 +86,14 @@ export type TabKey = 'overview' | 'dailyCheck' | 'observations' | 'reports' | 'c
 export type DashboardToolKey = 
   | 'overview' 
   | 'dailyCheck' 
+  | 'observations'
   | 'observations.hourly' 
   | 'observations.remarks' 
+  | 'classroomTools'
   | 'classroomTools.seatingChart' 
   | 'classroomTools.groupTool' 
   | 'classroomTools.studentPicker' 
+  | 'reports'
   | 'reports.summary' 
   | 'reports.studentReports' 
   | 'reports.analysis';

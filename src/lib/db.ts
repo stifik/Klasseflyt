@@ -191,14 +191,17 @@ const defaultBehaviorTypes: BehaviorType[] = [
 const defaultDashboardTools: DashboardConfig[] = [
     { key: 'overview', visible: true },
     { key: 'dailyCheck', visible: true },
-    { key: 'observations.hourly', visible: true },
+    { key: 'observations', visible: true },
+    { key: 'classroomTools', visible: true },
+    { key: 'reports', visible: true },
+    { key: 'observations.hourly', visible: false },
     { key: 'observations.remarks', visible: false },
-    { key: 'classroomTools.seatingChart', visible: true },
-    { key: 'classroomTools.groupTool', visible: true },
-    { key: 'classroomTools.studentPicker', visible: true },
+    { key: 'classroomTools.seatingChart', visible: false },
+    { key: 'classroomTools.groupTool', visible: false },
+    { key: 'classroomTools.studentPicker', visible: false },
     { key: 'reports.summary', visible: false },
     { key: 'reports.studentReports', visible: false },
-    { key: 'reports.analysis', visible: true },
+    { key: 'reports.analysis', visible: false },
 ];
 
 const defaultSettings: AppSettings = {

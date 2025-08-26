@@ -7,7 +7,7 @@ import type {AppSettings, TabKey, DashboardToolKey} from '@/lib/types';
 import {Card, CardHeader, CardTitle, CardDescription} from '@/components/ui/card';
 import {
     BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed, 
-    Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare
+    Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
 
@@ -32,6 +32,13 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
   },
   {
+    key: 'observations',
+    label: 'Observasjoner',
+    description: 'Registrer atferd og anmerkninger.',
+    icon: Eye,
+    color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
+  },
+  {
     key: 'observations.hourly',
     label: 'Timeinnsjekk',
     description: 'Loggfør arbeidsinnsats i sanntid.',
@@ -44,6 +51,13 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     description: 'Loggfør spesifikke hendelser raskt.',
     icon: Megaphone,
     color: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
+  },
+  {
+    key: 'classroomTools',
+    label: 'Klasseverktøy',
+    description: 'Klassekart, grupper og elev-trekker.',
+    icon: Settings2,
+    color: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400',
   },
   {
     key: 'classroomTools.seatingChart',
@@ -67,6 +81,13 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     color: 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400',
   },
   {
+    key: 'reports',
+    label: 'Analyse',
+    description: 'Analyser data og se trender over tid.',
+    icon: BarChart2,
+    color: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+  },
+  {
     key: 'reports.summary',
     label: 'Ukesoppsummering',
     description: 'Generer ukesmeldinger til foresatte.',
@@ -82,8 +103,8 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
   },
   {
     key: 'reports.analysis',
-    label: 'Analyse',
-    description: 'Analyser data og se trender over tid.',
+    label: 'Anmerkningsanalyse',
+    description: 'Dykk ned i data om anmerkninger.',
     icon: BarChart2,
     color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
   },

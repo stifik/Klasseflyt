@@ -56,14 +56,17 @@ interface SettingsProps {
 const allToolLabels: Record<DashboardToolKey, string> = {
     'overview': "Lekseoversikt",
     'dailyCheck': "Daglig Sjekk",
+    'observations': "Observasjoner",
     'observations.hourly': "Timeinnsjekk",
     'observations.remarks': "Anmerkninger",
+    'classroomTools': "Klasseverktøy",
     'classroomTools.seatingChart': "Klassekart",
     'classroomTools.groupTool': "Gruppeverktøy",
     'classroomTools.studentPicker': "Elev-trekker",
+    'reports': "Analyse",
     'reports.summary': "Ukesoppsummering",
     'reports.studentReports': "Elevrapporter",
-    'reports.analysis': "Analyse",
+    'reports.analysis': "Anmerkningsanalyse",
 };
 
 const allTabLabels: Record<TabKey, string> = {
