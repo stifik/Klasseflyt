@@ -78,17 +78,20 @@ export default function HourlyCheck({ students, initialChecks: checks, onUpdate,
     return () => clearInterval(interval);
   }, [settings.schedule]);
 
-  const isSameDay = (d1: Date, d2: Date) =>
-    d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate();
+  const isSameDay = (d1: Date, d2: Date) => {
+    const d1Date = new Date(d1);
+    const d2Date = new Date(d2);
+    return d1Date.getFullYear() === d2Date.getFullYear() &&
+           d1Date.getMonth() === d2Date.getMonth() &&
+           d1Date.getDate() === d2Date.getDate();
+  }
   
   const getChecksForStudent = (studentId: string, checkDate: Date, period: number, behavior?: BehaviorType): HourlyCheck[] => {
     if (!checks) return [];
     return checks.filter(
       (c) =>
         c.studentId === studentId &&
-        isSameDay(new Date(c.date), checkDate) &&
+        isSameDay(c.date, checkDate) &&
         c.period === period &&
         (behavior === undefined || c.behavior === behavior)
     );
@@ -96,16 +99,28 @@ export default function HourlyCheck({ students, initialChecks: checks, onUpdate,
 
   const handleStudentClick = async (studentId: string) => {
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
-    const existingCheck = getChecksForStudent(studentId, date, currentPeriod, activeBehavior);
-    
+    const dateStartOfDay = new Date(date);
+    dateStartOfDay.setHours(0, 0, 0, 0);
+
     try {
-        if (existingCheck.length > 0) {
-            // If it exists, remove it (toggle off)
-            await db.hourlyChecks.delete(existingCheck[0].id!);
-        } else {
-            // If it doesn't exist, add it (toggle on)
-            await db.hourlyChecks.add({ studentId, date, period: currentPeriod, behavior: activeBehavior });
-        }
+        await db.transaction('rw', db.hourlyChecks, async () => {
+            const existingCheck = await db.hourlyChecks
+                .where({
+                    studentId,
+                    period: currentPeriod,
+                    behavior: activeBehavior,
+                })
+                .and(record => isSameDay(record.date, dateStartOfDay))
+                .first();
+
+            if (existingCheck) {
+                // If it exists, remove it (toggle off)
+                await db.hourlyChecks.delete(existingCheck.id!);
+            } else {
+                // If it doesn't exist, add it (toggle on)
+                await db.hourlyChecks.add({ studentId, date, period: currentPeriod, behavior: activeBehavior });
+            }
+        });
     } catch (error) {
       console.error(error);
       toast({ title: "Feil", description: `Kunne ikke lagre atferd for ${studentName}.`, variant: "destructive" });
