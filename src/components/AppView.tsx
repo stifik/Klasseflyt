@@ -9,8 +9,7 @@ import Reports from "@/components/Reports";
 import Settings from "@/components/Settings";
 import SeatingChart from "@/components/SeatingChart";
 import Remarks from "@/components/Remarks";
-import GroupTool from "@/components/GroupTool";
-import StudentPicker from "@/components/StudentPicker";
+import ClassroomTools from "@/components/ClassroomTools";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import type { AppSettings, SeatingLayout, Student, Subject, TabKey } from '@/lib/types';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -22,8 +21,7 @@ const tabComponents: Partial<Record<TabKey, FC<any>>> = {
   remarks: Remarks,
   reports: Reports,
   seatingChart: SeatingChart,
-  groupTool: GroupTool,
-  studentPicker: StudentPicker,
+  classroomTools: ClassroomTools,
   settings: Settings,
 };
 
@@ -33,8 +31,7 @@ const tabLabels: Partial<Record<TabKey, string>> = {
   remarks: "Anmerkninger",
   reports: "Rapporter & Analyse",
   seatingChart: "Klassekart",
-  groupTool: "Gruppeverktøy",
-  studentPicker: "Elev-trekker",
+  classroomTools: "Klasseverktøy",
   settings: "Innstillinger",
 };
 
@@ -99,8 +96,7 @@ const AppView: FC<AppViewProps> = ({
     remarks: { students, initialRemarks: remarks, onUpdate: () => {}, seatingChart, settings },
     reports: { students, subjects, homework, submissions, dailyChecks, remarks, settings: settings.reportSettings },
     seatingChart: { students, seatingChart, onSeatingChartChange: handleSeatingChartChange, history: seatingChartHistory || [], appSettings: settings, onAppSettingsChange: onSettingsChange, layouts: seatingLayouts, onLayoutsChange: handleLayoutsChange },
-    groupTool: { students },
-    studentPicker: { students, seatingChart, activeLayout: seatingLayouts?.find(l => l.id === settings.selectedSeatingLayoutId) },
+    classroomTools: { students, seatingChart, activeLayout: seatingLayouts?.find(l => l.id === settings.selectedSeatingLayoutId) },
     settings: { initialStudents: students, initialSubjects: subjects, settings: settings, onSettingsChange: onSettingsChange }
   };
 

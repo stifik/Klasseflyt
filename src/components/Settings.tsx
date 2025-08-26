@@ -56,8 +56,7 @@ const tabLabels: Partial<Record<TabKey, string>> = {
   remarks: "Anmerkninger",
   reports: "Rapporter & Analyse",
   seatingChart: "Klassekart",
-  groupTool: "Gruppeverktøy",
-  studentPicker: "Elev-trekker",
+  classroomTools: "Klasseverktøy",
   settings: "Innstillinger"
 };
 

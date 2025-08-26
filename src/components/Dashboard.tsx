@@ -4,7 +4,7 @@
 import type {FC} from 'react';
 import type {AppSettings, TabKey} from '@/lib/types';
 import {Card, CardHeader, CardTitle, CardDescription} from '@/components/ui/card';
-import {BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Shuffle, Hand} from 'lucide-react';
+import {BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks} from 'lucide-react';
 import {cn} from '@/lib/utils';
 
 interface DashboardProps {
@@ -43,17 +43,11 @@ const tabInfo: Partial<Record<TabKey, {label: string; description: string; icon:
     icon: Users,
     color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
   },
-  groupTool: {
-    label: 'Gruppeverktøy',
-    description: 'Lag tilfeldige grupper for samarbeid.',
-    icon: Shuffle,
+  classroomTools: {
+    label: 'Klasseverktøy',
+    description: 'Lag grupper og trekk tilfeldige elever.',
+    icon: Blocks,
     color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
-  },
-  studentPicker: {
-    label: 'Elev-trekker',
-    description: 'Trekk en tilfeldig elev fra klassen.',
-    icon: Hand,
-    color: 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400',
   },
 };
 

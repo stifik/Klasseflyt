@@ -18,10 +18,10 @@ import Onboarding from "@/components/Onboarding";
 const defaultSettings: AppSettings = {
   tabs: {
     overview: true, dailyCheck: true, remarks: true, reports: true,
-    seatingChart: true, groupTool: true, studentPicker: true,
+    seatingChart: true, classroomTools: true,
     settings: true,
   },
-  tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'groupTool', 'studentPicker'],
+  tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'classroomTools'],
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
     includePositiveFeedback: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
