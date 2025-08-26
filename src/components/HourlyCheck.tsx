@@ -1,12 +1,12 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import type { Student, HourlyCheck, BehaviorType, SeatingChartData, AppSettings } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Smile, Annoyed, Handshake } from "lucide-react";
+import { Calendar as CalendarIcon, Smile, Annoyed, Handshake, CheckCircle2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -26,16 +26,17 @@ interface HourlyCheckProps {
   settings: AppSettings;
 }
 
-const behaviorConfig: Record<BehaviorType, { icon: React.ElementType, label: string, color: string }> = {
-    WorkedWell: { icon: Smile, label: "Jobbet godt", color: "bg-green-100 text-green-700 border-green-200 hover:bg-green-200" },
-    Disturbed: { icon: Annoyed, label: "Forstyrret", color: "bg-yellow-100 text-yellow-700 border-yellow-200 hover:bg-yellow-200" },
-    HelpedOthers: { icon: Handshake, label: "Hjalp andre", color: "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200" }
+const behaviorConfig: Record<BehaviorType, { icon: React.ElementType, label: string, color: string, selectedColor: string }> = {
+    WorkedWell: { icon: Smile, label: "Jobbet godt", color: "text-green-600", selectedColor: "bg-green-100 border-green-300" },
+    Disturbed: { icon: Annoyed, label: "Forstyrret", color: "text-yellow-600", selectedColor: "bg-yellow-100 border-yellow-300" },
+    HelpedOthers: { icon: Handshake, label: "Hjalp andre", color: "text-blue-600", selectedColor: "bg-blue-100 border-blue-300" }
 };
 
 export default function HourlyCheck({ students, initialChecks: checks, onUpdate, seatingChart, settings }: HourlyCheckProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [currentPeriod, setCurrentPeriod] = useState<number>(1);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [activeBehavior, setActiveBehavior] = useState<BehaviorType>('WorkedWell');
   const { toast } = useToast();
   
   useEffect(() => {
@@ -93,9 +94,9 @@ export default function HourlyCheck({ students, initialChecks: checks, onUpdate,
     );
   };
 
-  const handleBehaviorClick = async (studentId: string, behavior: BehaviorType) => {
+  const handleStudentClick = async (studentId: string) => {
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
-    const existingCheck = getChecksForStudent(studentId, date, currentPeriod, behavior);
+    const existingCheck = getChecksForStudent(studentId, date, currentPeriod, activeBehavior);
     
     try {
         if (existingCheck.length > 0) {
@@ -103,7 +104,7 @@ export default function HourlyCheck({ students, initialChecks: checks, onUpdate,
             await db.hourlyChecks.delete(existingCheck[0].id!);
         } else {
             // If it doesn't exist, add it (toggle on)
-            await db.hourlyChecks.add({ studentId, date, period: currentPeriod, behavior });
+            await db.hourlyChecks.add({ studentId, date, period: currentPeriod, behavior: activeBehavior });
         }
     } catch (error) {
       console.error(error);
@@ -113,35 +114,33 @@ export default function HourlyCheck({ students, initialChecks: checks, onUpdate,
 
   const StudentButton = ({ student }: { student: Student }) => {
     const checksForPeriod = getChecksForStudent(student.id, date, currentPeriod);
-    
+    const hasActiveBehavior = checksForPeriod.some(c => c.behavior === activeBehavior);
+
     return (
-        <div className="flex flex-col items-center justify-center p-2 text-center border rounded-lg w-28 h-28 bg-secondary">
-             <span className="mb-2 text-xs font-semibold">{student.name}</span>
-             <div className="flex flex-col gap-1">
+        <button
+            onClick={() => handleStudentClick(student.id)}
+            className={cn(
+                "flex flex-col items-center justify-center p-2 text-center border rounded-lg w-28 h-20 transition-all",
+                "bg-secondary hover:bg-muted",
+                { [behaviorConfig[activeBehavior].selectedColor]: hasActiveBehavior }
+            )}
+        >
+             <span className="mb-1 text-xs font-semibold">{student.name}</span>
+             <div className="flex gap-2">
                 {Object.keys(behaviorConfig).map(key => {
                     const behavior = key as BehaviorType;
                     const config = behaviorConfig[behavior];
                     const isChecked = checksForPeriod.some(c => c.behavior === behavior);
-                    return (
-                        <Button
-                            key={behavior}
-                            variant={isChecked ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => handleBehaviorClick(student.id, behavior)}
-                            className={cn("w-full justify-start text-xs", { [config.color]: isChecked, "bg-background": !isChecked })}
-                        >
-                            <config.icon className="mr-2 h-3 w-3" />
-                            {config.label}
-                        </Button>
-                    );
+                    if (!isChecked) return null;
+                    return <config.icon key={behavior} className={cn("h-4 w-4", config.color)} />;
                 })}
              </div>
-        </div>
+        </button>
     );
   };
 
   const EmptyDesk = () => (
-    <div className="w-28 h-28" />
+    <div className="w-28 h-20" />
   );
   
   const displayedChart = isFlipped 
@@ -155,7 +154,7 @@ export default function HourlyCheck({ students, initialChecks: checks, onUpdate,
           <div>
             <CardTitle>Timeinnsjekk</CardTitle>
             <CardDescription>
-              Loggfør raskt arbeidsinnsats og atferd for timen.
+              Velg en atferd, og klikk deretter på elevene det gjelder.
             </CardDescription>
               {seatingChart && (
               <div className="flex items-center space-x-2 mt-4">
@@ -179,16 +178,40 @@ export default function HourlyCheck({ students, initialChecks: checks, onUpdate,
             </PopoverContent>
           </Popover>
         </div>
-        <div className="flex flex-wrap gap-2 pt-4">
+        <div className="flex flex-wrap gap-2 pt-4 border-b pb-4 mb-4">
             {Array.from({ length: NUMBER_OF_PERIODS }, (_, i) => i + 1).map(period => (
                 <Button 
                     key={period} 
                     variant={currentPeriod === period ? "default" : "outline"}
                     onClick={() => setCurrentPeriod(period)}
+                    size="sm"
                 >
                     Time {period}
                 </Button>
             ))}
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Label className="font-semibold">Velg atferd:</Label>
+          <div className="flex flex-wrap gap-2">
+            {Object.keys(behaviorConfig).map(key => {
+              const behavior = key as BehaviorType;
+              const config = behaviorConfig[behavior];
+              const isActive = activeBehavior === behavior;
+              return (
+                  <Button
+                      key={behavior}
+                      variant={isActive ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setActiveBehavior(behavior)}
+                      className={cn("justify-start", { [config.selectedColor]: isActive })}
+                  >
+                      {isActive && <CheckCircle2 className="mr-2 h-4 w-4" />}
+                      <config.icon className={cn("mr-2 h-4 w-4", config.color)} />
+                      {config.label}
+                  </Button>
+              );
+            })}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
