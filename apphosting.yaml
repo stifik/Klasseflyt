@@ -1,6 +1,13 @@
 # Settings to manage and configure a Firebase App Hosting backend.
 # https://firebase.google.com/docs/app-hosting/configure
 
+# The location of the backend. If this is not specified, us-central1 will be used.
+location: europe-west1
+
+# The repository to link to this backend.
+repository: stifik/Klasseflyt
+productionBranch: main
+
 runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
