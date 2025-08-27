@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { BookOpenCheck, Loader2, LogOut, Settings as SettingsIcon } from "lucide-react";
+import { BookOpenCheck, Loader2, LogOut, Settings as SettingsIcon, GitCommit } from "lucide-react";
 import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark, TabKey, AppSettings, SeatingLayout } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -13,6 +13,7 @@ import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import Onboarding from "@/components/Onboarding";
+import Link from "next/link";
 
 
 const defaultSettings: AppSettings = {
@@ -128,6 +129,12 @@ function Home() {
             />
         )}
       </main>
+       <footer className="p-4 text-center text-xs text-muted-foreground no-print">
+            <Link href="/changelog" className="inline-flex items-center hover:text-primary">
+                <GitCommit className="mr-2 h-4 w-4" />
+                Hva er nytt? (v1.2.0)
+            </Link>
+        </footer>
     </div>
   );
 }
