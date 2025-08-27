@@ -62,9 +62,9 @@ export default function PrivacyPolicyPage() {
           </div>
           
           <div className="pt-4">
-             <Link href="/login" className="inline-flex items-center text-primary hover:underline">
+             <Link href="/" className="inline-flex items-center text-primary hover:underline">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Tilbake til innlogging
+                Tilbake til dashbordet
               </Link>
           </div>
 
