@@ -15,24 +15,26 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/db";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
+import { useLiveQuery } from "dexie-react-hooks";
 
 type IpadStatus = "OK" | "NotCharged" | "NotBrought";
 
 interface DailyChecklistProps {
   students: Student[];
-  initialChecks: DailyCheck[];
-  onUpdate: () => void;
   seatingChart: SeatingChartData | null;
 }
 
-export default function DailyChecklist({ students, initialChecks, onUpdate, seatingChart }: DailyChecklistProps) {
+export default function DailyChecklist({ students, seatingChart }: DailyChecklistProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [isFlipped, setIsFlipped] = useState(false);
   const { toast } = useToast();
+  
+  // Use useLiveQuery directly inside the component to ensure it always has fresh data.
+  const allChecks = useLiveQuery(() => db.dailyChecks.toArray(), [], []);
 
   const getCheckForDate = (studentId: string, checkDate: Date) => {
     const dateString = checkDate.toISOString().split("T")[0];
-    return initialChecks.find(
+    return allChecks.find(
       (c) => c.studentId === studentId && new Date(c.date).toISOString().split("T")[0] === dateString
     );
   };
@@ -62,7 +64,7 @@ export default function DailyChecklist({ students, initialChecks, onUpdate, seat
                 if (existingCheck) await db.dailyChecks.delete(existingCheck.id!);
                 break;
         }
-        onUpdate();
+        // No need to call onUpdate() anymore, useLiveQuery handles updates.
     } catch (error) {
         console.error(error);
         toast({title: "Feil", description: `Kunne ikke lagre endring for ${studentName}.`, variant: "destructive"});

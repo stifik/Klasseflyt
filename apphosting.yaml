@@ -1,12 +1,16 @@
 # Settings to manage and configure a Firebase App Hosting backend.
 # https://firebase.google.com/docs/app-hosting/configure
 
-# The location of the backend. If this is not specified, us-central1 will be used.
-location: europe-west1
-
-# The repository to link to this backend.
-repository: stifik/Klasseflyt
-productionBranch: main
+# Specifies the GitHub repository to sync with your App Hosting backend.
+github:
+  # The name of your GitHub repository, formatted as an owner/repo name.
+  repository: stifik/Klasseflyt
+  # Specifies that the live branch of your backend is tied to the main branch of your repository.
+  branch: main
+  # Automatically roll out new commits to your live branch.
+  live: true
+  # Automatically create preview channels for every pull request.
+  pullRequest: true
 
 runConfig:
   # Increase this value if you'd like to automatically spin up
