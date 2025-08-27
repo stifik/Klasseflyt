@@ -308,7 +308,8 @@ const ReportDetails = ({ stat, behaviorTypes }: { stat: ReturnType<typeof useStu
                             <ul className="pl-1 mt-1 text-sm space-y-1">
                                 {subStat.problemSubmissions.map((c, i) => 
                                     <li key={i} className="text-xs">
-                                        <strong>Uke {c.week}: </strong> 
+                                        <strong>Uke {c.week}: </strong>
+                                        <span> </span>
                                         {c.status === 'Glemt bok' ? 'Glemt bok' : c.title}
                                         {c.comment && <p className="text-xs text-muted-foreground pl-2 italic">"{c.comment}"</p>}
                                     </li>
