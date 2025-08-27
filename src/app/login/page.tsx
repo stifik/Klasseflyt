@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { loginRequest } from "@/auth/msal";
 import { useRouter } from "next/navigation";
+import { Separator } from "@/components/ui/separator";
 
 const MsalLoginButton = () => {
     const { instance } = useMsal();
@@ -71,10 +72,17 @@ export default function LoginPage() {
                         <MsalLoginButton />
                     </div>
                     <div className="mt-6 text-center text-xs text-muted-foreground">
-                        Ved å logge inn godtar du at appen lagrer en enkelt databasefil i din personlige OneDrive for å synkronisere data. Les mer i vår{" "}
+                        Ved å logge inn godtar du at appen lagrer en enkelt databasefil i din personlige OneDrive for å synkronisere data.
+                    </div>
+                    <Separator className="my-4" />
+                     <div className="text-center text-sm">
                         <Link href="/privacy" className="underline hover:text-primary">
-                            personvernerklæring
-                        </Link>.
+                            Personvernerklæring
+                        </Link>
+                        <span className="mx-2 text-muted-foreground">·</span>
+                         <Link href="/changelog" className="underline hover:text-primary">
+                            Hva er nytt?
+                        </Link>
                     </div>
                 </CardContent>
             </Card>
