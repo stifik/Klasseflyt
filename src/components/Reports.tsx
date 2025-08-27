@@ -278,14 +278,14 @@ const ReportDetails = ({ stat, behaviorTypes }: { stat: ReturnType<typeof useStu
                 <CardHeader>
                     <CardTitle className="text-base text-teal-900 dark:text-teal-200">Innsats i timen</CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm text-teal-800 dark:text-teal-300 space-y-1">
+                <CardContent className="text-sm text-teal-800 dark:text-teal-300 flex flex-col">
                      {behaviorTypes.map(bt => {
                         const count = stat.behaviorCounts[bt.id] || 0;
                         if (count === 0) return null;
                         return (
                             <p key={bt.id} className="flex items-center">
                                 <Icon name={bt.icon} className="mr-2 w-4 h-4 text-teal-600" />
-                                {bt.label}: <strong>{count}</strong> gang(er)
+                                <span>{bt.label}: <strong>{count}</strong> gang(er)</span>
                             </p>
                         );
                      })}
