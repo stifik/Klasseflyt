@@ -4,7 +4,7 @@
 # Specifies the GitHub repository to sync with your App Hosting backend.
 github:
   # The name of your GitHub repository, formatted as an owner/repo name.
-  repository: <your-github-org>/<your-repo-name>
+  repository: stifik/Klasseflyt
   # Specifies that the live branch of your backend is tied to the main branch of your repository.
   branch: main
   # Automatically roll out new commits to your live branch.
