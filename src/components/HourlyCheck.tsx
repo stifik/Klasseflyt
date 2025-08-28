@@ -350,45 +350,46 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
                 Skriv en melding og velg elevene det gjelder for å loggføre en felles hendelse.
             </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-4">
-                <div>
+        <CardContent>
+             <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
                     <Label htmlFor="message">Melding for Time {currentPeriod}</Label>
                     <Textarea id="message" value={logMessage} onChange={(e) => setLogMessage(e.target.value)} placeholder="Skriv hva som skjedde..." />
                 </div>
-                 <Button onClick={handleAddLogEntry} className="w-full">
+                <div className="space-y-2">
+                    <Label htmlFor="student-search">Velg elever</Label>
+                    <Input
+                        id="student-search"
+                        placeholder="Søk etter elev..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+            </div>
+            <div className="grid gap-4 mt-4 md:grid-cols-2">
+                <Button onClick={handleAddLogEntry} className="w-full">
                     <MessageSquare className="mr-2" />
                     Loggfør hendelse
                 </Button>
-            </div>
-             <div className="space-y-2">
-              <Label htmlFor="student-search">Velg elever</Label>
-              <Input
-                id="student-search"
-                placeholder="Søk etter elev..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <ScrollArea className="h-40 w-full rounded-md border p-2">
+                <ScrollArea className="h-40 w-full rounded-md border p-2">
                 <div className="space-y-2">
-                  {filteredStudents.map(student => (
+                    {filteredStudents.map(student => (
                     <div key={student.id} className="flex items-center space-x-2">
-                      <Checkbox
+                        <Checkbox
                         id={`log-student-${student.id}`}
                         checked={selectedStudentsForLog.includes(student.id!)}
                         onCheckedChange={(checked) => {
-                          setSelectedStudentsForLog(prev => 
+                            setSelectedStudentsForLog(prev => 
                             checked ? [...prev, student.id!] : prev.filter(id => id !== student.id)
-                          );
+                            );
                         }}
-                      />
-                      <Label htmlFor={`log-student-${student.id}`} className="font-normal">{student.name}</Label>
+                        />
+                        <Label htmlFor={`log-student-${student.id}`} className="font-normal">{student.name}</Label>
                     </div>
-                  ))}
+                    ))}
                 </div>
-              </ScrollArea>
+                </ScrollArea>
             </div>
-
         </CardContent>
     </Card>
     </div>
