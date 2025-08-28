@@ -203,6 +203,7 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
         toast({ title: "Hendelse loggført" });
         setLogMessage("");
         setSelectedStudentsForLog([]);
+        setSearchQuery(""); // Reset search query
         onUpdate();
         } catch (error) {
         console.error(error);
@@ -368,7 +369,7 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              <ScrollArea className="h-32 w-full rounded-md border p-2">
+              <ScrollArea className="h-40 w-full rounded-md border p-2">
                 <div className="space-y-2">
                   {filteredStudents.map(student => (
                     <div key={student.id} className="flex items-center space-x-2">
