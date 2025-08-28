@@ -4,11 +4,11 @@
 
 import * as React from "react";
 import { useState, useEffect } from "react";
-import type { Student, Subject, AppSettings, TabKey, BehaviorType, DashboardToolKey, DashboardConfig } from "@/lib/types";
+import type { Student, Subject, AppSettings, TabKey, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Eye, LayoutDashboard, Group } from "lucide-react";
+import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Eye, LayoutDashboard, Group, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -45,6 +45,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { cn } from "@/lib/utils";
 import * as LucideIcons from "lucide-react";
+import DPIA from "./DPIA";
 
 interface SettingsProps {
   initialStudents: Student[];
@@ -327,6 +328,10 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
         }
         return { ...current, schedule: newSchedule };
     });
+  };
+  
+  const handleAnalysisChange = (newAnalysis: DPIAAnalysis) => {
+    handleSettingChange(current => ({ ...current, dpiaAnalysis: newAnalysis }));
   };
 
 
@@ -651,6 +656,19 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                                 </li>
                             ))}
                         </ul>
+                    </AccordionContent>
+                  </AccordionItem>
+                   <AccordionItem value="dpia">
+                    <AccordionTrigger>Sikkerhet & Personvern (ROS/DPIA)</AccordionTrigger>
+                    <AccordionContent>
+                      {localSettings.dpiaAnalysis ? (
+                        <DPIA
+                          analysis={localSettings.dpiaAnalysis}
+                          onAnalysisChange={handleAnalysisChange}
+                        />
+                      ) : (
+                        <p>Laster...</p>
+                      )}
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>

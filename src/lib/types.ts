@@ -7,6 +7,7 @@ export type Student = {
 
 export type Subject = {
   id?: string;
+
   name: string;
 };
 
@@ -121,6 +122,18 @@ export type PeriodTime = {
     endTime: string;
 };
 
+export type DPIAAnalysis = {
+  scope: string;
+  values: string;
+  unwantedEvents: string;
+  probabilityAndConsequence: string;
+  measures: string;
+  dataProcessingDescription: string;
+  necessityAndProportionality: string;
+  riskAssessment: string;
+  riskMeasures: string;
+};
+
 export type AppSettings = {
   tabs: Record<TabKey, boolean>;
   tabOrder: TabKey[];
@@ -130,5 +143,6 @@ export type AppSettings = {
   selectedSeatingLayoutId?: string | null;
   remarkTypes?: string[];
   behaviorTypes?: BehaviorType[];
+  dpiaAnalysis?: DPIAAnalysis;
   onboardingCompleted?: boolean;
 };
