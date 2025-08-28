@@ -159,6 +159,20 @@ export class MySubClassedDexie extends Dexie {
                 await tx.table('settings').put(userSettings);
             }
         });
+        
+        // Version 9: Add message and logGroupId to remarks
+        this.version(9).stores({
+            remarks: '++id, studentId, date, period, logGroupId'
+        }).upgrade(async (tx) => {
+            await tx.table('remarks').toCollection().modify(remark => {
+                if (!remark.logGroupId) {
+                    remark.logGroupId = uuidv4();
+                }
+                if (!remark.message) {
+                    remark.message = remark.type; // Backfill message from old type
+                }
+            });
+        });
 
 
         this.on('populate', async () => {
@@ -341,7 +355,9 @@ export async function resetDatabase() {
                     studentId: allStudents[Math.floor(Math.random() * allStudents.length)].id!,
                     date,
                     period: Math.floor(Math.random() * 5) + 1,
-                    type: remarkTypes[Math.floor(Math.random() * remarkTypes.length)]
+                    type: remarkTypes[Math.floor(Math.random() * remarkTypes.length)],
+                    message: remarkTypes[Math.floor(Math.random() * remarkTypes.length)],
+                    logGroupId: uuidv4()
                 });
             }
         }

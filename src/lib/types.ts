@@ -42,7 +42,9 @@ export type Remark = {
   studentId: string;
   date: Date;
   period: number;
-  type?: string;
+  type: string;
+  message?: string;
+  logGroupId?: string;
 };
 
 export type BehaviorType = {
