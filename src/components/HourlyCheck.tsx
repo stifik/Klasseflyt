@@ -20,6 +20,7 @@ import { Textarea } from "./ui/textarea";
 import { Checkbox } from "./ui/checkbox";
 import { ScrollArea } from "./ui/scroll-area";
 import { v4 as uuidv4 } from 'uuid';
+import { Input } from "./ui/input";
 
 const NUMBER_OF_PERIODS = 6;
 
@@ -60,7 +61,14 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
 
   const [selectedStudentsForLog, setSelectedStudentsForLog] = useState<string[]>([]);
   const [logMessage, setLogMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const sortedStudents = useMemo(() => [...students].sort((a,b) => a.name.localeCompare(b.name)), [students]);
+
+  const filteredStudents = useMemo(() => {
+    return sortedStudents.filter(student =>
+      student.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [sortedStudents, searchQuery]);
 
 
   useEffect(() => {
@@ -352,11 +360,17 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
                     Loggfør hendelse
                 </Button>
             </div>
-             <div>
-              <Label>Velg elever</Label>
-              <ScrollArea className="h-40 w-full rounded-md border p-2">
+             <div className="space-y-2">
+              <Label htmlFor="student-search">Velg elever</Label>
+              <Input
+                id="student-search"
+                placeholder="Søk etter elev..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <ScrollArea className="h-32 w-full rounded-md border p-2">
                 <div className="space-y-2">
-                  {sortedStudents.map(student => (
+                  {filteredStudents.map(student => (
                     <div key={student.id} className="flex items-center space-x-2">
                       <Checkbox
                         id={`log-student-${student.id}`}
