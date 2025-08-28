@@ -12,11 +12,11 @@ github:
   # Automatically create preview channels for every pull request.
   pullRequest: true
 
+# The location of your App Hosting backend.
+# This must be one of the supported regions: https://firebase.google.com/docs/app-hosting/locations.
+location: us-central1
+
 runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
-
-github:
-  repository: stifik/Klasseflyt
-  productionBranch: main
