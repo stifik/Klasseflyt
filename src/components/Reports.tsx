@@ -7,13 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
-import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 import { getWeekNumber } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RemarkAnalysis from './RemarkAnalysis';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { cn } from '@/lib/utils';
 import * as LucideIcons from "lucide-react";
+import { format } from 'date-fns';
+import { nb } from 'date-fns/locale';
 
 interface ReportsProps {
   students: Student[];
@@ -321,6 +323,28 @@ const ReportDetails = ({ stat, behaviorTypes }: { stat: ReturnType<typeof useStu
             </Card>
             ))}
         </div>
+         {stat.loggedRemarks.length > 0 && (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center">
+                        <MessageSquare className="mr-2" />
+                        Loggførte hendelser og anmerkninger
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ul className="space-y-3">
+                        {stat.loggedRemarks.map(remark => (
+                            <li key={remark.id} className="text-sm border-b pb-2">
+                                <p className="font-medium">{remark.message || remark.type}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {format(new Date(remark.date), "PPP", { locale: nb })} - Time {remark.period}
+                                </p>
+                            </li>
+                        ))}
+                    </ul>
+                </CardContent>
+            </Card>
+        )}
         <div className="pt-4 text-xs text-center text-muted-foreground print-only">
             Tegnforklaring: 
             {statusOrder.map((name) => <span key={name} className="inline-flex items-center ml-4"><span className="w-3 h-3 mr-1 rounded-full" style={{backgroundColor: statusColors[name]}}></span>{name}</span>)}
@@ -352,7 +376,10 @@ const FullReportCard = ({ stat, isOpen, isPrintVersion = false, behaviorTypes }:
         </CardHeader>
         <CardContent className="space-y-4">
             <StatusBar stats={stat.totalStatusCounts} total={stat.totalHomework} />
-            {stat.totalDelays > 0 && <p className="text-sm text-muted-foreground flex items-center"><Clock className="mr-2 h-4 w-4" />{stat.totalDelays} forsinkelser totalt</p>}
+            <div className="flex text-sm text-muted-foreground gap-4">
+                {stat.totalDelays > 0 && <p className="flex items-center"><Clock className="mr-2 h-4 w-4" />{stat.totalDelays} forsinkelser totalt</p>}
+                {stat.totalRemarks > 0 && <p className="flex items-center"><MessageSquare className="mr-2 h-4 w-4" />{stat.totalRemarks} anmerkninger/loggføringer</p>}
+            </div>
             
             {isPrintVersion ? (
                 <ReportDetails stat={stat} behaviorTypes={behaviorTypes} />
@@ -371,7 +398,9 @@ const useStudentStats = (students: Student[], subjects: Subject[], homework: Hom
             const studentSubmissions = submissions.filter(s => s.studentId === student.id);
             const studentDailyChecks = dailyChecks.filter(c => c.studentId === student.id);
             const studentHourlyChecks = hourlyChecks.filter(c => c.studentId === student.id);
-            const studentRemarks = remarks.filter(r => r.studentId === student.id);
+            const studentRemarks = remarks
+                .filter(r => r.studentId === student.id)
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
             const totalStatusCounts = studentSubmissions.reduce((acc, sub) => {
                 acc[sub.status] = (acc[sub.status] || 0) + 1;
@@ -427,6 +456,7 @@ const useStudentStats = (students: Student[], subjects: Subject[], homework: Hom
                 ipadNotCharged: studentDailyChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
                 ipadNotBrought: studentDailyChecks.filter(c => !c.ipadBrought).length,
                 behaviorCounts,
+                loggedRemarks: studentRemarks,
                 totalRemarks: studentRemarks.length,
             };
         }).sort((a,b) => a.studentName.localeCompare(b.studentName));
