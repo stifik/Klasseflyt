@@ -42,8 +42,26 @@ export type Remark = {
   studentId: string;
   date: Date;
   period: number;
-  type?: string;
+  type: string;
+  message?: string;
+  logGroupId?: string;
 };
+
+export type BehaviorType = {
+  id: string;
+  label: string;
+  icon: string;
+  color: 'green' | 'yellow' | 'blue' | 'red' | 'purple' | 'gray';
+};
+
+export type HourlyCheck = {
+    id?: number;
+    studentId: string;
+    date: Date;
+    period: number;
+    behaviorId: string;
+};
+
 
 export type SeatingChartData = (string[] | null)[][];
 
@@ -65,7 +83,27 @@ export type SeatingLayout = {
   createdAt: Date;
 };
 
-export type TabKey = 'overview' | 'dailyCheck' | 'remarks' | 'reports' | 'seatingChart' | 'classroomTools' | 'settings';
+export type TabKey = 'overview' | 'dailyCheck' | 'observations' | 'reports' | 'classroomTools' | 'settings';
+
+export type DashboardToolKey = 
+  | 'overview' 
+  | 'dailyCheck' 
+  | 'observations'
+  | 'observations.hourly' 
+  | 'observations.remarks' 
+  | 'classroomTools'
+  | 'classroomTools.seatingChart' 
+  | 'classroomTools.groupTool' 
+  | 'classroomTools.studentPicker' 
+  | 'reports'
+  | 'reports.summary' 
+  | 'reports.studentReports' 
+  | 'reports.analysis';
+
+export type DashboardConfig = {
+    key: DashboardToolKey;
+    visible: boolean;
+};
 
 export type ReportSettings = {
   includeHomework: boolean;
@@ -86,9 +124,11 @@ export type PeriodTime = {
 export type AppSettings = {
   tabs: Record<TabKey, boolean>;
   tabOrder: TabKey[];
+  dashboardTools: DashboardConfig[];
   reportSettings: ReportSettings;
   schedule: PeriodTime[];
   selectedSeatingLayoutId?: string | null;
   remarkTypes?: string[];
+  behaviorTypes?: BehaviorType[];
   onboardingCompleted?: boolean;
 };

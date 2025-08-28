@@ -2,17 +2,20 @@
 "use client";
 
 import { useState, useMemo, FC } from 'react';
-import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings } from '@/lib/types';
+import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings, HourlyCheck, BehaviorType, AppSettings } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
-import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 import { getWeekNumber } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RemarkAnalysis from './RemarkAnalysis';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { cn } from '@/lib/utils';
+import * as LucideIcons from "lucide-react";
+import { format } from 'date-fns';
+import { nb } from 'date-fns/locale';
 
 interface ReportsProps {
   students: Student[];
@@ -21,7 +24,8 @@ interface ReportsProps {
   submissions: Submission[];
   dailyChecks: DailyCheck[];
   remarks: Remark[];
-  settings: ReportSettings;
+  hourlyChecks: HourlyCheck[];
+  settings: AppSettings;
 }
 
 const statusColors: Record<HomeworkStatus, string> = {
@@ -126,18 +130,18 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
             const studentWeekChecks = dailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
             const studentWeekRemarks = remarks.filter(r => r.studentId === student.id && getWeekNumber(new Date(r.date)) === selectedWeek);
 
-            const hasHomeworkIssues = settings.includeHomework && studentWeekSubmissions.some(s => 
+            const hasHomeworkIssues = settings.reportSettings.includeHomework && studentWeekSubmissions.some(s => 
                 s.status === 'Ikke levert' || s.status === 'Må rettes' || s.status === 'Glemt bok'
             );
-            const hasIpadIssues = settings.includeIpad && studentWeekChecks.some(c => !c.ipadBrought || !c.ipadCharged);
-            const hasRemarks = settings.includeRemarks && studentWeekRemarks.length > 0;
+            const hasIpadIssues = settings.reportSettings.includeIpad && studentWeekChecks.some(c => !c.ipadBrought || !c.ipadCharged);
+            const hasRemarks = settings.reportSettings.includeRemarks && studentWeekRemarks.length > 0;
             
             const hasAnyIssues = hasHomeworkIssues || hasIpadIssues || hasRemarks;
             
             const onlyAbsence = !hasIpadIssues && !hasRemarks && studentWeekSubmissions.length > 0 && studentWeekSubmissions.every(s => s.status === 'Syk/Fravær');
 
             if (onlyAbsence) return null;
-            if (hasAnyIssues || settings.includePositiveFeedback) {
+            if (hasAnyIssues || settings.reportSettings.includePositiveFeedback) {
                 return { student, hasAnyIssues, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks };
             }
             return null;
@@ -170,7 +174,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
                 studentWeekChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
                 studentWeekChecks.filter(c => !c.ipadBrought).length,
                 studentWeekRemarks.length,
-                settings
+                settings.reportSettings
             );
             return { studentName: student.name, message };
         }).filter((item): item is { studentName: string; message: string } => item !== null && item.message !== "");
@@ -254,17 +258,42 @@ const StatusBar: FC<{ stats: Record<HomeworkStatus, number>, total: number }> = 
     );
 };
 
-const ReportDetails = ({ stat }: { stat: ReturnType<typeof useStudentStats>[0] }) => (
+const Icon = ({ name, className }: { name: string, className?: string }) => {
+    const LucideIcon = (LucideIcons as any)[name];
+    if (!LucideIcon) return <LucideIcons.Star className={className} />;
+    return <LucideIcon className={className} />;
+}
+
+const ReportDetails = ({ stat, behaviorTypes }: { stat: ReturnType<typeof useStudentStats>[0], behaviorTypes: BehaviorType[] }) => (
     <div className="space-y-4">
-        <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-            <CardHeader>
-                <CardTitle className="text-base text-blue-900 dark:text-blue-200">iPad-ansvar</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-blue-800 dark:text-blue-300">
-                <p>Glemt å lade: <strong>{stat.ipadNotCharged}</strong> gang(er)</p>
-                <p>Glemt å ta med: <strong>{stat.ipadNotBrought}</strong> gang(er)</p>
-            </CardContent>
-        </Card>
+        <div className="grid gap-4 md:grid-cols-2">
+             <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                <CardHeader>
+                    <CardTitle className="text-base text-blue-900 dark:text-blue-200">iPad-ansvar</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-blue-800 dark:text-blue-300">
+                    <p>Glemt å lade: <strong>{stat.ipadNotCharged}</strong> gang(er)</p>
+                    <p>Glemt å ta med: <strong>{stat.ipadNotBrought}</strong> gang(er)</p>
+                </CardContent>
+            </Card>
+            <Card className="bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800">
+                <CardHeader>
+                    <CardTitle className="text-base text-teal-900 dark:text-teal-200">Innsats i timen</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-teal-800 dark:text-teal-300 flex flex-col">
+                     {behaviorTypes.map(bt => {
+                        const count = stat.behaviorCounts[bt.id] || 0;
+                        if (count === 0) return null;
+                        return (
+                            <p key={bt.id} className="flex items-center">
+                                <Icon name={bt.icon} className="mr-2 w-4 h-4 text-teal-600" />
+                                <span>{bt.label}: <strong>{count}</strong> gang(er)</span>
+                            </p>
+                        );
+                     })}
+                </CardContent>
+            </Card>
+        </div>
 
         <div className="grid gap-4 md:grid-cols-2">
             {stat.statsBySubject.map(subStat => (
@@ -281,7 +310,8 @@ const ReportDetails = ({ stat }: { stat: ReturnType<typeof useStudentStats>[0] }
                             <ul className="pl-1 mt-1 text-sm space-y-1">
                                 {subStat.problemSubmissions.map((c, i) => 
                                     <li key={i} className="text-xs">
-                                        <strong>Uke {c.week}: </strong> 
+                                        <strong>Uke {c.week}: </strong>
+                                        <span> </span>
                                         {c.status === 'Glemt bok' ? 'Glemt bok' : c.title}
                                         {c.comment && <p className="text-xs text-muted-foreground pl-2 italic">"{c.comment}"</p>}
                                     </li>
@@ -293,6 +323,28 @@ const ReportDetails = ({ stat }: { stat: ReturnType<typeof useStudentStats>[0] }
             </Card>
             ))}
         </div>
+         {stat.loggedRemarks.length > 0 && (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center">
+                        <MessageSquare className="mr-2" />
+                        Loggførte hendelser og anmerkninger
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ul className="space-y-3">
+                        {stat.loggedRemarks.map(remark => (
+                            <li key={remark.id} className="text-sm border-b pb-2">
+                                <p className="font-medium">{remark.message || remark.type}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {format(new Date(remark.date), "PPP", { locale: nb })} - Time {remark.period}
+                                </p>
+                            </li>
+                        ))}
+                    </ul>
+                </CardContent>
+            </Card>
+        )}
         <div className="pt-4 text-xs text-center text-muted-foreground print-only">
             Tegnforklaring: 
             {statusOrder.map((name) => <span key={name} className="inline-flex items-center ml-4"><span className="w-3 h-3 mr-1 rounded-full" style={{backgroundColor: statusColors[name]}}></span>{name}</span>)}
@@ -301,7 +353,7 @@ const ReportDetails = ({ stat }: { stat: ReturnType<typeof useStudentStats>[0] }
 );
 
 
-const FullReportCard = ({ stat, isOpen, isPrintVersion = false }: { stat: ReturnType<typeof useStudentStats>[0], isOpen: boolean, isPrintVersion?: boolean }) => (
+const FullReportCard = ({ stat, isOpen, isPrintVersion = false, behaviorTypes }: { stat: ReturnType<typeof useStudentStats>[0], isOpen: boolean, isPrintVersion?: boolean, behaviorTypes: BehaviorType[] }) => (
      <Card className={cn(
         "print:shadow-none print:border-none",
         isPrintVersion && "border-b border-t"
@@ -324,25 +376,31 @@ const FullReportCard = ({ stat, isOpen, isPrintVersion = false }: { stat: Return
         </CardHeader>
         <CardContent className="space-y-4">
             <StatusBar stats={stat.totalStatusCounts} total={stat.totalHomework} />
-            {stat.totalDelays > 0 && <p className="text-sm text-muted-foreground flex items-center"><Clock className="mr-2 h-4 w-4" />{stat.totalDelays} forsinkelser totalt</p>}
+            <div className="flex text-sm text-muted-foreground gap-4">
+                {stat.totalDelays > 0 && <p className="flex items-center"><Clock className="mr-2 h-4 w-4" />{stat.totalDelays} forsinkelser totalt</p>}
+                {stat.totalRemarks > 0 && <p className="flex items-center"><MessageSquare className="mr-2 h-4 w-4" />{stat.totalRemarks} anmerkninger/loggføringer</p>}
+            </div>
             
             {isPrintVersion ? (
-                <ReportDetails stat={stat} />
+                <ReportDetails stat={stat} behaviorTypes={behaviorTypes} />
             ) : (
                 <CollapsibleContent>
-                    <ReportDetails stat={stat} />
+                    <ReportDetails stat={stat} behaviorTypes={behaviorTypes} />
                 </CollapsibleContent>
             )}
         </CardContent>
     </Card>
 );
 
-const useStudentStats = (students: Student[], subjects: Subject[], homework: Homework[], submissions: Submission[], dailyChecks: DailyCheck[], remarks: Remark[]) => {
+const useStudentStats = (students: Student[], subjects: Subject[], homework: Homework[], submissions: Submission[], dailyChecks: DailyCheck[], remarks: Remark[], hourlyChecks: HourlyCheck[], behaviorTypes: BehaviorType[]) => {
     return useMemo(() => {
         return students.map(student => {
             const studentSubmissions = submissions.filter(s => s.studentId === student.id);
-            const studentChecks = dailyChecks.filter(c => c.studentId === student.id);
-            const studentRemarks = remarks.filter(r => r.studentId === student.id);
+            const studentDailyChecks = dailyChecks.filter(c => c.studentId === student.id);
+            const studentHourlyChecks = hourlyChecks.filter(c => c.studentId === student.id);
+            const studentRemarks = remarks
+                .filter(r => r.studentId === student.id)
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
             const totalStatusCounts = studentSubmissions.reduce((acc, sub) => {
                 acc[sub.status] = (acc[sub.status] || 0) + 1;
@@ -382,6 +440,11 @@ const useStudentStats = (students: Student[], subjects: Subject[], homework: Hom
                     problemSubmissions,
                 };
             }).filter(s => s.totalSubmissions > 0);
+            
+            const behaviorCounts = studentHourlyChecks.reduce((acc, check) => {
+                acc[check.behaviorId] = (acc[check.behaviorId] || 0) + 1;
+                return acc;
+            }, {} as Record<string, number>);
 
             return {
                 studentId: student.id,
@@ -390,18 +453,21 @@ const useStudentStats = (students: Student[], subjects: Subject[], homework: Hom
                 totalHomework,
                 totalStatusCounts,
                 totalDelays,
-                ipadNotCharged: studentChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
-                ipadNotBrought: studentChecks.filter(c => !c.ipadBrought).length,
+                ipadNotCharged: studentDailyChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
+                ipadNotBrought: studentDailyChecks.filter(c => !c.ipadBrought).length,
+                behaviorCounts,
+                loggedRemarks: studentRemarks,
                 totalRemarks: studentRemarks.length,
             };
         }).sort((a,b) => a.studentName.localeCompare(b.studentName));
-    }, [students, subjects, homework, submissions, dailyChecks, remarks]);
+    }, [students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks, behaviorTypes]);
 };
 
 
-const StudentReport = ({ students, subjects, homework, submissions, dailyChecks, remarks }: Omit<ReportsProps, 'settings'>) => {
+const StudentReport = ({ students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks, settings }: Omit<ReportsProps, 'settings'> & { settings: AppSettings }) => {
     const [openStudents, setOpenStudents] = useState<Record<string, boolean>>({});
-    const studentStats = useStudentStats(students, subjects, homework, submissions, dailyChecks, remarks);
+    const behaviorTypes = settings.behaviorTypes || [];
+    const studentStats = useStudentStats(students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks, behaviorTypes);
     
     const toggleStudent = (studentId: string) => {
         setOpenStudents(prev => ({ ...prev, [studentId]: !prev[studentId] }));
@@ -421,7 +487,7 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
             <CardContent className="space-y-4 screen-only">
                 {studentStats.map(stat => (
                     <Collapsible key={stat.studentId} open={openStudents[stat.studentId] || false} onOpenChange={() => toggleStudent(stat.studentId)}>
-                        <FullReportCard stat={stat} isOpen={openStudents[stat.studentId] || false} />
+                        <FullReportCard stat={stat} isOpen={openStudents[stat.studentId] || false} behaviorTypes={behaviorTypes} />
                     </Collapsible>
                 ))}
             </CardContent>
@@ -429,7 +495,7 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
             <div className="hidden print-only printable-area">
                 {studentStats.map(stat => (
                     <div key={stat.studentId} className="page-break">
-                         <FullReportCard stat={stat} isOpen={true} isPrintVersion={true} />
+                         <FullReportCard stat={stat} isOpen={true} isPrintVersion={true} behaviorTypes={behaviorTypes} />
                     </div>
                 ))}
             </div>
@@ -439,21 +505,23 @@ const StudentReport = ({ students, subjects, homework, submissions, dailyChecks,
 
 
 export default function Reports(props: ReportsProps) {
+    const [activeTab, setActiveTab] = useState("summary");
+
     return (
-        <Tabs defaultValue="summary" className="w-full space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3 no-print">
                 <TabsTrigger value="summary">Ukesoppsummering</TabsTrigger>
-                <TabsTrigger value="analysis">Analyse</TabsTrigger>
                 <TabsTrigger value="student-report">Elevrapporter</TabsTrigger>
+                <TabsTrigger value="analysis">Anmerkningsanalyse</TabsTrigger>
             </TabsList>
             <TabsContent value="summary">
                 <WeeklySummary {...props} />
             </TabsContent>
-            <TabsContent value="analysis">
-                <RemarkAnalysis students={props.students} initialRemarks={props.remarks} />
-            </TabsContent>
             <TabsContent value="student-report">
                 <StudentReport {...props} />
+            </TabsContent>
+            <TabsContent value="analysis">
+                <RemarkAnalysis students={props.students} initialRemarks={props.remarks} />
             </TabsContent>
         </Tabs>
     )

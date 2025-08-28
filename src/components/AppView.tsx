@@ -1,46 +1,45 @@
 
 'use client';
 
-import { FC } from 'react';
+import { FC, useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import HomeworkOverview from "@/components/HomeworkOverview";
 import DailyChecklist from "@/components/DailyChecklist";
-import Analysis from "@/components/Analysis";
+import Reports from "@/components/Reports";
 import Settings from "@/components/Settings";
-import SeatingChart from "@/components/SeatingChart";
-import Observations from "@/components/Observations";
 import ClassroomTools from "@/components/ClassroomTools";
+import Observations from "@/components/Observations";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import type { AppSettings, SeatingLayout, Student, Subject, TabKey, DashboardSubTab, DashboardTab } from '@/lib/types';
+import type { AppSettings, SeatingLayout, Student, Subject, TabKey, DashboardSubTab } from '@/lib/types';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 
-const tabComponents: Partial<Record<DashboardTab, FC<any>>> = {
+const tabComponents: Partial<Record<TabKey, FC<any>>> = {
   overview: HomeworkOverview,
   dailyCheck: DailyChecklist,
   observations: Observations,
-  analysis: Analysis,
+  reports: Reports,
   classroomTools: ClassroomTools,
   settings: Settings,
 };
 
-const tabLabels: Partial<Record<DashboardTab, string>> = {
+const tabLabels: Partial<Record<TabKey, string>> = {
   overview: "Lekseoversikt",
   dailyCheck: "Daglig Sjekk",
   observations: "Observasjoner",
-  analysis: "Analyse",
+  reports: "Analyse",
   classroomTools: "Klasseverktøy",
   settings: "Innstillinger",
 };
 
 interface AppViewProps {
     settings: AppSettings;
-    activeTab: DashboardTab | null;
-    activeSubTab: DashboardSubTab | null;
+    activeTab: TabKey | null;
+    activeSubTab?: string | null;
     students: Student[];
     subjects: Subject[];
     onSettingsChange: (newSettings: AppSettings) => void;
-    onTabChange?: (tab: DashboardTab | null, subTab?: DashboardSubTab | null) => void;
+    onTabChange?: (tab: TabKey | null, subTab?: string | null) => void;
 }
 
 const AppView: FC<AppViewProps> = ({ 
@@ -52,11 +51,19 @@ const AppView: FC<AppViewProps> = ({
     onSettingsChange,
     onTabChange, 
 }) => {
+  const [internalActiveSubTab, setInternalActiveSubTab] = useState<string | null>(null);
+
+  useEffect(() => {
+    setInternalActiveSubTab(activeSubTab || null);
+  }, [activeSubTab, activeTab]);
+  
   const visibleTabs = (settings.tabOrder || []).filter(tabKey => settings.tabs[tabKey] && tabLabels[tabKey]);
   const defaultTab = activeTab || visibleTabs[0];
 
   const homework = useLiveQuery(() => db.homework.toArray(), [], undefined);
   const submissions = useLiveQuery(() => db.submissions.toArray(), [], undefined);
+  const dailyChecks = useLiveQuery(() => db.dailyChecks.toArray(), [], undefined);
+  const hourlyChecks = useLiveQuery(() => db.hourlyChecks.toArray(), [], undefined);
   const remarks = useLiveQuery(() => db.remarks.toArray(), [], undefined);
   const seatingChartHistory = useLiveQuery(() => db.seatingChartHistory.orderBy('createdAt').reverse().toArray(), [], undefined);
   const layouts = useLiveQuery(() => db.seatingLayouts.toArray(), [], undefined);
@@ -94,14 +101,14 @@ const AppView: FC<AppViewProps> = ({
   const componentProps: Record<string, any> = {
     overview: { students, subjects, homeworkList: homework, submissions, onUpdate: () => {} },
     dailyCheck: { students, seatingChart: seatingChartData },
-    observations: { students, initialRemarks: remarks, onUpdate: () => {}, seatingChart: seatingChartData, settings, activeSubTab: activeSubTab },
-    analysis: { students, subjects, homework, submissions, remarks, settings: settings.reportSettings, activeSubTab: activeSubTab },
-    classroomTools: { students, seatingChart: seatingChartData, activeLayout, onSeatingChartChange: handleSeatingChartChange, history: seatingChartHistory, appSettings: settings, onAppSettingsChange: onSettingsChange, layouts, onLayoutsChange: handleLayoutsChange, activeSubTab: activeSubTab },
+    observations: { students, initialHourlyChecks: hourlyChecks, initialRemarks: remarks, onUpdate: () => {}, seatingChart: seatingChartData, settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
+    reports: { students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks, settings: settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
+    classroomTools: { students, seatingChart: seatingChartData, onSeatingChartChange: handleSeatingChartChange, history: seatingChartHistory || [], appSettings: settings, onAppSettingsChange: onSettingsChange, layouts, onLayoutsChange: handleLayoutsChange, activeLayout, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
     settings: { initialStudents: students, initialSubjects: subjects, settings: settings, onSettingsChange: onSettingsChange }
   };
 
 
-  const allPossibleTabs: DashboardTab[] = [...visibleTabs];
+  const allPossibleTabs: TabKey[] = [...visibleTabs];
   if (activeTab === 'settings' && !visibleTabs.includes('settings')) {
       allPossibleTabs.push('settings');
   }
@@ -109,7 +116,10 @@ const AppView: FC<AppViewProps> = ({
   return (
     <Tabs 
         value={activeTab ?? defaultTab}
-        onValueChange={(value) => onTabChange && onTabChange(value as DashboardTab)} 
+        onValueChange={(value) => {
+          if (onTabChange) onTabChange(value as TabKey);
+          setInternalActiveSubTab(null); // Reset sub-tab when main tab changes
+        }}
         className="w-full"
     >
       <ScrollArea className="w-full whitespace-nowrap no-print">
@@ -117,7 +127,7 @@ const AppView: FC<AppViewProps> = ({
           {visibleTabs.map(tabKey => (
             <TabsTrigger key={tabKey} value={tabKey}>{tabLabels[tabKey]}</TabsTrigger>
           ))}
-          {activeTab === 'settings' && (
+          {activeTab === 'settings' && !visibleTabs.includes('settings') && (
              <TabsTrigger value="settings">Innstillinger</TabsTrigger>
           )}
         </TabsList>

@@ -1,52 +1,48 @@
 
 "use client";
 
-import { useState, useEffect, FC } from 'react';
-import type { Student, Remark, SeatingChartData, AppSettings, DashboardSubTab } from '@/lib/types';
+import type { FC } from "react";
+import type { Student, Remark, SeatingChartData, AppSettings, HourlyCheck } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Remarks from './Remarks'; // Re-using the existing component
-
-// Placeholder for TimeCheck component
-const TimeCheck = () => (
-    <div className="p-4 border rounded-lg">
-        <h2 className="text-xl font-semibold">Timeinnsjekk</h2>
-        <p className="text-muted-foreground mt-2">Dette verktøyet er under utvikling.</p>
-    </div>
-);
-
+import HourlyCheckComponent from "./HourlyCheck";
+import RemarksComponent from "./Remarks";
 
 interface ObservationsProps {
-    students: Student[];
-    initialRemarks: Remark[];
-    onUpdate: () => void;
-    seatingChart: SeatingChartData | null;
-    settings: AppSettings;
-    activeSubTab: DashboardSubTab | null;
+  students: Student[];
+  initialRemarks: Remark[];
+  initialHourlyChecks: HourlyCheck[];
+  onUpdate: () => void;
+  seatingChart: SeatingChartData | null;
+  settings: AppSettings;
 }
 
 const Observations: FC<ObservationsProps> = (props) => {
-    const [activeTab, setActiveTab] = useState<DashboardSubTab>(props.activeSubTab || "remarks");
-    
-    useEffect(() => {
-        if (props.activeSubTab) {
-            setActiveTab(props.activeSubTab);
-        }
-    }, [props.activeSubTab]);
-
-    return (
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as DashboardSubTab)} className="w-full space-y-4">
-            <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="timecheck">Timeinnsjekk</TabsTrigger>
-                <TabsTrigger value="remarks">Anmerkninger</TabsTrigger>
-            </TabsList>
-            <TabsContent value="timecheck">
-                <TimeCheck />
-            </TabsContent>
-            <TabsContent value="remarks">
-                <Remarks {...props} />
-            </TabsContent>
-        </Tabs>
-    );
-}
+  return (
+    <Tabs defaultValue="hourly-check" className="w-full">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="hourly-check">Timeinnsjekk</TabsTrigger>
+        <TabsTrigger value="remarks">Anmerkninger</TabsTrigger>
+      </TabsList>
+      <TabsContent value="hourly-check">
+        <HourlyCheckComponent 
+            students={props.students} 
+            initialChecks={props.initialHourlyChecks} 
+            onUpdate={props.onUpdate}
+            seatingChart={props.seatingChart}
+            settings={props.settings}
+        />
+      </TabsContent>
+      <TabsContent value="remarks">
+        <RemarksComponent
+            students={props.students}
+            initialRemarks={props.initialRemarks}
+            onUpdate={props.onUpdate}
+            seatingChart={props.seatingChart}
+            settings={props.settings}
+        />
+      </TabsContent>
+    </Tabs>
+  );
+};
 
 export default Observations;

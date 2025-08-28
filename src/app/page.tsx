@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import { useState, useEffect } from "react";
@@ -14,15 +15,31 @@ import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import Onboarding from "@/components/Onboarding";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 
 const defaultSettings: AppSettings = {
   tabs: {
-    overview: true, dailyCheck: true, remarks: true, reports: true,
-    seatingChart: true, classroomTools: true,
+    overview: true, dailyCheck: true, observations: true, reports: true,
+    classroomTools: true,
     settings: true,
   },
-  tabOrder: ['overview', 'dailyCheck', 'remarks', 'reports', 'seatingChart', 'classroomTools'],
+  tabOrder: ['overview', 'dailyCheck', 'observations', 'classroomTools', 'reports'],
+  dashboardTools: [
+    { key: 'overview', visible: true },
+    { key: 'dailyCheck', visible: true },
+    { key: 'observations', visible: true },
+    { key: 'classroomTools', visible: true },
+    { key: 'reports', visible: true },
+    { key: 'observations.hourly', visible: false },
+    { key: 'observations.remarks', visible: false },
+    { key: 'classroomTools.seatingChart', visible: false },
+    { key: 'classroomTools.groupTool', visible: false },
+    { key: 'classroomTools.studentPicker', visible: false },
+    { key: 'reports.summary', visible: false },
+    { key: 'reports.studentReports', visible: false },
+    { key: 'reports.analysis', visible: false },
+  ],
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
     includePositiveFeedback: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
@@ -43,6 +60,7 @@ const defaultSettings: AppSettings = {
 function Home() {
   const [activeView, setActiveView] = useState<'dashboard' | 'app'>('dashboard');
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
+  const [activeSubTab, setActiveSubTab] = useState<string | null>(null);
   
   const students = useLiveQuery(() => db.students.toArray());
   const subjects = useLiveQuery(() => db.subjects.toArray());
@@ -52,6 +70,19 @@ function Home() {
   const { instance } = useMsal();
   
   const currentSettings = settings || defaultSettings;
+
+  // Ensure 'classroomTools' exists in dashboardTools for existing users
+  if (settings && settings.dashboardTools && !settings.dashboardTools.find(t => t.key === 'classroomTools')) {
+      const updatedTools = [ ...settings.dashboardTools ];
+      const observationsIndex = updatedTools.findIndex(t => t.key === 'observations');
+      if (observationsIndex !== -1) {
+          updatedTools.splice(observationsIndex + 1, 0, { key: 'classroomTools', visible: true });
+      } else {
+          updatedTools.push({ key: 'classroomTools', visible: true });
+      }
+      db.settings.update('userSettings', { dashboardTools: updatedTools });
+  }
+
 
   const handleSettingsChange = async (newSettings: AppSettings) => {
     await db.settings.put({ id: 'userSettings', ...newSettings });
@@ -74,8 +105,9 @@ function Home() {
       });
   }
 
-  const navigateToTab = (tab: TabKey) => {
+  const navigateToTab = (tab: TabKey, subTab?: string) => {
     setActiveTab(tab);
+    setActiveSubTab(subTab || null);
     setActiveView('app');
   };
 
@@ -110,6 +142,7 @@ function Home() {
           </button>
         </div>
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <Button variant="ghost" size="icon" onClick={navigateToSettings}>
               <SettingsIcon />
               <span className="sr-only">Innstillinger</span>
@@ -125,6 +158,7 @@ function Home() {
                 subjects={subjects || []}
                 onSettingsChange={handleSettingsChange}
                 activeTab={activeTab}
+                activeSubTab={activeSubTab}
                 onTabChange={setActiveTab}
             />
         )}
