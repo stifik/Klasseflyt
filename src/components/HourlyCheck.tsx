@@ -1,12 +1,12 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
-import type { Student, HourlyCheck, BehaviorType, SeatingChartData, AppSettings } from "@/lib/types";
+import { useState, useEffect, useMemo } from "react";
+import type { Student, HourlyCheck, BehaviorType, SeatingChartData, AppSettings, Remark } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, CheckCircle2, Star } from "lucide-react";
+import { Calendar as CalendarIcon, CheckCircle2, Star, MessageSquare, Clock } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -16,6 +16,10 @@ import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
 import { cn } from "@/lib/utils";
 import * as LucideIcons from "lucide-react";
+import { Textarea } from "./ui/textarea";
+import { Checkbox } from "./ui/checkbox";
+import { ScrollArea } from "./ui/scroll-area";
+import { v4 as uuidv4 } from 'uuid';
 
 const NUMBER_OF_PERIODS = 6;
 
@@ -53,6 +57,12 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
   const { toast } = useToast();
   
   const [localChecks, setLocalChecks] = useState(initialChecks || []);
+
+  const [selectedStudentsForLog, setSelectedStudentsForLog] = useState<string[]>([]);
+  const [logMessage, setLogMessage] = useState("");
+  const sortedStudents = useMemo(() => [...students].sort((a,b) => a.name.localeCompare(b.name)), [students]);
+
+
   useEffect(() => {
     setLocalChecks(initialChecks || []);
   }, [initialChecks]);
@@ -160,6 +170,39 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
     }
   };
 
+    const handleAddLogEntry = async () => {
+        if (selectedStudentsForLog.length === 0 || !logMessage.trim()) {
+        toast({
+            title: "Mangler informasjon",
+            description: "Vennligst velg minst én elev og skriv en melding.",
+            variant: "destructive",
+        });
+        return;
+        }
+
+        const logGroupId = uuidv4();
+        const newRemarks: Omit<Remark, 'id'>[] = selectedStudentsForLog.map(studentId => ({
+        studentId,
+        date,
+        period: currentPeriod,
+        type: "Loggført hendelse",
+        message: logMessage.trim(),
+        logGroupId,
+        }));
+
+        try {
+        await db.remarks.bulkAdd(newRemarks as Remark[]);
+        toast({ title: "Hendelse loggført" });
+        setLogMessage("");
+        setSelectedStudentsForLog([]);
+        onUpdate();
+        } catch (error) {
+        console.error(error);
+        toast({ title: "Feil", description: "Kunne ikke lagre loggføring.", variant: "destructive" });
+        }
+    };
+
+
   const StudentButton = ({ student }: { student: Student }) => {
     const checksForPeriod = getChecksForStudent(student.id, date, currentPeriod);
     const activeBehaviorType = behaviorTypes.find(bt => bt.id === activeBehaviorId);
@@ -197,6 +240,7 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
     : seatingChart;
 
   return (
+    <div className="space-y-6">
     <Card>
       <CardHeader>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -289,5 +333,49 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
         )}
       </CardContent>
     </Card>
+
+    <Card>
+        <CardHeader>
+            <CardTitle>Loggfør hendelse for flere elever</CardTitle>
+            <CardDescription>
+                Skriv en melding og velg elevene det gjelder for å loggføre en felles hendelse.
+            </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-4">
+                <div>
+                    <Label htmlFor="message">Melding for Time {currentPeriod}</Label>
+                    <Textarea id="message" value={logMessage} onChange={(e) => setLogMessage(e.target.value)} placeholder="Skriv hva som skjedde..." />
+                </div>
+                 <Button onClick={handleAddLogEntry} className="w-full">
+                    <MessageSquare className="mr-2" />
+                    Loggfør hendelse
+                </Button>
+            </div>
+             <div>
+              <Label>Velg elever</Label>
+              <ScrollArea className="h-40 w-full rounded-md border p-2">
+                <div className="space-y-2">
+                  {sortedStudents.map(student => (
+                    <div key={student.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`log-student-${student.id}`}
+                        checked={selectedStudentsForLog.includes(student.id!)}
+                        onCheckedChange={(checked) => {
+                          setSelectedStudentsForLog(prev => 
+                            checked ? [...prev, student.id!] : prev.filter(id => id !== student.id)
+                          );
+                        }}
+                      />
+                      <Label htmlFor={`log-student-${student.id}`} className="font-normal">{student.name}</Label>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+
+        </CardContent>
+    </Card>
+    </div>
   );
 }
