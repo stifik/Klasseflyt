@@ -51,43 +51,35 @@ const generateSummaryMessage = (
     remarksCount: number,
     settings: ReportSettings,
 ): string => {
+
+    const homeworkIssues: string[] = [];
+    if (missingAssignments.length > 0) homeworkIssues.push(`Ikke levert: ${missingAssignments.join(', ')}`);
+    if (incompleteAssignments.length > 0) homeworkIssues.push(`Må rettes: ${incompleteAssignments.join(', ')}`);
+    if (forgottenBooks.length > 0) homeworkIssues.push(`Glemt bok: ${forgottenBooks.join(', ')}`);
     
+    const ipadIssues: string[] = [];
+    if (ipadNotChargedCount > 0) ipadIssues.push(`Ikke ladet: ${ipadNotChargedCount} gang(er)`);
+    if (ipadNotBroughtCount > 0) ipadIssues.push(`Ikke medbrakt: ${ipadNotBroughtCount} gang(er)`);
+
+    const hasHomeworkIssues = homeworkIssues.length > 0;
+
     if (hasIssues) {
       let message = `${settings.greeting}\nEn liten oppsummering for ${studentName} i uke ${week}.\n\n`;
       
       if (settings.includeHomework) {
-          const homeworkIssues: string[] = [];
-          if (missingAssignments.length > 0) {
-              homeworkIssues.push(`Ikke levert: ${missingAssignments.join(', ')}`);
-          }
-          if (incompleteAssignments.length > 0) {
-              homeworkIssues.push(`Må rettes: ${incompleteAssignments.join(', ')}`);
-          }
-           if (forgottenBooks.length > 0) {
-              homeworkIssues.push(`Glemt bok: ${forgottenBooks.join(', ')}`);
-          }
-
-          if (homeworkIssues.length > 0) {
+          if (hasHomeworkIssues) {
               message += `Status for lekser:\n`;
               if (approvedAssignments.length > 0) {
                   message += `- Godkjent: ${approvedAssignments.join(', ')}\n`;
               }
               message += `- ${homeworkIssues.join('\n- ')}\n\n`;
+          } else if (settings.includePositiveFeedback && approvedAssignments.length > 0) {
+              message += `All leksing denne uken er godkjent. Veldig bra innsats!\n\n`;
           }
       }
 
-      if (settings.includeIpad) {
-          const ipadIssues: string[] = [];
-          if (ipadNotChargedCount > 0) {
-              ipadIssues.push(`Ikke ladet: ${ipadNotChargedCount} gang(er)`);
-          }
-          if (ipadNotBroughtCount > 0) {
-              ipadIssues.push(`Ikke medbrakt: ${ipadNotBroughtCount} gang(er)`);
-          }
-
-          if (ipadIssues.length > 0) {
-              message += `iPad:\n- ${ipadIssues.join('\n- ')}\n\n`;
-          }
+      if (settings.includeIpad && ipadIssues.length > 0) {
+          message += `iPad:\n- ${ipadIssues.join('\n- ')}\n\n`;
       }
 
       if (settings.includeRemarks && remarksCount > 0) {
@@ -310,7 +302,7 @@ const ReportDetails = ({ stat, behaviorTypes }: { stat: ReturnType<typeof useStu
                             <ul className="pl-1 mt-1 text-sm space-y-1">
                                 {subStat.problemSubmissions.map((c, i) => 
                                     <li key={i} className="text-xs">
-                                        <strong>Uke {c.week}: </strong>
+                                        <strong>Uke {c.week}: </strong> 
                                         <span> </span>
                                         {c.status === 'Glemt bok' ? 'Glemt bok' : c.title}
                                         {c.comment && <p className="text-xs text-muted-foreground pl-2 italic">"{c.comment}"</p>}
@@ -526,3 +518,5 @@ export default function Reports(props: ReportsProps) {
         </Tabs>
     )
 }
+
+    
