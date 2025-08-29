@@ -64,18 +64,24 @@ const generateSummaryMessage = (
     if (ipadNotBroughtCount > 0) ipadIssues.push(`Ikke medbrakt: ${ipadNotBroughtCount} gang(er)`);
 
     const hasHomeworkIssues = homeworkIssues.length > 0;
+    const hasApprovedHomework = approvedAssignments.length > 0;
 
     let message = `${settings.greeting}\nEn liten oppsummering for ${studentName} i uke ${week}.\n\n`;
       
     if (settings.includeHomework) {
         if (hasHomeworkIssues) {
             message += `Status for lekser:\n`;
-            if (approvedAssignments.length > 0) {
+            if (hasApprovedHomework) {
                 message += `- Godkjent: ${approvedAssignments.join(', ')}\n`;
             }
             message += `- ${homeworkIssues.join('\n- ')}\n\n`;
-        } else if (settings.includePositiveFeedback && approvedAssignments.length > 0) {
-            message += `All leksing denne uken er godkjent. Veldig bra innsats!\n\n`;
+        } else if (settings.includePositiveFeedback && hasApprovedHomework) {
+            // Include positive feedback even if other issues exist
+             if (hasIssues) {
+                message += `Lekser: All leksing denne uken er godkjent. Veldig bra innsats!\n\n`;
+            } else {
+                 message = `${settings.greeting}\nEn liten oppdatering for ${studentName} i uke ${week}: Alt har vært helt supert! God innsats.\n\n`;
+            }
         }
     }
 
@@ -91,10 +97,9 @@ const generateSummaryMessage = (
     if (!hasIssues && !settings.includePositiveFeedback) {
         return "";
     }
-
-    // If there were no issues but positive feedback is on, add a generic positive message.
-    if (!hasIssues && settings.includePositiveFeedback) {
-         message = `${settings.greeting}\nEn liten oppdatering for ${studentName} i uke ${week}: Alt har vært helt supert! God innsats.\n\n`;
+    
+    if (!hasIssues && settings.includePositiveFeedback && !hasApprovedHomework) {
+        message = `${settings.greeting}\nEn liten oppdatering for ${studentName} i uke ${week}: Alt har vært helt supert! God innsats.\n\n`;
     }
 
 
@@ -485,7 +490,7 @@ const useStudentStats = (students: Student[], subjects: Subject[], homework: Hom
                 totalHomework,
                 totalStatusCounts,
                 totalDelays,
-                testResults: formattedTestResults,
+                testResults: formattedTestResults as { result: TestResult; test: Test; subjectName: string; }[],
                 ipadNotCharged: studentDailyChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
                 ipadNotBrought: studentDailyChecks.filter(c => !c.ipadBrought).length,
                 behaviorCounts,
