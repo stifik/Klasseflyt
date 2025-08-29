@@ -42,7 +42,7 @@ interface AppViewProps {
     onTabChange?: (tab: TabKey | null, subTab?: string | null) => void;
 }
 
-const AppView: FC<AppViewProps> = ({ 
+const AppViewContent: FC<AppViewProps> = ({ 
     settings, 
     activeTab, 
     activeSubTab,
@@ -154,5 +154,15 @@ const AppView: FC<AppViewProps> = ({
     </Tabs>
   );
 };
+
+const AppView: FC<AppViewProps> = (props) => {
+    // This wrapper ensures that the main props are loaded before we try to fetch live data.
+    if (!props.students || !props.subjects || !props.settings) {
+        return <div>Laster kjernekomponenter...</div>;
+    }
+
+    return <AppViewContent {...props} />;
+};
+
 
 export default AppView;
