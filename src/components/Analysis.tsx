@@ -30,13 +30,6 @@ interface AnalysisProps {
 }
 
 export default function Analysis(props: AnalysisProps) {
-    
-    useEffect(() => {
-        if (props.activeSubTab && ["weekly-summary", "student-reports", "remark-analysis"].includes(props.activeSubTab)) {
-            props.onSubTabChange(props.activeSubTab);
-        }
-    }, [props.activeSubTab, props.onSubTabChange]);
-    
     // The Reports component now handles all the logic and UI
     return <Reports {...props} />;
 }
