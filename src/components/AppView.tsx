@@ -11,7 +11,7 @@ import Settings from "@/components/Settings";
 import ClassroomTools from "@/components/ClassroomTools";
 import Observations from "@/components/Observations";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import type { AppSettings, SeatingLayout, Student, Subject, TabKey, DashboardSubTab } from '@/lib/types';
+import type { AppSettings, SeatingLayout, Student, Subject, TabKey } from '@/lib/types';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 
@@ -42,7 +42,7 @@ interface AppViewProps {
     students: Student[];
     subjects: Subject[];
     onSettingsChange: (newSettings: AppSettings) => void;
-    onTabChange?: (tab: TabKey | null, subTab?: string | null) => void;
+    onTabChange?: (tab: TabKey | null) => void;
 }
 
 const AppViewContent: FC<AppViewProps> = ({ 
