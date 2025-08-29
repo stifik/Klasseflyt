@@ -1,5 +1,4 @@
 
-
 'use client'
 
 import { useState, useEffect } from "react";
@@ -173,4 +172,29 @@ function Home() {
   );
 }
 
-export default Home;
+function HomePageWrapper() {
+    const isAuthenticated = useIsAuthenticated();
+    const router = useRouter();
+    const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+    useEffect(() => {
+        if (!isCheckingAuth && !isAuthenticated) {
+            router.push('/login');
+        } else {
+            setIsCheckingAuth(false);
+        }
+    }, [isAuthenticated, isCheckingAuth, router]);
+
+    if (isCheckingAuth || !isAuthenticated) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-background">
+                <Loader2 className="mr-2 h-8 w-8 animate-spin" />
+            </div>
+        );
+    }
+
+    return <Home />;
+}
+
+
+export default HomePageWrapper;
