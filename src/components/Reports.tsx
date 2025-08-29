@@ -2,12 +2,12 @@
 "use client";
 
 import { useState, useMemo, FC } from 'react';
-import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings, HourlyCheck, BehaviorType, AppSettings } from '@/lib/types';
+import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings, HourlyCheck, BehaviorType, AppSettings, Test, TestResult } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
-import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
+import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp, MessageSquare, Award } from 'lucide-react';
 import { getWeekNumber } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RemarkAnalysis from './RemarkAnalysis';
@@ -22,6 +22,8 @@ interface ReportsProps {
   subjects: Subject[];
   homework: Homework[];
   submissions: Submission[];
+  tests: Test[];
+  testResults: TestResult[];
   dailyChecks: DailyCheck[];
   remarks: Remark[];
   hourlyChecks: HourlyCheck[];
@@ -63,38 +65,41 @@ const generateSummaryMessage = (
 
     const hasHomeworkIssues = homeworkIssues.length > 0;
 
-    if (hasIssues) {
-      let message = `${settings.greeting}\nEn liten oppsummering for ${studentName} i uke ${week}.\n\n`;
+    let message = `${settings.greeting}\nEn liten oppsummering for ${studentName} i uke ${week}.\n\n`;
       
-      if (settings.includeHomework) {
-          if (hasHomeworkIssues) {
-              message += `Status for lekser:\n`;
-              if (approvedAssignments.length > 0) {
-                  message += `- Godkjent: ${approvedAssignments.join(', ')}\n`;
-              }
-              message += `- ${homeworkIssues.join('\n- ')}\n\n`;
-          } else if (settings.includePositiveFeedback && approvedAssignments.length > 0) {
-              message += `All leksing denne uken er godkjent. Veldig bra innsats!\n\n`;
-          }
-      }
-
-      if (settings.includeIpad && ipadIssues.length > 0) {
-          message += `iPad:\n- ${ipadIssues.join('\n- ')}\n\n`;
-      }
-
-      if (settings.includeRemarks && remarksCount > 0) {
-          message += `Anmerkninger: ${remarksCount} stk\n\n`;
-      }
-
-      message += `${settings.closing}\n${settings.teacherName}`;
-      return message;
+    if (settings.includeHomework) {
+        if (hasHomeworkIssues) {
+            message += `Status for lekser:\n`;
+            if (approvedAssignments.length > 0) {
+                message += `- Godkjent: ${approvedAssignments.join(', ')}\n`;
+            }
+            message += `- ${homeworkIssues.join('\n- ')}\n\n`;
+        } else if (settings.includePositiveFeedback && approvedAssignments.length > 0) {
+            message += `All leksing denne uken er godkjent. Veldig bra innsats!\n\n`;
+        }
     }
 
-    if (settings.includePositiveFeedback) {
-        return `${settings.greeting}\nEn liten oppdatering for ${studentName} i uke ${week}: Alt har vært helt supert! God innsats.\n\n${settings.closing}\n${settings.teacherName}`;
+    if (settings.includeIpad && ipadIssues.length > 0) {
+        message += `iPad:\n- ${ipadIssues.join('\n- ')}\n\n`;
     }
 
-    return "";
+    if (settings.includeRemarks && remarksCount > 0) {
+        message += `Anmerkninger: ${remarksCount} stk\n\n`;
+    }
+
+    // Don't send message if there are no issues and positive feedback is off.
+    if (!hasIssues && !settings.includePositiveFeedback) {
+        return "";
+    }
+
+    // If there were no issues but positive feedback is on, add a generic positive message.
+    if (!hasIssues && settings.includePositiveFeedback) {
+         message = `${settings.greeting}\nEn liten oppdatering for ${studentName} i uke ${week}: Alt har vært helt supert! God innsats.\n\n`;
+    }
+
+
+    message += `${settings.closing}\n${settings.teacherName}`;
+    return message;
 };
 
 const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks, remarks, settings }: ReportsProps) => {
@@ -315,6 +320,33 @@ const ReportDetails = ({ stat, behaviorTypes }: { stat: ReturnType<typeof useStu
             </Card>
             ))}
         </div>
+        {stat.testResults.length > 0 && (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center">
+                        <Award className="mr-2" />
+                        Prøveresultater
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ul className="space-y-3">
+                        {stat.testResults.map(result => (
+                            <li key={result.test.id} className="text-sm border-b pb-2">
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <p className="font-medium">{result.test.title} <span className="text-xs text-muted-foreground">({result.subjectName})</span></p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {format(new Date(result.test.date), "PPP", { locale: nb })}
+                                        </p>
+                                    </div>
+                                    <p className="font-bold text-lg">{result.result.points}<span className="font-normal text-sm text-muted-foreground">/{result.test.maxPoints}</span></p>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </CardContent>
+            </Card>
+        )}
          {stat.loggedRemarks.length > 0 && (
             <Card>
                 <CardHeader>
@@ -384,10 +416,11 @@ const FullReportCard = ({ stat, isOpen, isPrintVersion = false, behaviorTypes }:
     </Card>
 );
 
-const useStudentStats = (students: Student[], subjects: Subject[], homework: Homework[], submissions: Submission[], dailyChecks: DailyCheck[], remarks: Remark[], hourlyChecks: HourlyCheck[], behaviorTypes: BehaviorType[]) => {
+const useStudentStats = (students: Student[], subjects: Subject[], homework: Homework[], submissions: Submission[], tests: Test[], testResults: TestResult[], dailyChecks: DailyCheck[], remarks: Remark[], hourlyChecks: HourlyCheck[], behaviorTypes: BehaviorType[]) => {
     return useMemo(() => {
         return students.map(student => {
             const studentSubmissions = submissions.filter(s => s.studentId === student.id);
+            const studentTestResults = testResults.filter(r => r.studentId === student.id && r.points !== null);
             const studentDailyChecks = dailyChecks.filter(c => c.studentId === student.id);
             const studentHourlyChecks = hourlyChecks.filter(c => c.studentId === student.id);
             const studentRemarks = remarks
@@ -438,6 +471,13 @@ const useStudentStats = (students: Student[], subjects: Subject[], homework: Hom
                 return acc;
             }, {} as Record<string, number>);
 
+            const formattedTestResults = studentTestResults.map(result => {
+                const test = tests.find(t => t.id === result.testId);
+                if (!test) return null;
+                const subjectName = subjects.find(s => s.id === test.subjectId)?.name || 'Ukjent';
+                return { result, test, subjectName };
+            }).filter(Boolean).sort((a, b) => new Date(b!.test.date).getTime() - new Date(a!.test.date).getTime());
+
             return {
                 studentId: student.id,
                 studentName: student.name,
@@ -445,6 +485,7 @@ const useStudentStats = (students: Student[], subjects: Subject[], homework: Hom
                 totalHomework,
                 totalStatusCounts,
                 totalDelays,
+                testResults: formattedTestResults,
                 ipadNotCharged: studentDailyChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
                 ipadNotBrought: studentDailyChecks.filter(c => !c.ipadBrought).length,
                 behaviorCounts,
@@ -452,14 +493,25 @@ const useStudentStats = (students: Student[], subjects: Subject[], homework: Hom
                 totalRemarks: studentRemarks.length,
             };
         }).sort((a,b) => a.studentName.localeCompare(b.studentName));
-    }, [students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks, behaviorTypes]);
+    }, [students, subjects, homework, submissions, tests, testResults, dailyChecks, remarks, hourlyChecks, behaviorTypes]);
 };
 
 
-const StudentReport = ({ students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks, settings }: Omit<ReportsProps, 'settings'> & { settings: AppSettings }) => {
+const StudentReport = (props: ReportsProps) => {
     const [openStudents, setOpenStudents] = useState<Record<string, boolean>>({});
-    const behaviorTypes = settings.behaviorTypes || [];
-    const studentStats = useStudentStats(students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks, behaviorTypes);
+    const behaviorTypes = props.settings.behaviorTypes || [];
+    const studentStats = useStudentStats(
+        props.students, 
+        props.subjects, 
+        props.homework, 
+        props.submissions, 
+        props.tests, 
+        props.testResults, 
+        props.dailyChecks, 
+        props.remarks, 
+        props.hourlyChecks, 
+        behaviorTypes
+    );
     
     const toggleStudent = (studentId: string) => {
         setOpenStudents(prev => ({ ...prev, [studentId]: !prev[studentId] }));

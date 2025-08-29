@@ -30,6 +30,22 @@ export type Submission = {
   isDelayed?: boolean; // New field to track if it was ever late/incomplete
 };
 
+export type Test = {
+  id?: number;
+  title: string;
+  subjectId: string;
+  date: Date;
+  maxPoints: number;
+};
+
+export type TestResult = {
+  id?: number;
+  studentId: string;
+  testId: number;
+  points: number | null;
+  comment?: string;
+};
+
 export type DailyCheck = {
   id?: number;
   studentId: string;
@@ -84,10 +100,11 @@ export type SeatingLayout = {
   createdAt: Date;
 };
 
-export type TabKey = 'overview' | 'dailyCheck' | 'observations' | 'reports' | 'classroomTools' | 'settings';
+export type TabKey = 'overview' | 'assessments' | 'dailyCheck' | 'observations' | 'reports' | 'classroomTools' | 'settings';
 
 export type DashboardToolKey = 
   | 'overview' 
+  | 'assessments'
   | 'dailyCheck' 
   | 'observations'
   | 'observations.hourly' 

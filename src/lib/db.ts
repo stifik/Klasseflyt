@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -12,6 +12,8 @@ export class MySubClassedDexie extends Dexie {
     subjects!: Table<Subject, string>;
     homework!: Table<Homework, number>;
     submissions!: Table<Submission, number>;
+    tests!: Table<Test, number>;
+    testResults!: Table<TestResult, number>;
     dailyChecks!: Table<DailyCheck, number>;
     remarks!: Table<Remark, number>;
     hourlyChecks!: Table<HourlyCheck, number>;
@@ -183,6 +185,12 @@ export class MySubClassedDexie extends Dexie {
             }
         });
 
+        // Version 11: Add tests and testResults tables
+        this.version(11).stores({
+            tests: '++id, subjectId, date',
+            testResults: '++id, &[studentId+testId], studentId, testId',
+        });
+
 
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
@@ -241,11 +249,11 @@ const defaultDPIAAnalysis: DPIAAnalysis = {
 
 const defaultSettings: AppSettings = {
   tabs: {
-    overview: true, dailyCheck: true, observations: true, reports: true,
+    overview: true, assessments: true, dailyCheck: true, observations: true, reports: true,
     classroomTools: true,
     settings: true,
   },
-  tabOrder: ['overview', 'dailyCheck', 'observations', 'classroomTools', 'reports'],
+  tabOrder: ['overview', 'assessments', 'dailyCheck', 'observations', 'classroomTools', 'reports'],
   dashboardTools: defaultDashboardTools,
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,

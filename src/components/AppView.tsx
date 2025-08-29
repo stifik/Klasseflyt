@@ -4,6 +4,7 @@
 import { FC, useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import HomeworkOverview from "@/components/HomeworkOverview";
+import Assessments from "@/components/Assessments";
 import DailyChecklist from "@/components/DailyChecklist";
 import Reports from "@/components/Reports";
 import Settings from "@/components/Settings";
@@ -16,6 +17,7 @@ import { db } from '@/lib/db';
 
 const tabComponents: Partial<Record<TabKey, FC<any>>> = {
   overview: HomeworkOverview,
+  assessments: Assessments,
   dailyCheck: DailyChecklist,
   observations: Observations,
   reports: Reports,
@@ -25,6 +27,7 @@ const tabComponents: Partial<Record<TabKey, FC<any>>> = {
 
 const tabLabels: Partial<Record<TabKey, string>> = {
   overview: "Lekseoversikt",
+  assessments: "Vurderinger",
   dailyCheck: "Daglig Sjekk",
   observations: "Observasjoner",
   reports: "Analyse",
@@ -62,6 +65,8 @@ const AppViewContent: FC<AppViewProps> = ({
 
   const homework = useLiveQuery(() => db.homework.toArray(), [], undefined);
   const submissions = useLiveQuery(() => db.submissions.toArray(), [], undefined);
+  const tests = useLiveQuery(() => db.tests.toArray(), [], undefined);
+  const testResults = useLiveQuery(() => db.testResults.toArray(), [], undefined);
   const dailyChecks = useLiveQuery(() => db.dailyChecks.toArray(), [], undefined);
   const hourlyChecks = useLiveQuery(() => db.hourlyChecks.toArray(), [], undefined);
   const remarks = useLiveQuery(() => db.remarks.toArray(), [], undefined);
@@ -100,9 +105,10 @@ const AppViewContent: FC<AppViewProps> = ({
 
   const componentProps: Record<string, any> = {
     overview: { students, subjects, homeworkList: homework, submissions, onUpdate: () => {} },
+    assessments: { students, subjects, tests, testResults },
     dailyCheck: { students, seatingChart: seatingChartData },
     observations: { students, initialHourlyChecks: hourlyChecks, initialRemarks: remarks, onUpdate: () => {}, seatingChart: seatingChartData, settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
-    reports: { students, subjects, homework, submissions, dailyChecks, remarks, hourlyChecks, settings: settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
+    reports: { students, subjects, homework, submissions, tests, testResults, dailyChecks, remarks, hourlyChecks, settings: settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
     classroomTools: { students, seatingChart: seatingChartData, onSeatingChartChange: handleSeatingChartChange, history: seatingChartHistory || [], appSettings: settings, onAppSettingsChange: onSettingsChange, layouts, onLayoutsChange: handleLayoutsChange, activeLayout, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
     settings: { initialStudents: students, initialSubjects: subjects, settings: settings, onSettingsChange: onSettingsChange }
   };

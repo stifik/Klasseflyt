@@ -7,7 +7,7 @@ import type {AppSettings, TabKey, DashboardToolKey} from '@/lib/types';
 import {Card, CardHeader, CardTitle, CardDescription} from '@/components/ui/card';
 import {
     BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed, 
-    Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2
+    Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2, Award
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
 
@@ -23,6 +23,13 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     description: 'Full oversikt over lekser og innleveringer.',
     icon: BookOpen,
     color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+  },
+  {
+    key: 'assessments',
+    label: 'Vurderinger',
+    description: 'Registrer og følg opp prøveresultater.',
+    icon: Award,
+    color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
   },
   {
     key: 'dailyCheck',
