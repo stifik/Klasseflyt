@@ -172,6 +172,11 @@ function Home() {
   );
 }
 
+// Bypassing the authentication wrapper for local development without MSAL config.
+// The original HomePageWrapper is kept below for reference.
+export default Home;
+
+/*
 function HomePageWrapper() {
     const isAuthenticated = useIsAuthenticated();
     const router = useRouter();
@@ -195,6 +200,4 @@ function HomePageWrapper() {
 
     return <Home />;
 }
-
-
-export default HomePageWrapper;
+*/
