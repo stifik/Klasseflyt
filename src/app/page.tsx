@@ -69,8 +69,6 @@ function Home() {
   const { toast } = useToast();
   const { instance } = useMsal();
   
-  // This robust settings object prevents crashes by ensuring dashboardTools is always an array.
-  // It also ensures that the classroomTools tab is always present in the settings.
   const currentSettings = settings 
     ? {
         ...defaultSettings,
@@ -84,7 +82,6 @@ function Home() {
       } 
     : defaultSettings;
   
-  // This useEffect now safely migrates old settings without crashing.
   useEffect(() => {
     if (settings && Array.isArray(settings.dashboardTools)) {
         let wasUpdated = false;
@@ -94,7 +91,7 @@ function Home() {
 
         toolsToCheck.forEach(toolKey => {
             if (!updatedTools.some(t => t.key === toolKey)) {
-                let insertIndex = updatedTools.length; // Default to end
+                let insertIndex = updatedTools.length;
                 if (toolKey === 'classroomTools') {
                     const observationsIndex = updatedTools.findIndex(t => t.key === 'observations');
                     if (observationsIndex !== -1) insertIndex = observationsIndex + 1;
@@ -144,7 +141,6 @@ function Home() {
       setActiveView('app');
   }
 
-  // A more robust loading check
   const isLoading = students === undefined || subjects === undefined || settings === undefined;
 
   if (isLoading) {
@@ -201,8 +197,6 @@ function Home() {
   );
 }
 
-// Bypassing the authentication wrapper for local development without MSAL config.
-// The original HomePageWrapper is kept below for reference.
 export default Home;
 
 /*

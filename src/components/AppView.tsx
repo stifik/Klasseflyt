@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { FC, useState, useEffect, Suspense, useMemo } from 'react';
@@ -45,7 +44,6 @@ const TabContentLoader = () => (
     </div>
 );
 
-// This new component will handle fetching data for a specific, active tab
 const ActiveTabContent: FC<{ tabKey: TabKey, componentProps: Record<string, any>}> = ({ tabKey, componentProps }) => {
     const Component = tabComponents[tabKey];
     if (!Component) return null;
@@ -60,6 +58,7 @@ const ActiveTabContent: FC<{ tabKey: TabKey, componentProps: Record<string, any>
     const remarks = useLiveQuery(() => tabKey === 'observations' || tabKey === 'reports' ? db.remarks.toArray() : undefined);
     const seatingChartHistory = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingChartHistory.orderBy('createdAt').reverse().toArray() : undefined);
     const layouts = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingLayouts.toArray() : undefined);
+    
     const activeLayout = useLiveQuery(async () => {
         if (tabKey === 'classroomTools' && appSettings?.selectedSeatingLayoutId) {
             return db.seatingLayouts.get(appSettings.selectedSeatingLayoutId);
@@ -128,7 +127,6 @@ const AppViewContent: FC<AppViewProps> = ({
   }, [activeSubTab, activeTab]);
   
   const visibleTabs = useMemo(() => {
-    // This robustly ensures that the classroomTools tab is always present and in order.
     const tabOrder = settings.tabOrder || [];
     if (!tabOrder.includes('classroomTools')) {
         const observationsIndex = tabOrder.indexOf('observations');
@@ -226,7 +224,6 @@ const AppViewContent: FC<AppViewProps> = ({
 };
 
 const AppView: FC<AppViewProps> = (props) => {
-    // This wrapper ensures that the main props are loaded before we try to fetch live data.
     if (!props.students || !props.subjects || !props.settings) {
         return <div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /> Laster kjernekomponenter...</div>;
     }
