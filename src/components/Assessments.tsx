@@ -1,18 +1,24 @@
 
 "use client";
 
-import { useState, useMemo, type FC, type KeyboardEvent } from "react";
-import type { Student, Subject, Test, TestResult } from "@/lib/types";
+import { useState, useMemo, type FC, type KeyboardEvent, useEffect } from "react";
+import type { Student, Subject, Test, TestResult, LearningGoal, GoalAchievement, GoalStatus } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { db } from "@/lib/db";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { v4 as uuidv4 } from 'uuid';
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Check, Forward, CircleDot } from 'lucide-react';
+import { cn } from "@/lib/utils";
 
-interface AssessmentsProps {
+// --- Tests Component ---
+interface TestsProps {
   students: Student[];
   subjects: Subject[];
   tests: Test[];
@@ -50,17 +56,17 @@ const AddTestDialog: FC<{ subjects: Subject[]; onAddTest: (title: string, subjec
       <DialogTrigger asChild>
         <Button>
           <Plus className="mr-2" />
-          Ny Vurdering
+          Ny Prøve
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Legg til ny vurdering</DialogTitle>
+          <DialogTitle>Legg til ny prøve</DialogTitle>
           <DialogDescription>Fyll ut detaljene for den nye prøven eller vurderingen.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <Input 
-            placeholder="Tittel på vurderingen" 
+            placeholder="Tittel på prøven" 
             value={title} 
             onChange={(e) => setTitle(e.target.value)}
           />
@@ -88,8 +94,7 @@ const AddTestDialog: FC<{ subjects: Subject[]; onAddTest: (title: string, subjec
   );
 };
 
-
-export default function Assessments({ students, subjects, tests = [], testResults = [] }: AssessmentsProps) {
+const TestsComponent = ({ students, subjects, tests = [], testResults = [] }: TestsProps) => {
   const { toast } = useToast();
   
   const getResult = (studentId: string, testId: number) => testResults.find(r => r.studentId === studentId && r.testId === testId);
@@ -133,9 +138,9 @@ export default function Assessments({ students, subjects, tests = [], testResult
         maxScore,
         date: new Date(),
       });
-      toast({ title: "Vurdering lagt til", description: `"${title}" er lagt til i oversikten.` });
+      toast({ title: "Prøve lagt til", description: `"${title}" er lagt til i oversikten.` });
     } catch (error) {
-      toast({ title: "Feil", description: "Kunne ikke legge til vurdering.", variant: "destructive" });
+      toast({ title: "Feil", description: "Kunne ikke legge til prøve.", variant: "destructive" });
     }
   };
 
@@ -154,7 +159,7 @@ export default function Assessments({ students, subjects, tests = [], testResult
   return (
     <div className="space-y-4">
       <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-2xl font-bold">Vurderingsoversikt</h2>
+        <h2 className="text-2xl font-bold">Prøveresultater</h2>
         <AddTestDialog subjects={subjects} onAddTest={handleAddTest} />
       </div>
       
@@ -203,3 +208,208 @@ export default function Assessments({ students, subjects, tests = [], testResult
   );
 }
 
+// --- Learning Goals Component ---
+interface LearningGoalsProps {
+  students: Student[];
+  subjects: Subject[];
+  learningGoals: LearningGoal[];
+  goalAchievements: GoalAchievement[];
+}
+
+const statusConfig: Record<GoalStatus, { icon: React.ElementType, color: string, label: string }> = {
+  NotAchieved: { icon: CircleDot, color: 'text-gray-400', label: 'Ikke startet' },
+  InProgress: { icon: Forward, color: 'text-yellow-500', label: 'Jobber med' },
+  Achieved: { icon: Check, color: 'text-green-500', label: 'Mål nådd' },
+};
+
+const statusOrder: GoalStatus[] = ['NotAchieved', 'InProgress', 'Achieved'];
+
+const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchievements }: LearningGoalsProps) => {
+    const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(subjects[0]?.id || null);
+    const [newGoalTitle, setNewGoalTitle] = useState("");
+    const { toast } = useToast();
+
+    const sortedStudents = useMemo(() => {
+        return [...students].sort((a, b) => a.name.localeCompare(b.name, 'nb'));
+    }, [students]);
+
+    const filteredGoals = useMemo(() => {
+        return (learningGoals || []).filter(g => g.subjectId === selectedSubjectId)
+            .sort((a,b) => a.createdAt.getTime() - b.createdAt.getTime());
+    }, [learningGoals, selectedSubjectId]);
+
+    const handleAddGoal = async () => {
+        if (!newGoalTitle.trim() || !selectedSubjectId) return;
+        const newGoal: LearningGoal = {
+            id: uuidv4(),
+            title: newGoalTitle.trim(),
+            subjectId: selectedSubjectId,
+            createdAt: new Date(),
+        };
+        try {
+            await db.learningGoals.add(newGoal);
+            setNewGoalTitle("");
+            toast({ title: "Læringsmål lagt til" });
+        } catch (error) {
+            toast({ title: "Feil", description: "Kunne ikke legge til læringsmål.", variant: "destructive" });
+        }
+    };
+
+    const handleDeleteGoal = async (goalId: string) => {
+        try {
+            await db.transaction('rw', db.learningGoals, db.goalAchievements, async () => {
+                await db.learningGoals.delete(goalId);
+                const achievementsToDelete = await db.goalAchievements.where({ goalId }).toArray();
+                await db.goalAchievements.bulkDelete(achievementsToDelete.map(a => a.id));
+            });
+            toast({ title: "Læringsmål slettet", variant: "destructive" });
+        } catch (error) {
+            toast({ title: "Feil", description: "Kunne ikke slette læringsmål.", variant: "destructive" });
+        }
+    };
+
+    const handleStatusChange = async (studentId: string, goalId: string) => {
+        const existing = goalAchievements.find(a => a.studentId === studentId && a.goalId === goalId);
+        const currentStatus = existing?.status || 'NotAchieved';
+        const nextIndex = (statusOrder.indexOf(currentStatus) + 1) % statusOrder.length;
+        const nextStatus = statusOrder[nextIndex];
+
+        try {
+            if (existing) {
+                await db.goalAchievements.update(existing.id, { status: nextStatus, updatedAt: new Date() });
+            } else {
+                const newAchievement: GoalAchievement = {
+                    id: uuidv4(),
+                    studentId,
+                    goalId,
+                    status: nextStatus,
+                    updatedAt: new Date(),
+                };
+                await db.goalAchievements.add(newAchievement);
+            }
+        } catch (error) {
+            toast({ title: "Feil", description: "Kunne ikke oppdatere status.", variant: "destructive" });
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold">Læringsmål</h2>
+                    <p className="text-muted-foreground">Definer og spor elevens fremgang mot spesifikke faglige mål.</p>
+                </div>
+                <Select value={selectedSubjectId || ""} onValueChange={setSelectedSubjectId}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Velg fag" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {subjects.map(s => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            </div>
+
+            {selectedSubjectId && (
+                <div className="p-4 border rounded-lg space-y-2">
+                    <h3 className="font-medium">Nytt læringsmål for {subjects.find(s=>s.id === selectedSubjectId)?.name}</h3>
+                    <div className="flex gap-2">
+                        <Input 
+                            placeholder="Skriv inn tittel på læringsmål..."
+                            value={newGoalTitle}
+                            onChange={(e) => setNewGoalTitle(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddGoal()}
+                        />
+                        <Button onClick={handleAddGoal}>
+                            <Plus className="mr-2" /> Legg til
+                        </Button>
+                    </div>
+                </div>
+            )}
+            
+            <div className="overflow-x-auto border rounded-lg">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="sticky left-0 z-10 font-bold bg-background">Elev</TableHead>
+                            {filteredGoals.map(goal => (
+                                <TableHead key={goal.id} className="text-center group relative min-w-[150px]">
+                                    {goal.title}
+                                    <Button variant="ghost" size="icon" className="absolute top-1 right-1 invisible h-6 w-6 group-hover:visible" onClick={() => handleDeleteGoal(goal.id)}>
+                                        <Trash2 className="w-4 h-4 text-destructive" />
+                                    </Button>
+                                </TableHead>
+                            ))}
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {sortedStudents.map(student => (
+                            <TableRow key={student.id}>
+                                <TableCell className="sticky left-0 z-10 font-medium bg-background">{student.name}</TableCell>
+                                {filteredGoals.map(goal => {
+                                    const achievement = goalAchievements.find(a => a.studentId === student.id && a.goalId === goal.id);
+                                    const status = achievement?.status || 'NotAchieved';
+                                    const config = statusConfig[status];
+                                    const Icon = config.icon;
+                                    return (
+                                        <TableCell key={goal.id} className="p-1 text-center">
+                                            <button 
+                                                onClick={() => handleStatusChange(student.id!, goal.id)}
+                                                className={cn("w-full h-12 flex items-center justify-center rounded-md hover:bg-muted", config.color)}
+                                                title={config.label}
+                                            >
+                                                <Icon className="w-6 h-6" />
+                                            </button>
+                                        </TableCell>
+                                    );
+                                })}
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+        </div>
+    );
+};
+
+
+// --- Main Assessments Component ---
+interface AssessmentsProps {
+  students: Student[];
+  subjects: Subject[];
+  tests: Test[];
+  testResults: TestResult[];
+  learningGoals: LearningGoal[];
+  goalAchievements: GoalAchievement[];
+  activeSubTab?: string | null;
+  onSubTabChange: (subTab: string) => void;
+}
+
+export default function Assessments(props: AssessmentsProps) {
+    const { activeSubTab, onSubTabChange } = props;
+    const defaultSubTab = "tests";
+  
+    useEffect(() => {
+        if (activeSubTab && ["tests", "learning-goals"].includes(activeSubTab)) {
+            onSubTabChange(activeSubTab);
+        }
+    }, [activeSubTab, onSubTabChange]);
+
+    return (
+        <Tabs 
+            value={activeSubTab || defaultSubTab} 
+            onValueChange={onSubTabChange}
+            className="w-full"
+        >
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="tests">Prøver</TabsTrigger>
+                <TabsTrigger value="learning-goals">Læringsmål</TabsTrigger>
+            </TabsList>
+            <TabsContent value="tests">
+                <TestsComponent {...props} />
+            </TabsContent>
+            <TabsContent value="learning-goals">
+                <LearningGoalsComponent {...props} />
+            </TabsContent>
+        </Tabs>
+    );
+}

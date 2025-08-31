@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { FC, useState, useEffect, Suspense } from 'react';
@@ -66,13 +67,16 @@ const ActiveTabContent: FC<{ tabKey: TabKey, componentProps: Record<string, any>
     });
     const tests = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.tests.toArray() : undefined, []);
     const testResults = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.testResults.toArray() : undefined, []);
+    const learningGoals = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.learningGoals.toArray() : undefined, []);
+    const goalAchievements = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.goalAchievements.toArray() : undefined, []);
+
 
     const dataMap: Record<string, any> = {
         overview: { homeworkList: homework, submissions },
         dailyCheck: { seatingChart: seatingChartData },
         observations: { initialHourlyChecks: hourlyChecks, initialRemarks: remarks, seatingChart: seatingChartData },
-        assessments: { tests, testResults },
-        reports: { homework, submissions, dailyChecks, remarks, hourlyChecks, tests, testResults },
+        assessments: { tests, testResults, learningGoals, goalAchievements },
+        reports: { homework, submissions, dailyChecks, remarks, hourlyChecks, tests, testResults, learningGoals, goalAchievements },
         classroomTools: { seatingChart: seatingChartData, history: seatingChartHistory || [], layouts, activeLayout: layouts?.find(l => l.id === props.appSettings?.selectedSeatingLayoutId) },
         settings: {},
     };
@@ -145,7 +149,7 @@ const AppViewContent: FC<AppViewProps> = ({
     overview: { students, subjects, onUpdate: () => {} },
     dailyCheck: { students },
     observations: { students, onUpdate: () => {}, settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
-    assessments: { students, subjects },
+    assessments: { students, subjects, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
     reports: { students, subjects, settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
     classroomTools: { students, onSeatingChartChange: handleSeatingChartChange, appSettings: settings, onAppSettingsChange: onSettingsChange, onLayoutsChange: handleLayoutsChange, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
     settings: { initialStudents: students, initialSubjects: subjects, settings, onSettingsChange }

@@ -79,6 +79,24 @@ export type TestResult = {
   comment?: string;
 };
 
+export type LearningGoal = {
+  id: string;
+  title: string;
+  description?: string;
+  subjectId: string;
+  createdAt: Date;
+};
+
+export type GoalStatus = 'NotAchieved' | 'InProgress' | 'Achieved';
+
+export type GoalAchievement = {
+  id: string;
+  studentId: string;
+  goalId: string;
+  status: GoalStatus;
+  updatedAt: Date;
+};
+
 
 export type SeatingChartData = (string[] | null)[][];
 
