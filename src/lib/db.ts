@@ -42,26 +42,7 @@ export class MySubClassedDexie extends Dexie {
         });
 
         // Version 3: Correctly add classroomTools to default settings on upgrade
-        this.version(3).stores({}).upgrade(async (tx) => {
-            const userSettings = await tx.table('settings').get('userSettings');
-            if (userSettings) {
-                // If classroomTools tab setting doesn't exist, add it.
-                if (userSettings.tabs.classroomTools === undefined) {
-                    userSettings.tabs.classroomTools = true;
-                }
-                // If classroomTools is not in tabOrder, add it.
-                if (!userSettings.tabOrder.includes('classroomTools')) {
-                    // Place it before settings if possible, otherwise at the end.
-                    const settingsIndex = userSettings.tabOrder.indexOf('settings');
-                    if (settingsIndex !== -1) {
-                        userSettings.tabOrder.splice(settingsIndex, 0, 'classroomTools');
-                    } else {
-                        userSettings.tabOrder.push('classroomTools');
-                    }
-                }
-                await tx.table('settings').put(userSettings);
-            }
-        });
+        this.version(3).stores({});
         
         this.version(4).stores({
             hourlyChecks: '++id, &[studentId+date+period], studentId, date, period'
@@ -196,7 +177,7 @@ export class MySubClassedDexie extends Dexie {
                     }
                 }
                  // Add assessments to dashboard tools if it doesn't exist
-                if (!userSettings.dashboardTools.find((t: DashboardConfig) => t.key === 'assessments')) {
+                if (userSettings.dashboardTools && !userSettings.dashboardTools.find((t: DashboardConfig) => t.key === 'assessments')) {
                     userSettings.dashboardTools.push({ key: 'assessments' as DashboardToolKey, visible: true });
                 }
                 await tx.table('settings').put(userSettings);
