@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, Test, TestResult } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -18,6 +18,9 @@ export class MySubClassedDexie extends Dexie {
     seatingChartHistory!: Table<SeatingChartRecord, number>;
     seatingLayouts!: Table<SeatingLayout, string>;
     settings!: Table<AppSettings & { id: string }, string>;
+    tests!: Table<Test, number>;
+    testResults!: Table<TestResult, number>;
+
 
     constructor() {
         super('KlasseflytDB');
@@ -173,6 +176,32 @@ export class MySubClassedDexie extends Dexie {
                 }
             });
         });
+        
+        // Version 10: Add tests and testResults tables for Assessments feature
+        this.version(10).stores({
+            tests: '++id, subjectId, date',
+            testResults: '++id, &[studentId+testId], studentId, testId'
+        }).upgrade(async (tx) => {
+            const userSettings = await tx.table('settings').get('userSettings');
+            if (userSettings) {
+                if (userSettings.tabs.assessments === undefined) {
+                    userSettings.tabs.assessments = true;
+                }
+                if (!userSettings.tabOrder.includes('assessments')) {
+                    const reportsIndex = userSettings.tabOrder.indexOf('reports');
+                    if (reportsIndex !== -1) {
+                        userSettings.tabOrder.splice(reportsIndex, 0, 'assessments');
+                    } else {
+                        userSettings.tabOrder.push('assessments');
+                    }
+                }
+                 // Add assessments to dashboard tools if it doesn't exist
+                if (!userSettings.dashboardTools.find((t: DashboardConfig) => t.key === 'assessments')) {
+                    userSettings.dashboardTools.push({ key: 'assessments' as DashboardToolKey, visible: true });
+                }
+                await tx.table('settings').put(userSettings);
+            }
+        });
 
 
         this.on('populate', async () => {
@@ -221,10 +250,10 @@ const defaultDashboardTools: DashboardConfig[] = [
 const defaultSettings: AppSettings = {
   tabs: {
     overview: true, dailyCheck: true, observations: true, reports: true,
-    classroomTools: true,
+    classroomTools: true, assessments: true,
     settings: true,
   },
-  tabOrder: ['overview', 'dailyCheck', 'observations', 'classroomTools', 'reports'],
+  tabOrder: ['overview', 'dailyCheck', 'observations', 'assessments', 'classroomTools', 'reports'],
   dashboardTools: defaultDashboardTools,
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
@@ -391,3 +420,5 @@ export async function resetDatabase() {
         console.log("Database has been reset and seeded with extensive demo data.");
     });
 }
+
+    

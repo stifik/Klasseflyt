@@ -62,6 +62,21 @@ export type HourlyCheck = {
     behaviorId: string;
 };
 
+export type Test = {
+  id?: number;
+  title: string;
+  subjectId: string;
+  date: Date;
+  maxScore: number;
+};
+
+export type TestResult = {
+  id?: number;
+  studentId: string;
+  testId: number;
+  score: number;
+};
+
 
 export type SeatingChartData = (string[] | null)[][];
 
@@ -83,7 +98,7 @@ export type SeatingLayout = {
   createdAt: Date;
 };
 
-export type TabKey = 'overview' | 'dailyCheck' | 'observations' | 'reports' | 'classroomTools' | 'settings';
+export type TabKey = 'overview' | 'dailyCheck' | 'observations' | 'reports' | 'classroomTools' | 'settings' | 'assessments';
 
 export type DashboardToolKey = 
   | 'overview' 
@@ -98,7 +113,8 @@ export type DashboardToolKey =
   | 'reports'
   | 'reports.summary' 
   | 'reports.studentReports' 
-  | 'reports.analysis';
+  | 'reports.analysis'
+  | 'assessments';
 
 export type DashboardConfig = {
     key: DashboardToolKey;
@@ -132,3 +148,5 @@ export type AppSettings = {
   behaviorTypes?: BehaviorType[];
   onboardingCompleted?: boolean;
 };
+
+    
