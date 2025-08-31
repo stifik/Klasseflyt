@@ -2,12 +2,12 @@
 "use client";
 
 import { useState, useMemo, FC } from 'react';
-import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings, HourlyCheck, BehaviorType, AppSettings, Test, TestResult } from '@/lib/types';
+import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings, HourlyCheck, BehaviorType, AppSettings, Test, TestResult, LearningGoal, GoalAchievement } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
-import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp, MessageSquare, Award } from 'lucide-react';
+import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp, MessageSquare, Award, Target, Check } from 'lucide-react';
 import { getWeekNumber } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RemarkAnalysis from './RemarkAnalysis';
@@ -24,6 +24,8 @@ interface ReportsProps {
   submissions: Submission[];
   tests: Test[];
   testResults: TestResult[];
+  learningGoals: LearningGoal[];
+  goalAchievements: GoalAchievement[];
   dailyChecks: DailyCheck[];
   remarks: Remark[];
   hourlyChecks: HourlyCheck[];
@@ -354,6 +356,29 @@ const ReportDetails = ({ stat, behaviorTypes }: { stat: ReturnType<typeof useStu
             </Card>
             ))}
         </div>
+        {stat.learningGoals.length > 0 && (
+             <Card>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center">
+                        <Target className="mr-2" />
+                        Læringsmål
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ul className="space-y-3">
+                        {stat.learningGoals.map(goal => (
+                            <li key={goal.goal.id} className="text-sm border-b pb-2">
+                                <p className="font-medium">{goal.subjectName}: {goal.goal.title}</p>
+                                <p className={cn("text-xs flex items-center", goal.achievement?.status === 'Achieved' ? 'text-green-600' : 'text-muted-foreground')}>
+                                    {goal.achievement?.status === 'Achieved' && <Check className="w-4 h-4 mr-1" />}
+                                    Status: {goal.achievement?.status === 'Achieved' ? 'Mål Nådd' : (goal.achievement?.status === 'InProgress' ? 'Jobber med' : 'Ikke startet')}
+                                </p>
+                            </li>
+                        ))}
+                    </ul>
+                </CardContent>
+            </Card>
+        )}
         {stat.testResults.length > 0 && (
             <Card>
                 <CardHeader>
@@ -450,7 +475,20 @@ const FullReportCard = ({ stat, isOpen, isPrintVersion = false, behaviorTypes }:
     </Card>
 );
 
-const useStudentStats = (students: Student[], subjects: Subject[], homework: Homework[], submissions: Submission[], tests: Test[], testResults: TestResult[], dailyChecks: DailyCheck[], remarks: Remark[], hourlyChecks: HourlyCheck[], behaviorTypes: BehaviorType[]) => {
+const useStudentStats = (
+    students: Student[], 
+    subjects: Subject[], 
+    homework: Homework[], 
+    submissions: Submission[], 
+    tests: Test[], 
+    testResults: TestResult[], 
+    dailyChecks: DailyCheck[], 
+    remarks: Remark[], 
+    hourlyChecks: HourlyCheck[],
+    learningGoals: LearningGoal[],
+    goalAchievements: GoalAchievement[],
+    behaviorTypes: BehaviorType[]
+) => {
     return useMemo(() => {
         return students.map(student => {
             const studentSubmissions = submissions.filter(s => s.studentId === student.id);
@@ -460,6 +498,7 @@ const useStudentStats = (students: Student[], subjects: Subject[], homework: Hom
             const studentRemarks = remarks
                 .filter(r => r.studentId === student.id)
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            const studentGoalAchievements = goalAchievements.filter(ga => ga.studentId === student.id);
 
             const totalStatusCounts = studentSubmissions.reduce((acc, sub) => {
                 acc[sub.status] = (acc[sub.status] || 0) + 1;
@@ -512,6 +551,16 @@ const useStudentStats = (students: Student[], subjects: Subject[], homework: Hom
                 return { result, test, subjectName };
             }).filter(Boolean).sort((a, b) => new Date(b!.test.date).getTime() - new Date(a!.test.date).getTime());
 
+            const studentGoals = learningGoals
+                .map(goal => {
+                    const achievement = studentGoalAchievements.find(a => a.goalId === goal.id);
+                    const subjectName = subjects.find(s => s.id === goal.subjectId)?.name;
+                    return { goal, achievement, subjectName };
+                })
+                .filter(g => g.subjectName)
+                .sort((a, b) => a.subjectName!.localeCompare(b.subjectName!) || a.goal.createdAt.getTime() - b.goal.createdAt.getTime());
+
+
             return {
                 studentId: student.id,
                 studentName: student.name,
@@ -525,9 +574,10 @@ const useStudentStats = (students: Student[], subjects: Subject[], homework: Hom
                 behaviorCounts,
                 loggedRemarks: studentRemarks,
                 totalRemarks: studentRemarks.length,
+                learningGoals: studentGoals as { goal: LearningGoal, achievement?: GoalAchievement, subjectName: string }[],
             };
         }).sort((a,b) => a.studentName.localeCompare(b.studentName));
-    }, [students, subjects, homework, submissions, tests, testResults, dailyChecks, remarks, hourlyChecks, behaviorTypes]);
+    }, [students, subjects, homework, submissions, tests, testResults, dailyChecks, remarks, hourlyChecks, learningGoals, goalAchievements, behaviorTypes]);
 };
 
 
@@ -543,7 +593,9 @@ const StudentReport = (props: ReportsProps) => {
         props.testResults, 
         props.dailyChecks, 
         props.remarks, 
-        props.hourlyChecks, 
+        props.hourlyChecks,
+        props.learningGoals,
+        props.goalAchievements, 
         behaviorTypes
     );
     
@@ -585,6 +637,16 @@ const StudentReport = (props: ReportsProps) => {
 export default function Reports(props: ReportsProps) {
     const [activeTab, setActiveTab] = useState("summary");
 
+    // Defensive check to ensure all required props are loaded
+    if (!props.learningGoals || !props.goalAchievements) {
+        return (
+            <div className="flex items-center justify-center p-8">
+                <Loader2 className="w-8 h-8 animate-spin" />
+                <p className="ml-2">Laster rapportdata...</p>
+            </div>
+        );
+    }
+
     return (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3 no-print">
@@ -604,7 +666,3 @@ export default function Reports(props: ReportsProps) {
         </Tabs>
     )
 }
-
-    
-
-    

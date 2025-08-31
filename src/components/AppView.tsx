@@ -65,10 +65,10 @@ const ActiveTabContent: FC<{ tabKey: TabKey, componentProps: Record<string, any>
         }
         return undefined;
     });
-    const tests = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.tests.toArray() : undefined, []);
-    const testResults = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.testResults.toArray() : undefined, []);
-    const learningGoals = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.learningGoals.toArray() : undefined, []);
-    const goalAchievements = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.goalAchievements.toArray() : undefined, []);
+    const tests = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.tests.toArray() : undefined);
+    const testResults = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.testResults.toArray() : undefined);
+    const learningGoals = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.learningGoals.toArray() : undefined);
+    const goalAchievements = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.goalAchievements.toArray() : undefined);
 
 
     const dataMap: Record<string, any> = {
