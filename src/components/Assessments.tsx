@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useMemo, type FC, type KeyboardEvent, useEffect } from "react";
@@ -9,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "./ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Plus, Trash2, Target, Link as LinkIcon, X, Calendar as CalendarIcon, Award } from "lucide-react";
 import { db } from "@/lib/db";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -232,21 +231,21 @@ const TestsComponent = ({ students, subjects, tests = [], testResults = [], lear
                   <div className="font-normal">{t.title}</div>
                   <div className="text-xs font-light text-muted-foreground">Maks: {t.maxScore}p</div>
                   {linkedGoalsForTest(t).length > 0 && (
-                      <Popover>
-                        <PopoverTrigger asChild>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
                             <button className="text-xs flex items-center gap-1 text-blue-600 hover:underline">
                                 <LinkIcon className="w-3 h-3"/> {linkedGoalsForTest(t).length} mål
                             </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80">
+                        </TooltipTrigger>
+                        <TooltipContent className="w-80">
                             <div className="space-y-2">
                                 <h4 className="font-medium leading-none">Vurderte læringsmål</h4>
                                 <ul className="text-sm text-muted-foreground list-disc pl-4">
                                     {linkedGoalsForTest(t).map(g => g && <li key={g.id}>{g.title}</li>)}
                                 </ul>
                             </div>
-                        </PopoverContent>
-                      </Popover>
+                        </TooltipContent>
+                      </Tooltip>
                   )}
                 </TableHead>
               ))}
@@ -390,15 +389,14 @@ const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchieve
                     <h2 className="text-2xl font-bold">Læringsmål</h2>
                     <p className="text-muted-foreground">Definer og spor elevens fremgang mot spesifikke faglige mål.</p>
                 </div>
-                <Select value={selectedSubjectId || ""} onValueChange={setSelectedSubjectId}>
-                    <SelectTrigger className="w-full sm:w-[180px]">
-                        <SelectValue placeholder="Velg fag" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {subjects.map(s => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}
-                    </SelectContent>
-                </Select>
             </div>
+
+            <Tabs value={selectedSubjectId || ""} onValueChange={setSelectedSubjectId} className="w-full">
+                <TabsList>
+                    {subjects.map(s => <TabsTrigger key={s.id} value={s.id!}>{s.name}</TabsTrigger>)}
+                </TabsList>
+            </Tabs>
+
 
             {selectedSubjectId && (
                 <div className="p-4 border rounded-lg space-y-2">
@@ -445,23 +443,8 @@ const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchieve
                                     const linkedTests = testsByGoalId.get(goal.id) || [];
                                     const relevantResults = linkedTests.map(test => {
                                         const result = testResults.find(r => r.studentId === student.id && r.testId === test.id);
-                                        return result ? { ...result, maxScore: test.maxScore, score: result.score! } : null;
-                                    }).filter((r): r is { id: number, studentId: string; testId: number; score: number; comment?: string | undefined; maxScore: number; } => r !== null && r.score !== null);
-
-                                    const tooltipContent = (
-                                        <div className="text-sm">
-                                            <p>Status: <strong>{config.label}</strong></p>
-                                            {achievement && <p className="text-xs text-muted-foreground">Sist endret: {format(achievement.updatedAt, "PPP", { locale: nb })}</p>}
-                                            {relevantResults.length > 0 && (
-                                                <div className="mt-2 pt-2 border-t">
-                                                    <h4 className="text-xs font-bold">Relevant resultat:</h4>
-                                                    <p className="text-xs">
-                                                        {linkedTests[0].title}: <strong>{relevantResults[0].score}/{relevantResults[0].maxScore}p ({Math.round((relevantResults[0].score / relevantResults[0].maxScore) * 100)}%)</strong>
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
+                                        return result ? { ...result, maxScore: test.maxScore, score: result.score!, testTitle: test.title } : null;
+                                    }).filter((r): r is { id: number, studentId: string; testId: number; score: number; comment?: string | undefined; maxScore: number; testTitle: string } => r !== null && r.score !== null);
 
                                     return (
                                         <TableCell key={goal.id} className="p-1 text-center">
@@ -481,7 +464,18 @@ const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchieve
                                                     </button>
                                                 </TooltipTrigger>
                                                 <TooltipContent className="w-auto p-2">
-                                                    {tooltipContent}
+                                                    <div className="text-sm">
+                                                        <p>Status: <strong>{config.label}</strong></p>
+                                                        {achievement && <p className="text-xs text-muted-foreground">Sist endret: {format(achievement.updatedAt, "PPP", { locale: nb })}</p>}
+                                                        {relevantResults.length > 0 && (
+                                                            <div className="mt-2 pt-2 border-t">
+                                                                <h4 className="text-xs font-bold">Relevant resultat:</h4>
+                                                                <p className="text-xs">
+                                                                    {relevantResults[0].testTitle}: <strong>{relevantResults[0].score}/{relevantResults[0].maxScore}p ({Math.round((relevantResults[0].score / relevantResults[0].maxScore) * 100)}%)</strong>
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </TooltipContent>
                                             </Tooltip>
                                         </TableCell>
