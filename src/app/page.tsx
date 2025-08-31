@@ -69,11 +69,17 @@ function Home() {
   const { toast } = useToast();
   const { instance } = useMsal();
   
-  const currentSettings = settings || defaultSettings;
+  // This robust settings object prevents crashes by ensuring dashboardTools is always an array.
+  const currentSettings = settings 
+    ? {
+        ...defaultSettings,
+        ...settings,
+        dashboardTools: Array.isArray(settings.dashboardTools) ? settings.dashboardTools : defaultSettings.dashboardTools,
+      } 
+    : defaultSettings;
   
-  // Robust check to ensure 'classroomTools' and 'assessments' exist in dashboardTools for existing users
+  // This useEffect now safely migrates old settings without crashing.
   useEffect(() => {
-    // Ensure settings and dashboardTools are loaded and dashboardTools is an array
     if (settings && Array.isArray(settings.dashboardTools)) {
         let wasUpdated = false;
         const updatedTools = [...settings.dashboardTools];
