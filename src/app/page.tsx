@@ -73,31 +73,28 @@ function Home() {
   
   // Robust check to ensure 'classroomTools' and 'assessments' exist in dashboardTools for existing users
   useEffect(() => {
-    if (settings && settings.dashboardTools) {
+    // Ensure settings and dashboardTools are loaded and dashboardTools is an array
+    if (settings && Array.isArray(settings.dashboardTools)) {
         let wasUpdated = false;
         const updatedTools = [...settings.dashboardTools];
         
-        // Ensure 'assessments' exists
-        if (!updatedTools.find(t => t.key === 'assessments')) {
-            const overviewIndex = updatedTools.findIndex(t => t.key === 'overview');
-            if (overviewIndex !== -1) {
-                updatedTools.splice(overviewIndex + 1, 0, { key: 'assessments', visible: true });
-            } else {
-                updatedTools.unshift({ key: 'assessments', visible: true });
-            }
-            wasUpdated = true;
-        }
+        const toolsToCheck = ['assessments', 'classroomTools'];
 
-        // Ensure 'classroomTools' exists
-        if (!updatedTools.find(t => t.key === 'classroomTools')) {
-            const observationsIndex = updatedTools.findIndex(t => t.key === 'observations');
-            if (observationsIndex !== -1) {
-                updatedTools.splice(observationsIndex + 1, 0, { key: 'classroomTools', visible: true });
-            } else {
-                updatedTools.push({ key: 'classroomTools', visible: true });
+        toolsToCheck.forEach(toolKey => {
+            if (!updatedTools.some(t => t.key === toolKey)) {
+                let insertIndex = updatedTools.length; // Default to end
+                if (toolKey === 'assessments') {
+                    const overviewIndex = updatedTools.findIndex(t => t.key === 'overview');
+                    if (overviewIndex !== -1) insertIndex = overviewIndex + 1;
+                } else if (toolKey === 'classroomTools') {
+                    const observationsIndex = updatedTools.findIndex(t => t.key === 'observations');
+                    if (observationsIndex !== -1) insertIndex = observationsIndex + 1;
+                }
+                
+                updatedTools.splice(insertIndex, 0, { key: toolKey as any, visible: true });
+                wasUpdated = true;
             }
-            wasUpdated = true;
-        }
+        });
 
         if (wasUpdated) {
             db.settings.update('userSettings', { dashboardTools: updatedTools });
