@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Target, Link as LinkIcon, X, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Trash2, Target, Link as LinkIcon, X, Calendar as CalendarIcon, Award } from "lucide-react";
 import { db } from "@/lib/db";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { v4 as uuidv4 } from 'uuid';
@@ -288,6 +288,8 @@ interface LearningGoalsProps {
   subjects: Subject[];
   learningGoals: LearningGoal[];
   goalAchievements: GoalAchievement[];
+  tests: Test[];
+  testResults: TestResult[];
 }
 
 const statusConfig: Record<GoalStatus, { icon: React.ElementType, color: string, label: string }> = {
@@ -298,7 +300,7 @@ const statusConfig: Record<GoalStatus, { icon: React.ElementType, color: string,
 
 const statusOrder: GoalStatus[] = ['NotAchieved', 'InProgress', 'Achieved'];
 
-const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchievements }: LearningGoalsProps) => {
+const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchievements, tests, testResults }: LearningGoalsProps) => {
     const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(subjects[0]?.id || null);
     const [newGoalTitle, setNewGoalTitle] = useState("");
     const { toast } = useToast();
@@ -311,6 +313,20 @@ const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchieve
         return (learningGoals || []).filter(g => g.subjectId === selectedSubjectId)
             .sort((a,b) => a.createdAt.getTime() - b.createdAt.getTime());
     }, [learningGoals, selectedSubjectId]);
+    
+    const testsByGoalId = useMemo(() => {
+        const map = new Map<string, Test[]>();
+        tests.forEach(test => {
+            test.linkedGoalIds?.forEach(goalId => {
+                if (!map.has(goalId)) {
+                    map.set(goalId, []);
+                }
+                map.get(goalId)!.push(test);
+            });
+        });
+        return map;
+    }, [tests]);
+
 
     const handleAddGoal = async () => {
         if (!newGoalTitle.trim() || !selectedSubjectId) return;
@@ -424,21 +440,40 @@ const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchieve
                                     const status = achievement?.status || 'NotAchieved';
                                     const config = statusConfig[status];
                                     const Icon = config.icon;
+                                    
+                                    const linkedTests = testsByGoalId.get(goal.id) || [];
+                                    const relevantResults = linkedTests.map(test => {
+                                        const result = testResults.find(r => r.studentId === student.id && r.testId === test.id);
+                                        return result ? { ...result, maxScore: test.maxScore } : null;
+                                    }).filter(Boolean);
+
                                     return (
                                         <TableCell key={goal.id} className="p-1 text-center">
                                             <Popover>
                                                 <PopoverTrigger asChild>
                                                     <button 
                                                         onClick={() => handleStatusChange(student.id!, goal.id)}
-                                                        className={cn("w-full h-12 flex items-center justify-center rounded-md hover:bg-muted", config.color)}
+                                                        className={cn("w-full h-12 flex items-center justify-center rounded-md hover:bg-muted relative", config.color)}
                                                     >
                                                         <Icon className="w-6 h-6" />
+                                                        {relevantResults.length > 0 && (
+                                                            <div className="absolute bottom-1 right-1 flex items-center gap-1 text-xs px-1 py-0.5 rounded bg-background/80 border text-muted-foreground">
+                                                                <Award className="w-3 h-3 text-blue-500" />
+                                                                {relevantResults[0]!.score}/{relevantResults[0]!.maxScore}
+                                                            </div>
+                                                        )}
                                                     </button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-2">
                                                     <div className="text-sm">
                                                         <p>Status: <strong>{config.label}</strong></p>
                                                         {achievement && <p className="text-xs text-muted-foreground">Sist endret: {format(achievement.updatedAt, "PPP", { locale: nb })}</p>}
+                                                        {relevantResults.length > 0 && (
+                                                            <div className="mt-2 pt-2 border-t">
+                                                                <h4 className="text-xs font-bold">Relevant resultat:</h4>
+                                                                <p className="text-xs">{linkedTests[0].title}: <strong>{relevantResults[0]!.score}/{relevantResults[0]!.maxScore}p</strong></p>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </PopoverContent>
                                             </Popover>
