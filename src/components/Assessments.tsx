@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, type FC } from "react";
+import { useState, useMemo, type FC, type KeyboardEvent } from "react";
 import type { Student, Subject, Test, TestResult } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -94,6 +94,14 @@ export default function Assessments({ students, subjects, tests = [], testResult
   
   const getResult = (studentId: string, testId: number) => testResults.find(r => r.studentId === studentId && r.testId === testId);
 
+  const sortedStudents = useMemo(() => {
+    return [...students].sort((a, b) => a.name.localeCompare(b.name, 'nb'));
+  }, [students]);
+  
+  const sortedTests = useMemo(() => {
+    return [...(tests || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [tests]);
+
   const handleScoreChange = async (studentId: string, testId: number, score: string) => {
     const newScore = score === '' ? null : parseFloat(score);
     if (newScore !== null && isNaN(newScore)) return;
@@ -110,8 +118,8 @@ export default function Assessments({ students, subjects, tests = [], testResult
       } else if (newScore !== null) {
         await db.testResults.add({ studentId, testId, score: newScore });
       }
-      // No toast for every input change to avoid being spammy
-    } catch (error) {
+    } catch (error)
+     {
       console.error(error);
       toast({ title: "Feil", description: "Kunne ikke lagre resultat.", variant: "destructive" });
     }
@@ -131,13 +139,17 @@ export default function Assessments({ students, subjects, tests = [], testResult
     }
   };
 
-  const sortedStudents = useMemo(() => {
-    return [...students].sort((a, b) => a.name.localeCompare(b.name, 'nb'));
-  }, [students]);
-  
-  const sortedTests = useMemo(() => {
-    return [...(tests || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [tests]);
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>, studentIndex: number, testId: number) => {
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      const nextStudentIndex = studentIndex + 1;
+      if (nextStudentIndex < sortedStudents.length) {
+        const nextStudent = sortedStudents[nextStudentIndex];
+        const nextInput = document.getElementById(`score-input-${nextStudent.id}-${testId}`);
+        nextInput?.focus();
+      }
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -161,7 +173,7 @@ export default function Assessments({ students, subjects, tests = [], testResult
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedStudents.map(student => (
+            {sortedStudents.map((student, studentIndex) => (
               <TableRow key={student.id}>
                 <TableCell className="sticky left-0 z-10 font-medium bg-background">{student.name}</TableCell>
                 {sortedTests.map(t => {
@@ -169,10 +181,12 @@ export default function Assessments({ students, subjects, tests = [], testResult
                   return (
                     <TableCell key={t.id} className="p-1 text-center min-w-[100px]">
                       <Input
+                        id={`score-input-${student.id}-${t.id}`}
                         type="number"
                         placeholder="-"
                         defaultValue={result?.score ?? ''}
                         onBlur={(e) => handleScoreChange(student.id!, t.id!, e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, studentIndex, t.id!)}
                         className="text-center"
                         max={t.maxScore}
                         min={0}
@@ -188,3 +202,4 @@ export default function Assessments({ students, subjects, tests = [], testResult
     </div>
   );
 }
+
