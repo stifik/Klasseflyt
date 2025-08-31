@@ -23,6 +23,7 @@ import { Label } from "./ui/label";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { Calendar } from "./ui/calendar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 // --- Tests Component ---
 interface TestsProps {
@@ -447,10 +448,25 @@ const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchieve
                                         return result ? { ...result, maxScore: test.maxScore, score: result.score! } : null;
                                     }).filter((r): r is { id: number, studentId: string; testId: number; score: number; comment?: string | undefined; maxScore: number; } => r !== null && r.score !== null);
 
+                                    const tooltipContent = (
+                                        <div className="text-sm">
+                                            <p>Status: <strong>{config.label}</strong></p>
+                                            {achievement && <p className="text-xs text-muted-foreground">Sist endret: {format(achievement.updatedAt, "PPP", { locale: nb })}</p>}
+                                            {relevantResults.length > 0 && (
+                                                <div className="mt-2 pt-2 border-t">
+                                                    <h4 className="text-xs font-bold">Relevant resultat:</h4>
+                                                    <p className="text-xs">
+                                                        {linkedTests[0].title}: <strong>{relevantResults[0].score}/{relevantResults[0].maxScore}p ({Math.round((relevantResults[0].score / relevantResults[0].maxScore) * 100)}%)</strong>
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+
                                     return (
                                         <TableCell key={goal.id} className="p-1 text-center">
-                                            <Popover>
-                                                <PopoverTrigger asChild>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
                                                     <button 
                                                         onClick={() => handleStatusChange(student.id!, goal.id)}
                                                         className={cn("w-full h-12 flex items-center justify-center rounded-md hover:bg-muted relative", config.color)}
@@ -463,22 +479,11 @@ const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchieve
                                                             </div>
                                                         )}
                                                     </button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-2">
-                                                    <div className="text-sm">
-                                                        <p>Status: <strong>{config.label}</strong></p>
-                                                        {achievement && <p className="text-xs text-muted-foreground">Sist endret: {format(achievement.updatedAt, "PPP", { locale: nb })}</p>}
-                                                        {relevantResults.length > 0 && (
-                                                            <div className="mt-2 pt-2 border-t">
-                                                                <h4 className="text-xs font-bold">Relevant resultat:</h4>
-                                                                <p className="text-xs">
-                                                                    {linkedTests[0].title}: <strong>{relevantResults[0].score}/{relevantResults[0].maxScore}p ({Math.round((relevantResults[0].score / relevantResults[0].maxScore) * 100)}%)</strong>
-                                                                </p>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </PopoverContent>
-                                            </Popover>
+                                                </TooltipTrigger>
+                                                <TooltipContent className="w-auto p-2">
+                                                    {tooltipContent}
+                                                </TooltipContent>
+                                            </Tooltip>
                                         </TableCell>
                                     );
                                 })}

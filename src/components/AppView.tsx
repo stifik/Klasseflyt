@@ -16,6 +16,7 @@ import type { AppSettings, SeatingLayout, Student, Subject, TabKey } from '@/lib
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { Loader2 } from 'lucide-react';
+import { TooltipProvider } from './ui/tooltip';
 
 
 const tabComponents: Partial<Record<TabKey, FC<any>>> = {
@@ -164,40 +165,42 @@ const AppViewContent: FC<AppViewProps> = ({
   const currentTabToRender = activeTab ?? defaultTab;
 
   return (
-    <Tabs 
-        value={currentTabToRender}
-        onValueChange={(value) => {
-          if (onTabChange) onTabChange(value as TabKey);
-          setInternalActiveSubTab(null);
-        }}
-        className="w-full"
-    >
-      <ScrollArea className="w-full whitespace-nowrap no-print">
-        <TabsList className="inline-flex w-auto mb-4">
-          {visibleTabs.map(tabKey => (
-            <TabsTrigger key={tabKey} value={tabKey}>{tabLabels[tabKey]}</TabsTrigger>
-          ))}
-          {activeTab === 'settings' && !visibleTabs.includes('settings') && (
-             <TabsTrigger value="settings">Innstillinger</TabsTrigger>
-          )}
-        </TabsList>
-        <ScrollBar orientation="horizontal" className="invisible" />
-      </ScrollArea>
+    <TooltipProvider>
+      <Tabs 
+          value={currentTabToRender}
+          onValueChange={(value) => {
+            if (onTabChange) onTabChange(value as TabKey);
+            setInternalActiveSubTab(null);
+          }}
+          className="w-full"
+      >
+        <ScrollArea className="w-full whitespace-nowrap no-print">
+          <TabsList className="inline-flex w-auto mb-4">
+            {visibleTabs.map(tabKey => (
+              <TabsTrigger key={tabKey} value={tabKey}>{tabLabels[tabKey]}</TabsTrigger>
+            ))}
+            {activeTab === 'settings' && !visibleTabs.includes('settings') && (
+               <TabsTrigger value="settings">Innstillinger</TabsTrigger>
+            )}
+          </TabsList>
+          <ScrollBar orientation="horizontal" className="invisible" />
+        </ScrollArea>
 
-      {allPossibleTabs.map(tabKey => {
-          return (
-              <TabsContent key={tabKey} value={tabKey} forceMount={tabKey !== currentTabToRender}>
-                  <div style={{ display: tabKey === currentTabToRender ? 'block' : 'none' }}>
-                      <ActiveTabContent 
-                          tabKey={tabKey}
-                          componentProps={baseComponentProps}
-                      />
-                  </div>
-              </TabsContent>
-          );
-      })}
+        {allPossibleTabs.map(tabKey => {
+            return (
+                <TabsContent key={tabKey} value={tabKey} forceMount={tabKey !== currentTabToRender}>
+                    <div style={{ display: tabKey === currentTabToRender ? 'block' : 'none' }}>
+                        <ActiveTabContent 
+                            tabKey={tabKey}
+                            componentProps={baseComponentProps}
+                        />
+                    </div>
+                </TabsContent>
+            );
+        })}
 
-    </Tabs>
+      </Tabs>
+    </TooltipProvider>
   );
 };
 
