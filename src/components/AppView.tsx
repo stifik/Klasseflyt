@@ -51,6 +51,7 @@ const ActiveTabContent: FC<{ tabKey: TabKey, componentProps: Record<string, any>
     if (!Component) return null;
 
     const props = componentProps[tabKey] || {};
+    const appSettings = props.appSettings;
 
     const homework = useLiveQuery(() => tabKey === 'overview' || tabKey === 'reports' ? db.homework.toArray() : undefined);
     const submissions = useLiveQuery(() => tabKey === 'overview' || tabKey === 'reports' ? db.submissions.toArray() : undefined);
@@ -59,6 +60,13 @@ const ActiveTabContent: FC<{ tabKey: TabKey, componentProps: Record<string, any>
     const remarks = useLiveQuery(() => tabKey === 'observations' || tabKey === 'reports' ? db.remarks.toArray() : undefined);
     const seatingChartHistory = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingChartHistory.orderBy('createdAt').reverse().toArray() : undefined);
     const layouts = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingLayouts.toArray() : undefined);
+    const activeLayout = useLiveQuery(async () => {
+        if (tabKey === 'classroomTools' && appSettings?.selectedSeatingLayoutId) {
+            return db.seatingLayouts.get(appSettings.selectedSeatingLayoutId);
+        }
+        return undefined;
+    }, [tabKey, appSettings?.selectedSeatingLayoutId]);
+
     const seatingChartData = useLiveQuery(async () => {
         if (['dailyCheck', 'observations', 'classroomTools'].includes(tabKey)) {
             const latest = await db.seatingChartHistory.orderBy('createdAt').last();
@@ -78,7 +86,7 @@ const ActiveTabContent: FC<{ tabKey: TabKey, componentProps: Record<string, any>
         observations: { initialHourlyChecks: hourlyChecks, initialRemarks: remarks, seatingChart: seatingChartData },
         assessments: { tests, testResults, learningGoals, goalAchievements },
         reports: { homework, submissions, dailyChecks, remarks, hourlyChecks, tests, testResults, learningGoals, goalAchievements },
-        classroomTools: { seatingChart: seatingChartData, history: seatingChartHistory || [], layouts, activeLayout: layouts?.find(l => l.id === props.appSettings?.selectedSeatingLayoutId) },
+        classroomTools: { seatingChart: seatingChartData, history: seatingChartHistory || [], layouts, activeLayout },
         settings: {},
     };
 
