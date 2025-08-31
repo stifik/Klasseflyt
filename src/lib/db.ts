@@ -12,14 +12,15 @@ export class MySubClassedDexie extends Dexie {
     subjects!: Table<Subject, string>;
     homework!: Table<Homework, number>;
     submissions!: Table<Submission, number>;
-    tests!: Table<Test, number>;
-    testResults!: Table<TestResult, number>;
     dailyChecks!: Table<DailyCheck, number>;
     remarks!: Table<Remark, number>;
     hourlyChecks!: Table<HourlyCheck, number>;
     seatingChartHistory!: Table<SeatingChartRecord, number>;
     seatingLayouts!: Table<SeatingLayout, string>;
     settings!: Table<AppSettings & { id: string }, string>;
+    tests!: Table<Test, number>;
+    testResults!: Table<TestResult, number>;
+
 
     constructor() {
         super('KlasseflytDB');
@@ -41,26 +42,7 @@ export class MySubClassedDexie extends Dexie {
         });
 
         // Version 3: Correctly add classroomTools to default settings on upgrade
-        this.version(3).stores({}).upgrade(async (tx) => {
-            const userSettings = await tx.table('settings').get('userSettings');
-            if (userSettings) {
-                // If classroomTools tab setting doesn't exist, add it.
-                if (userSettings.tabs.classroomTools === undefined) {
-                    userSettings.tabs.classroomTools = true;
-                }
-                // If classroomTools is not in tabOrder, add it.
-                if (!userSettings.tabOrder.includes('classroomTools')) {
-                    // Place it before settings if possible, otherwise at the end.
-                    const settingsIndex = userSettings.tabOrder.indexOf('settings');
-                    if (settingsIndex !== -1) {
-                        userSettings.tabOrder.splice(settingsIndex, 0, 'classroomTools');
-                    } else {
-                        userSettings.tabOrder.push('classroomTools');
-                    }
-                }
-                await tx.table('settings').put(userSettings);
-            }
-        });
+        this.version(3).stores({});
         
         this.version(4).stores({
             hourlyChecks: '++id, &[studentId+date+period], studentId, date, period'
@@ -185,10 +167,35 @@ export class MySubClassedDexie extends Dexie {
             }
         });
 
-        // Version 11: Add tests and testResults tables
+        // Version 11: Add tests and testResults tables for Assessments feature
         this.version(11).stores({
             tests: '++id, subjectId, date',
             testResults: '++id, &[studentId+testId], studentId, testId',
+        }).upgrade(async (tx) => {
+            const userSettings = await tx.table('settings').get('userSettings');
+            if (userSettings) {
+                if (userSettings.tabs.assessments === undefined) {
+                    userSettings.tabs.assessments = true;
+                }
+                if (!userSettings.tabOrder.includes('assessments')) {
+                    const reportsIndex = userSettings.tabOrder.indexOf('reports');
+                    if (reportsIndex !== -1) {
+                        userSettings.tabOrder.splice(reportsIndex, 0, 'assessments');
+                    } else {
+                        userSettings.tabOrder.push('assessments');
+                    }
+                }
+                 // Add assessments to dashboard tools if it doesn't exist
+                if (userSettings.dashboardTools && !userSettings.dashboardTools.find((t: DashboardConfig) => t.key === 'assessments')) {
+                    const overviewIndex = userSettings.dashboardTools.findIndex((t: DashboardConfig) => t.key === 'overview');
+                    if (overviewIndex !== -1) {
+                         userSettings.dashboardTools.splice(overviewIndex + 1, 0, { key: 'assessments' as DashboardToolKey, visible: true });
+                    } else {
+                        userSettings.dashboardTools.push({ key: 'assessments' as DashboardToolKey, visible: true });
+                    }
+                }
+                await tx.table('settings').put(userSettings);
+            }
         });
 
 
@@ -423,3 +430,5 @@ export async function resetDatabase() {
         console.log("Database has been reset and seeded with extensive demo data.");
     });
 }
+
+    

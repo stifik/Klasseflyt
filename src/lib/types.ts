@@ -30,22 +30,6 @@ export type Submission = {
   isDelayed?: boolean; // New field to track if it was ever late/incomplete
 };
 
-export type Test = {
-  id?: number;
-  title: string;
-  subjectId: string;
-  date: Date;
-  maxPoints: number;
-};
-
-export type TestResult = {
-  id?: number;
-  studentId: string;
-  testId: number;
-  points: number | null;
-  comment?: string;
-};
-
 export type DailyCheck = {
   id?: number;
   studentId: string;
@@ -79,6 +63,22 @@ export type HourlyCheck = {
     behaviorId: string;
 };
 
+export type Test = {
+  id?: number;
+  title: string;
+  subjectId: string;
+  date: Date;
+  maxScore: number;
+};
+
+export type TestResult = {
+  id?: number;
+  studentId: string;
+  testId: number;
+  score: number | null;
+  comment?: string;
+};
+
 
 export type SeatingChartData = (string[] | null)[][];
 
@@ -100,7 +100,7 @@ export type SeatingLayout = {
   createdAt: Date;
 };
 
-export type TabKey = 'overview' | 'assessments' | 'dailyCheck' | 'observations' | 'reports' | 'classroomTools' | 'settings';
+export type TabKey = 'overview' | 'dailyCheck' | 'observations' | 'reports' | 'classroomTools' | 'settings' | 'assessments';
 
 export type DashboardToolKey = 
   | 'overview' 
@@ -163,3 +163,5 @@ export type AppSettings = {
   dpiaAnalysis?: DPIAAnalysis;
   onboardingCompleted?: boolean;
 };
+
+    

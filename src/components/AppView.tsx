@@ -1,25 +1,27 @@
 
 'use client';
 
-import { FC, useState, useEffect } from 'react';
+import { FC, useState, useEffect, Suspense } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import HomeworkOverview from "@/components/HomeworkOverview";
-import Assessments from "@/components/Assessments";
 import DailyChecklist from "@/components/DailyChecklist";
 import Reports from "@/components/Reports";
 import Settings from "@/components/Settings";
 import ClassroomTools from "@/components/ClassroomTools";
 import Observations from "@/components/Observations";
+import Assessments from "@/components/Assessments";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import type { AppSettings, SeatingLayout, Student, Subject, TabKey } from '@/lib/types';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
+import { Loader2 } from 'lucide-react';
+
 
 const tabComponents: Partial<Record<TabKey, FC<any>>> = {
   overview: HomeworkOverview,
-  assessments: Assessments,
   dailyCheck: DailyChecklist,
   observations: Observations,
+  assessments: Assessments,
   reports: Reports,
   classroomTools: ClassroomTools,
   settings: Settings,
@@ -27,13 +29,65 @@ const tabComponents: Partial<Record<TabKey, FC<any>>> = {
 
 const tabLabels: Partial<Record<TabKey, string>> = {
   overview: "Lekseoversikt",
-  assessments: "Vurderinger",
   dailyCheck: "Daglig Sjekk",
   observations: "Observasjoner",
+  assessments: "Vurderinger",
   reports: "Analyse",
   classroomTools: "Klasseverktøy",
   settings: "Innstillinger",
 };
+
+const TabContentLoader = () => (
+    <div className="flex items-center justify-center p-8">
+        <Loader2 className="w-8 h-8 animate-spin" />
+    </div>
+);
+
+// This new component will handle fetching data for a specific, active tab
+const ActiveTabContent: FC<{ tabKey: TabKey, componentProps: Record<string, any>}> = ({ tabKey, componentProps }) => {
+    const Component = tabComponents[tabKey];
+    if (!Component) return null;
+
+    const props = componentProps[tabKey] || {};
+
+    const homework = useLiveQuery(() => tabKey === 'overview' || tabKey === 'reports' ? db.homework.toArray() : undefined);
+    const submissions = useLiveQuery(() => tabKey === 'overview' || tabKey === 'reports' ? db.submissions.toArray() : undefined);
+    const dailyChecks = useLiveQuery(() => tabKey === 'dailyCheck' || tabKey === 'reports' ? db.dailyChecks.toArray() : undefined);
+    const hourlyChecks = useLiveQuery(() => tabKey === 'observations' || tabKey === 'reports' ? db.hourlyChecks.toArray() : undefined);
+    const remarks = useLiveQuery(() => tabKey === 'observations' || tabKey === 'reports' ? db.remarks.toArray() : undefined);
+    const seatingChartHistory = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingChartHistory.orderBy('createdAt').reverse().toArray() : undefined);
+    const layouts = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingLayouts.toArray() : undefined);
+    const seatingChartData = useLiveQuery(async () => {
+        if (['dailyCheck', 'observations', 'classroomTools'].includes(tabKey)) {
+            const latest = await db.seatingChartHistory.orderBy('createdAt').last();
+            return latest ? JSON.parse(latest.chartJson) : null;
+        }
+        return undefined;
+    });
+    const tests = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.tests.toArray() : undefined);
+    const testResults = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.testResults.toArray() : undefined);
+
+    const dataMap: Record<string, any> = {
+        overview: { homeworkList: homework, submissions },
+        dailyCheck: { seatingChart: seatingChartData },
+        observations: { initialHourlyChecks: hourlyChecks, initialRemarks: remarks, seatingChart: seatingChartData },
+        assessments: { tests, testResults },
+        reports: { homework, submissions, dailyChecks, remarks, hourlyChecks, tests, testResults },
+        classroomTools: { seatingChart: seatingChartData, history: seatingChartHistory || [], layouts, activeLayout: layouts?.find(l => l.id === props.appSettings?.selectedSeatingLayoutId) },
+        settings: {},
+    };
+
+    const combinedProps = { ...props, ...dataMap[tabKey] };
+
+    const isDataReady = Object.values(dataMap[tabKey] || {}).every(value => value !== undefined);
+
+    if (!isDataReady) {
+        return <TabContentLoader />;
+    }
+
+    return <Component {...combinedProps} />;
+};
+
 
 interface AppViewProps {
     settings: AppSettings;
@@ -63,23 +117,9 @@ const AppViewContent: FC<AppViewProps> = ({
   const visibleTabs = (settings.tabOrder || []).filter(tabKey => settings.tabs[tabKey] && tabLabels[tabKey]);
   const defaultTab = activeTab || visibleTabs[0];
 
-  const homework = useLiveQuery(() => db.homework.toArray(), [], undefined);
-  const submissions = useLiveQuery(() => db.submissions.toArray(), [], undefined);
-  const tests = useLiveQuery(() => db.tests.toArray(), [], undefined);
-  const testResults = useLiveQuery(() => db.testResults.toArray(), [], undefined);
-  const dailyChecks = useLiveQuery(() => db.dailyChecks.toArray(), [], undefined);
-  const hourlyChecks = useLiveQuery(() => db.hourlyChecks.toArray(), [], undefined);
-  const remarks = useLiveQuery(() => db.remarks.toArray(), [], undefined);
-  const seatingChartHistory = useLiveQuery(() => db.seatingChartHistory.orderBy('createdAt').reverse().toArray(), [], undefined);
-  const layouts = useLiveQuery(() => db.seatingLayouts.toArray(), [], undefined);
-  const seatingChartData = useLiveQuery(async () => {
-    const latest = await db.seatingChartHistory.orderBy('createdAt').last();
-    return latest ? JSON.parse(latest.chartJson) : null;
-  });
-
-
   const handleSeatingChartChange = async (newChart: SeatingLayout | null, source: 'generation' | 'drag' | 'load') => {
     if (newChart) {
+        const layouts = await db.seatingLayouts.toArray();
         const activeLayout = layouts?.find(l => l.id === settings.selectedSeatingLayoutId);
         if (activeLayout) {
              await db.seatingChartHistory.add({
@@ -101,16 +141,14 @@ const AppViewContent: FC<AppViewProps> = ({
       if(newLayouts.length > 0) await db.seatingLayouts.bulkPut(newLayouts);
   }
 
-  const activeLayout = layouts?.find(l => l.id === settings.selectedSeatingLayoutId);
-
-  const componentProps: Record<string, any> = {
-    overview: { students, subjects, homeworkList: homework, submissions, onUpdate: () => {} },
-    assessments: { students, subjects, tests, testResults },
-    dailyCheck: { students, seatingChart: seatingChartData },
-    observations: { students, initialHourlyChecks: hourlyChecks, initialRemarks: remarks, onUpdate: () => {}, seatingChart: seatingChartData, settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
-    reports: { students, subjects, homework, submissions, tests, testResults, dailyChecks, remarks, hourlyChecks, settings: settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
-    classroomTools: { students, seatingChart: seatingChartData, onSeatingChartChange: handleSeatingChartChange, history: seatingChartHistory || [], appSettings: settings, onAppSettingsChange: onSettingsChange, layouts, onLayoutsChange: handleLayoutsChange, activeLayout, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
-    settings: { initialStudents: students, initialSubjects: subjects, settings: settings, onSettingsChange: onSettingsChange }
+  const baseComponentProps: Record<string, any> = {
+    overview: { students, subjects, onUpdate: () => {} },
+    dailyCheck: { students },
+    observations: { students, onUpdate: () => {}, settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
+    assessments: { students, subjects },
+    reports: { students, subjects, settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
+    classroomTools: { students, onSeatingChartChange: handleSeatingChartChange, appSettings: settings, onAppSettingsChange: onSettingsChange, onLayoutsChange: handleLayoutsChange, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
+    settings: { initialStudents: students, initialSubjects: subjects, settings, onSettingsChange }
   };
 
 
@@ -118,13 +156,15 @@ const AppViewContent: FC<AppViewProps> = ({
   if (activeTab === 'settings' && !visibleTabs.includes('settings')) {
       allPossibleTabs.push('settings');
   }
+  
+  const currentTabToRender = activeTab ?? defaultTab;
 
   return (
     <Tabs 
-        value={activeTab ?? defaultTab}
+        value={currentTabToRender}
         onValueChange={(value) => {
           if (onTabChange) onTabChange(value as TabKey);
-          setInternalActiveSubTab(null); // Reset sub-tab when main tab changes
+          setInternalActiveSubTab(null);
         }}
         className="w-full"
     >
@@ -141,18 +181,14 @@ const AppViewContent: FC<AppViewProps> = ({
       </ScrollArea>
 
       {allPossibleTabs.map(tabKey => {
-          const Component = tabComponents[tabKey];
-          if (!Component) return null;
-          const props = componentProps[tabKey];
-          
-          const isDataReady = Object.entries(props).every(([key, value]) => {
-              if (['seatingChart', 'activeSubTab', 'activeLayout'].includes(key)) return true;
-              return value !== undefined;
-          });
-
           return (
-              <TabsContent key={tabKey} value={tabKey}>
-                  {isDataReady ? <Component {...props} /> : <div>Laster data for fane...</div>}
+              <TabsContent key={tabKey} value={tabKey} forceMount={tabKey !== currentTabToRender}>
+                  <div style={{ display: tabKey === currentTabToRender ? 'block' : 'none' }}>
+                      <ActiveTabContent 
+                          tabKey={tabKey}
+                          componentProps={baseComponentProps}
+                      />
+                  </div>
               </TabsContent>
           );
       })}
