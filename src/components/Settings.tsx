@@ -8,7 +8,7 @@ import type { Student, Subject, AppSettings, TabKey, BehaviorType, DashboardTool
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Eye, LayoutDashboard, Group, ShieldCheck } from "lucide-react";
+import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Eye, LayoutDashboard, Group, ShieldCheck, Award } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -56,6 +56,7 @@ interface SettingsProps {
 
 const allToolLabels: Record<DashboardToolKey, string> = {
     'overview': "Lekseoversikt",
+    'assessments': "Vurderinger",
     'dailyCheck': "Daglig Sjekk",
     'observations': "Observasjoner",
     'observations.hourly': "Timeinnsjekk",
@@ -74,6 +75,7 @@ const allTabLabels: Record<TabKey, string> = {
   'overview': 'Lekseoversikt',
   'dailyCheck': 'Daglig Sjekk',
   'observations': 'Observasjoner',
+  'assessments': 'Vurderinger',
   'classroomTools': 'Klasseverktøy',
   'reports': 'Analyse',
   'settings': 'Innstillinger',
@@ -447,6 +449,14 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                                     id="report-remarks"
                                     checked={localSettings.reportSettings.includeRemarks}
                                     onCheckedChange={(checked) => handleReportSettingChange('includeRemarks', checked)}
+                                />
+                            </div>
+                             <div className="flex items-center justify-between p-3 border rounded-lg">
+                                <Label htmlFor="report-tests" className="font-medium">Inkluder prøveresultater</Label>
+                                <Switch
+                                    id="report-tests"
+                                    checked={localSettings.reportSettings.includeTests}
+                                    onCheckedChange={(checked) => handleReportSettingChange('includeTests', checked)}
                                 />
                             </div>
                             <div className="flex items-center justify-between p-3 border rounded-lg">

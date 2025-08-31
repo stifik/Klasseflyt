@@ -128,6 +128,7 @@ export type ReportSettings = {
   includeIpad: boolean;
   includeRemarks: boolean;
   includePositiveFeedback: boolean;
+  includeTests?: boolean;
   greeting: string;
   closing: string;
   teacherName: string;

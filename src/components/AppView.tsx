@@ -64,8 +64,8 @@ const ActiveTabContent: FC<{ tabKey: TabKey, componentProps: Record<string, any>
         }
         return undefined;
     });
-    const tests = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.tests.toArray() : undefined);
-    const testResults = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.testResults.toArray() : undefined);
+    const tests = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.tests.toArray() : undefined, []);
+    const testResults = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.testResults.toArray() : undefined, []);
 
     const dataMap: Record<string, any> = {
         overview: { homeworkList: homework, submissions },
@@ -200,7 +200,7 @@ const AppViewContent: FC<AppViewProps> = ({
 const AppView: FC<AppViewProps> = (props) => {
     // This wrapper ensures that the main props are loaded before we try to fetch live data.
     if (!props.students || !props.subjects || !props.settings) {
-        return <div>Laster kjernekomponenter...</div>;
+        return <div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /> Laster kjernekomponenter...</div>;
     }
 
     return <AppViewContent {...props} />;

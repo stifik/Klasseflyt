@@ -194,6 +194,9 @@ export class MySubClassedDexie extends Dexie {
                         userSettings.dashboardTools.push({ key: 'assessments' as DashboardToolKey, visible: true });
                     }
                 }
+                if (userSettings.reportSettings.includeTests === undefined) {
+                    userSettings.reportSettings.includeTests = false;
+                }
                 await tx.table('settings').put(userSettings);
             }
         });
@@ -265,7 +268,7 @@ const defaultSettings: AppSettings = {
   dashboardTools: defaultDashboardTools,
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
-    includePositiveFeedback: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
+    includePositiveFeedback: false, includeTests: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
   },
   schedule: [
     { period: 1, startTime: "08:30", endTime: "09:00" },
@@ -425,7 +428,31 @@ export async function resetDatabase() {
             }
         }
         await db.hourlyChecks.bulkAdd(hourlyChecksToAdd);
-
+        
+        // --- Create Mock Tests and Results ---
+        if (norskSubject?.id && matteSubject?.id) {
+            const testsToAdd: Omit<Test, 'id'>[] = [
+                { title: 'Kapittelprøve 1', subjectId: norskSubject.id, date: new Date(today.getTime() - 10 * 24 * 60 * 60 * 1000), maxScore: 50 },
+                { title: 'Brøkregning', subjectId: matteSubject.id, date: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000), maxScore: 25 },
+            ];
+            await db.tests.bulkAdd(testsToAdd);
+            const addedTests = await db.tests.toArray();
+            
+            const testResultsToAdd: Omit<TestResult, 'id'>[] = [];
+            allStudents.forEach(student => {
+                addedTests.forEach(test => {
+                    const chance = Math.random();
+                    if (chance > 0.05) { // 95% chance of result
+                        testResultsToAdd.push({
+                            studentId: student.id!,
+                            testId: test.id!,
+                            score: Math.floor(Math.random() * (test.maxScore + 1)),
+                        });
+                    }
+                });
+            });
+            await db.testResults.bulkAdd(testResultsToAdd);
+        }
 
         console.log("Database has been reset and seeded with extensive demo data.");
     });
