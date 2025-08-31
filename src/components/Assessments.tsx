@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useMemo, type FC, type KeyboardEvent, useEffect } from "react";
@@ -9,13 +10,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Target, Link as LinkIcon, X, Calendar as CalendarIcon } from "lucide-react";
 import { db } from "@/lib/db";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { v4 as uuidv4 } from 'uuid';
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Check, Forward, CircleDot } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "./ui/scroll-area";
+import { Checkbox } from "./ui/checkbox";
+import { Label } from "./ui/label";
+import { format } from "date-fns";
+import { nb } from "date-fns/locale";
+import { Calendar } from "./ui/calendar";
 
 // --- Tests Component ---
 interface TestsProps {
@@ -23,21 +30,26 @@ interface TestsProps {
   subjects: Subject[];
   tests: Test[];
   testResults: TestResult[];
+  learningGoals: LearningGoal[];
 }
 
-const AddTestDialog: FC<{ subjects: Subject[]; onAddTest: (title: string, subjectId: string, maxScore: number) => void; }> = ({ subjects, onAddTest }) => {
+const AddTestDialog: FC<{ subjects: Subject[]; learningGoals: LearningGoal[]; onAddTest: (testData: Omit<Test, 'id'>) => void; }> = ({ subjects, learningGoals, onAddTest }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState("");
   const [maxScore, setMaxScore] = useState<number | string>("");
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [linkedGoalIds, setLinkedGoalIds] = useState<string[]>([]);
 
+  const subjectGoals = useMemo(() => {
+    return learningGoals.filter(g => g.subjectId === subjectId);
+  }, [learningGoals, subjectId]);
+  
   const handleAdd = () => {
     const score = Number(maxScore);
-    if (title && subjectId && !isNaN(score) && score > 0) {
-      onAddTest(title, subjectId, score);
-      setTitle("");
-      setSubjectId("");
-      setMaxScore("");
+    if (title && subjectId && date && !isNaN(score) && score > 0) {
+      onAddTest({ title, subjectId, maxScore: score, date, linkedGoalIds });
+      resetState();
       setIsOpen(false);
     }
   };
@@ -46,6 +58,8 @@ const AddTestDialog: FC<{ subjects: Subject[]; onAddTest: (title: string, subjec
       setTitle("");
       setSubjectId("");
       setMaxScore("");
+      setDate(new Date());
+      setLinkedGoalIds([]);
   }
 
   return (
@@ -70,7 +84,29 @@ const AddTestDialog: FC<{ subjects: Subject[]; onAddTest: (title: string, subjec
             value={title} 
             onChange={(e) => setTitle(e.target.value)}
           />
-          <Select value={subjectId} onValueChange={setSubjectId}>
+           <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date ? format(date, "PPP", { locale: nb }) : <span>Velg en dato</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+          <Select value={subjectId} onValueChange={(val) => {setSubjectId(val); setLinkedGoalIds([])}}>
             <SelectTrigger>
               <SelectValue placeholder="Velg fag" />
             </SelectTrigger>
@@ -84,17 +120,38 @@ const AddTestDialog: FC<{ subjects: Subject[]; onAddTest: (title: string, subjec
             value={maxScore}
             onChange={(e) => setMaxScore(e.target.value)}
           />
+           {subjectId && subjectGoals.length > 0 && (
+            <div className="space-y-2">
+              <Label>Koble til læringsmål (valgfritt)</Label>
+              <ScrollArea className="h-32 w-full rounded-md border p-2">
+                {subjectGoals.map(goal => (
+                  <div key={goal.id} className="flex items-center space-x-2 p-1">
+                    <Checkbox
+                      id={`goal-${goal.id}`}
+                      checked={linkedGoalIds.includes(goal.id)}
+                      onCheckedChange={(checked) => {
+                        setLinkedGoalIds(prev =>
+                          checked ? [...prev, goal.id] : prev.filter(id => id !== goal.id)
+                        );
+                      }}
+                    />
+                    <Label htmlFor={`goal-${goal.id}`} className="font-normal text-sm">{goal.title}</Label>
+                  </div>
+                ))}
+              </ScrollArea>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setIsOpen(false)}>Avbryt</Button>
-          <Button onClick={handleAdd} disabled={!title || !subjectId || !maxScore || Number(maxScore) <= 0}>Legg til</Button>
+          <Button onClick={handleAdd} disabled={!title || !subjectId || !date || !maxScore || Number(maxScore) <= 0}>Legg til</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 };
 
-const TestsComponent = ({ students, subjects, tests = [], testResults = [] }: TestsProps) => {
+const TestsComponent = ({ students, subjects, tests = [], testResults = [], learningGoals }: TestsProps) => {
   const { toast } = useToast();
   
   const getResult = (studentId: string, testId: number) => testResults.find(r => r.studentId === studentId && r.testId === testId);
@@ -130,15 +187,10 @@ const TestsComponent = ({ students, subjects, tests = [], testResults = [] }: Te
     }
   };
 
-  const handleAddTest = async (title: string, subjectId: string, maxScore: number) => {
+  const handleAddTest = async (testData: Omit<Test, 'id'>) => {
     try {
-      await db.tests.add({
-        title,
-        subjectId,
-        maxScore,
-        date: new Date(),
-      });
-      toast({ title: "Prøve lagt til", description: `"${title}" er lagt til i oversikten.` });
+      await db.tests.add(testData);
+      toast({ title: "Prøve lagt til", description: `"${testData.title}" er lagt til i oversikten.` });
     } catch (error) {
       toast({ title: "Feil", description: "Kunne ikke legge til prøve.", variant: "destructive" });
     }
@@ -155,12 +207,17 @@ const TestsComponent = ({ students, subjects, tests = [], testResults = [] }: Te
       }
     }
   };
+  
+  const linkedGoalsForTest = (test: Test) => {
+      if (!test.linkedGoalIds) return [];
+      return test.linkedGoalIds.map(id => learningGoals.find(g => g.id === id)).filter(Boolean);
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold">Prøveresultater</h2>
-        <AddTestDialog subjects={subjects} onAddTest={handleAddTest} />
+        <AddTestDialog subjects={subjects} onAddTest={handleAddTest} learningGoals={learningGoals} />
       </div>
       
       <div className="overflow-x-auto border rounded-lg">
@@ -173,6 +230,23 @@ const TestsComponent = ({ students, subjects, tests = [], testResults = [] }: Te
                   <div>{subjects.find(s => s.id === t.subjectId)?.name}</div>
                   <div className="font-normal">{t.title}</div>
                   <div className="text-xs font-light text-muted-foreground">Maks: {t.maxScore}p</div>
+                  {linkedGoalsForTest(t).length > 0 && (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                            <button className="text-xs flex items-center gap-1 text-blue-600 hover:underline">
+                                <LinkIcon className="w-3 h-3"/> {linkedGoalsForTest(t).length} mål
+                            </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80">
+                            <div className="space-y-2">
+                                <h4 className="font-medium leading-none">Vurderte læringsmål</h4>
+                                <ul className="text-sm text-muted-foreground list-disc pl-4">
+                                    {linkedGoalsForTest(t).map(g => g && <li key={g.id}>{g.title}</li>)}
+                                </ul>
+                            </div>
+                        </PopoverContent>
+                      </Popover>
+                  )}
                 </TableHead>
               ))}
             </TableRow>
@@ -260,7 +334,7 @@ const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchieve
             await db.transaction('rw', db.learningGoals, db.goalAchievements, async () => {
                 await db.learningGoals.delete(goalId);
                 const achievementsToDelete = await db.goalAchievements.where({ goalId }).toArray();
-                await db.goalAchievements.bulkDelete(achievementsToDelete.map(a => a.id));
+                await db.goalAchievements.bulkDelete(achievementsToDelete.map(a => a.id as string));
             });
             toast({ title: "Læringsmål slettet", variant: "destructive" });
         } catch (error) {
@@ -276,7 +350,7 @@ const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchieve
 
         try {
             if (existing) {
-                await db.goalAchievements.update(existing.id, { status: nextStatus, updatedAt: new Date() });
+                await db.goalAchievements.update(existing.id as string, { status: nextStatus, updatedAt: new Date() });
             } else {
                 const newAchievement: GoalAchievement = {
                     id: uuidv4(),
@@ -352,13 +426,22 @@ const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchieve
                                     const Icon = config.icon;
                                     return (
                                         <TableCell key={goal.id} className="p-1 text-center">
-                                            <button 
-                                                onClick={() => handleStatusChange(student.id!, goal.id)}
-                                                className={cn("w-full h-12 flex items-center justify-center rounded-md hover:bg-muted", config.color)}
-                                                title={config.label}
-                                            >
-                                                <Icon className="w-6 h-6" />
-                                            </button>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <button 
+                                                        onClick={() => handleStatusChange(student.id!, goal.id)}
+                                                        className={cn("w-full h-12 flex items-center justify-center rounded-md hover:bg-muted", config.color)}
+                                                    >
+                                                        <Icon className="w-6 h-6" />
+                                                    </button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-2">
+                                                    <div className="text-sm">
+                                                        <p>Status: <strong>{config.label}</strong></p>
+                                                        {achievement && <p className="text-xs text-muted-foreground">Sist endret: {format(achievement.updatedAt, "PPP", { locale: nb })}</p>}
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
                                         </TableCell>
                                     );
                                 })}

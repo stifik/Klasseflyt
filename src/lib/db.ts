@@ -208,6 +208,11 @@ export class MySubClassedDexie extends Dexie {
             goalAchievements: 'id, &[studentId+goalId], studentId, goalId'
         });
 
+        // Version 13: Add linkedGoalIds to tests table
+        this.version(13).stores({
+            tests: '++id, subjectId, date, *linkedGoalIds',
+        });
+
 
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });

@@ -69,6 +69,7 @@ export type Test = {
   subjectId: string;
   date: Date;
   maxScore: number;
+  linkedGoalIds?: string[]; // New field to link learning goals
 };
 
 export type TestResult = {
