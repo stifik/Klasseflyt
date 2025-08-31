@@ -2,7 +2,7 @@
 
 'use client';
 
-import { FC, useState, useEffect, Suspense } from 'react';
+import { FC, useState, useEffect, Suspense, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import HomeworkOverview from "@/components/HomeworkOverview";
 import DailyChecklist from "@/components/DailyChecklist";
@@ -51,6 +51,7 @@ const ActiveTabContent: FC<{ tabKey: TabKey, componentProps: Record<string, any>
     if (!Component) return null;
 
     const props = componentProps[tabKey] || {};
+    const appSettings = props.appSettings;
 
     const homework = useLiveQuery(() => tabKey === 'overview' || tabKey === 'reports' ? db.homework.toArray() : undefined);
     const submissions = useLiveQuery(() => tabKey === 'overview' || tabKey === 'reports' ? db.submissions.toArray() : undefined);
@@ -59,6 +60,13 @@ const ActiveTabContent: FC<{ tabKey: TabKey, componentProps: Record<string, any>
     const remarks = useLiveQuery(() => tabKey === 'observations' || tabKey === 'reports' ? db.remarks.toArray() : undefined);
     const seatingChartHistory = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingChartHistory.orderBy('createdAt').reverse().toArray() : undefined);
     const layouts = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingLayouts.toArray() : undefined);
+    const activeLayout = useLiveQuery(async () => {
+        if (tabKey === 'classroomTools' && appSettings?.selectedSeatingLayoutId) {
+            return db.seatingLayouts.get(appSettings.selectedSeatingLayoutId);
+        }
+        return undefined;
+    }, [tabKey, appSettings?.selectedSeatingLayoutId]);
+
     const seatingChartData = useLiveQuery(async () => {
         if (['dailyCheck', 'observations', 'classroomTools'].includes(tabKey)) {
             const latest = await db.seatingChartHistory.orderBy('createdAt').last();
@@ -78,7 +86,7 @@ const ActiveTabContent: FC<{ tabKey: TabKey, componentProps: Record<string, any>
         observations: { initialHourlyChecks: hourlyChecks, initialRemarks: remarks, seatingChart: seatingChartData },
         assessments: { tests, testResults, learningGoals, goalAchievements },
         reports: { homework, submissions, dailyChecks, remarks, hourlyChecks, tests, testResults, learningGoals, goalAchievements },
-        classroomTools: { seatingChart: seatingChartData, history: seatingChartHistory || [], layouts, activeLayout: layouts?.find(l => l.id === props.appSettings?.selectedSeatingLayoutId) },
+        classroomTools: { seatingChart: seatingChartData, history: seatingChartHistory || [], layouts, activeLayout },
         settings: {},
     };
 
@@ -119,7 +127,20 @@ const AppViewContent: FC<AppViewProps> = ({
     setInternalActiveSubTab(activeSubTab || null);
   }, [activeSubTab, activeTab]);
   
-  const visibleTabs = (settings.tabOrder || []).filter(tabKey => settings.tabs[tabKey] && tabLabels[tabKey]);
+  const visibleTabs = useMemo(() => {
+    // This robustly ensures that the classroomTools tab is always present and in order.
+    const tabOrder = settings.tabOrder || [];
+    if (!tabOrder.includes('classroomTools')) {
+        const observationsIndex = tabOrder.indexOf('observations');
+        if (observationsIndex !== -1) {
+            tabOrder.splice(observationsIndex + 1, 0, 'classroomTools');
+        } else {
+            tabOrder.push('classroomTools');
+        }
+    }
+    return tabOrder.filter(tabKey => settings.tabs[tabKey] && tabLabels[tabKey]);
+  }, [settings.tabOrder, settings.tabs]);
+
   const defaultTab = activeTab || visibleTabs[0];
 
   const handleSeatingChartChange = async (newChart: SeatingLayout | null, source: 'generation' | 'drag' | 'load') => {

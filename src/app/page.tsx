@@ -19,13 +19,14 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 
 const defaultSettings: AppSettings = {
   tabs: {
-    overview: true, dailyCheck: true, observations: true, reports: true,
+    overview: true, assessments: true, dailyCheck: true, observations: true, reports: true,
     classroomTools: true,
     settings: true,
   },
-  tabOrder: ['overview', 'dailyCheck', 'observations', 'classroomTools', 'reports'],
+  tabOrder: ['overview', 'assessments', 'dailyCheck', 'observations', 'classroomTools', 'reports'],
   dashboardTools: [
     { key: 'overview', visible: true },
+    { key: 'assessments', visible: true },
     { key: 'dailyCheck', visible: true },
     { key: 'observations', visible: true },
     { key: 'classroomTools', visible: true },
@@ -41,7 +42,7 @@ const defaultSettings: AppSettings = {
   ],
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
-    includePositiveFeedback: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
+    includePositiveFeedback: false, includeTests: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
   },
   schedule: [
     { period: 1, startTime: "08:30", endTime: "09:00" },
@@ -52,7 +53,7 @@ const defaultSettings: AppSettings = {
     { period: 6, startTime: "13:30", endTime: "14:00" },
   ],
   selectedSeatingLayoutId: null,
-  remarkTypes: ["Generell", "Forstyrrer andre", "Mangler utstyr", "Upassende språk"],
+  remarkTypes: ["Generell", "Forstyrrer andre", "Mangler utstyr", "Upassende språk", "Gjorde en god innsats"],
   onboardingCompleted: false,
 };
 
@@ -68,19 +69,47 @@ function Home() {
   const { toast } = useToast();
   const { instance } = useMsal();
   
-  const currentSettings = settings || defaultSettings;
+  // This robust settings object prevents crashes by ensuring dashboardTools is always an array.
+  // It also ensures that the classroomTools tab is always present in the settings.
+  const currentSettings = settings 
+    ? {
+        ...defaultSettings,
+        ...settings,
+        tabs: {
+            ...defaultSettings.tabs,
+            ...settings.tabs,
+            classroomTools: settings.tabs?.classroomTools ?? true,
+        },
+        dashboardTools: Array.isArray(settings.dashboardTools) ? settings.dashboardTools : defaultSettings.dashboardTools,
+      } 
+    : defaultSettings;
+  
+  // This useEffect now safely migrates old settings without crashing.
+  useEffect(() => {
+    if (settings && Array.isArray(settings.dashboardTools)) {
+        let wasUpdated = false;
+        const updatedTools = [...settings.dashboardTools];
+        
+        const toolsToCheck = ['classroomTools'];
 
-  // Ensure 'classroomTools' exists in dashboardTools for existing users
-  if (settings && settings.dashboardTools && !settings.dashboardTools.find(t => t.key === 'classroomTools')) {
-      const updatedTools = [ ...settings.dashboardTools ];
-      const observationsIndex = updatedTools.findIndex(t => t.key === 'observations');
-      if (observationsIndex !== -1) {
-          updatedTools.splice(observationsIndex + 1, 0, { key: 'classroomTools', visible: true });
-      } else {
-          updatedTools.push({ key: 'classroomTools', visible: true });
-      }
-      db.settings.update('userSettings', { dashboardTools: updatedTools });
-  }
+        toolsToCheck.forEach(toolKey => {
+            if (!updatedTools.some(t => t.key === toolKey)) {
+                let insertIndex = updatedTools.length; // Default to end
+                if (toolKey === 'classroomTools') {
+                    const observationsIndex = updatedTools.findIndex(t => t.key === 'observations');
+                    if (observationsIndex !== -1) insertIndex = observationsIndex + 1;
+                }
+                
+                updatedTools.splice(insertIndex, 0, { key: toolKey as any, visible: true });
+                wasUpdated = true;
+            }
+        });
+
+        if (wasUpdated) {
+            db.settings.update('userSettings', { dashboardTools: updatedTools });
+        }
+    }
+  }, [settings]);
 
 
   const handleSettingsChange = async (newSettings: AppSettings) => {

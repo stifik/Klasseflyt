@@ -137,7 +137,6 @@ export class MySubClassedDexie extends Dexie {
              }
         });
         
-        // Version 8: Add dashboard configuration
         this.version(8).stores({}).upgrade(async (tx) => {
             const userSettings = await tx.table('settings').get('userSettings');
             if (userSettings && !userSettings.dashboardTools) {
@@ -471,3 +470,4 @@ export async function resetDatabase() {
 }
 
     
+
