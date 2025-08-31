@@ -70,10 +70,16 @@ function Home() {
   const { instance } = useMsal();
   
   // This robust settings object prevents crashes by ensuring dashboardTools is always an array.
+  // It also ensures that the classroomTools tab is always present in the settings.
   const currentSettings = settings 
     ? {
         ...defaultSettings,
         ...settings,
+        tabs: {
+            ...defaultSettings.tabs,
+            ...settings.tabs,
+            classroomTools: settings.tabs?.classroomTools ?? true,
+        },
         dashboardTools: Array.isArray(settings.dashboardTools) ? settings.dashboardTools : defaultSettings.dashboardTools,
       } 
     : defaultSettings;
@@ -84,15 +90,12 @@ function Home() {
         let wasUpdated = false;
         const updatedTools = [...settings.dashboardTools];
         
-        const toolsToCheck = ['assessments', 'classroomTools'];
+        const toolsToCheck = ['classroomTools'];
 
         toolsToCheck.forEach(toolKey => {
             if (!updatedTools.some(t => t.key === toolKey)) {
                 let insertIndex = updatedTools.length; // Default to end
-                if (toolKey === 'assessments') {
-                    const overviewIndex = updatedTools.findIndex(t => t.key === 'overview');
-                    if (overviewIndex !== -1) insertIndex = overviewIndex + 1;
-                } else if (toolKey === 'classroomTools') {
+                if (toolKey === 'classroomTools') {
                     const observationsIndex = updatedTools.findIndex(t => t.key === 'observations');
                     if (observationsIndex !== -1) insertIndex = observationsIndex + 1;
                 }
