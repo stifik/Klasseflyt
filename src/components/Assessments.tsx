@@ -444,8 +444,8 @@ const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchieve
                                     const linkedTests = testsByGoalId.get(goal.id) || [];
                                     const relevantResults = linkedTests.map(test => {
                                         const result = testResults.find(r => r.studentId === student.id && r.testId === test.id);
-                                        return result ? { ...result, maxScore: test.maxScore } : null;
-                                    }).filter(Boolean);
+                                        return result ? { ...result, maxScore: test.maxScore, score: result.score! } : null;
+                                    }).filter((r): r is { id: number, studentId: string; testId: number; score: number; comment?: string | undefined; maxScore: number; } => r !== null && r.score !== null);
 
                                     return (
                                         <TableCell key={goal.id} className="p-1 text-center">
@@ -459,7 +459,7 @@ const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchieve
                                                         {relevantResults.length > 0 && (
                                                             <div className="absolute bottom-1 right-1 flex items-center gap-1 text-xs px-1 py-0.5 rounded bg-background/80 border text-muted-foreground">
                                                                 <Award className="w-3 h-3 text-blue-500" />
-                                                                {relevantResults[0]!.score}/{relevantResults[0]!.maxScore}
+                                                                {relevantResults[0].score}/{relevantResults[0].maxScore}
                                                             </div>
                                                         )}
                                                     </button>
@@ -471,7 +471,9 @@ const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchieve
                                                         {relevantResults.length > 0 && (
                                                             <div className="mt-2 pt-2 border-t">
                                                                 <h4 className="text-xs font-bold">Relevant resultat:</h4>
-                                                                <p className="text-xs">{linkedTests[0].title}: <strong>{relevantResults[0]!.score}/{relevantResults[0]!.maxScore}p</strong></p>
+                                                                <p className="text-xs">
+                                                                    {linkedTests[0].title}: <strong>{relevantResults[0].score}/{relevantResults[0].maxScore}p ({Math.round((relevantResults[0].score / relevantResults[0].maxScore) * 100)}%)</strong>
+                                                                </p>
                                                             </div>
                                                         )}
                                                     </div>
