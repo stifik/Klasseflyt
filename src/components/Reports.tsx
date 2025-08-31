@@ -92,7 +92,7 @@ const generateSummaryMessage = (
     if (settings.includeTests && weekTestResults.length > 0) {
         message += `Resultater:\n`;
         weekTestResults.forEach(r => {
-            message += `- ${r.subjectName} (${r.testTitle}): ${r.score}/${r.maxScore} poeng\n`;
+            message += `- ${r.subjectName} (${r.testTitle}): ${r.score}/${r.score} poeng\n`;
         });
         message += '\n';
     }
@@ -135,7 +135,10 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
         setGeneratedMessages([]);
 
         const weekHomeworkIds = new Set(homework.filter(h => h.week === selectedWeek).map(h => h.id));
-        const weekTests = tests.filter(t => getWeekNumber(new Date(t.date)) === selectedWeek);
+        
+        // New logic: Include tests from the selected week AND the week before.
+        const relevantWeeks = [selectedWeek, selectedWeek - 1];
+        const weekTests = tests.filter(t => relevantWeeks.includes(getWeekNumber(new Date(t.date))));
 
         const studentsToReport = students.map(student => {
             const studentWeekSubmissions = submissions.filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
@@ -601,5 +604,7 @@ export default function Reports(props: ReportsProps) {
         </Tabs>
     )
 }
+
+    
 
     
