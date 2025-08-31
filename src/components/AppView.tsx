@@ -2,7 +2,7 @@
 
 'use client';
 
-import { FC, useState, useEffect, Suspense } from 'react';
+import { FC, useState, useEffect, Suspense, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import HomeworkOverview from "@/components/HomeworkOverview";
 import DailyChecklist from "@/components/DailyChecklist";
@@ -127,7 +127,20 @@ const AppViewContent: FC<AppViewProps> = ({
     setInternalActiveSubTab(activeSubTab || null);
   }, [activeSubTab, activeTab]);
   
-  const visibleTabs = (settings.tabOrder || []).filter(tabKey => settings.tabs[tabKey] && tabLabels[tabKey]);
+  const visibleTabs = useMemo(() => {
+    // This robustly ensures that the classroomTools tab is always present and in order.
+    const tabOrder = settings.tabOrder || [];
+    if (!tabOrder.includes('classroomTools')) {
+        const observationsIndex = tabOrder.indexOf('observations');
+        if (observationsIndex !== -1) {
+            tabOrder.splice(observationsIndex + 1, 0, 'classroomTools');
+        } else {
+            tabOrder.push('classroomTools');
+        }
+    }
+    return tabOrder.filter(tabKey => settings.tabs[tabKey] && tabLabels[tabKey]);
+  }, [settings.tabOrder, settings.tabs]);
+
   const defaultTab = activeTab || visibleTabs[0];
 
   const handleSeatingChartChange = async (newChart: SeatingLayout | null, source: 'generation' | 'drag' | 'load') => {
