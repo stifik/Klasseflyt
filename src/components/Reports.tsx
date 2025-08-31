@@ -92,7 +92,7 @@ const generateSummaryMessage = (
     if (settings.includeTests && weekTestResults.length > 0) {
         message += `Resultater:\n`;
         weekTestResults.forEach(r => {
-            message += `- ${r.subjectName} (${r.testTitle}): ${r.score}/${r.score} poeng\n`;
+            message += `- ${r.subjectName} (${r.testTitle}): ${r.score}/${r.maxScore} poeng\n`;
         });
         message += '\n';
     }
