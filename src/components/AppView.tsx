@@ -98,8 +98,9 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
     // Combine base props with fetched data
     const combinedProps = {
         ...props,
-        homework: homework, // Changed from homeworkList to homework
+        homework: homework, 
         submissions: submissions,
+        dailyChecks: dailyChecks,
         initialHourlyChecks: hourlyChecks,
         initialRemarks: remarks,
         seatingChart: seatingChart,
