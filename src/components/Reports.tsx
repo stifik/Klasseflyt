@@ -140,7 +140,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
         
         // New logic: Include tests from the selected week AND the week before.
         const relevantWeeks = [selectedWeek, selectedWeek - 1];
-        const weekTests = tests.filter(t => relevantWeeks.includes(getWeekNumber(new Date(t.date))));
+        const weekTests = (tests || []).filter(t => relevantWeeks.includes(getWeekNumber(new Date(t.date))));
 
         const studentsToReport = students.map(student => {
             const studentWeekSubmissions = submissions.filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
