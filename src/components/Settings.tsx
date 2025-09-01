@@ -3,12 +3,12 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Student, Subject, AppSettings, TabKey, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Eye, LayoutDashboard, Group, ShieldCheck, Award } from "lucide-react";
+import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Eye, LayoutDashboard, Group, ShieldCheck, Award, Upload, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -39,13 +39,15 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Separator } from "./ui/separator";
-import { db, resetDatabase, clearDatabase } from "@/lib/db";
+import { db, resetDatabase, clearDatabase, exportDatabase, importDatabase } from "@/lib/db";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { v4 as uuidv4 } from 'uuid';
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { cn } from "@/lib/utils";
 import * as LucideIcons from "lucide-react";
 import DPIA from "./DPIA";
+import { format } from "date-fns";
+
 
 interface SettingsProps {
   initialStudents: Student[];
@@ -127,6 +129,8 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [localSettings, setLocalSettings] = useState(initialSettings);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
@@ -335,7 +339,52 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
   const handleAnalysisChange = (newAnalysis: DPIAAnalysis) => {
     handleSettingChange(current => ({ ...current, dpiaAnalysis: newAnalysis }));
   };
+  
+  const handleExport = async () => {
+    try {
+        const data = await exportDatabase();
+        const jsonString = JSON.stringify(data, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const date = format(new Date(), 'yyyy-MM-dd');
+        a.href = url;
+        a.download = `klasseflyt_backup_${date}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast({ title: "Database eksportert", description: "En backup-fil er lastet ned." });
+    } catch (error) {
+        console.error("Export failed:", error);
+        toast({ title: "Eksport feilet", description: "Kunne ikke eksportere databasen.", variant: "destructive" });
+    }
+  };
 
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const text = e.target?.result;
+            if (typeof text !== 'string') throw new Error("File is not readable");
+            const data = JSON.parse(text);
+            await importDatabase(data);
+            toast({ title: "Database importert!", description: "Siden vil nå lastes på nytt." });
+            setTimeout(() => window.location.reload(), 1000);
+        } catch (error) {
+            console.error("Import failed:", error);
+            toast({ title: "Import feilet", description: "Filen er ugyldig eller korrupt.", variant: "destructive" });
+        }
+    };
+    reader.readAsText(file);
+    // Reset file input
+    if(fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  };
 
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -691,6 +740,46 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
             </CardHeader>
             <CardContent className="space-y-4">
                 <div>
+                    <h4 className="font-semibold">Backup og Gjenoppretting</h4>
+                    <p className="mb-2 text-sm text-muted-foreground">
+                        Last ned en backup-fil av all data, eller gjenopprett fra en tidligere backup.
+                    </p>
+                    <div className="flex gap-2">
+                        <Button onClick={handleExport} variant="outline" className="w-full">
+                            <Download className="mr-2" /> Eksporter
+                        </Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" className="w-full">
+                                    <Upload className="mr-2" /> Importer
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle><AlertTriangle className="inline-block mr-2 text-yellow-500" /> Overskrive all data?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Dette vil permanent slette all nåværende data i appen og erstatte den med innholdet fra backup-filen. Handlingen kan ikke angres.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => fileInputRef.current?.click()}>
+                                        Ja, fortsett
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleImport}
+                            className="hidden"
+                            accept=".json"
+                        />
+                    </div>
+                </div>
+                <Separator />
+                <div>
                     <h4 className="font-semibold">Tøm database for ny start</h4>
                     <p className="mb-2 text-sm text-muted-foreground">
                         Dette sletter all eksisterende data (elever, lekser, anmerkninger etc.) slik at du kan starte med blanke ark. Handlingen kan ikke angres.
@@ -747,3 +836,5 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
     </div>
   );
 }
+
+  

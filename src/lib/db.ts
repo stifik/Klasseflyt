@@ -179,12 +179,8 @@ export class MySubClassedDexie extends Dexie {
                     userSettings.tabs.assessments = true;
                 }
                 if (!userSettings.tabOrder.includes('assessments')) {
-                    const reportsIndex = userSettings.tabOrder.indexOf('reports');
-                    if (reportsIndex !== -1) {
-                        userSettings.tabOrder.splice(reportsIndex, 0, 'assessments');
-                    } else {
-                        userSettings.tabOrder.push('assessments');
-                    }
+                    const overviewIndex = userSettings.tabOrder.indexOf('overview');
+                    userSettings.tabOrder.splice(overviewIndex + 1, 0, 'assessments');
                 }
                  // Add assessments to dashboard tools if it doesn't exist
                 if (userSettings.dashboardTools && !userSettings.dashboardTools.find((t: DashboardConfig) => t.key === 'assessments')) {
@@ -469,5 +465,37 @@ export async function resetDatabase() {
     });
 }
 
+// --- EXPORT/IMPORT LOGIC ---
+export async function exportDatabase() {
+  const data: { [key: string]: any[] } = {};
+  for (const table of db.tables) {
+    data[table.name] = await table.toArray();
+  }
+  return data;
+}
+
+export async function importDatabase(data: { [key: string]: any[] }) {
+    await db.transaction('rw', db.tables, async () => {
+        // Clear all tables
+        await Promise.all(db.tables.map(table => table.clear()));
+
+        // Import data table by table
+        for (const tableName in data) {
+            if (db.table(tableName)) {
+                // For date fields, we need to ensure they are Date objects
+                const tableData = data[tableName].map(item => {
+                    if (item.date) item.date = new Date(item.date);
+                    if (item.createdAt) item.createdAt = new Date(item.createdAt);
+                    if (item.updatedAt) item.updatedAt = new Date(item.updatedAt);
+                    return item;
+                });
+                await db.table(tableName).bulkAdd(tableData);
+            }
+        }
+    });
+}
     
 
+
+
+  
