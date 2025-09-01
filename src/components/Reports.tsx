@@ -46,7 +46,6 @@ const statusOrder: HomeworkStatus[] = ["Godkjent", "Må rettes", "Glemt bok", "I
 const generateSummaryMessage = (
     studentName: string,
     week: number,
-    hasIssues: boolean,
     approvedAssignments: string[],
     missingAssignments: string[],
     incompleteAssignments: string[],
@@ -69,6 +68,8 @@ const generateSummaryMessage = (
 
     const hasHomeworkIssues = homeworkIssues.length > 0;
     const hasApprovedHomework = approvedAssignments.length > 0;
+    const hasIpadIssues = ipadIssues.length > 0;
+    const hasIssues = hasHomeworkIssues || hasIpadIssues || (remarksCount > 0 && settings.includeRemarks);
 
     let message = `${settings.greeting}\nEn liten oppsummering for ${studentName} i uke ${week}.\n\n`;
       
@@ -88,7 +89,7 @@ const generateSummaryMessage = (
         }
     }
 
-    if (settings.includeIpad && ipadIssues.length > 0) {
+    if (settings.includeIpad && hasIpadIssues) {
         message += `iPad:\n- ${ipadIssues.join('\n- ')}\n\n`;
     }
     
@@ -125,11 +126,15 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
     const [isGenerating, setIsGenerating] = useState(false);
     
     const uniqueWeeks = useMemo(() => {
-        if (!homework && !dailyChecks && !remarks) return [];
-        const homeworkWeeks = homework?.map(h => h.week) || [];
-        const checkWeeks = dailyChecks?.map(c => getWeekNumber(new Date(c.date))) || [];
-        const remarkWeeks = remarks?.map(r => getWeekNumber(new Date(r.date))) || [];
-        const testWeeks = tests?.map(t => getWeekNumber(new Date(t.date))) || [];
+        const safeHomework = homework || [];
+        const safeDailyChecks = dailyChecks || [];
+        const safeRemarks = remarks || [];
+        const safeTests = tests || [];
+
+        const homeworkWeeks = safeHomework.map(h => h.week);
+        const checkWeeks = safeDailyChecks.map(c => getWeekNumber(new Date(c.date)));
+        const remarkWeeks = safeRemarks.map(r => getWeekNumber(new Date(r.date)));
+        const testWeeks = safeTests.map(t => getWeekNumber(new Date(t.date)));
         return [...new Set([...homeworkWeeks, ...checkWeeks, ...remarkWeeks, ...testWeeks])].sort((a,b) => b-a);
     }, [homework, dailyChecks, remarks, tests]);
   
@@ -137,16 +142,23 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
         setIsGenerating(true);
         setGeneratedMessages([]);
 
-        const weekHomeworkIds = new Set((homework || []).filter(h => h.week === selectedWeek).map(h => h.id));
+        const safeHomework = homework || [];
+        const safeSubmissions = submissions || [];
+        const safeDailyChecks = dailyChecks || [];
+        const safeRemarks = remarks || [];
+        const safeTests = tests || [];
+        const safeTestResults = testResults || [];
+
+        const weekHomeworkIds = new Set(safeHomework.filter(h => h.week === selectedWeek).map(h => h.id));
         
         const relevantWeeks = [selectedWeek, selectedWeek - 1];
-        const weekTests = (tests || []).filter(t => relevantWeeks.includes(getWeekNumber(new Date(t.date))));
+        const weekTests = safeTests.filter(t => relevantWeeks.includes(getWeekNumber(new Date(t.date))));
 
         const studentsToReport = students.map(student => {
-            const studentWeekSubmissions = (submissions || []).filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
-            const studentWeekChecks = (dailyChecks || []).filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
-            const studentWeekRemarks = (remarks || []).filter(r => r.studentId === student.id && getWeekNumber(new Date(r.date)) === selectedWeek);
-            const studentWeekTestResults = (testResults || []).filter(r => r.studentId === student.id && weekTests.some(t => t.id === r.testId));
+            const studentWeekSubmissions = safeSubmissions.filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
+            const studentWeekChecks = safeDailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
+            const studentWeekRemarks = safeRemarks.filter(r => r.studentId === student.id && getWeekNumber(new Date(r.date)) === selectedWeek);
+            const studentWeekTestResults = safeTestResults.filter(r => r.studentId === student.id && weekTests.some(t => t.id === r.testId));
 
             const hasHomeworkIssues = settings.reportSettings.includeHomework && studentWeekSubmissions.some(s => 
                 s.status === 'Ikke levert' || s.status === 'Må rettes' || s.status === 'Glemt bok'
@@ -161,7 +173,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
 
             if (onlyAbsence) return null;
             if (hasAnyIssues || hasTests || settings.reportSettings.includePositiveFeedback) {
-                return { student, hasAnyIssues, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks, studentWeekTestResults };
+                return { student, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks, studentWeekTestResults };
             }
             return null;
         }).filter(Boolean);
@@ -174,10 +186,10 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
 
         const messages = studentsToReport.map(report => {
             if (!report) return null;
-            const { student, hasAnyIssues, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks, studentWeekTestResults } = report;
+            const { student, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks, studentWeekTestResults } = report;
             
             const formatHomeworkWithSubject = (s: Submission) => {
-                const hw = (homework || []).find(h => h.id === s.homeworkId);
+                const hw = safeHomework.find(h => h.id === s.homeworkId);
                 const subject = subjects.find(sub => sub.id === hw?.subjectId);
                 return `${subject?.name || 'Ukjent'} (${hw?.title || ''})`;
             };
@@ -198,7 +210,6 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
             const message = generateSummaryMessage(
                 student.name,
                 selectedWeek,
-                hasAnyIssues,
                 studentWeekSubmissions.filter(s => s.status === 'Godkjent').map(formatHomeworkWithSubject),
                 studentWeekSubmissions.filter(s => s.status === 'Ikke levert').map(formatHomeworkWithSubject),
                 studentWeekSubmissions.filter(s => s.status === 'Må rettes').map(formatHomeworkWithSubject),
