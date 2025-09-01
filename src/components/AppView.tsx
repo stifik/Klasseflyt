@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { FC, useState, useEffect, Suspense, useMemo } from 'react';
@@ -46,58 +45,79 @@ const TabContentLoader = () => (
 );
 
 // This new component will handle fetching data for a specific, active tab
-const ActiveTabContent: FC<{ tabKey: TabKey, componentProps: Record<string, any>}> = ({ tabKey, componentProps }) => {
+const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any> }> = ({ tabKey, componentProps }) => {
     const Component = tabComponents[tabKey];
     if (!Component) return null;
 
-    const props = componentProps[tabKey] || {};
-    const appSettings = props.appSettings;
+    const props = { ...componentProps[tabKey], appSettings: componentProps.appSettings };
 
-    const homework = useLiveQuery(() => tabKey === 'overview' || tabKey === 'reports' ? db.homework.toArray() : undefined);
-    const submissions = useLiveQuery(() => tabKey === 'overview' || tabKey === 'reports' ? db.submissions.toArray() : undefined);
-    const dailyChecks = useLiveQuery(() => tabKey === 'dailyCheck' || tabKey === 'reports' ? db.dailyChecks.toArray() : undefined);
-    const hourlyChecks = useLiveQuery(() => tabKey === 'observations' || tabKey === 'reports' ? db.hourlyChecks.toArray() : undefined);
-    const remarks = useLiveQuery(() => tabKey === 'observations' || tabKey === 'reports' ? db.remarks.toArray() : undefined);
-    const seatingChartHistory = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingChartHistory.orderBy('createdAt').reverse().toArray() : undefined);
-    const layouts = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingLayouts.toArray() : undefined);
+    // Use live queries for data needed by specific tabs
+    const homework = useLiveQuery(() => ['overview', 'reports'].includes(tabKey) ? db.homework.toArray() : undefined, [tabKey]);
+    const submissions = useLiveQuery(() => ['overview', 'reports'].includes(tabKey) ? db.submissions.toArray() : undefined, [tabKey]);
+    const dailyChecks = useLiveQuery(() => ['dailyCheck', 'reports'].includes(tabKey) ? db.dailyChecks.toArray() : undefined, [tabKey]);
+    const hourlyChecks = useLiveQuery(() => ['observations', 'reports'].includes(tabKey) ? db.hourlyChecks.toArray() : undefined, [tabKey]);
+    const remarks = useLiveQuery(() => ['observations', 'reports'].includes(tabKey) ? db.remarks.toArray() : undefined, [tabKey]);
+    const tests = useLiveQuery(() => ['assessments', 'reports'].includes(tabKey) ? db.tests.toArray() : undefined, [tabKey]);
+    const testResults = useLiveQuery(() => ['assessments', 'reports'].includes(tabKey) ? db.testResults.toArray() : undefined, [tabKey]);
+    const learningGoals = useLiveQuery(() => ['assessments', 'reports'].includes(tabKey) ? db.learningGoals.toArray() : undefined, [tabKey]);
+    const goalAchievements = useLiveQuery(() => ['assessments', 'reports'].includes(tabKey) ? db.goalAchievements.toArray() : undefined, [tabKey]);
+    
+    // Data specific to ClassroomTools
+    const history = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingChartHistory.orderBy('createdAt').reverse().toArray() : undefined, [tabKey]);
+    const layouts = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingLayouts.toArray() : undefined, [tabKey]);
+    
+    const activeLayoutId = tabKey === 'classroomTools' ? props.appSettings?.selectedSeatingLayoutId : null;
     const activeLayout = useLiveQuery(async () => {
-        if (tabKey === 'classroomTools' && appSettings?.selectedSeatingLayoutId) {
-            return db.seatingLayouts.get(appSettings.selectedSeatingLayoutId);
+        if (activeLayoutId) {
+            return db.seatingLayouts.get(activeLayoutId);
         }
-        return undefined;
-    }, [tabKey, appSettings?.selectedSeatingLayoutId]);
+        return null;
+    }, [activeLayoutId]);
 
-    const seatingChartData = useLiveQuery(async () => {
+
+    // Seating chart is used by multiple tabs, so we fetch it conditionally
+    const seatingChart = useLiveQuery(async () => {
         if (['dailyCheck', 'observations', 'classroomTools'].includes(tabKey)) {
             const latest = await db.seatingChartHistory.orderBy('createdAt').last();
             return latest ? JSON.parse(latest.chartJson) : null;
         }
         return undefined;
-    });
-    const tests = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.tests.toArray() : undefined);
-    const testResults = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.testResults.toArray() : undefined);
-    const learningGoals = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.learningGoals.toArray() : undefined);
-    const goalAchievements = useLiveQuery(() => tabKey === 'assessments' || tabKey === 'reports' ? db.goalAchievements.toArray() : undefined);
+    }, [tabKey]);
 
-
-    const dataMap: Record<string, any> = {
-        overview: { homeworkList: homework, submissions },
-        dailyCheck: { seatingChart: seatingChartData },
-        observations: { initialHourlyChecks: hourlyChecks, initialRemarks: remarks, seatingChart: seatingChartData },
-        assessments: { tests, testResults, learningGoals, goalAchievements },
-        reports: { homework, submissions, dailyChecks, remarks, hourlyChecks, tests, testResults, learningGoals, goalAchievements },
-        classroomTools: { seatingChart: seatingChartData, history: seatingChartHistory || [], layouts, activeLayout },
-        settings: {},
+    // Define which data is required for each tab to be considered "ready"
+    const requiredData: Record<TabKey, any[]> = {
+        overview: [homework, submissions],
+        dailyCheck: [], // Seating chart can be null initially
+        observations: [hourlyChecks, remarks], // Seating chart can be null initially
+        assessments: [tests, testResults, learningGoals, goalAchievements],
+        reports: [homework, submissions, dailyChecks, remarks, hourlyChecks, tests, testResults, learningGoals, goalAchievements],
+        classroomTools: [layouts], // History and activeLayout can be null/empty initially
+        settings: [],
+    };
+    
+    // Combine base props with fetched data
+    const combinedProps = {
+        ...props,
+        homework: homework, // Changed from homeworkList to homework
+        submissions: submissions,
+        initialHourlyChecks: hourlyChecks,
+        initialRemarks: remarks,
+        seatingChart: seatingChart,
+        tests,
+        testResults,
+        learningGoals,
+        goalAchievements,
+        history: history || [],
+        layouts: layouts || [],
+        activeLayout,
     };
 
-    const combinedProps = { ...props, ...dataMap[tabKey] };
-
-    const isDataReady = Object.values(dataMap[tabKey] || {}).every(value => value !== undefined);
+    const isDataReady = requiredData[tabKey].every(data => data !== undefined);
 
     if (!isDataReady) {
         return <TabContentLoader />;
     }
-
+    
     return <Component {...combinedProps} />;
 };
 
@@ -128,8 +148,8 @@ const AppViewContent: FC<AppViewProps> = ({
   }, [activeSubTab, activeTab]);
   
   const visibleTabs = useMemo(() => {
-    // This robustly ensures that the classroomTools tab is always present and in order.
     const tabOrder = settings.tabOrder || [];
+    // Ensure classroomTools is in the tabOrder if it's missing for older settings
     if (!tabOrder.includes('classroomTools')) {
         const observationsIndex = tabOrder.indexOf('observations');
         if (observationsIndex !== -1) {
@@ -174,7 +194,9 @@ const AppViewContent: FC<AppViewProps> = ({
     assessments: { students, subjects, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
     reports: { students, subjects, settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
     classroomTools: { students, onSeatingChartChange: handleSeatingChartChange, appSettings: settings, onAppSettingsChange: onSettingsChange, onLayoutsChange: handleLayoutsChange, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
-    settings: { initialStudents: students, initialSubjects: subjects, settings, onSettingsChange }
+    settings: { initialStudents: students, initialSubjects: subjects, settings, onSettingsChange },
+    // Pass global settings to all tabs
+    appSettings: settings,
   };
 
 
@@ -226,7 +248,6 @@ const AppViewContent: FC<AppViewProps> = ({
 };
 
 const AppView: FC<AppViewProps> = (props) => {
-    // This wrapper ensures that the main props are loaded before we try to fetch live data.
     if (!props.students || !props.subjects || !props.settings) {
         return <div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /> Laster kjernekomponenter...</div>;
     }
