@@ -22,7 +22,7 @@ import { db } from "@/lib/db";
 interface HomeworkOverviewProps {
   students: Student[];
   subjects: Subject[];
-  homeworkList: Homework[];
+  homework: Homework[];
   submissions: Submission[];
   onUpdate: () => void;
 }
@@ -126,7 +126,7 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
               <SelectValue placeholder="Velg fag" />
             </SelectTrigger>
             <SelectContent>
-              {subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              {subjects.map(s => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}
             </SelectContent>
           </Select>
            <div>
@@ -156,7 +156,7 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
   );
 };
 
-export default function HomeworkOverview({ students, subjects, homeworkList, submissions, onUpdate }: HomeworkOverviewProps) {
+export default function HomeworkOverview({ students, subjects, homework: homeworkList, submissions, onUpdate }: HomeworkOverviewProps) {
   const [commentModal, setCommentModal] = useState<{ open: boolean; studentId?: string; homeworkId?: string; }>({ open: false });
   const [currentComment, setCurrentComment] = useState("");
   const [filters, setFilters] = useState<{ subject: string; week: string; showProblems: boolean }>({ subject: "all", week: "all", showProblems: false });
@@ -240,13 +240,13 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
             const problemStatuses: HomeworkStatus[] = ["Ikke levert", "Må rettes", "Glemt bok"];
             const isDelayed = problemStatuses.includes(defaultStatus);
             const newSubmissions = students.map(student => ({
-                studentId: student.id,
-                homeworkId: newHomeworkId,
+                studentId: student.id!,
+                homeworkId: newHomeworkId as number,
                 status: defaultStatus,
                 comment: "",
                 isDelayed: isDelayed
             }));
-            await db.submissions.bulkAdd(newSubmissions);
+            await db.submissions.bulkAdd(newSubmissions as Submission[]);
             toast({ title: "Standardstatus satt", description: `Alle elever er satt til "${defaultStatus}".` });
         }
     } catch(error) {
@@ -300,13 +300,13 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
 
     return sortedStudents.filter(student => {
       return filteredHomework.some(hw => {
-        const submission = getSubmission(student.id, String(hw.id));
+        const submission = getSubmission(student.id!, String(hw.id));
         return !submission || problemStatuses.includes(submission.status);
       });
     });
   }, [sortedStudents, filters.showProblems, filteredHomework, submissions]);
   
-  const uniqueWeeks = [...new Set(homeworkList.map(h => h.week))].sort((a,b) => b-a);
+  const uniqueWeeks = [...new Set((homeworkList || []).filter(h => h && h.week).map(h => h.week))].sort((a,b) => b-a);
   
   return (
     <div className="space-y-4">
@@ -330,7 +330,7 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
                 <SelectTrigger><SelectValue placeholder="Filtrer på fag..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Alle Fag</SelectItem>
-                  {subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  {subjects.map(s => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
                <Select value={filters.week} onValueChange={v => setFilters({...filters, week: v})}>
@@ -374,14 +374,14 @@ export default function HomeworkOverview({ students, subjects, homeworkList, sub
               <TableRow key={student.id}>
                 <TableCell className="sticky left-0 z-10 font-medium bg-background">{student.name}</TableCell>
                 {filteredHomework.map(hw => {
-                  const submission = getSubmission(student.id, String(hw.id));
+                  const submission = getSubmission(student.id!, String(hw.id));
                   return (
                     <TableCell key={hw.id} className="p-0 text-center">
                       <StatusPopover 
                         submission={submission}
                         hasComment={!!submission?.comment}
-                        onStatusChange={(status) => handleStatusChange(student.id, String(hw.id), status)}
-                        onComment={() => openCommentModal(student.id, String(hw.id))}
+                        onStatusChange={(status) => handleStatusChange(student.id!, String(hw.id), status)}
+                        onComment={() => openCommentModal(student.id!, String(hw.id))}
                       />
                     </TableCell>
                   )
