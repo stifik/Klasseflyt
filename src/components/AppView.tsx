@@ -66,12 +66,14 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
     // Data specific to ClassroomTools
     const history = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingChartHistory.orderBy('createdAt').reverse().toArray() : undefined, [tabKey]);
     const layouts = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingLayouts.toArray() : undefined, [tabKey]);
+    
+    const activeLayoutId = tabKey === 'classroomTools' ? props.appSettings?.selectedSeatingLayoutId : null;
     const activeLayout = useLiveQuery(async () => {
-        if (tabKey === 'classroomTools' && props.appSettings?.selectedSeatingLayoutId) {
-            return db.seatingLayouts.get(props.appSettings.selectedSeatingLayoutId);
+        if (activeLayoutId) {
+            return db.seatingLayouts.get(activeLayoutId);
         }
-        return undefined;
-    }, [tabKey, props.appSettings?.selectedSeatingLayoutId]);
+        return null;
+    }, [activeLayoutId]);
 
 
     // Seating chart is used by multiple tabs, so we fetch it conditionally
@@ -86,11 +88,11 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
     // Define which data is required for each tab to be considered "ready"
     const requiredData: Record<TabKey, any[]> = {
         overview: [homework, submissions],
-        dailyCheck: [seatingChart],
-        observations: [hourlyChecks, remarks, seatingChart],
+        dailyCheck: [], // Seating chart can be null initially
+        observations: [hourlyChecks, remarks], // Seating chart can be null initially
         assessments: [tests, testResults, learningGoals, goalAchievements],
         reports: [homework, submissions, dailyChecks, remarks, hourlyChecks, tests, testResults, learningGoals, goalAchievements],
-        classroomTools: [seatingChart, history, layouts, activeLayout],
+        classroomTools: [history, layouts, activeLayout], // All can be null/empty initially
         settings: [],
     };
     
@@ -107,7 +109,7 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
         learningGoals,
         goalAchievements,
         history: history || [],
-        layouts,
+        layouts: layouts || [],
         activeLayout,
     };
 
