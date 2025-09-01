@@ -136,17 +136,17 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
         setIsGenerating(true);
         setGeneratedMessages([]);
 
-        const weekHomeworkIds = new Set(homework.filter(h => h.week === selectedWeek).map(h => h.id));
+        const weekHomeworkIds = new Set((homework || []).filter(h => h.week === selectedWeek).map(h => h.id));
         
         // New logic: Include tests from the selected week AND the week before.
         const relevantWeeks = [selectedWeek, selectedWeek - 1];
         const weekTests = (tests || []).filter(t => relevantWeeks.includes(getWeekNumber(new Date(t.date))));
 
         const studentsToReport = students.map(student => {
-            const studentWeekSubmissions = submissions.filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
-            const studentWeekChecks = dailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
-            const studentWeekRemarks = remarks.filter(r => r.studentId === student.id && getWeekNumber(new Date(r.date)) === selectedWeek);
-            const studentWeekTestResults = testResults.filter(r => r.studentId === student.id && weekTests.some(t => t.id === r.testId));
+            const studentWeekSubmissions = (submissions || []).filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
+            const studentWeekChecks = (dailyChecks || []).filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
+            const studentWeekRemarks = (remarks || []).filter(r => r.studentId === student.id && getWeekNumber(new Date(r.date)) === selectedWeek);
+            const studentWeekTestResults = (testResults || []).filter(r => r.studentId === student.id && weekTests.some(t => t.id === r.testId));
 
             const hasHomeworkIssues = settings.reportSettings.includeHomework && studentWeekSubmissions.some(s => 
                 s.status === 'Ikke levert' || s.status === 'Må rettes' || s.status === 'Glemt bok'
@@ -177,7 +177,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
             const { student, hasAnyIssues, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks, studentWeekTestResults } = report;
             
             const formatHomeworkWithSubject = (s: Submission) => {
-                const hw = homework.find(h => h.id === s.homeworkId);
+                const hw = (homework || []).find(h => h.id === s.homeworkId);
                 const subject = subjects.find(sub => sub.id === hw?.subjectId);
                 return `${subject?.name || 'Ukjent'} (${hw?.title || ''})`;
             };
