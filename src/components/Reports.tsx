@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useMemo, FC } from 'react';
@@ -490,15 +491,29 @@ const useStudentStats = (
     behaviorTypes: BehaviorType[]
 ) => {
     return useMemo(() => {
-        return students.map(student => {
-            const studentSubmissions = submissions.filter(s => s.studentId === student.id);
-            const studentTestResults = testResults.filter(r => r.studentId === student.id && r.score !== null);
-            const studentDailyChecks = dailyChecks.filter(c => c.studentId === student.id);
-            const studentHourlyChecks = hourlyChecks.filter(c => c.studentId === student.id);
-            const studentRemarks = remarks
+        // Ensure all arrays are valid before processing
+        const safeStudents = students || [];
+        const safeSubjects = subjects || [];
+        const safeHomework = homework || [];
+        const safeSubmissions = submissions || [];
+        const safeTests = tests || [];
+        const safeTestResults = testResults || [];
+        const safeDailyChecks = dailyChecks || [];
+        const safeRemarks = remarks || [];
+        const safeHourlyChecks = hourlyChecks || [];
+        const safeLearningGoals = learningGoals || [];
+        const safeGoalAchievements = goalAchievements || [];
+        const safeBehaviorTypes = behaviorTypes || [];
+
+        return safeStudents.map(student => {
+            const studentSubmissions = safeSubmissions.filter(s => s.studentId === student.id);
+            const studentTestResults = safeTestResults.filter(r => r.studentId === student.id && r.score !== null);
+            const studentDailyChecks = safeDailyChecks.filter(c => c.studentId === student.id);
+            const studentHourlyChecks = safeHourlyChecks.filter(c => c.studentId === student.id);
+            const studentRemarks = safeRemarks
                 .filter(r => r.studentId === student.id)
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            const studentGoalAchievements = goalAchievements.filter(ga => ga.studentId === student.id);
+            const studentGoalAchievements = safeGoalAchievements.filter(ga => ga.studentId === student.id);
 
             const totalStatusCounts = studentSubmissions.reduce((acc, sub) => {
                 acc[sub.status] = (acc[sub.status] || 0) + 1;
@@ -508,8 +523,8 @@ const useStudentStats = (
             
             const totalDelays = studentSubmissions.filter(s => s.isDelayed).length;
 
-            const statsBySubject = subjects.map(subject => {
-                const subjectHomeworkIds = new Set(homework.filter(h => h.subjectId === subject.id).map(h => h.id));
+            const statsBySubject = safeSubjects.map(subject => {
+                const subjectHomeworkIds = new Set(safeHomework.filter(h => h.subjectId === subject.id).map(h => h.id));
                 const subjectSubmissions = studentSubmissions.filter(s => subjectHomeworkIds.has(s.homeworkId));
                 
                 const statusCounts = subjectSubmissions.reduce((acc, sub) => {
@@ -520,8 +535,8 @@ const useStudentStats = (
                 const problemSubmissions = subjectSubmissions
                     .filter(s => s.status === "Må rettes" || s.status === "Glemt bok")
                     .map(s => ({
-                        week: homework.find(h => h.id === s.homeworkId)?.week,
-                        title: homework.find(h => h.id === s.homeworkId)?.title,
+                        week: safeHomework.find(h => h.id === s.homeworkId)?.week,
+                        title: safeHomework.find(h => h.id === s.homeworkId)?.title,
                         comment: s.comment,
                         status: s.status,
                     }))
@@ -545,16 +560,16 @@ const useStudentStats = (
             }, {} as Record<string, number>);
 
             const formattedTestResults = studentTestResults.map(result => {
-                const test = tests.find(t => t.id === result.testId);
+                const test = safeTests.find(t => t.id === result.testId);
                 if (!test) return null;
-                const subjectName = subjects.find(s => s.id === test.subjectId)?.name || 'Ukjent';
+                const subjectName = safeSubjects.find(s => s.id === test.subjectId)?.name || 'Ukjent';
                 return { result, test, subjectName };
             }).filter(Boolean).sort((a, b) => new Date(b!.test.date).getTime() - new Date(a!.test.date).getTime());
 
-            const studentGoals = learningGoals
+            const studentGoals = safeLearningGoals
                 .map(goal => {
                     const achievement = studentGoalAchievements.find(a => a.goalId === goal.id);
-                    const subjectName = subjects.find(s => s.id === goal.subjectId)?.name;
+                    const subjectName = safeSubjects.find(s => s.id === goal.subjectId)?.name;
                     return { goal, achievement, subjectName };
                 })
                 .filter(g => g.subjectName)
