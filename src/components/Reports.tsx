@@ -139,7 +139,6 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
 
         const weekHomeworkIds = new Set((homework || []).filter(h => h.week === selectedWeek).map(h => h.id));
         
-        // New logic: Include tests from the selected week AND the week before.
         const relevantWeeks = [selectedWeek, selectedWeek - 1];
         const weekTests = (tests || []).filter(t => relevantWeeks.includes(getWeekNumber(new Date(t.date))));
 
@@ -491,7 +490,6 @@ const useStudentStats = (
     behaviorTypes: BehaviorType[]
 ) => {
     return useMemo(() => {
-        // Ensure all arrays are valid before processing
         const safeStudents = students || [];
         const safeSubjects = subjects || [];
         const safeHomework = homework || [];
@@ -650,9 +648,9 @@ const StudentReport = (props: ReportsProps) => {
 
 
 export default function Reports(props: ReportsProps) {
-    const [activeTab, setActiveTab] = useState("summary");
+    const { activeSubTab, onSubTabChange } = props;
+    const defaultSubTab = "summary";
 
-    // Defensive check to ensure all required props are loaded
     if (!props.learningGoals || !props.goalAchievements) {
         return (
             <div className="flex items-center justify-center p-8">
@@ -663,7 +661,11 @@ export default function Reports(props: ReportsProps) {
     }
 
     return (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs 
+            value={activeSubTab || defaultSubTab} 
+            onValueChange={onSubTabChange}
+            className="w-full"
+        >
             <TabsList className="grid w-full grid-cols-3 no-print">
                 <TabsTrigger value="summary">Ukesoppsummering</TabsTrigger>
                 <TabsTrigger value="student-report">Elevrapporter</TabsTrigger>
