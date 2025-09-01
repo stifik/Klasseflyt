@@ -102,7 +102,9 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
         submissions: submissions,
         dailyChecks: dailyChecks,
         initialHourlyChecks: hourlyChecks,
+        hourlyChecks: hourlyChecks, // Pass hourlyChecks also for reports
         initialRemarks: remarks,
+        remarks: remarks, // Pass remarks also for reports
         seatingChart: seatingChart,
         tests,
         testResults,
@@ -213,7 +215,7 @@ const AppViewContent: FC<AppViewProps> = ({
       <Tabs 
           value={currentTabToRender}
           onValueChange={(value) => {
-            if (onTabChange) onTabChange(value as TabKey);
+            if (onTabChange) onTabChange(value as TabKey | null);
             setInternalActiveSubTab(null);
           }}
           className="w-full"

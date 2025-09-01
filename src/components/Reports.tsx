@@ -659,7 +659,7 @@ const StudentReport = (props: ReportsProps) => {
 
 
 export default function Reports(props: ReportsProps) {
-    const { activeSubTab, onSubTabChange } = props;
+    const { activeSubTab, onSubTabChange, hourlyChecks, remarks, ...rest } = props;
     const defaultSubTab = "summary";
 
     if (!props.learningGoals || !props.goalAchievements) {
@@ -689,7 +689,7 @@ export default function Reports(props: ReportsProps) {
                 <StudentReport {...props} />
             </TabsContent>
             <TabsContent value="analysis">
-                <RemarkAnalysis students={props.students} initialRemarks={props.remarks || []} />
+                <RemarkAnalysis students={props.students} initialRemarks={remarks || []} />
             </TabsContent>
         </Tabs>
     )
