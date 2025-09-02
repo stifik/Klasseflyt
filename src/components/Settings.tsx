@@ -388,7 +388,7 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
 
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-       <div className="lg:col-span-1">
+       <div className="lg:col-span-1 space-y-6">
              <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center"><LayoutDashboard className="mr-2" />Dashbord & Faner</CardTitle>
@@ -435,113 +435,7 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                     </Accordion>
                 </CardContent>
             </Card>
-        </div>
-
-        <div className="lg:col-span-1 space-y-6">
             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center"><Clock className="mr-2" />Timeplan</CardTitle>
-                    <CardDescription>Legg inn start- og sluttid for timene. Dette brukes til å auto-velge time i anmerkningsfanen.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    {localSettings.schedule.map(({ period, startTime, endTime }) => (
-                        <div key={period} className="grid items-center grid-cols-3 gap-2 p-2 border rounded-lg">
-                            <Label htmlFor={`period-${period}`} className="font-medium">Time {period}</Label>
-                            <Input
-                                id={`period-${period}-start`}
-                                type="text"
-                                value={startTime}
-                                onChange={(e) => handleScheduleChange(period, 'startTime', e.target.value)}
-                                placeholder="TT:MM"
-                                pattern="[0-9]{2}:[0-9]{2}"
-                            />
-                            <Input
-                                id={`period-${period}-end`}
-                                type="text"
-                                value={endTime}
-                                onChange={(e) => handleScheduleChange(period, 'endTime', e.target.value)}
-                                placeholder="TT:MM"
-                                pattern="[0-9]{2}:[0-9]{2}"
-                            />
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center"><MessageSquareQuote className="mr-2" />Innstillinger for Ukesmelding</CardTitle>
-                    <CardDescription>Tilpass innholdet og teksten i den genererte ukesoppsummeringen.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div>
-                        <h4 className="mb-2 font-medium text-sm">Innhold</h4>
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between p-3 border rounded-lg">
-                                <Label htmlFor="report-homework" className="font-medium">Inkluder lekse-status</Label>
-                                <Switch
-                                    id="report-homework"
-                                    checked={localSettings.reportSettings.includeHomework}
-                                    onCheckedChange={(checked) => handleReportSettingChange('includeHomework', checked)}
-                                />
-                            </div>
-                            <div className="flex items-center justify-between p-3 border rounded-lg">
-                                <Label htmlFor="report-ipad" className="font-medium">Inkluder iPad-status</Label>
-                                <Switch
-                                    id="report-ipad"
-                                    checked={localSettings.reportSettings.includeIpad}
-                                    onCheckedChange={(checked) => handleReportSettingChange('includeIpad', checked)}
-                                />
-                            </div>
-                            <div className="flex items-center justify-between p-3 border rounded-lg">
-                                <Label htmlFor="report-remarks" className="font-medium">Inkluder anmerkninger</Label>
-                                <Switch
-                                    id="report-remarks"
-                                    checked={localSettings.reportSettings.includeRemarks}
-                                    onCheckedChange={(checked) => handleReportSettingChange('includeRemarks', checked)}
-                                />
-                            </div>
-                             <div className="flex items-center justify-between p-3 border rounded-lg">
-                                <Label htmlFor="report-tests" className="font-medium">Inkluder prøveresultater</Label>
-                                <Switch
-                                    id="report-tests"
-                                    checked={localSettings.reportSettings.includeTests}
-                                    onCheckedChange={(checked) => handleReportSettingChange('includeTests', checked)}
-                                />
-                            </div>
-                            <div className="flex items-center justify-between p-3 border rounded-lg">
-                                <Label htmlFor="report-positive" className="font-medium">Send ros ved prikkfri uke</Label>
-                                <Switch
-                                    id="report-positive"
-                                    checked={localSettings.reportSettings.includePositiveFeedback}
-                                    onCheckedChange={(checked) => handleReportSettingChange('includePositiveFeedback', checked)}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                    <Separator />
-                    <div>
-                        <h4 className="mb-2 font-medium text-sm">Tekstmal</h4>
-                        <div className="space-y-3">
-                            <div className="space-y-1">
-                                <Label htmlFor="greeting">Hilsen</Label>
-                                <Input id="greeting" value={localSettings.reportSettings.greeting} onChange={(e) => handleReportSettingChange('greeting', e.target.value)} />
-                            </div>
-                            <div className="space-y-1">
-                                <Label htmlFor="closing">Avslutning</Label>
-                                <Input id="closing" value={localSettings.reportSettings.closing} onChange={(e) => handleReportSettingChange('closing', e.target.value)} />
-                            </div>
-                            <div className="space-y-1">
-                                <Label htmlFor="teacherName">Ditt navn (for signatur)</Label>
-                                <Input id="teacherName" value={localSettings.reportSettings.teacherName} onChange={(e) => handleReportSettingChange('teacherName', e.target.value)} />
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-      
-      <div className="lg:col-span-1 space-y-6">
-          <Card>
             <CardHeader>
               <CardTitle className="flex items-center"><NotebookText className="mr-2" />Administrer Innhold</CardTitle>
               <CardDescription>Administrer elever, fag og anmerkningstyper. Klikk for å åpne.</CardDescription>
@@ -733,7 +627,38 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                 </Accordion>
             </CardContent>
           </Card>
-          <Card>
+        </div>
+        <div className="lg:col-span-1 space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center"><Clock className="mr-2" />Timeplan</CardTitle>
+                    <CardDescription>Legg inn start- og sluttid for timene. Dette brukes til å auto-velge time i anmerkningsfanen.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                    {localSettings.schedule.map(({ period, startTime, endTime }) => (
+                        <div key={period} className="grid items-center grid-cols-3 gap-2 p-2 border rounded-lg">
+                            <Label htmlFor={`period-${period}`} className="font-medium">Time {period}</Label>
+                            <Input
+                                id={`period-${period}-start`}
+                                type="text"
+                                value={startTime}
+                                onChange={(e) => handleScheduleChange(period, 'startTime', e.target.value)}
+                                placeholder="TT:MM"
+                                pattern="[0-9]{2}:[0-9]{2}"
+                            />
+                            <Input
+                                id={`period-${period}-end`}
+                                type="text"
+                                value={endTime}
+                                onChange={(e) => handleScheduleChange(period, 'endTime', e.target.value)}
+                                placeholder="TT:MM"
+                                pattern="[0-9]{2}:[0-9]{2}"
+                            />
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
+            <Card>
             <CardHeader>
                 <CardTitle className="flex items-center"><Database className="mr-2" />Database</CardTitle>
                 <CardDescription>Handlinger for å administrere appens lokale data.</CardDescription>
@@ -832,7 +757,80 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                 </div>
             </CardContent>
           </Card>
-      </div>
+        </div>
+        <div className="lg:col-span-1 space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center"><MessageSquareQuote className="mr-2" />Innstillinger for Ukesmelding</CardTitle>
+                    <CardDescription>Tilpass innholdet og teksten i den genererte ukesoppsummeringen.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div>
+                        <h4 className="mb-2 font-medium text-sm">Innhold</h4>
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between p-3 border rounded-lg">
+                                <Label htmlFor="report-homework" className="font-medium">Inkluder lekse-status</Label>
+                                <Switch
+                                    id="report-homework"
+                                    checked={localSettings.reportSettings.includeHomework}
+                                    onCheckedChange={(checked) => handleReportSettingChange('includeHomework', checked)}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between p-3 border rounded-lg">
+                                <Label htmlFor="report-ipad" className="font-medium">Inkluder iPad-status</Label>
+                                <Switch
+                                    id="report-ipad"
+                                    checked={localSettings.reportSettings.includeIpad}
+                                    onCheckedChange={(checked) => handleReportSettingChange('includeIpad', checked)}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between p-3 border rounded-lg">
+                                <Label htmlFor="report-remarks" className="font-medium">Inkluder anmerkninger</Label>
+                                <Switch
+                                    id="report-remarks"
+                                    checked={localSettings.reportSettings.includeRemarks}
+                                    onCheckedChange={(checked) => handleReportSettingChange('includeRemarks', checked)}
+                                />
+                            </div>
+                             <div className="flex items-center justify-between p-3 border rounded-lg">
+                                <Label htmlFor="report-tests" className="font-medium">Inkluder prøveresultater</Label>
+                                <Switch
+                                    id="report-tests"
+                                    checked={localSettings.reportSettings.includeTests}
+                                    onCheckedChange={(checked) => handleReportSettingChange('includeTests', checked)}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between p-3 border rounded-lg">
+                                <Label htmlFor="report-positive" className="font-medium">Send ros ved prikkfri uke</Label>
+                                <Switch
+                                    id="report-positive"
+                                    checked={localSettings.reportSettings.includePositiveFeedback}
+                                    onCheckedChange={(checked) => handleReportSettingChange('includePositiveFeedback', checked)}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <Separator />
+                    <div>
+                        <h4 className="mb-2 font-medium text-sm">Tekstmal</h4>
+                        <div className="space-y-3">
+                            <div className="space-y-1">
+                                <Label htmlFor="greeting">Hilsen</Label>
+                                <Input id="greeting" value={localSettings.reportSettings.greeting} onChange={(e) => handleReportSettingChange('greeting', e.target.value)} />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="closing">Avslutning</Label>
+                                <Input id="closing" value={localSettings.reportSettings.closing} onChange={(e) => handleReportSettingChange('closing', e.target.value)} />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="teacherName">Ditt navn (for signatur)</Label>
+                                <Input id="teacherName" value={localSettings.reportSettings.teacherName} onChange={(e) => handleReportSettingChange('teacherName', e.target.value)} />
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
     </div>
   );
 }
