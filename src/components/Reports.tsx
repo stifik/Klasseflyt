@@ -308,66 +308,72 @@ const Icon = ({ name, className }: { name: string, className?: string }) => {
     return <LucideIcon className={className} />;
 }
 
-const ReportDetails = ({ stat, behaviorTypes }: { stat: ReturnType<typeof useStudentStats>[0], behaviorTypes: BehaviorType[] }) => (
+const ReportDetails = ({ stat, behaviorTypes, reportSettings }: { stat: ReturnType<typeof useStudentStats>[0], behaviorTypes: BehaviorType[], reportSettings: ReportSettings }) => (
     <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
-             <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-                <CardHeader>
-                    <CardTitle className="text-base text-blue-900 dark:text-blue-200">iPad-ansvar</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-blue-800 dark:text-blue-300">
-                    <p>Glemt å lade: <strong>{stat.ipadNotCharged}</strong> gang(er)</p>
-                    <p>Glemt å ta med: <strong>{stat.ipadNotBrought}</strong> gang(er)</p>
-                </CardContent>
-            </Card>
-            <Card className="bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800">
-                <CardHeader>
-                    <CardTitle className="text-base text-teal-900 dark:text-teal-200">Innsats i timen</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-teal-800 dark:text-teal-300 flex flex-col">
-                     {behaviorTypes.map(bt => {
-                        const count = stat.behaviorCounts[bt.id] || 0;
-                        if (count === 0) return null;
-                        return (
-                            <p key={bt.id} className="flex items-center">
-                                <Icon name={bt.icon} className="mr-2 w-4 h-4 text-teal-600" />
-                                <span>{bt.label}: <strong>{count}</strong> gang(er)</span>
-                            </p>
-                        );
-                     })}
-                </CardContent>
-            </Card>
+             {reportSettings.includeIpadInReport && (
+                <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                    <CardHeader>
+                        <CardTitle className="text-base text-blue-900 dark:text-blue-200">iPad-ansvar</CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm text-blue-800 dark:text-blue-300">
+                        <p>Glemt å lade: <strong>{stat.ipadNotCharged}</strong> gang(er)</p>
+                        <p>Glemt å ta med: <strong>{stat.ipadNotBrought}</strong> gang(er)</p>
+                    </CardContent>
+                </Card>
+            )}
+            {reportSettings.includeHourlyCheckInReport && (
+                <Card className="bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800">
+                    <CardHeader>
+                        <CardTitle className="text-base text-teal-900 dark:text-teal-200">Innsats i timen</CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm text-teal-800 dark:text-teal-300 flex flex-col">
+                        {behaviorTypes.map(bt => {
+                            const count = stat.behaviorCounts[bt.id] || 0;
+                            if (count === 0) return null;
+                            return (
+                                <p key={bt.id} className="flex items-center">
+                                    <Icon name={bt.icon} className="mr-2 w-4 h-4 text-teal-600" />
+                                    <span>{bt.label}: <strong>{count}</strong> gang(er)</span>
+                                </p>
+                            );
+                        })}
+                    </CardContent>
+                </Card>
+            )}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-            {stat.statsBySubject.map(subStat => (
-            <Card key={subStat.subjectId}>
-                <CardHeader>
-                    <CardTitle className="text-base">{subStat.subjectName} ({subStat.totalSubmissions})</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                    <StatusBar stats={subStat.statusCounts} total={subStat.totalSubmissions} />
-                    {subStat.delays > 0 && <p className="text-xs text-muted-foreground flex items-center"><Clock className="mr-2 h-3 w-3" />{subStat.delays} forsinkelser</p>}
-                
-                    {subStat.problemSubmissions.length > 0 && (
-                        <div className="pt-2 border-t">
-                            <ul className="pl-1 mt-1 text-sm space-y-1">
-                                {subStat.problemSubmissions.map((c, i) => 
-                                    <li key={i} className="text-xs">
-                                        <strong>Uke {c.week}: </strong> 
-                                        <span> </span>
-                                        {c.status === 'Glemt bok' ? 'Glemt bok' : c.title}
-                                        {c.comment && <p className="text-xs text-muted-foreground pl-2 italic">"{c.comment}"</p>}
-                                    </li>
-                                )}
-                            </ul>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-            ))}
-        </div>
-        {stat.learningGoals.length > 0 && (
+        {reportSettings.includeHomeworkInReport && (
+            <div className="grid gap-4 md:grid-cols-2">
+                {stat.statsBySubject.map(subStat => (
+                <Card key={subStat.subjectId}>
+                    <CardHeader>
+                        <CardTitle className="text-base">{subStat.subjectName} ({subStat.totalSubmissions})</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        <StatusBar stats={subStat.statusCounts} total={subStat.totalSubmissions} />
+                        {subStat.delays > 0 && <p className="text-xs text-muted-foreground flex items-center"><Clock className="mr-2 h-3 w-3" />{subStat.delays} forsinkelser</p>}
+                    
+                        {subStat.problemSubmissions.length > 0 && (
+                            <div className="pt-2 border-t">
+                                <ul className="pl-1 mt-1 text-sm space-y-1">
+                                    {subStat.problemSubmissions.map((c, i) => 
+                                        <li key={i} className="text-xs">
+                                            <strong>Uke {c.week}: </strong> 
+                                            <span> </span>
+                                            {c.status === 'Glemt bok' ? 'Glemt bok' : c.title}
+                                            {c.comment && <p className="text-xs text-muted-foreground pl-2 italic">"{c.comment}"</p>}
+                                        </li>
+                                    )}
+                                </ul>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+                ))}
+            </div>
+        )}
+        {reportSettings.includeLearningGoalsInReport && stat.learningGoals.length > 0 && (
              <Card>
                 <CardHeader>
                     <CardTitle className="text-base flex items-center">
@@ -390,7 +396,7 @@ const ReportDetails = ({ stat, behaviorTypes }: { stat: ReturnType<typeof useStu
                 </CardContent>
             </Card>
         )}
-        {stat.testResults.length > 0 && (
+        {reportSettings.includeTestsInReport && stat.testResults.length > 0 && (
             <Card>
                 <CardHeader>
                     <CardTitle className="text-base flex items-center">
@@ -417,7 +423,7 @@ const ReportDetails = ({ stat, behaviorTypes }: { stat: ReturnType<typeof useStu
                 </CardContent>
             </Card>
         )}
-         {stat.loggedRemarks.length > 0 && (
+         {reportSettings.includeRemarksInReport && stat.loggedRemarks.length > 0 && (
             <Card>
                 <CardHeader>
                     <CardTitle className="text-base flex items-center">
@@ -447,7 +453,7 @@ const ReportDetails = ({ stat, behaviorTypes }: { stat: ReturnType<typeof useStu
 );
 
 
-const FullReportCard = ({ stat, isOpen, isPrintVersion = false, behaviorTypes }: { stat: ReturnType<typeof useStudentStats>[0], isOpen: boolean, isPrintVersion?: boolean, behaviorTypes: BehaviorType[] }) => (
+const FullReportCard = ({ stat, isOpen, isPrintVersion = false, behaviorTypes, reportSettings }: { stat: ReturnType<typeof useStudentStats>[0], isOpen: boolean, isPrintVersion?: boolean, behaviorTypes: BehaviorType[], reportSettings: ReportSettings }) => (
      <Card className={cn(
         "print:shadow-none print:border-none",
         isPrintVersion && "border-b border-t"
@@ -456,7 +462,7 @@ const FullReportCard = ({ stat, isOpen, isPrintVersion = false, behaviorTypes }:
             <div className="flex justify-between items-start">
                 <div>
                     <CardTitle>{stat.studentName}</CardTitle>
-                    <CardDescription>Totaloversikt ({stat.totalHomework} lekser)</CardDescription>
+                    {reportSettings.includeHomeworkInReport && <CardDescription>Totaloversikt ({stat.totalHomework} lekser)</CardDescription>}
                 </div>
                 {!isPrintVersion && (
                     <CollapsibleTrigger asChild>
@@ -469,17 +475,17 @@ const FullReportCard = ({ stat, isOpen, isPrintVersion = false, behaviorTypes }:
             </div>
         </CardHeader>
         <CardContent className="space-y-4">
-            <StatusBar stats={stat.totalStatusCounts} total={stat.totalHomework} />
+            {reportSettings.includeHomeworkInReport && <StatusBar stats={stat.totalStatusCounts} total={stat.totalHomework} />}
             <div className="flex text-sm text-muted-foreground gap-4">
-                {stat.totalDelays > 0 && <p className="flex items-center"><Clock className="mr-2 h-4 w-4" />{stat.totalDelays} forsinkelser totalt</p>}
-                {stat.totalRemarks > 0 && <p className="flex items-center"><MessageSquare className="mr-2 h-4 w-4" />{stat.totalRemarks} anmerkninger/loggføringer</p>}
+                {reportSettings.includeHomeworkInReport && stat.totalDelays > 0 && <p className="flex items-center"><Clock className="mr-2 h-4 w-4" />{stat.totalDelays} forsinkelser totalt</p>}
+                {reportSettings.includeRemarksInReport && stat.totalRemarks > 0 && <p className="flex items-center"><MessageSquare className="mr-2 h-4 w-4" />{stat.totalRemarks} anmerkninger/loggføringer</p>}
             </div>
             
             {isPrintVersion ? (
-                <ReportDetails stat={stat} behaviorTypes={behaviorTypes} />
+                <ReportDetails stat={stat} behaviorTypes={behaviorTypes} reportSettings={reportSettings} />
             ) : (
                 <CollapsibleContent>
-                    <ReportDetails stat={stat} behaviorTypes={behaviorTypes} />
+                    <ReportDetails stat={stat} behaviorTypes={behaviorTypes} reportSettings={reportSettings} />
                 </CollapsibleContent>
             )}
         </CardContent>
@@ -641,7 +647,7 @@ const StudentReport = (props: ReportsProps) => {
             <CardContent className="space-y-4 screen-only">
                 {studentStats.map(stat => (
                     <Collapsible key={stat.studentId} open={openStudents[stat.studentId] || false} onOpenChange={() => toggleStudent(stat.studentId)}>
-                        <FullReportCard stat={stat} isOpen={openStudents[stat.studentId] || false} behaviorTypes={behaviorTypes} />
+                        <FullReportCard stat={stat} isOpen={openStudents[stat.studentId] || false} behaviorTypes={behaviorTypes} reportSettings={props.settings.reportSettings} />
                     </Collapsible>
                 ))}
             </CardContent>
@@ -649,7 +655,7 @@ const StudentReport = (props: ReportsProps) => {
             <div className="hidden print-only printable-area">
                 {studentStats.map(stat => (
                     <div key={stat.studentId} className="page-break">
-                         <FullReportCard stat={stat} isOpen={true} isPrintVersion={true} behaviorTypes={behaviorTypes} />
+                         <FullReportCard stat={stat} isOpen={true} isPrintVersion={true} behaviorTypes={behaviorTypes} reportSettings={props.settings.reportSettings} />
                     </div>
                 ))}
             </div>

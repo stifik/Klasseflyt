@@ -8,7 +8,7 @@ import type { Student, Subject, AppSettings, TabKey, BehaviorType, DashboardTool
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Eye, LayoutDashboard, Group, ShieldCheck, Award, Upload, Download } from "lucide-react";
+import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Eye, LayoutDashboard, Group, ShieldCheck, Award, Upload, Download, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -741,6 +741,69 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
              </Card>
         </AccordionItem>
         
+        <AccordionItem value="student-reports" className="border-b-0">
+             <Card>
+                <CardHeader>
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <CardTitle className="flex items-center"><FileText className="mr-2" />Innstillinger for Elevrapport</CardTitle>
+                    </AccordionTrigger>
+                    <CardDescription>Velg hvilket innhold som skal inkluderes i den detaljerte elevrapporten.</CardDescription>
+                </CardHeader>
+                <AccordionContent asChild>
+                    <CardContent className="space-y-2 pt-4">
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <Label htmlFor="report-s-homework" className="font-medium">Inkluder lekser</Label>
+                            <Switch
+                                id="report-s-homework"
+                                checked={localSettings.reportSettings.includeHomeworkInReport}
+                                onCheckedChange={(checked) => handleReportSettingChange('includeHomeworkInReport', checked)}
+                            />
+                        </div>
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <Label htmlFor="report-s-ipad" className="font-medium">Inkluder iPad-ansvar</Label>
+                            <Switch
+                                id="report-s-ipad"
+                                checked={localSettings.reportSettings.includeIpadInReport}
+                                onCheckedChange={(checked) => handleReportSettingChange('includeIpadInReport', checked)}
+                            />
+                        </div>
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <Label htmlFor="report-s-hourly" className="font-medium">Inkluder innsats i timen</Label>
+                            <Switch
+                                id="report-s-hourly"
+                                checked={localSettings.reportSettings.includeHourlyCheckInReport}
+                                onCheckedChange={(checked) => handleReportSettingChange('includeHourlyCheckInReport', checked)}
+                            />
+                        </div>
+                         <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <Label htmlFor="report-s-remarks" className="font-medium">Inkluder anmerkninger/logg</Label>
+                            <Switch
+                                id="report-s-remarks"
+                                checked={localSettings.reportSettings.includeRemarksInReport}
+                                onCheckedChange={(checked) => handleReportSettingChange('includeRemarksInReport', checked)}
+                            />
+                        </div>
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <Label htmlFor="report-s-tests" className="font-medium">Inkluder prøveresultater</Label>
+                            <Switch
+                                id="report-s-tests"
+                                checked={localSettings.reportSettings.includeTestsInReport}
+                                onCheckedChange={(checked) => handleReportSettingChange('includeTestsInReport', checked)}
+                            />
+                        </div>
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <Label htmlFor="report-s-goals" className="font-medium">Inkluder læringsmål</Label>
+                            <Switch
+                                id="report-s-goals"
+                                checked={localSettings.reportSettings.includeLearningGoalsInReport}
+                                onCheckedChange={(checked) => handleReportSettingChange('includeLearningGoalsInReport', checked)}
+                            />
+                        </div>
+                    </CardContent>
+                </AccordionContent>
+             </Card>
+        </AccordionItem>
+
         <AccordionItem value="database" className="border-b-0">
              <Card>
                 <CardHeader>

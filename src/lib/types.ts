@@ -143,14 +143,23 @@ export type DashboardConfig = {
 };
 
 export type ReportSettings = {
+  // Weekly Summary Settings
   includeHomework: boolean;
   includeIpad: boolean;
   includeRemarks: boolean;
   includePositiveFeedback: boolean;
-  includeTests?: boolean;
+  includeTests: boolean;
   greeting: string;
   closing: string;
   teacherName: string;
+
+  // Student Report Settings
+  includeHomeworkInReport?: boolean;
+  includeIpadInReport?: boolean;
+  includeRemarksInReport?: boolean;
+  includeHourlyCheckInReport?: boolean;
+  includeTestsInReport?: boolean;
+  includeLearningGoalsInReport?: boolean;
 };
 
 export type PeriodTime = {

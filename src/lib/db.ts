@@ -208,6 +208,34 @@ export class MySubClassedDexie extends Dexie {
             tests: '++id, subjectId, date, *linkedGoalIds',
         });
 
+        // Version 14: Add student report settings
+        this.version(14).stores({}).upgrade(async (tx) => {
+            const userSettings = await tx.table('settings').get('userSettings');
+            if (userSettings) {
+                const reportSettings = userSettings.reportSettings || {};
+                if (reportSettings.includeHomeworkInReport === undefined) {
+                    reportSettings.includeHomeworkInReport = true;
+                }
+                if (reportSettings.includeIpadInReport === undefined) {
+                    reportSettings.includeIpadInReport = true;
+                }
+                if (reportSettings.includeRemarksInReport === undefined) {
+                    reportSettings.includeRemarksInReport = true;
+                }
+                if (reportSettings.includeHourlyCheckInReport === undefined) {
+                    reportSettings.includeHourlyCheckInReport = true;
+                }
+                if (reportSettings.includeTestsInReport === undefined) {
+                    reportSettings.includeTestsInReport = true;
+                }
+                if (reportSettings.includeLearningGoalsInReport === undefined) {
+                    reportSettings.includeLearningGoalsInReport = true;
+                }
+                userSettings.reportSettings = reportSettings;
+                await tx.table('settings').put(userSettings);
+            }
+        });
+
 
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
@@ -275,7 +303,13 @@ const defaultSettings: AppSettings = {
   dashboardTools: defaultDashboardTools,
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
-    includePositiveFeedback: false, includeTests: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
+    includePositiveFeedback: false, includeTests: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren",
+    includeHomeworkInReport: true,
+    includeIpadInReport: true,
+    includeRemarksInReport: true,
+    includeHourlyCheckInReport: true,
+    includeTestsInReport: true,
+    includeLearningGoalsInReport: true,
   },
   schedule: [
     { period: 1, startTime: "08:30", endTime: "09:00" },
