@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { useMsal, useIsAuthenticated } from "@azure/msal-react";
-import { loginRequest } from "@/auth/msal";
+import { useMsal, useIsAuthenticated, MsalProvider } from "@azure/msal-react";
+import { loginRequest, msalInstance } from "@/auth/msal";
 import { useRouter } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 
@@ -50,7 +50,7 @@ const MsalLoginButton = () => {
     );
 }
 
-export default function LoginPage() {
+function LoginPageContent() {
     const isAuthenticated = useIsAuthenticated();
     const router = useRouter();
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -101,4 +101,12 @@ export default function LoginPage() {
             </Card>
         </div>
     );
+}
+
+export default function LoginPage() {
+    return (
+        <MsalProvider instance={msalInstance}>
+            <LoginPageContent />
+        </MsalProvider>
+    )
 }

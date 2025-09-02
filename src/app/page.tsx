@@ -9,7 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import AppView from "@/components/AppView";
 import Dashboard from "@/components/Dashboard";
-import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import Onboarding from "@/components/Onboarding";
@@ -67,7 +66,6 @@ function Home() {
   const settings = useLiveQuery(() => db.settings.get('userSettings'));
 
   const { toast } = useToast();
-  const { instance } = useMsal();
   
   const currentSettings = settings 
     ? {
