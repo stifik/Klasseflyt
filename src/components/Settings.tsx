@@ -387,450 +387,446 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
   };
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-       <div className="lg:col-span-1 space-y-6">
-             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center"><LayoutDashboard className="mr-2" />Dashbord & Faner</CardTitle>
-                    <CardDescription>Velg hvilke faner og verktøy som skal vises, og dra for å endre rekkefølgen.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Accordion type="multiple" className="w-full">
-                        <AccordionItem value="tabs">
-                            <AccordionTrigger>Hovedfaner</AccordionTrigger>
-                            <AccordionContent className="space-y-2">
-                                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleTabDragEnd}>
-                                    <SortableContext items={localSettings.tabOrder} strategy={verticalListSortingStrategy}>
-                                        {localSettings.tabOrder.map(tabKey => (
-                                            <SortableItem
-                                                key={tabKey}
-                                                id={tabKey}
-                                                label={allTabLabels[tabKey as TabKey] || tabKey}
-                                                isChecked={localSettings.tabs[tabKey as TabKey]}
-                                                onToggle={() => handleTabToggle(tabKey as TabKey)}
-                                            />
-                                        ))}
-                                    </SortableContext>
-                                </DndContext>
-                            </AccordionContent>
-                        </AccordionItem>
-                        <AccordionItem value="dashboard-tools">
-                             <AccordionTrigger>Dashbord-verktøy</AccordionTrigger>
-                             <AccordionContent className="space-y-2">
-                                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDashboardDragEnd}>
-                                    <SortableContext items={localSettings.dashboardTools.map(t => t.key)} strategy={verticalListSortingStrategy}>
-                                        {localSettings.dashboardTools.map((tool) => (
-                                            <SortableItem 
-                                                key={tool.key} 
-                                                id={tool.key} 
-                                                label={allToolLabels[tool.key]} 
-                                                isChecked={tool.visible}
-                                                onToggle={() => handleDashboardToolToggle(tool.key)}
-                                            />
-                                        ))}
-                                    </SortableContext>
-                                </DndContext>
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
-                </CardContent>
-            </Card>
-            <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center"><NotebookText className="mr-2" />Administrer Innhold</CardTitle>
-              <CardDescription>Administrer elever, fag og anmerkningstyper. Klikk for å åpne.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Accordion type="multiple" className="w-full">
-                  <AccordionItem value="students">
-                    <AccordionTrigger>Administrer Elever ({initialStudents?.length || 0})</AccordionTrigger>
-                    <AccordionContent>
-                        <div className="flex gap-2 mb-4">
-                            <Input
-                                value={newStudent}
-                                onChange={(e) => setNewStudent(e.target.value)}
-                                placeholder="Ny elev..."
-                                onKeyDown={(e) => e.key === 'Enter' && handleAddStudent()}
-                            />
-                            <Button onClick={handleAddStudent}><Plus className="mr-2"/> Legg til</Button>
-                        </div>
-                        <ul className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                            {initialStudents?.map((student) => (
-                                <li key={student.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
-                                  <span>{student.name}</span>
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button variant="ghost" size="icon">
-                                        <Trash2 className="w-4 h-4 text-destructive" />
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          Dette vil permanent slette eleven {student.name} og all relatert data. Handlingen kan ikke angres.
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleDeleteStudent(student.id!)}>
-                                          Ja, slett elev
-                                        </AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </li>
-                            ))}
-                        </ul>
-                    </AccordionContent>
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-start">
+      <Card className="lg:col-span-1">
+          <CardHeader>
+              <CardTitle className="flex items-center"><LayoutDashboard className="mr-2" />Dashbord & Faner</CardTitle>
+              <CardDescription>Velg hvilke faner og verktøy som skal vises, og dra for å endre rekkefølgen.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+              <Accordion type="multiple" className="w-full">
+                  <AccordionItem value="tabs">
+                      <AccordionTrigger>Hovedfaner</AccordionTrigger>
+                      <AccordionContent className="space-y-2">
+                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleTabDragEnd}>
+                              <SortableContext items={localSettings.tabOrder} strategy={verticalListSortingStrategy}>
+                                  {localSettings.tabOrder.map(tabKey => (
+                                      <SortableItem
+                                          key={tabKey}
+                                          id={tabKey}
+                                          label={allTabLabels[tabKey as TabKey] || tabKey}
+                                          isChecked={localSettings.tabs[tabKey as TabKey]}
+                                          onToggle={() => handleTabToggle(tabKey as TabKey)}
+                                      />
+                                  ))}
+                              </SortableContext>
+                          </DndContext>
+                      </AccordionContent>
                   </AccordionItem>
-                  <AccordionItem value="subjects">
-                    <AccordionTrigger>Administrer Fag ({initialSubjects?.length || 0})</AccordionTrigger>
-                    <AccordionContent>
-                       <div className="flex gap-2 mb-4">
-                          <Input
-                            value={newSubject}
-                            onChange={(e) => setNewSubject(e.target.value)}
-                            placeholder="Nytt fag..."
-                            onKeyDown={(e) => e.key === 'Enter' && handleAddSubject()}
-                          />
-                          <Button onClick={handleAddSubject}><Plus className="mr-2"/> Legg til</Button>
-                        </div>
-                        <ul className="space-y-2">
-                          {initialSubjects?.map((subject) => (
-                            <li key={subject.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
-                              <span>{subject.name}</span>
-                               <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <Trash2 className="w-4 h-4 text-destructive" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Dette vil permanent slette faget {subject.name}. Handlingen kan ikke angres.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteSubject(subject.id!)}>
-                                      Ja, slett fag
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </li>
-                          ))}
-                        </ul>
-                    </AccordionContent>
+                  <AccordionItem value="dashboard-tools">
+                       <AccordionTrigger>Dashbord-verktøy</AccordionTrigger>
+                       <AccordionContent className="space-y-2">
+                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDashboardDragEnd}>
+                              <SortableContext items={localSettings.dashboardTools.map(t => t.key)} strategy={verticalListSortingStrategy}>
+                                  {localSettings.dashboardTools.map((tool) => (
+                                      <SortableItem 
+                                          key={tool.key} 
+                                          id={tool.key} 
+                                          label={allToolLabels[tool.key]} 
+                                          isChecked={tool.visible}
+                                          onToggle={() => handleDashboardToolToggle(tool.key)}
+                                      />
+                                  ))}
+                              </SortableContext>
+                          </DndContext>
+                      </AccordionContent>
                   </AccordionItem>
-                  <AccordionItem value="remarkTypes">
-                    <AccordionTrigger>Administrer Anmerkningstyper ({(localSettings.remarkTypes || []).length})</AccordionTrigger>
-                    <AccordionContent>
-                        <div className="flex gap-2 mb-4">
-                            <Input
-                                value={newRemarkType}
-                                onChange={(e) => setNewRemarkType(e.target.value)}
-                                placeholder="Ny anmerkningstype..."
-                                onKeyDown={(e) => e.key === 'Enter' && handleAddRemarkType()}
-                            />
-                            <Button onClick={handleAddRemarkType}><Plus className="mr-2"/> Legg til</Button>
-                        </div>
-                        <ul className="space-y-2">
-                            {(localSettings.remarkTypes || []).map((type) => (
-                                <li key={type} className="flex items-center justify-between p-2 rounded-md bg-secondary">
-                                <span>{type}</span>
-                                <Button variant="ghost" size="icon" onClick={() => handleDeleteRemarkType(type)}>
-                                    <Trash2 className="w-4 h-4 text-destructive" />
+              </Accordion>
+          </CardContent>
+      </Card>
+      <Card className="lg:col-span-1">
+      <CardHeader>
+        <CardTitle className="flex items-center"><NotebookText className="mr-2" />Administrer Innhold</CardTitle>
+        <CardDescription>Administrer elever, fag og anmerkningstyper. Klikk for å åpne.</CardDescription>
+      </CardHeader>
+      <CardContent>
+          <Accordion type="multiple" className="w-full">
+            <AccordionItem value="students">
+              <AccordionTrigger>Administrer Elever ({initialStudents?.length || 0})</AccordionTrigger>
+              <AccordionContent>
+                  <div className="flex gap-2 mb-4">
+                      <Input
+                          value={newStudent}
+                          onChange={(e) => setNewStudent(e.target.value)}
+                          placeholder="Ny elev..."
+                          onKeyDown={(e) => e.key === 'Enter' && handleAddStudent()}
+                      />
+                      <Button onClick={handleAddStudent}><Plus className="mr-2"/> Legg til</Button>
+                  </div>
+                  <ul className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                      {initialStudents?.map((student) => (
+                          <li key={student.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
+                            <span>{student.name}</span>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <Trash2 className="w-4 h-4 text-destructive" />
                                 </Button>
-                                </li>
-                            ))}
-                        </ul>
-                    </AccordionContent>
-                  </AccordionItem>
-                   <AccordionItem value="behaviorTypes">
-                    <AccordionTrigger>Administrer Atferdstyper ({(localSettings.behaviorTypes || []).length})</AccordionTrigger>
-                    <AccordionContent>
-                        <div className="p-2 space-y-3 border-b mb-4">
-                            <Input
-                                value={newBehaviorLabel}
-                                onChange={(e) => setNewBehaviorLabel(e.target.value)}
-                                placeholder="Ny atferdstype..."
-                            />
-                            <div className="flex items-center gap-2">
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button variant="outline" className="justify-start">
-                                            <Icon name={newBehaviorIcon} className="w-4 h-4 mr-2" />
-                                            Velg ikon
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-2">
-                                        <div className="grid grid-cols-5 gap-1">
-                                            {availableIcons.map(icon => (
-                                                <Button key={icon} variant={newBehaviorIcon === icon ? "secondary" : "ghost"} size="icon" onClick={() => setNewBehaviorIcon(icon)}>
-                                                    <Icon name={icon} />
-                                                </Button>
-                                            ))}
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
-                                 <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button variant="outline" className="justify-start">
-                                            <div className={cn("w-4 h-4 rounded-full mr-2", colorClasses[newBehaviorColor])} />
-                                            Velg farge
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-2">
-                                        <div className="flex gap-1">
-                                            {availableColors.map(color => (
-                                                <button key={color} onClick={() => setNewBehaviorColor(color)} className={cn("w-6 h-6 rounded-full", colorClasses[color], { 'ring-2 ring-ring ring-offset-2': newBehaviorColor === color })} />
-                                            ))}
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-                             <Button onClick={handleAddBehaviorType} className="w-full"><Plus className="mr-2"/> Legg til</Button>
-                        </div>
-                        <ul className="space-y-2">
-                            {(localSettings.behaviorTypes || []).map((type) => (
-                                <li key={type.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
-                                    <div className="flex items-center gap-2">
-                                        <Icon name={type.icon} className="w-4 h-4" />
-                                        <div className={cn("w-3 h-3 rounded-full", colorClasses[type.color])} />
-                                        <span>{type.label}</span>
-                                    </div>
-                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteBehaviorType(type.id)}>
-                                        <Trash2 className="w-4 h-4 text-destructive" />
-                                    </Button>
-                                </li>
-                            ))}
-                        </ul>
-                    </AccordionContent>
-                  </AccordionItem>
-                   <AccordionItem value="dpia">
-                    <AccordionTrigger>Sikkerhet & Personvern (ROS/DPIA)</AccordionTrigger>
-                    <AccordionContent>
-                      {localSettings.dpiaAnalysis ? (
-                        <DPIA
-                          analysis={localSettings.dpiaAnalysis}
-                          onAnalysisChange={handleAnalysisChange}
-                        />
-                      ) : (
-                        <p>Laster...</p>
-                      )}
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-            </CardContent>
-          </Card>
-        </div>
-        <div className="lg:col-span-1 space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center"><Clock className="mr-2" />Timeplan</CardTitle>
-                    <CardDescription>Legg inn start- og sluttid for timene. Dette brukes til å auto-velge time i anmerkningsfanen.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    {localSettings.schedule.map(({ period, startTime, endTime }) => (
-                        <div key={period} className="grid items-center grid-cols-3 gap-2 p-2 border rounded-lg">
-                            <Label htmlFor={`period-${period}`} className="font-medium">Time {period}</Label>
-                            <Input
-                                id={`period-${period}-start`}
-                                type="text"
-                                value={startTime}
-                                onChange={(e) => handleScheduleChange(period, 'startTime', e.target.value)}
-                                placeholder="TT:MM"
-                                pattern="[0-9]{2}:[0-9]{2}"
-                            />
-                            <Input
-                                id={`period-${period}-end`}
-                                type="text"
-                                value={endTime}
-                                onChange={(e) => handleScheduleChange(period, 'endTime', e.target.value)}
-                                placeholder="TT:MM"
-                                pattern="[0-9]{2}:[0-9]{2}"
-                            />
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-            <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center"><Database className="mr-2" />Database</CardTitle>
-                <CardDescription>Handlinger for å administrere appens lokale data.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div>
-                    <h4 className="font-semibold">Backup og Gjenoppretting</h4>
-                    <p className="mb-2 text-sm text-muted-foreground">
-                        Last ned en backup-fil av all data, eller gjenopprett fra en tidligere backup.
-                    </p>
-                    <div className="flex gap-2">
-                        <Button onClick={handleExport} variant="outline" className="w-full">
-                            <Download className="mr-2" /> Eksporter
-                        </Button>
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="outline" className="w-full">
-                                    <Upload className="mr-2" /> Importer
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
                                 <AlertDialogHeader>
-                                    <AlertDialogTitle><AlertTriangle className="inline-block mr-2 text-yellow-500" /> Overskrive all data?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Dette vil permanent slette all nåværende data i appen og erstatte den med innholdet fra backup-filen. Handlingen kan ikke angres.
-                                    </AlertDialogDescription>
+                                  <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Dette vil permanent slette eleven {student.name} og all relatert data. Handlingen kan ikke angres.
+                                  </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                    <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => fileInputRef.current?.click()}>
-                                        Ja, fortsett
-                                    </AlertDialogAction>
+                                  <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeleteStudent(student.id!)}>
+                                    Ja, slett elev
+                                  </AlertDialogAction>
                                 </AlertDialogFooter>
-                            </AlertDialogContent>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </li>
+                      ))}
+                  </ul>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="subjects">
+              <AccordionTrigger>Administrer Fag ({initialSubjects?.length || 0})</AccordionTrigger>
+              <AccordionContent>
+                 <div className="flex gap-2 mb-4">
+                    <Input
+                      value={newSubject}
+                      onChange={(e) => setNewSubject(e.target.value)}
+                      placeholder="Nytt fag..."
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddSubject()}
+                    />
+                    <Button onClick={handleAddSubject}><Plus className="mr-2"/> Legg til</Button>
+                  </div>
+                  <ul className="space-y-2">
+                    {initialSubjects?.map((subject) => (
+                      <li key={subject.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
+                        <span>{subject.name}</span>
+                         <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Dette vil permanent slette faget {subject.name}. Handlingen kan ikke angres.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteSubject(subject.id!)}>
+                                Ja, slett fag
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
                         </AlertDialog>
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleImport}
-                            className="hidden"
-                            accept=".json"
-                        />
-                    </div>
-                </div>
-                <Separator />
-                <div>
-                    <h4 className="font-semibold">Tøm database for ny start</h4>
-                    <p className="mb-2 text-sm text-muted-foreground">
-                        Dette sletter all eksisterende data (elever, lekser, anmerkninger etc.) slik at du kan starte med blanke ark. Handlingen kan ikke angres.
-                    </p>
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="destructive" disabled={isProcessing}>
-                            {isProcessing ? 'Jobber...' : 'Tøm all data'}
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle><AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                            Dette vil permanent slette all data i appen. Handlingen kan ikke angres.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleClearDatabase}>Ja, slett alt</AlertDialogAction>
-                        </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </div>
-                <Separator />
-                <div>
-                    <h4 className="font-semibold">Fyll med demodata</h4>
-                    <p className="mb-2 text-sm text-muted-foreground">
-                        Dette er for testing. Handlingen sletter først all data, og fyller deretter databasen med et sett med fiktive elever og data.
-                    </p>
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="outline" disabled={isProcessing}>
-                            {isProcessing ? 'Jobber...' : 'Nullstill og fyll med demodata'}
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle><AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                            Dette vil permanent slette all nåværende data og erstatte den med demodata.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleResetDatabase}>Ja, nullstill og fyll på nytt</AlertDialogAction>
-                        </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </div>
-            </CardContent>
+                      </li>
+                    ))}
+                  </ul>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="remarkTypes">
+              <AccordionTrigger>Administrer Anmerkningstyper ({(localSettings.remarkTypes || []).length})</AccordionTrigger>
+              <AccordionContent>
+                  <div className="flex gap-2 mb-4">
+                      <Input
+                          value={newRemarkType}
+                          onChange={(e) => setNewRemarkType(e.target.value)}
+                          placeholder="Ny anmerkningstype..."
+                          onKeyDown={(e) => e.key === 'Enter' && handleAddRemarkType()}
+                      />
+                      <Button onClick={handleAddRemarkType}><Plus className="mr-2"/> Legg til</Button>
+                  </div>
+                  <ul className="space-y-2">
+                      {(localSettings.remarkTypes || []).map((type) => (
+                          <li key={type} className="flex items-center justify-between p-2 rounded-md bg-secondary">
+                          <span>{type}</span>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteRemarkType(type)}>
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                          </li>
+                      ))}
+                  </ul>
+              </AccordionContent>
+            </AccordionItem>
+             <AccordionItem value="behaviorTypes">
+              <AccordionTrigger>Administrer Atferdstyper ({(localSettings.behaviorTypes || []).length})</AccordionTrigger>
+              <AccordionContent>
+                  <div className="p-2 space-y-3 border-b mb-4">
+                      <Input
+                          value={newBehaviorLabel}
+                          onChange={(e) => setNewBehaviorLabel(e.target.value)}
+                          placeholder="Ny atferdstype..."
+                      />
+                      <div className="flex items-center gap-2">
+                          <Popover>
+                              <PopoverTrigger asChild>
+                                  <Button variant="outline" className="justify-start">
+                                      <Icon name={newBehaviorIcon} className="w-4 h-4 mr-2" />
+                                      Velg ikon
+                                  </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-2">
+                                  <div className="grid grid-cols-5 gap-1">
+                                      {availableIcons.map(icon => (
+                                          <Button key={icon} variant={newBehaviorIcon === icon ? "secondary" : "ghost"} size="icon" onClick={() => setNewBehaviorIcon(icon)}>
+                                              <Icon name={icon} />
+                                          </Button>
+                                      ))}
+                                  </div>
+                              </PopoverContent>
+                          </Popover>
+                           <Popover>
+                              <PopoverTrigger asChild>
+                                  <Button variant="outline" className="justify-start">
+                                      <div className={cn("w-4 h-4 rounded-full mr-2", colorClasses[newBehaviorColor])} />
+                                      Velg farge
+                                  </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-2">
+                                  <div className="flex gap-1">
+                                      {availableColors.map(color => (
+                                          <button key={color} onClick={() => setNewBehaviorColor(color)} className={cn("w-6 h-6 rounded-full", colorClasses[color], { 'ring-2 ring-ring ring-offset-2': newBehaviorColor === color })} />
+                                      ))}
+                                  </div>
+                              </PopoverContent>
+                          </Popover>
+                      </div>
+                       <Button onClick={handleAddBehaviorType} className="w-full"><Plus className="mr-2"/> Legg til</Button>
+                  </div>
+                  <ul className="space-y-2">
+                      {(localSettings.behaviorTypes || []).map((type) => (
+                          <li key={type.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
+                              <div className="flex items-center gap-2">
+                                  <Icon name={type.icon} className="w-4 h-4" />
+                                  <div className={cn("w-3 h-3 rounded-full", colorClasses[type.color])} />
+                                  <span>{type.label}</span>
+                              </div>
+                              <Button variant="ghost" size="icon" onClick={() => handleDeleteBehaviorType(type.id)}>
+                                  <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                          </li>
+                      ))}
+                  </ul>
+              </AccordionContent>
+            </AccordionItem>
+             <AccordionItem value="dpia">
+              <AccordionTrigger>Sikkerhet & Personvern (ROS/DPIA)</AccordionTrigger>
+              <AccordionContent>
+                {localSettings.dpiaAnalysis ? (
+                  <DPIA
+                    analysis={localSettings.dpiaAnalysis}
+                    onAnalysisChange={handleAnalysisChange}
+                  />
+                ) : (
+                  <p>Laster...</p>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+      </CardContent>
+    </Card>
+      <div className="lg:col-span-1 space-y-6">
+          <Card>
+              <CardHeader>
+                  <CardTitle className="flex items-center"><Clock className="mr-2" />Timeplan</CardTitle>
+                  <CardDescription>Legg inn start- og sluttid for timene. Dette brukes til å auto-velge time i anmerkningsfanen.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                  {localSettings.schedule.map(({ period, startTime, endTime }) => (
+                      <div key={period} className="grid items-center grid-cols-3 gap-2 p-2 border rounded-lg">
+                          <Label htmlFor={`period-${period}`} className="font-medium">Time {period}</Label>
+                          <Input
+                              id={`period-${period}-start`}
+                              type="text"
+                              value={startTime}
+                              onChange={(e) => handleScheduleChange(period, 'startTime', e.target.value)}
+                              placeholder="TT:MM"
+                              pattern="[0-9]{2}:[0-9]{2}"
+                          />
+                          <Input
+                              id={`period-${period}-end`}
+                              type="text"
+                              value={endTime}
+                              onChange={(e) => handleScheduleChange(period, 'endTime', e.target.value)}
+                              placeholder="TT:MM"
+                              pattern="[0-9]{2}:[0-9]{2}"
+                          />
+                      </div>
+                  ))}
+              </CardContent>
           </Card>
-        </div>
-        <div className="lg:col-span-1 space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center"><MessageSquareQuote className="mr-2" />Innstillinger for Ukesmelding</CardTitle>
-                    <CardDescription>Tilpass innholdet og teksten i den genererte ukesoppsummeringen.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div>
-                        <h4 className="mb-2 font-medium text-sm">Innhold</h4>
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between p-3 border rounded-lg">
-                                <Label htmlFor="report-homework" className="font-medium">Inkluder lekse-status</Label>
-                                <Switch
-                                    id="report-homework"
-                                    checked={localSettings.reportSettings.includeHomework}
-                                    onCheckedChange={(checked) => handleReportSettingChange('includeHomework', checked)}
-                                />
-                            </div>
-                            <div className="flex items-center justify-between p-3 border rounded-lg">
-                                <Label htmlFor="report-ipad" className="font-medium">Inkluder iPad-status</Label>
-                                <Switch
-                                    id="report-ipad"
-                                    checked={localSettings.reportSettings.includeIpad}
-                                    onCheckedChange={(checked) => handleReportSettingChange('includeIpad', checked)}
-                                />
-                            </div>
-                            <div className="flex items-center justify-between p-3 border rounded-lg">
-                                <Label htmlFor="report-remarks" className="font-medium">Inkluder anmerkninger</Label>
-                                <Switch
-                                    id="report-remarks"
-                                    checked={localSettings.reportSettings.includeRemarks}
-                                    onCheckedChange={(checked) => handleReportSettingChange('includeRemarks', checked)}
-                                />
-                            </div>
-                             <div className="flex items-center justify-between p-3 border rounded-lg">
-                                <Label htmlFor="report-tests" className="font-medium">Inkluder prøveresultater</Label>
-                                <Switch
-                                    id="report-tests"
-                                    checked={localSettings.reportSettings.includeTests}
-                                    onCheckedChange={(checked) => handleReportSettingChange('includeTests', checked)}
-                                />
-                            </div>
-                            <div className="flex items-center justify-between p-3 border rounded-lg">
-                                <Label htmlFor="report-positive" className="font-medium">Send ros ved prikkfri uke</Label>
-                                <Switch
-                                    id="report-positive"
-                                    checked={localSettings.reportSettings.includePositiveFeedback}
-                                    onCheckedChange={(checked) => handleReportSettingChange('includePositiveFeedback', checked)}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                    <Separator />
-                    <div>
-                        <h4 className="mb-2 font-medium text-sm">Tekstmal</h4>
-                        <div className="space-y-3">
-                            <div className="space-y-1">
-                                <Label htmlFor="greeting">Hilsen</Label>
-                                <Input id="greeting" value={localSettings.reportSettings.greeting} onChange={(e) => handleReportSettingChange('greeting', e.target.value)} />
-                            </div>
-                            <div className="space-y-1">
-                                <Label htmlFor="closing">Avslutning</Label>
-                                <Input id="closing" value={localSettings.reportSettings.closing} onChange={(e) => handleReportSettingChange('closing', e.target.value)} />
-                            </div>
-                            <div className="space-y-1">
-                                <Label htmlFor="teacherName">Ditt navn (for signatur)</Label>
-                                <Input id="teacherName" value={localSettings.reportSettings.teacherName} onChange={(e) => handleReportSettingChange('teacherName', e.target.value)} />
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+          <Card>
+          <CardHeader>
+              <CardTitle className="flex items-center"><Database className="mr-2" />Database</CardTitle>
+              <CardDescription>Handlinger for å administrere appens lokale data.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+              <div>
+                  <h4 className="font-semibold">Backup og Gjenoppretting</h4>
+                  <p className="mb-2 text-sm text-muted-foreground">
+                      Last ned en backup-fil av all data, eller gjenopprett fra en tidligere backup.
+                  </p>
+                  <div className="flex gap-2">
+                      <Button onClick={handleExport} variant="outline" className="w-full">
+                          <Download className="mr-2" /> Eksporter
+                      </Button>
+                      <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                              <Button variant="outline" className="w-full">
+                                  <Upload className="mr-2" /> Importer
+                              </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                              <AlertDialogHeader>
+                                  <AlertDialogTitle><AlertTriangle className="inline-block mr-2 text-yellow-500" /> Overskrive all data?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                      Dette vil permanent slette all nåværende data i appen og erstatte den med innholdet fra backup-filen. Handlingen kan ikke angres.
+                                  </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                  <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => fileInputRef.current?.click()}>
+                                      Ja, fortsett
+                                  </AlertDialogAction>
+                              </AlertDialogFooter>
+                          </AlertDialogContent>
+                      </AlertDialog>
+                      <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleImport}
+                          className="hidden"
+                          accept=".json"
+                      />
+                  </div>
+              </div>
+              <Separator />
+              <div>
+                  <h4 className="font-semibold">Tøm database for ny start</h4>
+                  <p className="mb-2 text-sm text-muted-foreground">
+                      Dette sletter all eksisterende data (elever, lekser, anmerkninger etc.) slik at du kan starte med blanke ark. Handlingen kan ikke angres.
+                  </p>
+                  <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                          <Button variant="destructive" disabled={isProcessing}>
+                          {isProcessing ? 'Jobber...' : 'Tøm all data'}
+                          </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                      <AlertDialogHeader>
+                          <AlertDialogTitle><AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                          Dette vil permanent slette all data i appen. Handlingen kan ikke angres.
+                          </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleClearDatabase}>Ja, slett alt</AlertDialogAction>
+                      </AlertDialogFooter>
+                      </AlertDialogContent>
+                  </AlertDialog>
+              </div>
+              <Separator />
+              <div>
+                  <h4 className="font-semibold">Fyll med demodata</h4>
+                  <p className="mb-2 text-sm text-muted-foreground">
+                      Dette er for testing. Handlingen sletter først all data, og fyller deretter databasen med et sett med fiktive elever og data.
+                  </p>
+                  <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                          <Button variant="outline" disabled={isProcessing}>
+                          {isProcessing ? 'Jobber...' : 'Nullstill og fyll med demodata'}
+                          </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                      <AlertDialogHeader>
+                          <AlertDialogTitle><AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                          Dette vil permanent slette all nåværende data og erstatte den med demodata.
+                          </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleResetDatabase}>Ja, nullstill og fyll på nytt</AlertDialogAction>
+                      </AlertDialogFooter>
+                      </AlertDialogContent>
+                  </AlertDialog>
+              </div>
+          </CardContent>
+        </Card>
+          <Card>
+              <CardHeader>
+                  <CardTitle className="flex items-center"><MessageSquareQuote className="mr-2" />Innstillinger for Ukesmelding</CardTitle>
+                  <CardDescription>Tilpass innholdet og teksten i den genererte ukesoppsummeringen.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  <div>
+                      <h4 className="mb-2 font-medium text-sm">Innhold</h4>
+                      <div className="space-y-2">
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                              <Label htmlFor="report-homework" className="font-medium">Inkluder lekse-status</Label>
+                              <Switch
+                                  id="report-homework"
+                                  checked={localSettings.reportSettings.includeHomework}
+                                  onCheckedChange={(checked) => handleReportSettingChange('includeHomework', checked)}
+                              />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                              <Label htmlFor="report-ipad" className="font-medium">Inkluder iPad-status</Label>
+                              <Switch
+                                  id="report-ipad"
+                                  checked={localSettings.reportSettings.includeIpad}
+                                  onCheckedChange={(checked) => handleReportSettingChange('includeIpad', checked)}
+                              />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                              <Label htmlFor="report-remarks" className="font-medium">Inkluder anmerkninger</Label>
+                              <Switch
+                                  id="report-remarks"
+                                  checked={localSettings.reportSettings.includeRemarks}
+                                  onCheckedChange={(checked) => handleReportSettingChange('includeRemarks', checked)}
+                              />
+                          </div>
+                           <div className="flex items-center justify-between p-3 border rounded-lg">
+                              <Label htmlFor="report-tests" className="font-medium">Inkluder prøveresultater</Label>
+                              <Switch
+                                  id="report-tests"
+                                  checked={localSettings.reportSettings.includeTests}
+                                  onCheckedChange={(checked) => handleReportSettingChange('includeTests', checked)}
+                              />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                              <Label htmlFor="report-positive" className="font-medium">Send ros ved prikkfri uke</Label>
+                              <Switch
+                                  id="report-positive"
+                                  checked={localSettings.reportSettings.includePositiveFeedback}
+                                  onCheckedChange={(checked) => handleReportSettingChange('includePositiveFeedback', checked)}
+                              />
+                          </div>
+                      </div>
+                  </div>
+                  <Separator />
+                  <div>
+                      <h4 className="mb-2 font-medium text-sm">Tekstmal</h4>
+                      <div className="space-y-3">
+                          <div className="space-y-1">
+                              <Label htmlFor="greeting">Hilsen</Label>
+                              <Input id="greeting" value={localSettings.reportSettings.greeting} onChange={(e) => handleReportSettingChange('greeting', e.target.value)} />
+                          </div>
+                          <div className="space-y-1">
+                              <Label htmlFor="closing">Avslutning</Label>
+                              <Input id="closing" value={localSettings.reportSettings.closing} onChange={(e) => handleReportSettingChange('closing', e.target.value)} />
+                          </div>
+                          <div className="space-y-1">
+                              <Label htmlFor="teacherName">Ditt navn (for signatur)</Label>
+                              <Input id="teacherName" value={localSettings.reportSettings.teacherName} onChange={(e) => handleReportSettingChange('teacherName', e.target.value)} />
+                          </div>
+                      </div>
+                  </div>
+              </CardContent>
+          </Card>
+      </div>
     </div>
   );
 }
