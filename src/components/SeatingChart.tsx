@@ -49,12 +49,15 @@ const DraggableStudent = ({ studentName, id }: DeskProps) => {
   });
   const style = { transform: CSS.Translate.toString(transform) };
   if (!studentName) return null;
+
+  const formattedName = studentName.replace(/ /g, '\n');
+
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={cn(
         "flex items-center justify-center w-full h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1",
         isDragging && 'opacity-50'
     )}>
-      <p className="text-xs font-medium whitespace-normal break-all">{studentName}</p>
+      <p className="text-xs font-medium whitespace-pre-line">{formattedName}</p>
     </div>
   );
 };
@@ -443,12 +446,14 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 
         const updatedLayout = { ...activeLayout, lockedDesks: newLockedDesks };
         
-        const layoutIndex = layouts.findIndex(l => l.id === activeLayout.id);
-        if (layoutIndex !== -1) {
-            const newLayouts = [...layouts];
-            newLayouts[layoutIndex] = updatedLayout;
-            onLayoutsChange(newLayouts);
-        }
+        db.seatingLayouts.update(activeLayout.id!, { lockedDesks: newLockedDesks }).then(() => {
+            const layoutIndex = layouts.findIndex(l => l.id === activeLayout.id);
+            if (layoutIndex !== -1) {
+                const newLayouts = [...layouts];
+                newLayouts[layoutIndex] = updatedLayout;
+                onLayoutsChange(newLayouts);
+            }
+        });
     };
 
 
@@ -570,9 +575,10 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                             
                             {!isGenerating && activeLayout && (
                                 <ScrollArea className="w-full whitespace-nowrap rounded-md border">
-                                    <div className="p-4" style={{minWidth: `${activeLayout.cols * 6}rem`}}>
+                                    <div className="p-4">
                                         <div className="grid gap-2 w-full" style={{ 
                                             gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))`,
+                                            minWidth: `${activeLayout.cols * 6}rem`
                                         }}>
                                             {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
                                                 <React.Fragment key={rowIndex}>
@@ -640,5 +646,6 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 }
 
     
+
 
 
