@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import type { Student, SeatingChartRecord, SeatingLayout, AppSettings } from "@/lib/types";
+import type { Student, SeatingChartRecord, SeatingLayout, AppSettings, PlacementRule, AvoidPair } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -19,8 +19,7 @@ import { Switch } from "./ui/switch";
 
 
 type SeatingChartData = (string[] | null)[][];
-type AvoidPair = [string, string];
-type PlacementRule = { studentName: string; placement: 'front' | 'back' };
+
 
 interface SeatingChartProps {
   students: Student[];
@@ -104,10 +103,9 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
   const [localSeatingChart, setLocalSeatingChart] = useState<SeatingChartData | null>(seatingChart);
   const [unplacedStudents, setUnplacedStudents] = useState<string[]>([]);
   
-  const [avoidPairs, setAvoidPairs] = useState<AvoidPair[]>([]);
-  const [placementRules, setPlacementRules] = useState<PlacementRule[]>([]);
+  const avoidPairs = appSettings.seatingChartRules?.avoidPairs || [];
+  const placementRules = appSettings.seatingChartRules?.placementRules || [];
   
-  const [avoidSameNeighbors, setAvoidSameNeighbors] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -131,12 +129,22 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     setLocalSeatingChart(seatingChart);
     setUnplacedStudents(newUnplaced);
   }, [seatingChart, students]);
+  
+  const handleRuleChange = (newRules: { avoidPairs?: AvoidPair[], placementRules?: PlacementRule[], avoidSameNeighbors?: boolean }) => {
+      onAppSettingsChange({
+          ...appSettings,
+          seatingChartRules: {
+              ...(appSettings.seatingChartRules || { avoidPairs: [], placementRules: [], avoidSameNeighbors: true }),
+              ...newRules
+          }
+      });
+  }
 
   const handleAddAvoidPair = () => {
     if (selectedStudent1 && selectedStudent2 && selectedStudent1 !== selectedStudent2) {
       const newPair: AvoidPair = [selectedStudent1, selectedStudent2].sort() as AvoidPair;
       if (!avoidPairs.some(p => p[0] === newPair[0] && p[1] === newPair[1])) {
-        setAvoidPairs([...avoidPairs, newPair]);
+        handleRuleChange({ avoidPairs: [...avoidPairs, newPair] });
       }
       setSelectedStudent1("");
       setSelectedStudent2("");
@@ -144,19 +152,21 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
   };
 
   const handleRemoveAvoidPair = (pairToRemove: AvoidPair) => {
-    setAvoidPairs(avoidPairs.filter(p => p[0] !== pairToRemove[0] || p[1] !== pairToRemove[1]));
+    const newAvoidPairs = avoidPairs.filter(p => p[0] !== pairToRemove[0] || p[1] !== pairToRemove[1]);
+    handleRuleChange({ avoidPairs: newAvoidPairs });
   };
 
   const handleAddPlacementRule = () => {
     if (selectedStudentForRule) {
       const newRules = placementRules.filter(r => r.studentName !== selectedStudentForRule);
-      setPlacementRules([...newRules, { studentName: selectedStudentForRule, placement: selectedPlacement }]);
+      handleRuleChange({ placementRules: [...newRules, { studentName: selectedStudentForRule, placement: selectedPlacement }] });
       setSelectedStudentForRule("");
     }
   };
 
   const handleRemovePlacementRule = (studentNameToRemove: string) => {
-    setPlacementRules(placementRules.filter(r => r.studentName !== studentNameToRemove));
+    const newPlacementRules = placementRules.filter(r => r.studentName !== studentNameToRemove);
+    handleRuleChange({ placementRules: newPlacementRules });
   };
 
   const getNeighbors = (r: number, c: number, chart: SeatingChartData): string[] => {
@@ -177,6 +187,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
 
     let attempts = 0;
     const maxAttempts = 50;
+    const avoidSameNeighbors = appSettings.seatingChartRules?.avoidSameNeighbors ?? true;
 
     while (attempts < maxAttempts) {
         let isValid = true;
@@ -187,13 +198,13 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
         const frontStudents = placementRules.filter(r => r.placement === 'front').map(r => r.studentName);
         const backStudents = placementRules.filter(r => r.placement === 'back').map(r => r.studentName);
         const studentsWithRules = new Set([...frontStudents, ...backStudents]);
-        const otherStudents = allStudentNames.filter(name => !studentsWithRules.has(name));
+        let otherStudents = allStudentNames.filter(name => !studentsWithRules.has(name));
 
         // 2. Identify available desks for each placement type
         const frontDesks: {r: number, c: number}[] = [];
         const backDesks: {r: number, c: number}[] = [];
         const middleDesks: {r: number, c: number}[] = [];
-
+        
         for (let r = 0; r < activeLayout.rows; r++) {
             let isFrontRow = activeLayout.layout[r].some(desk => desk) && (r === 0 || !activeLayout.layout[r-1].some(desk => desk));
             let isBackRow = activeLayout.layout[r].some(desk => desk) && (r === activeLayout.rows - 1 || !activeLayout.layout[r+1].some(desk => desk));
@@ -428,7 +439,11 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
             <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-3 border rounded-lg">
                     <Label htmlFor="avoid-neighbors">Unngå tidligere naboer</Label>
-                    <Switch id="avoid-neighbors" checked={avoidSameNeighbors} onCheckedChange={setAvoidSameNeighbors} />
+                    <Switch 
+                      id="avoid-neighbors" 
+                      checked={appSettings.seatingChartRules?.avoidSameNeighbors ?? true} 
+                      onCheckedChange={(checked) => handleRuleChange({ avoidSameNeighbors: checked })}
+                    />
                 </div>
                 <div>
                     <Label>Unngå par</Label>
@@ -565,7 +580,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                                     {unplacedStudents.map(studentName => {
                                         const unplacedId = `unplaced-${studentName}`;
                                         return (
-                                             <div key={unplacedId} className="w-24 h-12">
+                                             <div key={unplacedId} className="w-24 h-16">
                                                 {activeDragId !== unplacedId && <DraggableStudent id={unplacedId} studentName={studentName} />}
                                             </div>
                                         );
@@ -587,4 +602,3 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     </div>
   );
 }
-
