@@ -458,7 +458,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 
 
     return (
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-4">
             <div className="md:col-span-1 space-y-6">
                  <Card>
                     <CardHeader>
@@ -562,7 +562,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                 </Dialog>
             </div>
 
-            <div className="md:col-span-2">
+            <div className="md:col-span-3">
                 <DndContext onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
                     <Card className="min-h-[600px]">
                         <CardHeader>
@@ -575,45 +575,42 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                             {isGenerating && <div className="flex items-center justify-center h-96"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>}
                             
                             {!isGenerating && activeLayout && (
-                                <ScrollArea className="w-full whitespace-nowrap rounded-md border">
-                                    <div className="p-4" style={{ minWidth: `${activeLayout.cols * 7}rem` }}>
-                                        <div className="grid gap-2 w-full" style={{ 
-                                            gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))`,
-                                        }}>
-                                            {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
-                                                <React.Fragment key={rowIndex}>
-                                                {Array.from({ length: activeLayout.cols }).map((_, colIndex) => {
-                                                    const id = `desk-${rowIndex}-${colIndex}`;
-                                                    if (activeLayout.layout[rowIndex]?.[colIndex]) {
-                                                        const studentName = localSeatingChart?.[rowIndex]?.[colIndex]?.[0] || null;
-                                                        const isLocked = lockedDesks.has(`${rowIndex}-${colIndex}`);
-                                                        return (
-                                                            <DroppableDesk key={id} id={id} isOver={overId === id}>
-                                                                {studentName && activeDragId !== id && <DraggableStudent id={id} studentName={studentName} />}
-                                                                {studentName && (
-                                                                    <button 
-                                                                        onClick={() => toggleLock(rowIndex, colIndex)}
-                                                                        className={cn(
-                                                                            "absolute top-1 right-1 p-0.5 rounded-full",
-                                                                            "bg-background/50 hover:bg-background",
-                                                                            {"opacity-100": isLocked, "opacity-20 hover:opacity-100 focus:opacity-100": !isLocked}
-                                                                        )}
-                                                                        aria-label={isLocked ? "Lås opp pult" : "Lås pult"}
-                                                                    >
-                                                                        <Pin className={cn("w-3 h-3 text-gray-500", {"text-primary": isLocked})} />
-                                                                    </button>
-                                                                )}
-                                                            </DroppableDesk>
-                                                        );
-                                                    }
-                                                    return <div key={id} />;
-                                                })}
-                                                </React.Fragment>
-                                            ))}
-                                        </div>
+                                <div className="p-4 border rounded-md">
+                                    <div className="grid gap-2 w-full" style={{ 
+                                        gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))`,
+                                    }}>
+                                        {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
+                                            <React.Fragment key={rowIndex}>
+                                            {Array.from({ length: activeLayout.cols }).map((_, colIndex) => {
+                                                const id = `desk-${rowIndex}-${colIndex}`;
+                                                if (activeLayout.layout[rowIndex]?.[colIndex]) {
+                                                    const studentName = localSeatingChart?.[rowIndex]?.[colIndex]?.[0] || null;
+                                                    const isLocked = lockedDesks.has(`${rowIndex}-${colIndex}`);
+                                                    return (
+                                                        <DroppableDesk key={id} id={id} isOver={overId === id}>
+                                                            {studentName && activeDragId !== id && <DraggableStudent id={id} studentName={studentName} />}
+                                                            {studentName && (
+                                                                <button 
+                                                                    onClick={() => toggleLock(rowIndex, colIndex)}
+                                                                    className={cn(
+                                                                        "absolute top-1 right-1 p-0.5 rounded-full",
+                                                                        "bg-background/50 hover:bg-background",
+                                                                        {"opacity-100": isLocked, "opacity-20 hover:opacity-100 focus:opacity-100": !isLocked}
+                                                                    )}
+                                                                    aria-label={isLocked ? "Lås opp pult" : "Lås pult"}
+                                                                >
+                                                                    <Pin className={cn("w-3 h-3 text-gray-500", {"text-primary": isLocked})} />
+                                                                </button>
+                                                            )}
+                                                        </DroppableDesk>
+                                                    );
+                                                }
+                                                return <div key={id} />;
+                                            })}
+                                            </React.Fragment>
+                                        ))}
                                     </div>
-                                    <ScrollBar orientation="horizontal" />
-                                </ScrollArea>
+                                </div>
                             )}
                              {unplacedStudents.length > 0 && (
                                 <div className="mt-4">
@@ -647,6 +644,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 }
 
     
+
 
 
 
