@@ -119,6 +119,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
   const [newLayoutName, setNewLayoutName] = useState("");
   const [newLayoutRows, setNewLayoutRows] = useState(5);
   const [newLayoutCols, setNewLayoutCols] = useState(6);
+  const [newLayoutGrid, setNewLayoutGrid] = useState<boolean[][]>([]);
 
   const { toast } = useToast();
   
@@ -129,6 +130,10 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     setLocalSeatingChart(seatingChart);
     setUnplacedStudents(newUnplaced);
   }, [seatingChart, students]);
+  
+   useEffect(() => {
+    setNewLayoutGrid(Array(newLayoutRows).fill(null).map(() => Array(newLayoutCols).fill(true)));
+  }, [newLayoutRows, newLayoutCols]);
   
   const handleRuleChange = (newRules: { avoidPairs?: AvoidPair[], placementRules?: PlacementRule[], avoidSameNeighbors?: boolean }) => {
       onAppSettingsChange({
@@ -402,8 +407,8 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
         name: newLayoutName.trim(),
         rows: newLayoutRows,
         cols: newLayoutCols,
-        layout: Array(newLayoutRows).fill(null).map(() => Array(newLayoutCols).fill(true)),
-        seatCount: newLayoutRows * newLayoutCols,
+        layout: newLayoutGrid,
+        seatCount: newLayoutGrid.flat().filter(Boolean).length,
         createdAt: new Date(),
     };
     onLayoutsChange([...layouts, newLayout]);
@@ -417,6 +422,13 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
         onAppSettingsChange({ ...appSettings, selectedSeatingLayoutId: null });
     }
   };
+  
+  const handleLayoutGridClick = (r: number, c: number) => {
+    const newGrid = newLayoutGrid.map(row => [...row]);
+    newGrid[r][c] = !newGrid[r][c];
+    setNewLayoutGrid(newGrid);
+  };
+
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -526,8 +538,21 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                     <Label>Ny Layout</Label>
                     <Input placeholder="Navn på layout" value={newLayoutName} onChange={e => setNewLayoutName(e.target.value)} />
                     <div className="flex gap-2">
-                        <Input type="number" placeholder="Rader" value={newLayoutRows} onChange={e => setNewLayoutRows(Number(e.target.value))} />
-                        <Input type="number" placeholder="Kolonner" value={newLayoutCols} onChange={e => setNewLayoutCols(Number(e.target.value))} />
+                        <Input type="number" placeholder="Rader" value={newLayoutRows} onChange={e => setNewLayoutRows(Math.max(1, Number(e.target.value)))} />
+                        <Input type="number" placeholder="Kolonner" value={newLayoutCols} onChange={e => setNewLayoutCols(Math.max(1, Number(e.target.value)))} />
+                    </div>
+                    <div className="space-y-1">
+                        {newLayoutGrid.map((row, r) => (
+                            <div key={r} className="flex gap-1">
+                                {row.map((isDesk, c) => (
+                                    <button
+                                        key={c}
+                                        onClick={() => handleLayoutGridClick(r, c)}
+                                        className={cn("h-6 flex-1 rounded-sm border", isDesk ? "bg-secondary" : "bg-muted/50 border-dashed")}
+                                    />
+                                ))}
+                            </div>
+                        ))}
                     </div>
                     <Button onClick={handleCreateLayout} className="w-full">
                         <Plus className="mr-2" /> Lag ny
@@ -604,3 +629,4 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     </div>
   );
 }
+
