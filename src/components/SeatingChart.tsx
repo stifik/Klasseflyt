@@ -49,13 +49,18 @@ const DraggableStudent = ({ studentName, id }: DeskProps) => {
   });
   const style = { transform: CSS.Translate.toString(transform) };
   if (!studentName) return null;
+  
+  const nameParts = studentName.split(' ');
+  const displayName = nameParts.length > 1 
+      ? <>{nameParts[0]}<br />{nameParts.slice(1).join(' ')}</>
+      : studentName;
 
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={cn(
-        "flex items-center justify-center w-full h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1",
+        "flex items-center justify-center w-full h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1 whitespace-pre-wrap",
         isDragging && 'opacity-50'
     )}>
-      <p className="text-xs font-medium whitespace-normal">{studentName}</p>
+      <p className="text-xs font-medium">{studentName}</p>
     </div>
   );
 };
@@ -219,18 +224,22 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     const lastChart = history[0] ? JSON.parse(history[0].chartJson) : null;
     const lockedDesks = useMemo(() => new Set(activeLayout?.lockedDesks || []), [activeLayout]);
 
+    const calculateUnplacedStudents = (currentChart: SeatingChartData | null) => {
+        if (currentChart && activeLayout) {
+            const placedStudents = new Set(currentChart.flat().filter(Boolean).flat());
+            const allStudentNames = new Set(students.map(s => s.name));
+            return Array.from(allStudentNames).filter(name => !placedStudents.has(name));
+        } else if (!currentChart && students.length > 0) {
+            return students.map(s => s.name);
+        }
+        return [];
+    };
 
     useEffect(() => {
         setLocalSeatingChart(seatingChart);
-        if (seatingChart && activeLayout) {
-            const placedStudents = new Set(seatingChart.flat().filter(Boolean).flat());
-            const allStudentNames = new Set(students.map(s => s.name));
-            const newUnplaced = Array.from(allStudentNames).filter(name => !placedStudents.has(name));
-            setUnplacedStudents(newUnplaced);
-        } else if (!seatingChart && students.length > 0) {
-            setUnplacedStudents(students.map(s => s.name));
-        }
+        setUnplacedStudents(calculateUnplacedStudents(seatingChart));
     }, [seatingChart, students, activeLayout]);
+
 
     const handleSelectedLayoutChange = (layoutId: string) => {
         onAppSettingsChange({ ...appSettings, selectedSeatingLayoutId: layoutId });
@@ -313,14 +322,13 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     
     const handleGenerateClick = async () => {
         setIsGenerating(true);
-        // Clear local chart briefly to show loader
         setLocalSeatingChart(null);
-        // Timeout to allow UI to update
         setTimeout(() => {
             try {
                 const newChart = generateChartWithLogic();
                 if (newChart) {
                     onSeatingChartChange(newChart, 'generation');
+                    setUnplacedStudents(calculateUnplacedStudents(newChart)); 
                 }
             } catch (error) {
                 console.error(error);
@@ -456,8 +464,8 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 
 
     return (
-        <div className="grid gap-6 md:grid-cols-3">
-            <div className="md:col-span-1 space-y-6">
+        <div className="grid gap-6 md:grid-cols-12">
+            <div className="md:col-span-4 space-y-6">
                  <Card>
                     <CardHeader>
                         <CardTitle>Generer Klassekart</CardTitle>
@@ -560,7 +568,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                 </Dialog>
             </div>
 
-            <div className="md:col-span-2">
+            <div className="md:col-span-8">
                 <DndContext onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
                     <Card className="min-h-[600px]">
                         <CardHeader>
@@ -644,6 +652,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 }
 
     
+
 
 
 
