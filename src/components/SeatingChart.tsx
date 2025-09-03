@@ -346,8 +346,8 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
   };
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
-      <div className="md:col-span-1 space-y-4">
+    <div className="grid gap-6 lg:grid-cols-3">
+      <div className="lg:col-span-1 space-y-4">
         <Card>
             <CardHeader>
                 <CardTitle>Generer Klassekart</CardTitle>
@@ -460,7 +460,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
         </Card>
       </div>
 
-        <div className="md:col-span-1">
+        <div className="lg:col-span-2">
              <DndContext onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
                 <Card className="min-h-[600px]">
                     <CardHeader>
@@ -505,7 +505,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                                     {unplacedStudents.map(studentName => {
                                         const unplacedId = `unplaced-${studentName}`;
                                         return (
-                                             <div key={unplacedId} className="h-12 w-24">
+                                             <div key={unplacedId} className="h-12 w-full">
                                                 <DraggableStudent id={unplacedId} studentName={studentName} />
                                             </div>
                                         );
@@ -527,4 +527,3 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     </div>
   );
 }
-
