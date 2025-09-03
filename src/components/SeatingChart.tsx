@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
@@ -52,7 +50,7 @@ const DraggableStudent = ({ studentName, id }: DeskProps) => {
   
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={cn(
-        "flex items-center justify-center w-full h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1 whitespace-normal break-words",
+        "flex items-center justify-center w-full h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1 whitespace-normal",
         isDragging && 'opacity-50'
     )}>
       <p className="text-xs font-medium">{studentName}</p>
@@ -165,7 +163,7 @@ const LayoutDesigner = ({ onSave, onCancel }: { onSave: (layout: SeatingLayout) 
                         {layout.map((row, r) => row.map((isDesk, c) => (
                             <div
                                 key={`${r}-${c}`}
-                                className={cn("w-full aspect-square rounded cursor-pointer", isDesk ? 'bg-primary' : 'bg-secondary')}
+                                className={cn("w-full h-16 rounded cursor-pointer", isDesk ? 'bg-primary' : 'bg-secondary')}
                                 onMouseDown={() => handleMouseDown(r, c)}
                                 onMouseEnter={() => handleMouseEnter(r, c)}
                             />
@@ -193,6 +191,18 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return newArray;
 };
 
+const calculateUnplacedStudents = (currentChart: SeatingChartData | null, allStudents: Student[]) => {
+    if (currentChart) {
+        const placedStudents = new Set(currentChart.flat().filter(Boolean).flat());
+        const allStudentNames = new Set(allStudents.map(s => s.name));
+        return Array.from(allStudentNames).filter(name => !placedStudents.has(name));
+    } else if (allStudents.length > 0) {
+        return allStudents.map(s => s.name);
+    }
+    return [];
+};
+
+
 // --- Main Component ---
 export default function SeatingChart({ students, seatingChart, onSeatingChartChange, history, appSettings, onLayoutsChange, layouts, activeLayout: propActiveLayout }: SeatingChartProps) {
     const [localSeatingChart, setLocalSeatingChart] = useState<SeatingChartData | null>(seatingChart);
@@ -219,20 +229,10 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     const lastChart = history[0] ? JSON.parse(history[0].chartJson) : null;
     const lockedDesks = useMemo(() => new Set(activeLayout?.lockedDesks || []), [activeLayout]);
 
-    const calculateUnplacedStudents = (currentChart: SeatingChartData | null) => {
-        if (currentChart && activeLayout) {
-            const placedStudents = new Set(currentChart.flat().filter(Boolean).flat());
-            const allStudentNames = new Set(students.map(s => s.name));
-            return Array.from(allStudentNames).filter(name => !placedStudents.has(name));
-        } else if (!currentChart && students.length > 0) {
-            return students.map(s => s.name);
-        }
-        return [];
-    };
 
     useEffect(() => {
         setLocalSeatingChart(seatingChart);
-        setUnplacedStudents(calculateUnplacedStudents(seatingChart));
+        setUnplacedStudents(calculateUnplacedStudents(seatingChart, students));
     }, [seatingChart, students, activeLayout]);
 
 
@@ -323,7 +323,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                 const newChart = generateChartWithLogic();
                 if (newChart) {
                     onSeatingChartChange(newChart, 'generation');
-                    setUnplacedStudents(calculateUnplacedStudents(newChart)); 
+                    setUnplacedStudents(calculateUnplacedStudents(newChart, students)); 
                 }
             } catch (error) {
                 console.error(error);
@@ -472,8 +472,8 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 
 
     return (
-        <div className="grid gap-6 md:grid-cols-12">
-            <div className="md:col-span-4 space-y-6">
+        <div className="grid gap-6 md:grid-cols-3">
+            <div className="md:col-span-1 space-y-6">
                  <Card>
                     <CardHeader>
                         <CardTitle>Generer Klassekart</CardTitle>
@@ -579,7 +579,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                 </Dialog>
             </div>
 
-            <div className="md:col-span-8">
+            <div className="md:col-span-2">
                 <DndContext onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
                     <Card className="min-h-[600px]">
                         <CardHeader>
@@ -629,24 +629,24 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                                     </div>
                                 </div>
                             )}
-                             {unplacedStudents.length > 0 && (
-                                <div className="mt-4">
-                                     <DroppableDesk id="unplaced-area" isOver={overId === 'unplaced-area'}>
-                                        <div className="p-4 w-full h-full overflow-y-auto">
-                                            <h4 className="font-semibold mb-2 text-sm">Uplasserte elever ({unplacedStudents.length})</h4>
-                                            <div className="flex flex-wrap gap-2">
-                                                {unplacedStudents.map(studentName => (
-                                                    <div key={`unplaced-${studentName}`} className="w-24">
-                                                        <div className="h-16">
+                             <div className="mt-4">
+                                <DroppableDesk id="unplaced-area" isOver={overId === 'unplaced-area'}>
+                                    <div className="p-4 w-full h-full overflow-y-auto">
+                                        <h4 className="font-semibold mb-2 text-sm">Uplasserte elever ({unplacedStudents.length})</h4>
+                                        <div className="flex flex-wrap gap-2">
+                                            {unplacedStudents.map(studentName => (
+                                                <div key={`unplaced-${studentName}`} className="w-24">
+                                                    <div className="h-16">
+                                                        {activeDragId !== `unplaced-${studentName}` && (
                                                             <DraggableStudent id={`unplaced-${studentName}`} studentName={studentName} />
-                                                        </div>
+                                                        )}
                                                     </div>
-                                                ))}
-                                            </div>
+                                                </div>
+                                            ))}
                                         </div>
-                                    </DroppableDesk>
-                                </div>
-                            )}
+                                    </div>
+                                </DroppableDesk>
+                            </div>
                         </CardContent>
                     </Card>
                     <DragOverlay>
@@ -661,20 +661,3 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
         </div>
     );
 }
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
