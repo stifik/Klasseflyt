@@ -207,7 +207,6 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
         const backDesks: {r: number, c: number}[] = [];
         const middleDesks: {r: number, c: number}[] = [];
         
-        // Simplified row identification
         for (let r = 0; r < activeLayout.rows; r++) {
             for (let c = 0; c < activeLayout.cols; c++) {
                 if (activeLayout.layout[r][c]) {
@@ -220,8 +219,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
         
         shuffle(frontDesks);
         shuffle(backDesks);
-        shuffle(middleDesks);
-
+        
         // 3. Place students with rules
         frontStudents.forEach(student => {
             const desk = frontDesks.pop();
@@ -569,7 +567,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                                     {unplacedStudents.map(studentName => {
                                         const unplacedId = `unplaced-${studentName}`;
                                         return (
-                                             <div key={unplacedId} className="w-24 h-16">
+                                            <div key={unplacedId} className="w-24 h-12">
                                                 {activeDragId !== unplacedId && <DraggableStudent id={unplacedId} studentName={studentName} />}
                                             </div>
                                         );
@@ -591,3 +589,4 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     </div>
   );
 }
+
