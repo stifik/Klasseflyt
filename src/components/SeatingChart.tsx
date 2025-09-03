@@ -16,6 +16,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { v4 as uuidv4 } from 'uuid';
 import { Switch } from "./ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 
 
 type SeatingChartData = (string[] | null)[][];
@@ -98,6 +99,89 @@ const calculateUnplacedStudents = (currentChart: SeatingChartData | null, allStu
 };
 
 
+const CreateLayoutDialog = ({ onLayoutCreate }: { onLayoutCreate: (layout: SeatingLayout) => void }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [newLayoutName, setNewLayoutName] = useState("");
+  const [newLayoutRows, setNewLayoutRows] = useState(5);
+  const [newLayoutCols, setNewLayoutCols] = useState(6);
+  const [newLayoutGrid, setNewLayoutGrid] = useState<boolean[][]>([]);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    setNewLayoutGrid(Array(newLayoutRows).fill(null).map(() => Array(newLayoutCols).fill(true)));
+  }, [newLayoutRows, newLayoutCols]);
+
+  const handleLayoutGridClick = (r: number, c: number) => {
+    const newGrid = newLayoutGrid.map(row => [...row]);
+    newGrid[r][c] = !newGrid[r][c];
+    setNewLayoutGrid(newGrid);
+  };
+
+  const handleCreate = () => {
+    if (!newLayoutName.trim()) {
+      toast({ title: "Navn mangler", description: "Layouten må ha et navn.", variant: "destructive"});
+      return;
+    }
+    const newLayout: SeatingLayout = {
+      id: uuidv4(),
+      name: newLayoutName.trim(),
+      rows: newLayoutRows,
+      cols: newLayoutCols,
+      layout: newLayoutGrid,
+      seatCount: newLayoutGrid.flat().filter(Boolean).length,
+      createdAt: new Date(),
+    };
+    onLayoutCreate(newLayout);
+    setIsOpen(false);
+    setNewLayoutName("");
+    setNewLayoutRows(5);
+    setNewLayoutCols(6);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button className="w-full">
+          <Plus className="mr-2" /> Lag ny layout
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Design ny klasserom-layout</DialogTitle>
+          <DialogDescription>
+            Gi layouten et navn, velg rader/kolonner, og klikk for å fjerne/legge til pulter.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Input placeholder="Navn på layout (f.eks. 'Grupperom 1')" value={newLayoutName} onChange={e => setNewLayoutName(e.target.value)} />
+          <div className="flex gap-2">
+            <Input type="number" placeholder="Rader" value={newLayoutRows} onChange={e => setNewLayoutRows(Math.max(1, Number(e.target.value)))} />
+            <Input type="number" placeholder="Kolonner" value={newLayoutCols} onChange={e => setNewLayoutCols(Math.max(1, Number(e.target.value)))} />
+          </div>
+          <div className="space-y-1 p-2 border rounded-md">
+            {newLayoutGrid.map((row, r) => (
+              <div key={r} className="flex gap-1">
+                {row.map((isDesk, c) => (
+                  <button
+                    key={c}
+                    onClick={() => handleLayoutGridClick(r, c)}
+                    className={cn("h-6 flex-1 rounded-sm border", isDesk ? "bg-blue-500 border-blue-600" : "bg-muted/50 border-dashed")}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsOpen(false)}>Avbryt</Button>
+          <Button onClick={handleCreate}>Lagre Layout</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+
 // Main Component
 export default function SeatingChart({ students, seatingChart, activeLayout, onSeatingChartChange, history, appSettings, onAppSettingsChange, layouts, onLayoutsChange }: SeatingChartProps) {
   const [localSeatingChart, setLocalSeatingChart] = useState<SeatingChartData | null>(seatingChart);
@@ -116,11 +200,6 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
   const [selectedStudentForRule, setSelectedStudentForRule] = useState<string>("");
   const [selectedPlacement, setSelectedPlacement] = useState<'front' | 'back'>('front');
 
-  const [newLayoutName, setNewLayoutName] = useState("");
-  const [newLayoutRows, setNewLayoutRows] = useState(5);
-  const [newLayoutCols, setNewLayoutCols] = useState(6);
-  const [newLayoutGrid, setNewLayoutGrid] = useState<boolean[][]>([]);
-
   const { toast } = useToast();
   
   const lastChart = history[0] ? JSON.parse(history[0].chartJson) : null;
@@ -131,9 +210,6 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     setUnplacedStudents(newUnplaced);
   }, [seatingChart, students]);
   
-   useEffect(() => {
-    setNewLayoutGrid(Array(newLayoutRows).fill(null).map(() => Array(newLayoutCols).fill(true)));
-  }, [newLayoutRows, newLayoutCols]);
   
   const handleRuleChange = (newRules: { avoidPairs?: AvoidPair[], placementRules?: PlacementRule[], avoidSameNeighbors?: boolean }) => {
       onAppSettingsChange({
@@ -397,22 +473,8 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
   }, [activeDragId, localSeatingChart]);
 
   // Layout Management
-  const handleCreateLayout = () => {
-    if (!newLayoutName.trim()) {
-        toast({ title: "Navn mangler", description: "Layouten må ha et navn.", variant: "destructive"});
-        return;
-    }
-    const newLayout: SeatingLayout = {
-        id: uuidv4(),
-        name: newLayoutName.trim(),
-        rows: newLayoutRows,
-        cols: newLayoutCols,
-        layout: newLayoutGrid,
-        seatCount: newLayoutGrid.flat().filter(Boolean).length,
-        createdAt: new Date(),
-    };
+  const handleCreateLayout = (newLayout: SeatingLayout) => {
     onLayoutsChange([...layouts, newLayout]);
-    setNewLayoutName("");
   };
 
   const handleDeleteLayout = (id: string) => {
@@ -421,12 +483,6 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     if (appSettings.selectedSeatingLayoutId === id) {
         onAppSettingsChange({ ...appSettings, selectedSeatingLayoutId: null });
     }
-  };
-  
-  const handleLayoutGridClick = (r: number, c: number) => {
-    const newGrid = newLayoutGrid.map(row => [...row]);
-    newGrid[r][c] = !newGrid[r][c];
-    setNewLayoutGrid(newGrid);
   };
 
 
@@ -534,29 +590,8 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                         <Trash2 className="mr-2" /> Slett valgt layout
                     </Button>
                 )}
-                <div className="pt-4 border-t space-y-2">
-                    <Label>Ny Layout</Label>
-                    <Input placeholder="Navn på layout" value={newLayoutName} onChange={e => setNewLayoutName(e.target.value)} />
-                    <div className="flex gap-2">
-                        <Input type="number" placeholder="Rader" value={newLayoutRows} onChange={e => setNewLayoutRows(Math.max(1, Number(e.target.value)))} />
-                        <Input type="number" placeholder="Kolonner" value={newLayoutCols} onChange={e => setNewLayoutCols(Math.max(1, Number(e.target.value)))} />
-                    </div>
-                    <div className="space-y-1">
-                        {newLayoutGrid.map((row, r) => (
-                            <div key={r} className="flex gap-1">
-                                {row.map((isDesk, c) => (
-                                    <button
-                                        key={c}
-                                        onClick={() => handleLayoutGridClick(r, c)}
-                                        className={cn("h-6 flex-1 rounded-sm border", isDesk ? "bg-secondary" : "bg-muted/50 border-dashed")}
-                                    />
-                                ))}
-                            </div>
-                        ))}
-                    </div>
-                    <Button onClick={handleCreateLayout} className="w-full">
-                        <Plus className="mr-2" /> Lag ny
-                    </Button>
+                <div className="pt-4 border-t">
+                    <CreateLayoutDialog onLayoutCreate={handleCreateLayout} />
                 </div>
             </CardContent>
         </Card>
@@ -629,4 +664,5 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     </div>
   );
 }
+
 
