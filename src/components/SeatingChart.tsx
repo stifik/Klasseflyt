@@ -64,7 +64,7 @@ const DroppableDesk = ({ id, children, isOver }: { id: string, children: React.R
         <div
             ref={setNodeRef}
             className={cn(
-                "relative flex items-center justify-center w-full h-16 border rounded-lg transition-colors",
+                "relative flex items-center justify-center h-16 border rounded-lg transition-colors w-full",
                 isOver ? "bg-primary/10" : "bg-transparent",
                 !hasChild ? "border-dashed" : ""
             )}
@@ -194,6 +194,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 export default function SeatingChart({ students, seatingChart, onSeatingChartChange, history, appSettings, onLayoutsChange, layouts }: SeatingChartProps) {
     const [localSeatingChart, setLocalSeatingChart] = useState<SeatingChartData | null>(seatingChart);
     const [unplacedStudents, setUnplacedStudents] = useState<string[]>([]);
+    const [lockedDesks, setLockedDesks] = useState<Set<string>>(new Set());
 
     const [avoidPairs, setAvoidPairs] = useState<AvoidPair[]>([]);
     const [placementRules, setPlacementRules] = useState<PlacementRule[]>([]);
@@ -276,24 +277,31 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     };
 
     const generateChartWithLogic = (): SeatingChartData | null => {
-        if (!activeLayout) {
-            toast({ title: "Ingen layout valgt", variant: "destructive" });
+        if (!activeLayout || !localSeatingChart) {
+            toast({ title: "Ingen layout valgt eller aktivt kart", variant: "destructive" });
             return null;
         }
 
         const { layout, rows, cols } = activeLayout;
         const newChart: SeatingChartData = JSON.parse(JSON.stringify(layout)).map((row: boolean[]) => row.map(isDesk => isDesk ? [] : null));
         
-        const studentsToPlace = students.map(s => s.name);
+        const lockedStudents = new Map<string, string>(); // "rowIndex-colIndex" -> studentName
+        lockedDesks.forEach(deskId => {
+            const [r, c] = deskId.split('-').map(Number);
+            const studentName = localSeatingChart[r]?.[c]?.[0];
+            if (studentName) {
+                lockedStudents.set(deskId, studentName);
+                newChart[r][c] = [studentName];
+            }
+        });
 
-        // ... rest of generation logic ...
-        // Simplified for brevity, assuming full logic is complex and working
+        const studentsToPlace = students.map(s => s.name).filter(name => ![...lockedStudents.values()].includes(name));
         const shuffledStudents = shuffleArray(studentsToPlace);
-        
+
         let studentIndex = 0;
-        for(let r = 0; r < rows; r++) {
-            for(let c = 0; c < cols; c++) {
-                if(newChart[r][c] !== null && studentIndex < shuffledStudents.length) {
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (newChart[r][c]?.length === 0 && studentIndex < shuffledStudents.length) {
                     newChart[r][c] = [shuffledStudents[studentIndex]];
                     studentIndex++;
                 }
@@ -343,44 +351,42 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
         let startRow: number | null = null;
         let startCol: number | null = null;
     
-        // Find active student and their origin
         if (activeId.startsWith('unplaced-')) {
             activeStudent = active.data.current?.studentName;
         } else if (activeId.startsWith('desk-')) {
-            [, startRow, startCol] = activeId.split('-').map(Number);
+            const parts = activeId.split('-');
+            startRow = parseInt(parts[1], 10);
+            startCol = parseInt(parts[2], 10);
             activeStudent = newChart[startRow][startCol]?.[0] || null;
         }
     
         if (!activeStudent) return;
     
-        // Case 1: Dropping a student on the unplaced area
         if (overId === 'unplaced-area') {
-            if (startRow !== null && startCol !== null) { // Came from a desk
-                newChart[startRow][startCol] = []; // Empty the source desk
+            if (startRow !== null && startCol !== null) { 
+                newChart[startRow][startCol] = [];
                 setUnplacedStudents(prev => [...prev, activeStudent!].sort());
                 onSeatingChartChange(newChart, 'drag');
             }
             return;
         }
     
-        // Case 2: Dropping on a desk
         if (overId.startsWith('desk-')) {
-            const [, endRow, endCol] = overId.split('-').map(Number);
+            const parts = overId.split('-');
+            const endRow = parseInt(parts[1], 10);
+            const endCol = parseInt(parts[2], 10);
             
-            // Prevent dropping on an invalid (non-desk) area
             if(newChart[endRow][endCol] === null) return;
 
             const overStudent = newChart[endRow][endCol]?.[0] || null;
     
-            // If dropping on the same desk, do nothing
             if (startRow === endRow && startCol === endCol) return;
     
-            // Place the active student in the new desk
             newChart[endRow][endCol] = [activeStudent];
     
-            if (startRow !== null && startCol !== null) { // Came from another desk (Swap)
+            if (startRow !== null && startCol !== null) { 
                 newChart[startRow][startCol] = overStudent ? [overStudent] : [];
-            } else { // Came from unplaced list
+            } else { 
                 setUnplacedStudents(prev => {
                     const next = prev.filter(s => s !== activeStudent);
                     if (overStudent) {
@@ -422,6 +428,19 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 
         return null;
     }, [activeDragId, localSeatingChart]);
+    
+    const toggleLock = (rowIndex: number, colIndex: number) => {
+        const deskId = `${rowIndex}-${colIndex}`;
+        setLockedDesks(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(deskId)) {
+                newSet.delete(deskId);
+            } else {
+                newSet.add(deskId);
+            }
+            return newSet;
+        });
+    };
 
     return (
         <div className="grid gap-6 md:grid-cols-3">
@@ -534,7 +553,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                         <CardHeader>
                             <CardTitle>{activeLayout?.name || "Klassekart"}</CardTitle>
                             <CardDescription>
-                                {seatingChart ? "Dra og slipp elever for å bytte plass." : "Resultatet av genereringen vil vises her."}
+                                {seatingChart ? "Dra og slipp elever for å bytte plass. Bruk tegnestiften for å låse en elev til en pult." : "Resultatet av genereringen vil vises her."}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -543,19 +562,34 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                             {!isGenerating && activeLayout && (
                                 <ScrollArea className="w-full">
                                     <div className="p-1">
-                                        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))` }}>
+                                        <div className="grid gap-2 w-full" style={{ 
+                                            gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(5rem, 1fr))`,
+                                        }}>
                                             {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
                                                 <React.Fragment key={rowIndex}>
                                                 {Array.from({ length: activeLayout.cols }).map((_, colIndex) => {
                                                     const id = `desk-${rowIndex}-${colIndex}`;
                                                     if (activeLayout.layout[rowIndex]?.[colIndex]) {
                                                         const studentName = localSeatingChart?.[rowIndex]?.[colIndex]?.[0] || null;
+                                                        const isLocked = lockedDesks.has(`${rowIndex}-${colIndex}`);
                                                         return (
-                                                            <div key={id} className="flex-1 min-w-[5rem]">
-                                                                <DroppableDesk id={id} isOver={overId === id}>
-                                                                    {studentName && activeDragId !== id && <DraggableStudent id={id} studentName={studentName} />}
-                                                                </DroppableDesk>
-                                                            </div>
+                                                            <DroppableDesk key={id} id={id} isOver={overId === id}>
+                                                                {studentName && activeDragId !== id && <DraggableStudent id={id} studentName={studentName} />}
+                                                                {studentName && (
+                                                                    <button 
+                                                                        onClick={() => toggleLock(rowIndex, colIndex)}
+                                                                        className={cn(
+                                                                            "absolute top-1 right-1 p-0.5 rounded-full",
+                                                                            "bg-background/50 hover:bg-background",
+                                                                            "opacity-20 hover:opacity-100 focus:opacity-100",
+                                                                            {"opacity-100": isLocked}
+                                                                        )}
+                                                                        aria-label={isLocked ? "Lås opp pult" : "Lås pult"}
+                                                                    >
+                                                                        <Pin className={cn("w-3 h-3 text-gray-500", {"text-primary": isLocked})} />
+                                                                    </button>
+                                                                )}
+                                                            </DroppableDesk>
                                                         );
                                                     }
                                                     return <div key={id} className="h-16" />;
@@ -586,7 +620,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                     </Card>
                     <DragOverlay>
                         {activeDragId && draggedStudentName ? (
-                            <div className="flex items-center justify-center w-24 h-16 text-center bg-secondary cursor-grabbing rounded-lg shadow-lg p-1">
+                            <div className="flex items-center justify-center h-16 text-center bg-secondary cursor-grabbing rounded-lg shadow-lg p-1 w-24">
                                 <p className="text-xs font-medium break-words">{draggedStudentName}</p>
                             </div>
                         ) : null}
@@ -597,3 +631,4 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     );
 }
 
+    
