@@ -45,6 +45,7 @@ const DraggableStudent = ({ studentName, id }: DeskProps) => {
     data: { studentName },
   });
   const style = { transform: CSS.Translate.toString(transform) };
+
   if (!studentName) return null;
   
   return (
@@ -159,7 +160,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     
     let attempts = 0;
     while (attempts < 50) {
-      const shuffledStudents = shuffleArray(students.map(s => s.name));
+      const shuffledStudents = students.map(s => s.name).sort(() => Math.random() - 0.5);
       const newChart: SeatingChartData = Array(activeLayout.rows).fill(null).map(() => Array(activeLayout.cols).fill(null).map(() => []));
       
       let isValid = true;
@@ -192,7 +193,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     }
 
     toast({ title: "Kunne ikke oppfylle alle regler", description: "Genererer et kart uten alle regler.", variant: "destructive" });
-    const finalShuffled = shuffleArray(students.map(s => s.name));
+    const finalShuffled = students.map(s => s.name).sort(() => Math.random() - 0.5);
     const finalChart: SeatingChartData = Array(activeLayout.rows).fill(null).map(() => Array(activeLayout.cols).fill(null).map(() => []));
     let finalIndex = 0;
     for (let r = 0; r < activeLayout.rows; r++) {
@@ -482,13 +483,12 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                                 <div className="p-4 w-full min-h-[10rem] h-full">
                                     <h4 className="font-semibold mb-2 text-sm text-center">Uplasserte elever ({unplacedStudents.length})</h4>
                                     <div className="flex flex-wrap gap-2 justify-center">
-                                        {unplacedStudents.map(studentName => (
-                                            <div key={`unplaced-div-${studentName}`} className="h-16">
-                                                {activeDragId !== `unplaced-${studentName}` && (
-                                                    <DraggableStudent id={`unplaced-${studentName}`} studentName={studentName} />
-                                                )}
-                                            </div>
-                                        ))}
+                                        {unplacedStudents.map(studentName => {
+                                            if (activeDragId === `unplaced-${studentName}`) {
+                                                return <div key={`placeholder-${studentName}`} className="h-16 w-24" />;
+                                            }
+                                            return <DraggableStudent key={`unplaced-${studentName}`} id={`unplaced-${studentName}`} studentName={studentName} />;
+                                        })}
                                     </div>
                                 </div>
                             </DroppableDesk>
