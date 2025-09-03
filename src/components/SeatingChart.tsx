@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Loader2, Users, Shuffle, Plus, X, Trash2, LayoutTemplate, Pin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragStartEvent, DragOverEvent } from "@dnd-kit/core";
+import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -354,47 +354,62 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
         setOverId(null);
         const { active, over } = event;
     
-        if (!over || !localSeatingChart) return;
+        if (!over || !localSeatingChart || !active) return;
     
         const newChart = JSON.parse(JSON.stringify(localSeatingChart));
         const activeId = active.id.toString();
         const overId = over.id.toString();
     
-        const isUnplacedDrag = activeId.startsWith('unplaced-');
-        const studentToMove = isUnplacedDrag ? active.data.current?.studentName : null;
+        let activeStudent: string | null = null;
+        let startRow: number | null = null;
+        let startCol: number | null = null;
     
-        if (isUnplacedDrag) {
-            if (overId.startsWith('desk-')) {
-                const [_, row, col] = overId.split('-').map(Number);
-                const studentAtDesk = newChart[row][col]?.[0];
-    
-                newChart[row][col] = [studentToMove];
-    
-                const newUnplaced = unplacedStudents.filter(s => s !== studentToMove);
-                if (studentAtDesk) {
-                    newUnplaced.push(studentAtDesk);
-                }
-                setUnplacedStudents(newUnplaced);
-                onSeatingChartChange(newChart, 'drag');
-            }
+        // Find active student details
+        if (activeId.startsWith('unplaced-')) {
+            activeStudent = active.data.current?.studentName;
         } else if (activeId.startsWith('desk-')) {
-            const [_, startRow, startCol] = activeId.split('-').map(Number);
-            const activeStudent = newChart[startRow][startCol][0];
+            [ , startRow, startCol] = activeId.split('-').map(Number);
+            activeStudent = newChart[startRow!][startCol!]?.[0] || null;
+        }
     
-            if (overId.startsWith('desk-')) {
-                const [_, endRow, endCol] = overId.split('-').map(Number);
-                const overStudent = newChart[endRow][endCol]?.[0];
+        if (!activeStudent) return;
     
-                // Swap students
-                newChart[startRow][startCol] = overStudent ? [overStudent] : [];
-                newChart[endRow][endCol] = [activeStudent];
-                onSeatingChartChange(newChart, 'drag');
-    
-            } else if (overId === 'unplaced-area') {
+        // Handle drop on unplaced area
+        if (overId === 'unplaced-area') {
+            if (startRow !== null && startCol !== null) { // Came from a desk
                 newChart[startRow][startCol] = [];
-                setUnplacedStudents([...unplacedStudents, activeStudent]);
+                setUnplacedStudents(prev => [...prev, activeStudent!]);
                 onSeatingChartChange(newChart, 'drag');
             }
+            return;
+        }
+    
+        // Handle drop on a desk
+        if (overId.startsWith('desk-')) {
+            const [ , endRow, endCol] = overId.split('-').map(Number);
+            const overStudent = newChart[endRow][endCol]?.[0] || null;
+    
+            // If dropping on the same desk, do nothing
+            if (startRow === endRow && startCol === endCol) return;
+    
+            // Move active student to new desk
+            newChart[endRow][endCol] = [activeStudent];
+    
+            if (startRow !== null && startCol !== null) { // Came from another desk
+                // If the target desk was occupied, move the occupant to the source desk (swap)
+                newChart[startRow][startCol] = overStudent ? [overStudent] : [];
+            } else { // Came from unplaced list
+                // If the target desk was occupied, that student becomes unplaced
+                setUnplacedStudents(prev => {
+                    const next = prev.filter(s => s !== activeStudent);
+                    if (overStudent) {
+                        next.push(overStudent);
+                    }
+                    return next;
+                });
+            }
+    
+            onSeatingChartChange(newChart, 'drag');
         }
     };
 
@@ -543,8 +558,8 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                             
                             {!isGenerating && activeLayout && (
                                 <ScrollArea>
-                                    <div className="pb-4">
-                                        <div className="grid gap-y-2" style={{minWidth: `${activeLayout.cols * 7}rem`}}>
+                                    <div className="pb-4" style={{minWidth: `${activeLayout.cols * 7}rem`}}>
+                                        <div className="grid gap-y-2">
                                             {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
                                                 <div key={rowIndex} className="flex justify-start gap-x-2">
                                                     {Array.from({ length: activeLayout.cols }).map((_, colIndex) => (
@@ -558,7 +573,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                                                                         <DroppableDesk key={id} id={id} studentName={studentName} isOver={overId === id}>
                                                                             {studentName && activeDragId !== id && <DraggableStudent id={id} studentName={studentName} />}
                                                                             {studentName && (
-                                                                                <button 
+                                                                                <button
                                                                                     onClick={() => toggleLock(rowIndex, colIndex)}
                                                                                     className={cn("absolute top-1 right-1 p-0.5 rounded-full bg-background/50 hover:bg-background", isLocked ? "text-primary" : "text-muted-foreground")}
                                                                                     aria-label={isLocked ? "Lås opp pult" : "Lås pult"}
