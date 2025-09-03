@@ -188,25 +188,26 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     let attempts = 0;
     const maxAttempts = 50;
     const avoidSameNeighbors = appSettings.seatingChartRules?.avoidSameNeighbors ?? true;
+    const shuffle = <T,>(arr: T[]): T[] => [...arr].sort(() => Math.random() - 0.5);
 
     while (attempts < maxAttempts) {
         let isValid = true;
         const newChart: SeatingChartData = Array(activeLayout.rows).fill(null).map(() => Array(activeLayout.cols).fill(null).map(() => []));
         
+        // 1. Correctly categorize students
         const allStudentNames = students.map(s => s.name);
-        const shuffle = (arr: any[]) => [...arr].sort(() => Math.random() - 0.5);
+        const frontStudentNames = new Set(placementRules.filter(r => r.placement === 'front').map(r => r.studentName));
+        const backStudentNames = new Set(placementRules.filter(r => r.placement === 'back').map(r => r.studentName));
 
-        // 1. Separate students by placement rules
-        const frontStudents = shuffle(placementRules.filter(r => r.placement === 'front').map(r => r.studentName));
-        const backStudents = shuffle(placementRules.filter(r => r.placement === 'back').map(r => r.studentName));
-        const studentsWithRules = new Set([...frontStudents, ...backStudents]);
-        let otherStudents = shuffle(allStudentNames.filter(name => !studentsWithRules.has(name)));
-
-        // 2. Identify available desks for each placement type
+        const frontStudents = shuffle(allStudentNames.filter(name => frontStudentNames.has(name)));
+        const backStudents = shuffle(allStudentNames.filter(name => backStudentNames.has(name)));
+        const otherStudents = shuffle(allStudentNames.filter(name => !frontStudentNames.has(name) && !backStudentNames.has(name)));
+        
+        // 2. Correctly categorize desks
         const frontDesks: {r: number, c: number}[] = [];
         const backDesks: {r: number, c: number}[] = [];
         const middleDesks: {r: number, c: number}[] = [];
-        
+
         for (let r = 0; r < activeLayout.rows; r++) {
             for (let c = 0; c < activeLayout.cols; c++) {
                 if (activeLayout.layout[r][c]) {
@@ -217,24 +218,23 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
             }
         }
         
-        shuffle(frontDesks);
-        shuffle(backDesks);
-        
+        const shuffledFrontDesks = shuffle(frontDesks);
+        const shuffledBackDesks = shuffle(backDesks);
+
         // 3. Place students with rules
         frontStudents.forEach(student => {
-            const desk = frontDesks.pop();
+            const desk = shuffledFrontDesks.pop();
             if (desk) newChart[desk.r][desk.c] = [student];
-            else otherStudents.push(student);
+            else otherStudents.push(student); // Add back to others if no front desks are available
         });
         backStudents.forEach(student => {
-            const desk = backDesks.pop();
+            const desk = shuffledBackDesks.pop();
             if (desk) newChart[desk.r][desk.c] = [student];
-            else otherStudents.push(student);
+            else otherStudents.push(student); // Add back to others if no back desks are available
         });
-        
+
         // 4. Place remaining students in all remaining available desks
-        let availableDesks = [...frontDesks, ...middleDesks, ...backDesks];
-        shuffle(availableDesks);
+        let availableDesks = shuffle([...shuffledFrontDesks, ...middleDesks, ...shuffledBackDesks]);
         shuffle(otherStudents).forEach(student => {
             const desk = availableDesks.pop();
             if (desk) newChart[desk.r][desk.c] = [student];
@@ -567,7 +567,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                                     {unplacedStudents.map(studentName => {
                                         const unplacedId = `unplaced-${studentName}`;
                                         return (
-                                            <div key={unplacedId} className="w-24 h-12">
+                                            <div key={unplacedId} className="w-full h-12">
                                                 {activeDragId !== unplacedId && <DraggableStudent id={unplacedId} studentName={studentName} />}
                                             </div>
                                         );
