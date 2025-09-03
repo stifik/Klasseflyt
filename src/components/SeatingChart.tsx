@@ -51,7 +51,7 @@ const DraggableStudent = ({ studentName, id }: DeskProps) => {
   
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={cn(
-        "flex items-center justify-center h-full w-24 text-center bg-secondary touch-none cursor-grab rounded-lg p-1",
+        "flex items-center justify-center h-full w-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1",
         isDragging && 'opacity-50'
     )}>
       <p className="text-xs font-medium whitespace-normal">{studentName}</p>
@@ -181,12 +181,13 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     while (attempts < maxAttempts) {
         let isValid = true;
         const newChart: SeatingChartData = Array(activeLayout.rows).fill(null).map(() => Array(activeLayout.cols).fill(null).map(() => []));
-        const allStudentNames = students.map(s => s.name);
         
-        // 1. Separate students with rules from the rest
-        const studentsWithRules = new Set(placementRules.map(r => r.studentName));
-        const studentsToPlace = allStudentNames.filter(name => !studentsWithRules.has(name));
-        let shuffledStudents = studentsToPlace.sort(() => Math.random() - 0.5);
+        // 1. Get all student names and separate those with placement rules
+        const allStudentNames = students.map(s => s.name);
+        const frontStudents = placementRules.filter(r => r.placement === 'front').map(r => r.studentName);
+        const backStudents = placementRules.filter(r => r.placement === 'back').map(r => r.studentName);
+        const studentsWithRules = new Set([...frontStudents, ...backStudents]);
+        const otherStudents = allStudentNames.filter(name => !studentsWithRules.has(name));
 
         // 2. Identify available desks for each placement type
         const frontDesks: {r: number, c: number}[] = [];
@@ -206,38 +207,31 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
             }
         }
         
-        let availableDesks = [...frontDesks, ...middleDesks, ...backDesks];
-        
-        // 3. Place students with rules first
-        const studentsPlacedByRule = new Set<string>();
-        for (const rule of placementRules) {
-            const { studentName, placement } = rule;
-            const targetDesks = placement === 'front' ? frontDesks : backDesks;
-            if (targetDesks.length > 0) {
-                const deskIndex = Math.floor(Math.random() * targetDesks.length);
-                const {r, c} = targetDesks.splice(deskIndex, 1)[0];
-                newChart[r][c] = [studentName];
-                studentsPlacedByRule.add(studentName);
-                availableDesks = availableDesks.filter(d => d.r !== r || d.c !== c);
-            } else {
-                 // Not enough desks, try to place them somewhere
-                if (availableDesks.length > 0) {
-                    const deskIndex = Math.floor(Math.random() * availableDesks.length);
-                    const {r, c} = availableDesks.splice(deskIndex, 1)[0];
-                    newChart[r][c] = [studentName];
-                    studentsPlacedByRule.add(studentName);
-                }
-            }
-        }
+        // Shuffle desks to ensure randomness
+        const shuffle = (arr: any[]) => arr.sort(() => Math.random() - 0.5);
+        shuffle(frontDesks);
+        shuffle(backDesks);
+        shuffle(middleDesks);
 
+        // 3. Place students with rules
+        shuffle(frontStudents).forEach(student => {
+            const desk = frontDesks.pop();
+            if (desk) newChart[desk.r][desk.c] = [student];
+            else otherStudents.push(student); // Add back to pool if no space
+        });
+        shuffle(backStudents).forEach(student => {
+            const desk = backDesks.pop();
+            if (desk) newChart[desk.r][desk.c] = [student];
+            else otherStudents.push(student); // Add back to pool if no space
+        });
+        
         // 4. Place remaining students
-        for (const student of shuffledStudents) {
-            if (availableDesks.length > 0) {
-                const deskIndex = Math.floor(Math.random() * availableDesks.length);
-                const {r, c} = availableDesks.splice(deskIndex, 1)[0];
-                newChart[r][c] = [student];
-            }
-        }
+        let availableDesks = [...frontDesks, ...middleDesks, ...backDesks];
+        shuffle(availableDesks);
+        shuffle(otherStudents).forEach(student => {
+            const desk = availableDesks.pop();
+            if (desk) newChart[desk.r][desk.c] = [student];
+        });
         
         // 5. Validate other rules
         for (let r = 0; r < activeLayout.rows; r++) {
@@ -542,7 +536,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                             <div className="w-full overflow-x-auto">
                                 <div className="p-1 inline-block" style={{ minWidth: '100%' }}>
                                     <div className="grid gap-1 w-full" style={{ 
-                                        gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))`,
+                                        gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(96px, 1fr))`,
                                     }}>
                                         {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
                                             Array.from({ length: activeLayout.cols }).map((_, colIndex) => {
@@ -572,7 +566,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                                         const unplacedId = `unplaced-${studentName}`;
                                         return (
                                              <div key={unplacedId} className="w-24 h-12">
-                                                <DraggableStudent id={unplacedId} studentName={studentName} />
+                                                {activeDragId !== unplacedId && <DraggableStudent id={unplacedId} studentName={studentName} />}
                                             </div>
                                         );
                                     })}
@@ -593,3 +587,4 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     </div>
   );
 }
+
