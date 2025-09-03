@@ -194,7 +194,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
         let isValid = true;
         const newChart: SeatingChartData = Array(activeLayout.rows).fill(null).map(() => Array(activeLayout.cols).fill(null).map(() => []));
         
-        // 1. Correctly categorize students
+        // 1. Categorize students based on rules
         const allStudentNames = students.map(s => s.name);
         const frontStudentNames = new Set(placementRules.filter(r => r.placement === 'front').map(r => r.studentName));
         const backStudentNames = new Set(placementRules.filter(r => r.placement === 'back').map(r => r.studentName));
@@ -203,38 +203,53 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
         const backStudents = shuffle(allStudentNames.filter(name => backStudentNames.has(name)));
         const otherStudents = shuffle(allStudentNames.filter(name => !frontStudentNames.has(name) && !backStudentNames.has(name)));
         
-        // 2. Correctly categorize desks
+        // 2. Robustly categorize desks by finding the actual first and last rows with desks
+        let firstDeskRow = -1;
+        let lastDeskRow = -1;
+
+        for (let r = 0; r < activeLayout.rows; r++) {
+            if (activeLayout.layout[r].some(isDesk => isDesk)) {
+                if (firstDeskRow === -1) {
+                    firstDeskRow = r;
+                }
+                lastDeskRow = r;
+            }
+        }
+        
         const frontDesks: {r: number, c: number}[] = [];
         const backDesks: {r: number, c: number}[] = [];
         const middleDesks: {r: number, c: number}[] = [];
 
-        for (let r = 0; r < activeLayout.rows; r++) {
-            for (let c = 0; c < activeLayout.cols; c++) {
-                if (activeLayout.layout[r][c]) {
-                    if (r === 0) frontDesks.push({ r, c });
-                    else if (r === activeLayout.rows - 1) backDesks.push({ r, c });
-                    else middleDesks.push({ r, c });
+        if (firstDeskRow !== -1 && lastDeskRow !== -1) {
+            for (let r = 0; r < activeLayout.rows; r++) {
+                for (let c = 0; c < activeLayout.cols; c++) {
+                    if (activeLayout.layout[r][c]) {
+                        if (r === firstDeskRow) frontDesks.push({ r, c });
+                        else if (r === lastDeskRow) backDesks.push({ r, c });
+                        else middleDesks.push({ r, c });
+                    }
                 }
             }
         }
-        
+
         const shuffledFrontDesks = shuffle(frontDesks);
         const shuffledBackDesks = shuffle(backDesks);
+        const shuffledMiddleDesks = shuffle(middleDesks);
 
         // 3. Place students with rules
         frontStudents.forEach(student => {
             const desk = shuffledFrontDesks.pop();
             if (desk) newChart[desk.r][desk.c] = [student];
-            else otherStudents.push(student); // Add back to others if no front desks are available
+            else otherStudents.push(student);
         });
         backStudents.forEach(student => {
             const desk = shuffledBackDesks.pop();
             if (desk) newChart[desk.r][desk.c] = [student];
-            else otherStudents.push(student); // Add back to others if no back desks are available
+            else otherStudents.push(student);
         });
 
         // 4. Place remaining students in all remaining available desks
-        let availableDesks = shuffle([...shuffledFrontDesks, ...middleDesks, ...shuffledBackDesks]);
+        let availableDesks = shuffle([...shuffledFrontDesks, ...shuffledMiddleDesks, ...shuffledBackDesks]);
         shuffle(otherStudents).forEach(student => {
             const desk = availableDesks.pop();
             if (desk) newChart[desk.r][desk.c] = [student];
@@ -589,4 +604,3 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     </div>
   );
 }
-
