@@ -50,7 +50,7 @@ const DraggableStudent = ({ studentName, id }: DeskProps) => {
   
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={cn(
-        "flex items-center justify-center h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1 w-full",
+        "flex items-center justify-center h-full w-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1",
         isDragging && 'opacity-50'
     )}>
       <p className="text-xs font-medium whitespace-normal">{studentName}</p>
@@ -482,7 +482,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                             <DroppableDesk id="unplaced-area" isOver={overId === 'unplaced-area'}>
                                 <div className="p-4 w-full min-h-[10rem] h-full">
                                     <h4 className="font-semibold mb-2 pt-2 text-sm text-center">Uplasserte elever ({unplacedStudents.length})</h4>
-                                    <div className="flex flex-wrap gap-2 justify-center">
+                                    <div className="grid grid-cols-4 gap-2">
                                         {unplacedStudents.map(studentName => {
                                             const unplacedId = `unplaced-${studentName}`;
                                             if (activeDragId === unplacedId) {
