@@ -54,7 +54,7 @@ const DraggableStudent = ({ studentName, id }: DeskProps) => {
         "flex items-center justify-center w-full h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1",
         isDragging && 'opacity-50'
     )}>
-      <p className="text-xs font-medium break-words">{studentName}</p>
+      <p className="text-xs font-medium whitespace-normal break-all">{studentName}</p>
     </div>
   );
 };
@@ -231,12 +231,8 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
         }
     }, [seatingChart, students, activeLayout]);
 
-    const onSettingsChange = (newSettings: AppSettings) => {
-        db.settings.put({ id: 'userSettings', ...newSettings });
-    };
-
     const handleSelectedLayoutChange = (layoutId: string) => {
-        onSettingsChange({ ...appSettings, selectedSeatingLayoutId: layoutId });
+        onAppSettingsChange({ ...appSettings, selectedSeatingLayoutId: layoutId });
     };
 
     const handleAddAvoidPair = () => {
@@ -418,6 +414,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
         if (appSettings.selectedSeatingLayoutId === id) {
             handleSelectedLayoutChange('');
         }
+        onLayoutsChange(layouts.filter(l => l.id !== id));
         toast({ title: "Layout slettet", variant: "destructive" });
     };
     
@@ -446,7 +443,6 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 
         const updatedLayout = { ...activeLayout, lockedDesks: newLockedDesks };
         
-        // Find the index of the layout to update
         const layoutIndex = layouts.findIndex(l => l.id === activeLayout.id);
         if (layoutIndex !== -1) {
             const newLayouts = [...layouts];
@@ -459,7 +455,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     return (
         <div className="grid gap-6 md:grid-cols-3">
             <div className="md:col-span-1 space-y-6">
-                <Card>
+                 <Card>
                     <CardHeader>
                         <CardTitle>Generer Klassekart</CardTitle>
                         <CardDescription>Bruk den valgte layouten og reglene til å generere et nytt, tilfeldig klassekart.</CardDescription>
@@ -604,7 +600,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                                                             </DroppableDesk>
                                                         );
                                                     }
-                                                    return <div key={id} className="h-16" />;
+                                                    return <div key={id} />;
                                                 })}
                                                 </React.Fragment>
                                             ))}
@@ -633,7 +629,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                     <DragOverlay>
                         {activeDragId && draggedStudentName ? (
                             <div className="flex items-center justify-center h-16 text-center bg-secondary cursor-grabbing rounded-lg shadow-lg p-1 w-24">
-                                <p className="text-xs font-medium break-words">{draggedStudentName}</p>
+                                <p className="text-xs font-medium whitespace-normal break-all">{draggedStudentName}</p>
                             </div>
                         ) : null}
                     </DragOverlay>
@@ -644,4 +640,5 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 }
 
     
+
 
