@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import type { Student, SeatingChartRecord } from "@/lib/types";
+import type { Student, SeatingChartRecord, SeatingLayout } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { ScrollArea, ScrollBar } from "./ui/scroll-area";
+import { Switch } from "./ui/switch";
 
 type SeatingChartData = (string[] | null)[][];
 type AvoidPair = [string, string];
@@ -24,7 +25,8 @@ type PlacementRule = { studentName: string; placement: 'front' | 'back' };
 interface SeatingChartProps {
   students: Student[];
   seatingChart: SeatingChartData | null;
-  onSeatingChartChange: (chart: SeatingChartData | null) => void;
+  activeLayout: SeatingLayout | null | undefined;
+  onSeatingChartChange: (chart: SeatingChartData | null, source: 'generation' | 'drag' | 'load') => void;
   history: SeatingChartRecord[];
 }
 
@@ -46,7 +48,7 @@ const DraggableStudent = ({ studentName, id }: DeskProps) => {
         "flex items-center justify-center w-full h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1",
         isDragging && 'opacity-50'
     )}>
-      <p className="text-xs font-medium whitespace-normal">{studentName}</p>
+      <p className="text-xs font-medium whitespace-normal">{studentName.replace(/ /g, "\n")}</p>
     </div>
   );
 };
@@ -58,7 +60,7 @@ const DroppableDesk = ({ id, children, isOver }: { id: string, children: React.R
         <div
             ref={setNodeRef}
             className={cn(
-                "relative flex items-center justify-center h-16 border rounded-lg transition-colors w-full",
+                "relative flex items-center justify-center h-16 border rounded-lg transition-colors w-full aspect-square",
                 isOver ? "bg-primary/10" : "bg-transparent",
                 !hasChild ? "border-dashed" : ""
             )}
@@ -89,10 +91,9 @@ const calculateUnplacedStudents = (currentChart: SeatingChartData | null, allStu
     return [];
 };
 
+
 // Main Component
-export default function SeatingChart({ students, seatingChart, onSeatingChartChange, history }: SeatingChartProps) {
-  const [rows, setRows] = useState(6);
-  const [cols, setCols] = useState(8);
+export default function SeatingChart({ students, seatingChart, activeLayout, onSeatingChartChange, history }: SeatingChartProps) {
   const [localSeatingChart, setLocalSeatingChart] = useState<SeatingChartData | null>(seatingChart);
   const [unplacedStudents, setUnplacedStudents] = useState<string[]>([]);
   
@@ -158,18 +159,21 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     }
     return neighbors;
   };
-
+  
   const generateChartWithLogic = (): SeatingChartData => {
+    if (!activeLayout) return [];
+    
     let attempts = 0;
     while (attempts < 50) {
       const shuffledStudents = shuffleArray(students.map(s => s.name));
-      const newChart: SeatingChartData = Array(rows).fill(null).map(() => Array(cols).fill(null).map(() => []));
+      const newChart: SeatingChartData = Array(activeLayout.rows).fill(null).map(() => Array(activeLayout.cols).fill(null).map(() => []));
       
       let isValid = true;
       let studentIndex = 0;
 
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
+      for (let r = 0; r < activeLayout.rows; r++) {
+        for (let c = 0; c < activeLayout.cols; c++) {
+          if (!activeLayout.layout[r][c]) continue; // Skip if it's not a desk
           if (studentIndex >= shuffledStudents.length) break;
           const student = shuffledStudents[studentIndex];
           newChart[r][c] = [student];
@@ -195,11 +199,11 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 
     toast({ title: "Kunne ikke oppfylle alle regler", description: "Genererer et kart uten alle regler.", variant: "destructive" });
     const finalShuffled = shuffleArray(students.map(s => s.name));
-    const finalChart: SeatingChartData = Array(rows).fill(null).map(() => Array(cols).fill(null).map(() => []));
+    const finalChart: SeatingChartData = Array(activeLayout.rows).fill(null).map(() => Array(activeLayout.cols).fill(null).map(() => []));
     let finalIndex = 0;
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        if (finalIndex < finalShuffled.length) {
+    for (let r = 0; r < activeLayout.rows; r++) {
+      for (let c = 0; c < activeLayout.cols; c++) {
+        if (activeLayout.layout[r][c] && finalIndex < finalShuffled.length) {
           finalChart[r][c] = [finalShuffled[finalIndex]];
           finalIndex++;
         }
@@ -213,15 +217,16 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     setLocalSeatingChart(null);
     setTimeout(() => {
         const newChart = generateChartWithLogic();
-        onSeatingChartChange(newChart);
+        onSeatingChartChange(newChart, 'generation');
         setUnplacedStudents(calculateUnplacedStudents(newChart, students));
         setIsGenerating(false);
     }, 50);
   };
 
    const handleClearChart = () => {
-        const emptyChart: SeatingChartData = Array(rows).fill(null).map(() => Array(cols).fill(null).map(() => []));
-        onSeatingChartChange(emptyChart);
+        if (!activeLayout) return;
+        const emptyChart: SeatingChartData = Array(activeLayout.rows).fill(null).map(() => Array(activeLayout.cols).fill(null).map(() => []));
+        onSeatingChartChange(emptyChart, 'generation');
         setUnplacedStudents(students.map(s => s.name).sort());
         toast({ title: "Kart tømt", description: "Alle elever er flyttet til uplassert-listen." });
     };
@@ -249,7 +254,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     let activeStudent: string | null = null;
     let startRow: number | null = null;
     let startCol: number | null = null;
-
+    
     if (activeId.startsWith('unplaced-')) {
         activeStudent = active.data.current?.studentName;
     } else if (activeId.startsWith('desk-')) {
@@ -263,7 +268,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
         if (startRow !== null && startCol !== null) { 
             newChart[startRow][startCol] = [];
             setUnplacedStudents(prev => [...prev, activeStudent!].sort());
-            onSeatingChartChange(newChart);
+            onSeatingChartChange(newChart, 'drag');
         }
         return;
     }
@@ -285,7 +290,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                 return next.sort();
             });
         }
-        onSeatingChartChange(newChart);
+        onSeatingChartChange(newChart, 'drag');
     }
   };
   
@@ -309,17 +314,11 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                     <CardTitle>Generer Klassekart</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-2">
-                        <Label htmlFor="rows">Rader</Label>
-                        <Input id="rows" type="number" value={rows} onChange={e => setRows(parseInt(e.target.value))} />
-                        <Label htmlFor="cols">Kolonner</Label>
-                        <Input id="cols" type="number" value={cols} onChange={e => setCols(parseInt(e.target.value))} />
-                    </div>
-                    <Button onClick={handleGenerateClick} disabled={isGenerating} className="w-full">
+                    <Button onClick={handleGenerateClick} disabled={isGenerating || !activeLayout} className="w-full">
                         {isGenerating ? <Loader2 className="mr-2 animate-spin" /> : <Shuffle className="mr-2" />}
                         {seatingChart ? 'Generer nytt' : 'Generer'}
                     </Button>
-                    <Button onClick={handleClearChart} disabled={!seatingChart} variant="outline" className="w-full">
+                    <Button onClick={handleClearChart} disabled={!seatingChart || !activeLayout} variant="outline" className="w-full">
                        Tøm kart
                     </Button>
                 </CardContent>
@@ -372,31 +371,31 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                     <CardContent>
                         {isGenerating && <div className="flex items-center justify-center h-96"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>}
                         
-                        {!isGenerating && localSeatingChart && (
-                             <ScrollArea className="w-full whitespace-nowrap">
-                                <div className="p-4 border rounded-md inline-block" style={{minWidth: '100%'}}>
-                                    <div className="grid gap-1 w-full" style={{ 
-                                        gridTemplateColumns: `repeat(${cols}, minmax(6rem, 1fr))`,
-                                    }}>
-                                        {Array.from({ length: rows }).map((_, rowIndex) => (
-                                            Array.from({ length: cols }).map((_, colIndex) => {
-                                                const id = `desk-${rowIndex}-${colIndex}`;
-                                                const studentName = localSeatingChart[rowIndex]?.[colIndex]?.[0] || null;
-                                                return (
-                                                    <DroppableDesk key={id} id={id} isOver={overId === id}>
-                                                        {studentName && activeDragId !== id && <DraggableStudent id={id} studentName={studentName} />}
-                                                    </DroppableDesk>
-                                                );
-                                            })
-                                        ))}
-                                    </div>
+                        {!isGenerating && localSeatingChart && activeLayout && (
+                             <div className="p-4 border rounded-md">
+                                <div className="grid gap-1 w-full" style={{ 
+                                    gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))`,
+                                }}>
+                                    {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
+                                        Array.from({ length: activeLayout.cols }).map((_, colIndex) => {
+                                            if (!activeLayout.layout[rowIndex]?.[colIndex]) {
+                                                return <div key={`${rowIndex}-${colIndex}`} className="w-full h-16" />;
+                                            }
+                                            const id = `desk-${rowIndex}-${colIndex}`;
+                                            const studentName = localSeatingChart[rowIndex]?.[colIndex]?.[0] || null;
+                                            return (
+                                                <DroppableDesk key={id} id={id} isOver={overId === id}>
+                                                    {studentName && activeDragId !== id && <DraggableStudent id={id} studentName={studentName} />}
+                                                </DroppableDesk>
+                                            );
+                                        })
+                                    ))}
                                 </div>
-                                <ScrollBar orientation="horizontal" />
-                            </ScrollArea>
+                            </div>
                         )}
                          <div className="mt-4">
                             <DroppableDesk id="unplaced-area" isOver={overId === 'unplaced-area'}>
-                                <div className="p-4 w-full h-full overflow-y-auto">
+                                <div className="p-4 w-full min-h-[10rem] h-full overflow-y-auto">
                                     <h4 className="font-semibold mb-2 text-sm">Uplasserte elever ({unplacedStudents.length})</h4>
                                     <div className="flex flex-wrap gap-2">
                                         {unplacedStudents.map(studentName => (
@@ -426,3 +425,5 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     </div>
   );
 }
+
+    
