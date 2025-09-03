@@ -48,7 +48,7 @@ const DraggableStudent = ({ studentName, id }: DeskProps) => {
         "flex items-center justify-center w-full h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1",
         isDragging && 'opacity-50'
     )}>
-      <p className="text-xs font-medium whitespace-normal">{studentName.replace(/ /g, "\n")}</p>
+      <p className="text-xs font-medium whitespace-normal">{studentName}</p>
     </div>
   );
 };
@@ -60,7 +60,7 @@ const DroppableDesk = ({ id, children, isOver }: { id: string, children: React.R
         <div
             ref={setNodeRef}
             className={cn(
-                "relative flex items-center justify-center h-16 border rounded-lg transition-colors w-full aspect-square",
+                "relative flex items-center justify-center border rounded-lg transition-colors w-full h-16",
                 isOver ? "bg-primary/10" : "bg-transparent",
                 !hasChild ? "border-dashed" : ""
             )}
@@ -256,7 +256,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     let startCol: number | null = null;
     
     if (activeId.startsWith('unplaced-')) {
-        activeStudent = active.data.current?.studentName;
+        activeStudent = activeId.substring('unplaced-'.length);
     } else if (activeId.startsWith('desk-')) {
         [ , startRow, startCol ] = activeId.split('-').map(Number);
         activeStudent = newChart[startRow][startCol]?.[0] || null;
@@ -399,7 +399,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                                     <h4 className="font-semibold mb-2 text-sm">Uplasserte elever ({unplacedStudents.length})</h4>
                                     <div className="flex flex-wrap gap-2">
                                         {unplacedStudents.map(studentName => (
-                                            <div key={`unplaced-${studentName}`} className="w-24">
+                                            <div key={`unplaced-div-${studentName}`} className="w-24">
                                                 <div className="h-16">
                                                    {activeDragId !== `unplaced-${studentName}` && (
                                                       <DraggableStudent id={`unplaced-${studentName}`} studentName={studentName} />
