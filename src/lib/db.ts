@@ -236,6 +236,11 @@ export class MySubClassedDexie extends Dexie {
             }
         });
 
+        // Version 15: Add lockedDesks to seatingLayouts
+        this.version(15).stores({
+            seatingLayouts: '++id, name, *lockedDesks'
+        });
+
 
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });

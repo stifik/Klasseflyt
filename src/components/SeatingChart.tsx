@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
@@ -27,6 +28,7 @@ type PlacementRule = { studentName: string; placement: 'front' | 'back' };
 interface SeatingChartProps {
   students: Student[];
   seatingChart: SeatingChartData | null;
+  activeLayout: SeatingLayout | null | undefined;
   onSeatingChartChange: (chart: SeatingChartData | null, source: 'generation' | 'drag' | 'load') => void;
   history: SeatingChartRecord[];
   appSettings: AppSettings;
@@ -191,11 +193,10 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 };
 
 // --- Main Component ---
-export default function SeatingChart({ students, seatingChart, onSeatingChartChange, history, appSettings, onLayoutsChange, layouts }: SeatingChartProps) {
+export default function SeatingChart({ students, seatingChart, onSeatingChartChange, history, appSettings, onLayoutsChange, layouts, activeLayout: propActiveLayout }: SeatingChartProps) {
     const [localSeatingChart, setLocalSeatingChart] = useState<SeatingChartData | null>(seatingChart);
     const [unplacedStudents, setUnplacedStudents] = useState<string[]>([]);
-    const [lockedDesks, setLockedDesks] = useState<Set<string>>(new Set());
-
+    
     const [avoidPairs, setAvoidPairs] = useState<AvoidPair[]>([]);
     const [placementRules, setPlacementRules] = useState<PlacementRule[]>([]);
     
@@ -215,6 +216,8 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     
     const activeLayout = useMemo(() => layouts.find(l => l.id === appSettings.selectedSeatingLayoutId), [layouts, appSettings.selectedSeatingLayoutId]);
     const lastChart = history[0] ? JSON.parse(history[0].chartJson) : null;
+    const lockedDesks = useMemo(() => new Set(activeLayout?.lockedDesks || []), [activeLayout]);
+
 
     useEffect(() => {
         setLocalSeatingChart(seatingChart);
@@ -343,29 +346,28 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
         setActiveDragId(null);
         setOverId(null);
         const { active, over } = event;
-    
+
         if (!over || !localSeatingChart) return;
-    
+        if (active.id === over.id) return;
+
         const newChart = JSON.parse(JSON.stringify(localSeatingChart));
         const activeId = active.id.toString();
         const overId = over.id.toString();
-    
+
         let activeStudent: string | null = null;
         let startRow: number | null = null;
         let startCol: number | null = null;
-    
+
         // Find where the active student is coming from
         if (activeId.startsWith('unplaced-')) {
             activeStudent = active.data.current?.studentName;
         } else if (activeId.startsWith('desk-')) {
-            const parts = activeId.split('-');
-            startRow = parseInt(parts[1], 10);
-            startCol = parseInt(parts[2], 10);
+            [ , startRow, startCol ] = activeId.split('-').map(Number);
             activeStudent = newChart[startRow][startCol]?.[0] || null;
         }
-    
+        
         if (!activeStudent) return;
-    
+
         // Handle dropping back into unplaced area
         if (overId === 'unplaced-area') {
             if (startRow !== null && startCol !== null) { 
@@ -375,24 +377,18 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
             }
             return;
         }
-    
+
         // Handle dropping onto a desk
         if (overId.startsWith('desk-')) {
-            const parts = overId.split('-');
-            const endRow = parseInt(parts[1], 10);
-            const endCol = parseInt(parts[2], 10);
+            const [ , endRow, endCol ] = overId.split('-').map(Number);
             
-            // If dropping on an invalid spot (not a desk), cancel
-            if(newChart[endRow][endCol] === null) return;
+            if(newChart[endRow][endCol] === null) return; // Not a valid desk
 
             const overStudent = newChart[endRow][endCol]?.[0] || null;
-    
-            // If dropping on the same desk, do nothing
-            if (startRow === endRow && startCol === endCol) return;
-    
+
             // Place the active student in the new spot
             newChart[endRow][endCol] = [activeStudent];
-    
+
             // Handle the student that was in the "over" spot
             if (startRow !== null && startCol !== null) { 
                 // This was a desk-to-desk swap
@@ -407,7 +403,6 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                     return next.sort();
                 });
             }
-    
             onSeatingChartChange(newChart, 'drag');
         }
     };
@@ -428,31 +423,38 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     
     const draggedStudentName = useMemo(() => {
         if (!activeDragId) return null;
-
         if (activeDragId.startsWith('unplaced-')) {
-            return active.data.current?.studentName;
+            return activeDragId.substring('unplaced-'.length);
         }
-
         if (activeDragId.startsWith('desk-') && localSeatingChart) {
             const [, r, c] = activeDragId.split('-').map(Number);
             return localSeatingChart[r]?.[c]?.[0] || null;
         }
-
         return null;
     }, [activeDragId, localSeatingChart]);
     
     const toggleLock = (rowIndex: number, colIndex: number) => {
+        if (!activeLayout) return;
+
         const deskId = `${rowIndex}-${colIndex}`;
-        setLockedDesks(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(deskId)) {
-                newSet.delete(deskId);
-            } else {
-                newSet.add(deskId);
-            }
-            return newSet;
-        });
+        const currentLocked = activeLayout.lockedDesks || [];
+        const isLocked = currentLocked.includes(deskId);
+
+        const newLockedDesks = isLocked
+            ? currentLocked.filter(id => id !== deskId)
+            : [...currentLocked, deskId];
+
+        const updatedLayout = { ...activeLayout, lockedDesks: newLockedDesks };
+        
+        // Find the index of the layout to update
+        const layoutIndex = layouts.findIndex(l => l.id === activeLayout.id);
+        if (layoutIndex !== -1) {
+            const newLayouts = [...layouts];
+            newLayouts[layoutIndex] = updatedLayout;
+            onLayoutsChange(newLayouts);
+        }
     };
+
 
     return (
         <div className="grid gap-6 md:grid-cols-3">
@@ -573,7 +575,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                             
                             {!isGenerating && activeLayout && (
                                 <ScrollArea className="w-full">
-                                    <div className="p-1" style={{minWidth: `${activeLayout.cols * 6}rem`}}>
+                                    <div className="p-1">
                                         <div className="grid gap-2 w-full" style={{ 
                                             gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))`,
                                         }}>
@@ -593,8 +595,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                                                                         className={cn(
                                                                             "absolute top-1 right-1 p-0.5 rounded-full",
                                                                             "bg-background/50 hover:bg-background",
-                                                                            "opacity-20 hover:opacity-100 focus:opacity-100",
-                                                                            {"opacity-100": isLocked}
+                                                                            {"opacity-100": isLocked, "opacity-20 hover:opacity-100 focus:opacity-100": !isLocked}
                                                                         )}
                                                                         aria-label={isLocked ? "Lås opp pult" : "Lås pult"}
                                                                     >
@@ -620,7 +621,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                                         <h4 className="font-semibold mb-2 text-sm">Uplasserte elever</h4>
                                         <div className="flex flex-wrap gap-2">
                                             {unplacedStudents.map(studentName => (
-                                                <div key={`unplaced-${studentName}`} className="w-24 h-16">
+                                                <div key={`unplaced-${studentName}`}>
                                                      <DraggableStudent id={`unplaced-${studentName}`} studentName={studentName} />
                                                 </div>
                                             ))}

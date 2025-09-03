@@ -117,6 +117,7 @@ export type SeatingLayout = {
   layout: boolean[][]; 
   seatCount: number;
   createdAt: Date;
+  lockedDesks?: string[]; // "rowIndex-colIndex"
 };
 
 export type TabKey = 'overview' | 'dailyCheck' | 'observations' | 'reports' | 'classroomTools' | 'settings' | 'assessments';
