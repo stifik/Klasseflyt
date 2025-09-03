@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -67,7 +68,7 @@ const DroppableDesk = ({ id, children, isOver }: { id: string, children: React.R
             className={cn(
                 "relative flex items-center justify-center border rounded-lg transition-colors w-full h-16",
                 isOver ? "bg-primary/10" : "bg-transparent",
-                !hasChild ? "border-dashed" : ""
+                !hasChild ? "border-dashed border-slate-300 dark:border-slate-700" : "border-border"
             )}
         >
             {children}
@@ -346,118 +347,118 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
-        <div className="md:col-span-1 space-y-4">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Generer Klassekart</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Button onClick={handleGenerateClick} disabled={isGenerating || !activeLayout} className="w-full">
-                        {isGenerating ? <Loader2 className="mr-2 animate-spin" /> : <Shuffle className="mr-2" />}
-                        {seatingChart ? 'Generer nytt' : 'Generer'}
-                    </Button>
-                    <Button onClick={handleClearChart} disabled={!seatingChart || !activeLayout} variant="outline" className="w-full">
-                       Tøm kart
-                    </Button>
-                </CardContent>
-            </Card>
+      <div className="md:col-span-1 space-y-4">
+        <Card>
+            <CardHeader>
+                <CardTitle>Generer Klassekart</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <Button onClick={handleGenerateClick} disabled={isGenerating || !activeLayout} className="w-full">
+                    {isGenerating ? <Loader2 className="mr-2 animate-spin" /> : <Shuffle className="mr-2" />}
+                    {seatingChart ? 'Generer nytt' : 'Generer'}
+                </Button>
+                <Button onClick={handleClearChart} disabled={!seatingChart || !activeLayout} variant="outline" className="w-full">
+                    Tøm kart
+                </Button>
+            </CardContent>
+        </Card>
 
-            <Card>
-                <CardHeader><CardTitle>Regler</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <Label htmlFor="avoid-neighbors">Unngå tidligere naboer</Label>
-                        <Switch id="avoid-neighbors" checked={avoidSameNeighbors} onCheckedChange={setAvoidSameNeighbors} />
+        <Card>
+            <CardHeader><CardTitle>Regler</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <Label htmlFor="avoid-neighbors">Unngå tidligere naboer</Label>
+                    <Switch id="avoid-neighbors" checked={avoidSameNeighbors} onCheckedChange={setAvoidSameNeighbors} />
+                </div>
+                <div>
+                    <Label>Unngå par</Label>
+                    <div className="flex gap-2 mt-1">
+                        <Select value={selectedStudent1} onValueChange={setSelectedStudent1}>
+                            <SelectTrigger><SelectValue placeholder="Elev 1" /></SelectTrigger>
+                            <SelectContent>{students.filter(s => s.name !== selectedStudent2).map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <Select value={selectedStudent2} onValueChange={setSelectedStudent2}>
+                            <SelectTrigger><SelectValue placeholder="Elev 2" /></SelectTrigger>
+                            <SelectContent>{students.filter(s => s.name !== selectedStudent1).map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <Button onClick={handleAddAvoidPair} size="icon"><Plus /></Button>
                     </div>
-                    <div>
-                        <Label>Unngå par</Label>
-                        <div className="flex gap-2 mt-1">
-                            <Select value={selectedStudent1} onValueChange={setSelectedStudent1}>
-                                <SelectTrigger><SelectValue placeholder="Elev 1" /></SelectTrigger>
-                                <SelectContent>{students.filter(s => s.name !== selectedStudent2).map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
-                            </Select>
-                            <Select value={selectedStudent2} onValueChange={setSelectedStudent2}>
-                                <SelectTrigger><SelectValue placeholder="Elev 2" /></SelectTrigger>
-                                <SelectContent>{students.filter(s => s.name !== selectedStudent1).map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
-                            </Select>
-                            <Button onClick={handleAddAvoidPair} size="icon"><Plus /></Button>
+                      {avoidPairs.length > 0 && (
+                        <div className="space-y-2 mt-2">
+                            {avoidPairs.map((pair, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 text-sm rounded-md bg-secondary">
+                                    <span>{pair.join(' og ')}</span>
+                                    <Button size="icon" variant="ghost" onClick={() => handleRemoveAvoidPair(pair)}><X className="w-4 h-4" /></Button>
+                                </div>
+                            ))}
                         </div>
-                         {avoidPairs.length > 0 && (
-                            <div className="space-y-2 mt-2">
-                                {avoidPairs.map((pair, index) => (
-                                    <div key={index} className="flex items-center justify-between p-2 text-sm rounded-md bg-secondary">
-                                        <span>{pair.join(' og ')}</span>
-                                        <Button size="icon" variant="ghost" onClick={() => handleRemoveAvoidPair(pair)}><X className="w-4 h-4" /></Button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                     <div>
-                        <Label>Plassering</Label>
-                        <div className="flex gap-2 mt-1">
-                            <Select value={selectedStudentForRule} onValueChange={setSelectedStudentForRule}>
-                                <SelectTrigger><SelectValue placeholder="Elev" /></SelectTrigger>
-                                <SelectContent>{students.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
-                            </Select>
-                             <Select value={selectedPlacement} onValueChange={(v) => setSelectedPlacement(v as 'front' | 'back')}>
-                                <SelectTrigger><SelectValue placeholder="Plassering" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="front">Foran</SelectItem>
-                                    <SelectItem value="back">Bak</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <Button onClick={handleAddPlacementRule} size="icon"><Plus /></Button>
-                        </div>
-                         {placementRules.length > 0 && (
-                            <div className="space-y-2 mt-2">
-                                {placementRules.map((rule, index) => (
-                                    <div key={index} className="flex items-center justify-between p-2 text-sm rounded-md bg-secondary">
-                                        <span>{rule.studentName} ({rule.placement === 'front' ? 'Foran' : 'Bak'})</span>
-                                        <Button size="icon" variant="ghost" onClick={() => handleRemovePlacementRule(rule.studentName)}><X className="w-4 h-4" /></Button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-            
-            <Card>
-                <CardHeader>
-                    <CardTitle>Layout</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                     <Select
-                        value={appSettings.selectedSeatingLayoutId || ""}
-                        onValueChange={(id) => onAppSettingsChange({ ...appSettings, selectedSeatingLayoutId: id })}
-                    >
-                        <SelectTrigger>
-                            <SelectValue placeholder="Velg en layout..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {layouts.map(l => <SelectItem key={l.id} value={l.id!}>{l.name} ({l.rows}x{l.cols})</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    {activeLayout && (
-                        <Button variant="destructive" size="sm" className="w-full" onClick={() => handleDeleteLayout(activeLayout.id!)}>
-                            <Trash2 className="mr-2" /> Slett valgt layout
-                        </Button>
                     )}
-                    <div className="pt-4 border-t space-y-2">
-                        <Label>Ny Layout</Label>
-                        <Input placeholder="Navn på layout" value={newLayoutName} onChange={e => setNewLayoutName(e.target.value)} />
-                        <div className="flex gap-2">
-                            <Input type="number" placeholder="Rader" value={newLayoutRows} onChange={e => setNewLayoutRows(Number(e.target.value))} />
-                            <Input type="number" placeholder="Kolonner" value={newLayoutCols} onChange={e => setNewLayoutCols(Number(e.target.value))} />
-                        </div>
-                        <Button onClick={handleCreateLayout} className="w-full">
-                            <Plus className="mr-2" /> Lag ny
-                        </Button>
+                </div>
+                  <div>
+                    <Label>Plassering</Label>
+                    <div className="flex gap-2 mt-1">
+                        <Select value={selectedStudentForRule} onValueChange={setSelectedStudentForRule}>
+                            <SelectTrigger><SelectValue placeholder="Elev" /></SelectTrigger>
+                            <SelectContent>{students.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                          <Select value={selectedPlacement} onValueChange={(v) => setSelectedPlacement(v as 'front' | 'back')}>
+                            <SelectTrigger><SelectValue placeholder="Plassering" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="front">Foran</SelectItem>
+                                <SelectItem value="back">Bak</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={handleAddPlacementRule} size="icon"><Plus /></Button>
                     </div>
-                </CardContent>
-            </Card>
-        </div>
+                      {placementRules.length > 0 && (
+                        <div className="space-y-2 mt-2">
+                            {placementRules.map((rule, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 text-sm rounded-md bg-secondary">
+                                    <span>{rule.studentName} ({rule.placement === 'front' ? 'Foran' : 'Bak'})</span>
+                                    <Button size="icon" variant="ghost" onClick={() => handleRemovePlacementRule(rule.studentName)}><X className="w-4 h-4" /></Button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>Layout</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                  <Select
+                    value={appSettings.selectedSeatingLayoutId || ""}
+                    onValueChange={(id) => onAppSettingsChange({ ...appSettings, selectedSeatingLayoutId: id })}
+                >
+                    <SelectTrigger>
+                        <SelectValue placeholder="Velg en layout..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {layouts.map(l => <SelectItem key={l.id} value={l.id!}>{l.name} ({l.rows}x{l.cols})</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                {activeLayout && (
+                    <Button variant="destructive" size="sm" className="w-full" onClick={() => handleDeleteLayout(activeLayout.id!)}>
+                        <Trash2 className="mr-2" /> Slett valgt layout
+                    </Button>
+                )}
+                <div className="pt-4 border-t space-y-2">
+                    <Label>Ny Layout</Label>
+                    <Input placeholder="Navn på layout" value={newLayoutName} onChange={e => setNewLayoutName(e.target.value)} />
+                    <div className="flex gap-2">
+                        <Input type="number" placeholder="Rader" value={newLayoutRows} onChange={e => setNewLayoutRows(Number(e.target.value))} />
+                        <Input type="number" placeholder="Kolonner" value={newLayoutCols} onChange={e => setNewLayoutCols(Number(e.target.value))} />
+                    </div>
+                    <Button onClick={handleCreateLayout} className="w-full">
+                        <Plus className="mr-2" /> Lag ny
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
+      </div>
 
         <div className="md:col-span-1">
              <DndContext onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
@@ -496,7 +497,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                             </div>
                         )}
                         <div className="mt-4">
-                             <UnplacedArea id="unplaced-area" isOver={overId === 'unplaced-area'}>
+                              <UnplacedArea id="unplaced-area" isOver={overId === 'unplaced-area'}>
                                 <h4 className="font-semibold mb-4 text-sm text-center">
                                     Uplasserte elever ({unplacedStudents.length})
                                 </h4>
@@ -504,7 +505,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                                     {unplacedStudents.map(studentName => {
                                         const unplacedId = `unplaced-${studentName}`;
                                         return (
-                                            <div key={unplacedId} className="h-16 w-24">
+                                             <div key={unplacedId} className="h-16 w-24">
                                                 <DraggableStudent id={unplacedId} studentName={activeDragId === unplacedId ? null : studentName} />
                                             </div>
                                         );
@@ -526,3 +527,4 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     </div>
   );
 }
+
