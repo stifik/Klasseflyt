@@ -505,8 +505,8 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                                     {unplacedStudents.map(studentName => {
                                         const unplacedId = `unplaced-${studentName}`;
                                         return (
-                                             <div key={unplacedId} className="h-16 w-24">
-                                                <DraggableStudent id={unplacedId} studentName={activeDragId === unplacedId ? null : studentName} />
+                                             <div key={unplacedId} className="h-12 w-24">
+                                                <DraggableStudent id={unplacedId} studentName={studentName} />
                                             </div>
                                         );
                                     })}
