@@ -120,6 +120,15 @@ export type SeatingLayout = {
   lockedDesks?: string[]; // "rowIndex-colIndex"
 };
 
+export type AvoidPair = [string, string];
+export type PlacementRule = { studentName: string; placement: 'front' | 'back' };
+
+export type SeatingChartRules = {
+  avoidPairs: AvoidPair[];
+  placementRules: PlacementRule[];
+  avoidSameNeighbors: boolean;
+}
+
 export type TabKey = 'overview' | 'dailyCheck' | 'observations' | 'reports' | 'classroomTools' | 'settings' | 'assessments';
 
 export type DashboardToolKey = 
@@ -192,6 +201,7 @@ export type AppSettings = {
   behaviorTypes?: BehaviorType[];
   dpiaAnalysis?: DPIAAnalysis;
   onboardingCompleted?: boolean;
+  seatingChartRules?: SeatingChartRules;
 };
 
     
