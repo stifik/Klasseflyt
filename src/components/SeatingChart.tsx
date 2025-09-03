@@ -57,7 +57,7 @@ const DraggableStudent = ({ studentName, id }: DeskProps) => {
         "flex items-center justify-center w-full h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1",
         isDragging && 'opacity-50'
     )}>
-      <p className="text-xs font-medium whitespace-pre-line">{formattedName}</p>
+      <p className="text-xs font-medium whitespace-normal break-all">{formattedName}</p>
     </div>
   );
 };
@@ -69,7 +69,7 @@ const DroppableDesk = ({ id, children, isOver }: { id: string, children: React.R
         <div
             ref={setNodeRef}
             className={cn(
-                "relative flex items-center justify-center h-full border rounded-lg transition-colors w-full aspect-square",
+                "relative flex items-center justify-center h-16 border rounded-lg transition-colors w-full",
                 isOver ? "bg-primary/10" : "bg-transparent",
                 !hasChild ? "border-dashed" : ""
             )}
@@ -458,8 +458,8 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 
 
     return (
-        <div className="grid gap-6 md:grid-cols-4">
-            <div className="md:col-span-1 space-y-6">
+        <div className="grid gap-6 md:grid-cols-5">
+            <div className="md:col-span-2 space-y-6">
                  <Card>
                     <CardHeader>
                         <CardTitle>Generer Klassekart</CardTitle>
@@ -576,7 +576,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                             
                             {!isGenerating && activeLayout && (
                                 <div className="p-4 border rounded-md">
-                                    <div className="grid gap-2 w-full" style={{ 
+                                    <div className="grid gap-1 w-full" style={{ 
                                         gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))`,
                                     }}>
                                         {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
@@ -614,13 +614,15 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                             )}
                              {unplacedStudents.length > 0 && (
                                 <div className="mt-4">
-                                    <DroppableDesk id="unplaced-area" isOver={overId === 'unplaced-area'}>
-                                        <div className="p-4 w-full">
-                                            <h4 className="font-semibold mb-2 text-sm">Uplasserte elever</h4>
+                                     <DroppableDesk id="unplaced-area" isOver={overId === 'unplaced-area'}>
+                                        <div className="p-4 w-full h-full overflow-y-auto">
+                                            <h4 className="font-semibold mb-2 text-sm">Uplasserte elever ({unplacedStudents.length})</h4>
                                             <div className="flex flex-wrap gap-2">
                                                 {unplacedStudents.map(studentName => (
-                                                    <div key={`unplaced-${studentName}`} className="w-24 h-16">
-                                                        <DraggableStudent id={`unplaced-${studentName}`} studentName={studentName} />
+                                                    <div key={`unplaced-${studentName}`} className="w-24">
+                                                        <div className="h-16">
+                                                            <DraggableStudent id={`unplaced-${studentName}`} studentName={studentName} />
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -633,7 +635,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                     <DragOverlay>
                         {activeDragId && draggedStudentName ? (
                             <div className="flex items-center justify-center h-16 text-center bg-secondary cursor-grabbing rounded-lg shadow-lg p-1 w-24">
-                                <p className="text-xs font-medium whitespace-pre-line break-all">{draggedStudentName.replace(/ /g, '\n')}</p>
+                                <p className="text-xs font-medium whitespace-normal break-all">{draggedStudentName.replace(/ /g, '\n')}</p>
                             </div>
                         ) : null}
                     </DragOverlay>
@@ -644,6 +646,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 }
 
     
+
 
 
 
