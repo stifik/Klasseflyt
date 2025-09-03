@@ -50,14 +50,12 @@ const DraggableStudent = ({ studentName, id }: DeskProps) => {
   const style = { transform: CSS.Translate.toString(transform) };
   if (!studentName) return null;
 
-  const formattedName = studentName.replace(/ /g, '\n');
-
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={cn(
         "flex items-center justify-center w-full h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1",
         isDragging && 'opacity-50'
     )}>
-      <p className="text-xs font-medium whitespace-normal break-all">{formattedName}</p>
+      <p className="text-xs font-medium whitespace-normal">{studentName}</p>
     </div>
   );
 };
@@ -458,8 +456,8 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 
 
     return (
-        <div className="grid gap-6 md:grid-cols-5">
-            <div className="md:col-span-2 space-y-6">
+        <div className="grid gap-6 md:grid-cols-3">
+            <div className="md:col-span-1 space-y-6">
                  <Card>
                     <CardHeader>
                         <CardTitle>Generer Klassekart</CardTitle>
@@ -562,7 +560,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                 </Dialog>
             </div>
 
-            <div className="md:col-span-3">
+            <div className="md:col-span-2">
                 <DndContext onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
                     <Card className="min-h-[600px]">
                         <CardHeader>
@@ -635,7 +633,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                     <DragOverlay>
                         {activeDragId && draggedStudentName ? (
                             <div className="flex items-center justify-center h-16 text-center bg-secondary cursor-grabbing rounded-lg shadow-lg p-1 w-24">
-                                <p className="text-xs font-medium whitespace-normal break-all">{draggedStudentName.replace(/ /g, '\n')}</p>
+                                <p className="text-xs font-medium whitespace-normal">{draggedStudentName}</p>
                             </div>
                         ) : null}
                     </DragOverlay>
@@ -646,6 +644,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 }
 
     
+
 
 
 
