@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger, DialogClose } from "@/components/ui/dialog";
-import { Loader2, Users, Shuffle, Plus, X, Trash2, LayoutTemplate, Pin } from "lucide-react";
+import { Loader2, Users, Shuffle, Plus, X, Trash2, LayoutTemplate, Pin, Eraser } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -50,14 +50,9 @@ const DraggableStudent = ({ studentName, id }: DeskProps) => {
   const style = { transform: CSS.Translate.toString(transform) };
   if (!studentName) return null;
   
-  const nameParts = studentName.split(' ');
-  const displayName = nameParts.length > 1 
-      ? <>{nameParts[0]}<br />{nameParts.slice(1).join(' ')}</>
-      : studentName;
-
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={cn(
-        "flex items-center justify-center w-full h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1 whitespace-pre-wrap",
+        "flex items-center justify-center w-full h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1 whitespace-normal break-words",
         isDragging && 'opacity-50'
     )}>
       <p className="text-xs font-medium">{studentName}</p>
@@ -338,6 +333,19 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
             }
         }, 50);
     };
+
+    const handleClearChart = () => {
+        if (!activeLayout) {
+            toast({ title: "Ingen layout valgt", description: "Kan ikke tømme et kart uten layout.", variant: "destructive" });
+            return;
+        }
+        const { layout } = activeLayout;
+        const emptyChart: SeatingChartData = JSON.parse(JSON.stringify(layout)).map((row: boolean[]) => row.map(isDesk => isDesk ? [] : null));
+        
+        onSeatingChartChange(emptyChart, 'generation'); // Using 'generation' source as it's a full reset
+        setUnplacedStudents(students.map(s => s.name).sort());
+        toast({ title: "Kart tømt", description: "Alle elever er flyttet til uplassert-listen." });
+    };
     
     const handleDragStart = (event: DragStartEvent) => {
         setActiveDragId(event.active.id.toString());
@@ -471,10 +479,13 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                         <CardTitle>Generer Klassekart</CardTitle>
                         <CardDescription>Bruk den valgte layouten og reglene til å generere et nytt, tilfeldig klassekart.</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-2">
                         <Button onClick={handleGenerateClick} disabled={isGenerating || !activeLayout} className="w-full">
                             {isGenerating ? <Loader2 className="mr-2 animate-spin" /> : <Shuffle className="mr-2" />}
                             {seatingChart ? 'Generer nytt klassekart' : 'Generer klassekart'}
+                        </Button>
+                        <Button onClick={handleClearChart} disabled={!activeLayout || !seatingChart} variant="outline" className="w-full">
+                            <Eraser className="mr-2" /> Tøm kart
                         </Button>
                     </CardContent>
                 </Card>
@@ -652,6 +663,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 }
 
     
+
 
 
 
