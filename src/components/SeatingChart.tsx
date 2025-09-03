@@ -2,21 +2,19 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import type { Student, SeatingChartRecord, SeatingLayout } from "@/lib/types";
+import type { Student, SeatingChartRecord, SeatingLayout, AppSettings } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Loader2, Users, Shuffle, Plus, X } from "lucide-react";
+import { Loader2, Users, Shuffle, Plus, X, Trash2, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { format } from "date-fns";
-import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 import { Switch } from "./ui/switch";
+import { v4 as uuidv4 } from 'uuid';
 
 type SeatingChartData = (string[] | null)[][];
 type AvoidPair = [string, string];
@@ -28,7 +26,12 @@ interface SeatingChartProps {
   activeLayout: SeatingLayout | null | undefined;
   onSeatingChartChange: (chart: SeatingChartData | null, source: 'generation' | 'drag' | 'load') => void;
   history: SeatingChartRecord[];
+  appSettings: AppSettings;
+  onAppSettingsChange: (newSettings: AppSettings) => void;
+  layouts: SeatingLayout[];
+  onLayoutsChange: (layouts: SeatingLayout[]) => void;
 }
+
 
 interface DeskProps {
   studentName: string | null;
@@ -93,7 +96,7 @@ const calculateUnplacedStudents = (currentChart: SeatingChartData | null, allStu
 
 
 // Main Component
-export default function SeatingChart({ students, seatingChart, activeLayout, onSeatingChartChange, history }: SeatingChartProps) {
+export default function SeatingChart({ students, seatingChart, activeLayout, onSeatingChartChange, history, appSettings, onAppSettingsChange, layouts, onLayoutsChange }: SeatingChartProps) {
   const [localSeatingChart, setLocalSeatingChart] = useState<SeatingChartData | null>(seatingChart);
   const [unplacedStudents, setUnplacedStudents] = useState<string[]>([]);
   
@@ -110,6 +113,10 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
   const [selectedStudent2, setSelectedStudent2] = useState<string>("");
   const [selectedStudentForRule, setSelectedStudentForRule] = useState<string>("");
   const [selectedPlacement, setSelectedPlacement] = useState<'front' | 'back'>('front');
+
+  const [newLayoutName, setNewLayoutName] = useState("");
+  const [newLayoutRows, setNewLayoutRows] = useState(5);
+  const [newLayoutCols, setNewLayoutCols] = useState(6);
 
   const { toast } = useToast();
   
@@ -306,9 +313,71 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     return null;
   }, [activeDragId, localSeatingChart]);
 
+  // Layout Management
+  const handleCreateLayout = () => {
+    if (!newLayoutName.trim()) {
+        toast({ title: "Navn mangler", description: "Layouten må ha et navn.", variant: "destructive"});
+        return;
+    }
+    const newLayout: SeatingLayout = {
+        id: uuidv4(),
+        name: newLayoutName.trim(),
+        rows: newLayoutRows,
+        cols: newLayoutCols,
+        layout: Array(newLayoutRows).fill(null).map(() => Array(newLayoutCols).fill(true)),
+        seatCount: newLayoutRows * newLayoutCols,
+        createdAt: new Date(),
+    };
+    onLayoutsChange([...layouts, newLayout]);
+    setNewLayoutName("");
+  };
+
+  const handleDeleteLayout = (id: string) => {
+    const newLayouts = layouts.filter(l => l.id !== id);
+    onLayoutsChange(newLayouts);
+    if (appSettings.selectedSeatingLayoutId === id) {
+        onAppSettingsChange({ ...appSettings, selectedSeatingLayoutId: null });
+    }
+  };
+
   return (
     <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-1 space-y-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Layout</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                     <Select
+                        value={appSettings.selectedSeatingLayoutId || ""}
+                        onValueChange={(id) => onAppSettingsChange({ ...appSettings, selectedSeatingLayoutId: id })}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Velg en layout..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {layouts.map(l => <SelectItem key={l.id} value={l.id!}>{l.name} ({l.rows}x{l.cols})</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    {activeLayout && (
+                        <Button variant="destructive-outline" size="sm" className="w-full" onClick={() => handleDeleteLayout(activeLayout.id!)}>
+                            <Trash2 className="mr-2" /> Slett valgt layout
+                        </Button>
+                    )}
+                    <div className="pt-4 border-t space-y-2">
+                        <Label>Ny Layout</Label>
+                        <Input placeholder="Navn på layout" value={newLayoutName} onChange={e => setNewLayoutName(e.target.value)} />
+                        <div className="flex gap-2">
+                            <Input type="number" placeholder="Rader" value={newLayoutRows} onChange={e => setNewLayoutRows(Number(e.target.value))} />
+                            <Input type="number" placeholder="Kolonner" value={newLayoutCols} onChange={e => setNewLayoutCols(Number(e.target.value))} />
+                        </div>
+                        <Button onClick={handleCreateLayout} className="w-full">
+                            <Plus className="mr-2" /> Lag ny
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
             <Card>
                 <CardHeader>
                     <CardTitle>Generer Klassekart</CardTitle>
@@ -344,17 +413,44 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                             </Select>
                             <Button onClick={handleAddAvoidPair} size="icon"><Plus /></Button>
                         </div>
+                         {avoidPairs.length > 0 && (
+                            <div className="space-y-2 mt-2">
+                                {avoidPairs.map((pair, index) => (
+                                    <div key={index} className="flex items-center justify-between p-2 text-sm rounded-md bg-secondary">
+                                        <span>{pair.join(' og ')}</span>
+                                        <Button size="icon" variant="ghost" onClick={() => handleRemoveAvoidPair(pair)}><X className="w-4 h-4" /></Button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
-                    {avoidPairs.length > 0 && (
-                        <div className="space-y-2">
-                            {avoidPairs.map((pair, index) => (
-                                <div key={index} className="flex items-center justify-between p-2 text-sm rounded-md bg-secondary">
-                                    <span>{pair.join(' og ')}</span>
-                                    <Button size="icon" variant="ghost" onClick={() => handleRemoveAvoidPair(pair)}><X className="w-4 h-4" /></Button>
-                                </div>
-                            ))}
+                     <div>
+                        <Label>Plassering</Label>
+                        <div className="flex gap-2 mt-1">
+                            <Select value={selectedStudentForRule} onValueChange={setSelectedStudentForRule}>
+                                <SelectTrigger><SelectValue placeholder="Elev" /></SelectTrigger>
+                                <SelectContent>{students.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
+                            </Select>
+                             <Select value={selectedPlacement} onValueChange={(v) => setSelectedPlacement(v as 'front' | 'back')}>
+                                <SelectTrigger><SelectValue placeholder="Plassering" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="front">Foran</SelectItem>
+                                    <SelectItem value="back">Bak</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Button onClick={handleAddPlacementRule} size="icon"><Plus /></Button>
                         </div>
-                    )}
+                         {placementRules.length > 0 && (
+                            <div className="space-y-2 mt-2">
+                                {placementRules.map((rule, index) => (
+                                    <div key={index} className="flex items-center justify-between p-2 text-sm rounded-md bg-secondary">
+                                        <span>{rule.studentName} ({rule.placement === 'front' ? 'Foran' : 'Bak'})</span>
+                                        <Button size="icon" variant="ghost" onClick={() => handleRemovePlacementRule(rule.studentName)}><X className="w-4 h-4" /></Button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </CardContent>
             </Card>
         </div>
@@ -425,5 +521,3 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     </div>
   );
 }
-
-    
