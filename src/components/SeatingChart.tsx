@@ -75,6 +75,21 @@ const DroppableDesk = ({ id, children, isOver }: { id: string, children: React.R
     );
 };
 
+const UnplacedArea = ({ id, children, isOver }: { id: string; children: React.ReactNode; isOver: boolean }) => {
+  const { setNodeRef } = useDroppable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "w-full rounded-lg border border-dashed p-4 transition-colors",
+        isOver ? "bg-primary/10" : "bg-transparent"
+      )}
+    >
+      {children}
+    </div>
+  );
+};
+
 // Helper Functions
 const calculateUnplacedStudents = (currentChart: SeatingChartData | null, allStudents: Student[]) => {
     if (!currentChart) return allStudents.map(s => s.name);
@@ -111,8 +126,9 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
   const lastChart = history[0] ? JSON.parse(history[0].chartJson) : null;
 
   useEffect(() => {
+    const newUnplaced = calculateUnplacedStudents(seatingChart, students);
     setLocalSeatingChart(seatingChart);
-    setUnplacedStudents(calculateUnplacedStudents(seatingChart, students));
+    setUnplacedStudents(newUnplaced);
   }, [seatingChart, students]);
 
   const handleAddAvoidPair = () => {
@@ -406,6 +422,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                     </div>
                 </CardContent>
             </Card>
+            
             <Card>
                 <CardHeader>
                     <CardTitle>Layout</CardTitle>
@@ -479,24 +496,24 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                             </div>
                         )}
                         <div className="mt-4">
-                            <DroppableDesk id="unplaced-area" isOver={overId === 'unplaced-area'}>
-                                <div className="p-4 w-full min-h-[10rem] h-full">
-                                    <h4 className="font-semibold mb-2 pt-2 text-sm text-center">Uplasserte elever ({unplacedStudents.length})</h4>
-                                    <div className="grid grid-cols-4 gap-2">
-                                        {unplacedStudents.map(studentName => {
-                                            const unplacedId = `unplaced-${studentName}`;
-                                            if (activeDragId === unplacedId) {
-                                                return <div key={`placeholder-${studentName}`} className="h-16 w-24" />;
-                                            }
-                                            return (
-                                                <div key={unplacedId} className="w-24 h-16">
-                                                    <DraggableStudent id={unplacedId} studentName={studentName} />
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                             <UnplacedArea id="unplaced-area" isOver={overId === 'unplaced-area'}>
+                                <h4 className="font-semibold mb-4 text-sm text-center">
+                                    Uplasserte elever ({unplacedStudents.length})
+                                </h4>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {unplacedStudents.map(studentName => {
+                                        const unplacedId = `unplaced-${studentName}`;
+                                        if (activeDragId === unplacedId) {
+                                            return <div key={`placeholder-${studentName}`} className="h-16 w-full" />;
+                                        }
+                                        return (
+                                            <div key={unplacedId} className="h-16 w-full">
+                                                <DraggableStudent id={unplacedId} studentName={studentName} />
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            </DroppableDesk>
+                            </UnplacedArea>
                         </div>
                     </CardContent>
                 </Card>
