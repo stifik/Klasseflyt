@@ -49,7 +49,7 @@ const DraggableStudent = ({ studentName, id }: DeskProps) => {
   
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={cn(
-        "flex items-center justify-center w-full h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1",
+        "flex items-center justify-center h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1 w-24",
         isDragging && 'opacity-50'
     )}>
       <p className="text-xs font-medium whitespace-normal">{studentName}</p>
@@ -75,15 +75,6 @@ const DroppableDesk = ({ id, children, isOver }: { id: string, children: React.R
 };
 
 // Helper Functions
-const shuffleArray = <T,>(array: T[]): T[] => {
-  const newArray = [...array];
-  for (let i = newArray.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-  }
-  return newArray;
-};
-
 const calculateUnplacedStudents = (currentChart: SeatingChartData | null, allStudents: Student[]) => {
     if (!currentChart) return allStudents.map(s => s.name);
     const placedStudents = new Set(currentChart.flat().filter(Boolean).flat());
@@ -492,7 +483,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                                     <h4 className="font-semibold mb-2 text-sm text-center">Uplasserte elever ({unplacedStudents.length})</h4>
                                     <div className="flex flex-wrap gap-2 justify-center">
                                         {unplacedStudents.map(studentName => (
-                                            <div key={`unplaced-div-${studentName}`} className="w-[6.25rem] h-16">
+                                            <div key={`unplaced-div-${studentName}`} className="h-16">
                                                 {activeDragId !== `unplaced-${studentName}` && (
                                                     <DraggableStudent id={`unplaced-${studentName}`} studentName={studentName} />
                                                 )}
