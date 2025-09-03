@@ -49,7 +49,7 @@ const DraggableStudent = ({ studentName, id }: DeskProps) => {
   if (!studentName) return null;
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={cn(
-        "flex items-center justify-center w-full h-16 text-center bg-secondary touch-none cursor-grab rounded-lg p-1",
+        "flex items-center justify-center w-full h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1",
         isDragging && 'opacity-50'
     )}>
       <p className="text-xs font-medium break-words">{studentName}</p>
@@ -57,15 +57,16 @@ const DraggableStudent = ({ studentName, id }: DeskProps) => {
   );
 };
 
-const DroppableDesk = ({ studentName, id, children, isOver }: DeskProps & { children: React.ReactNode, isOver: boolean }) => {
+const DroppableDesk = ({ id, children, isOver }: { id: string, children: React.ReactNode, isOver: boolean }) => {
     const { setNodeRef } = useDroppable({ id });
+    const hasChild = React.Children.count(children) > 0 && React.Children.toArray(children).some(child => child !== null);
     return (
         <div
             ref={setNodeRef}
             className={cn(
                 "relative flex items-center justify-center w-full h-16 border rounded-lg transition-colors",
                 isOver ? "bg-primary/10" : "bg-transparent",
-                !studentName ? "border-dashed" : ""
+                !hasChild ? "border-dashed" : ""
             )}
         >
             {children}
@@ -407,13 +408,20 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
         toast({ title: "Layout slettet", variant: "destructive" });
     };
     
-    const draggedStudentName = activeDragId
-        ? (active.data.current?.studentName ||
-           unplacedStudents.find(s => `unplaced-${s}` === activeDragId))
-        : null;
+    const draggedStudentName = useMemo(() => {
+        if (!activeDragId) return null;
 
-    const active = useDraggable({ id: activeDragId || '' });
+        if (activeDragId.startsWith('unplaced-')) {
+            return activeDragId.replace('unplaced-', '');
+        }
 
+        if (activeDragId.startsWith('desk-') && localSeatingChart) {
+            const [, r, c] = activeDragId.split('-').map(Number);
+            return localSeatingChart[r]?.[c]?.[0] || null;
+        }
+
+        return null;
+    }, [activeDragId, localSeatingChart]);
 
     return (
         <div className="grid gap-6 md:grid-cols-3">
@@ -533,8 +541,8 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                             {isGenerating && <div className="flex items-center justify-center h-96"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>}
                             
                             {!isGenerating && activeLayout && (
-                                <ScrollArea className="w-full whitespace-nowrap">
-                                    <div className="p-1" style={{minWidth: `${activeLayout.cols * 7}rem`}}>
+                                <ScrollArea className="w-full">
+                                    <div className="p-1">
                                         <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))` }}>
                                             {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
                                                 <React.Fragment key={rowIndex}>
@@ -544,13 +552,13 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                                                         const studentName = localSeatingChart?.[rowIndex]?.[colIndex]?.[0] || null;
                                                         return (
                                                             <div key={id} className="flex-1 min-w-[5rem]">
-                                                                <DroppableDesk id={id} studentName={studentName} isOver={overId === id}>
+                                                                <DroppableDesk id={id} isOver={overId === id}>
                                                                     {studentName && activeDragId !== id && <DraggableStudent id={id} studentName={studentName} />}
                                                                 </DroppableDesk>
                                                             </div>
                                                         );
                                                     }
-                                                    return <div key={id} className="w-full h-16" />;
+                                                    return <div key={id} className="h-16" />;
                                                 })}
                                                 </React.Fragment>
                                             ))}
@@ -561,7 +569,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                             )}
 
                              {unplacedStudents.length > 0 && (
-                                <DroppableDesk id="unplaced-area" studentName={null} isOver={overId === 'unplaced-area'}>
+                                <DroppableDesk id="unplaced-area" isOver={overId === 'unplaced-area'}>
                                     <div className="p-4 w-full">
                                         <h4 className="font-semibold mb-2 text-sm">Uplasserte elever</h4>
                                         <div className="flex flex-wrap gap-2">
@@ -588,3 +596,4 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
         </div>
     );
 }
+
