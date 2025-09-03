@@ -277,8 +277,8 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     };
 
     const generateChartWithLogic = (): SeatingChartData | null => {
-        if (!activeLayout || !localSeatingChart) {
-            toast({ title: "Ingen layout valgt eller aktivt kart", variant: "destructive" });
+        if (!activeLayout) {
+            toast({ title: "Ingen layout valgt", description: "Velg en klasserom-layout før du genererer.", variant: "destructive" });
             return null;
         }
 
@@ -288,8 +288,8 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
         const lockedStudents = new Map<string, string>(); // "rowIndex-colIndex" -> studentName
         lockedDesks.forEach(deskId => {
             const [r, c] = deskId.split('-').map(Number);
-            const studentName = localSeatingChart[r]?.[c]?.[0];
-            if (studentName) {
+            const studentName = localSeatingChart?.[r]?.[c]?.[0];
+            if (studentName && newChart[r]?.[c]) {
                 lockedStudents.set(deskId, studentName);
                 newChart[r][c] = [studentName];
             }
@@ -301,7 +301,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
         let studentIndex = 0;
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
-                if (newChart[r][c]?.length === 0 && studentIndex < shuffledStudents.length) {
+                if (newChart[r]?.[c]?.length === 0 && studentIndex < shuffledStudents.length) {
                     newChart[r][c] = [shuffledStudents[studentIndex]];
                     studentIndex++;
                 }
@@ -313,7 +313,9 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     
     const handleGenerateClick = async () => {
         setIsGenerating(true);
+        // Clear local chart briefly to show loader
         setLocalSeatingChart(null);
+        // Timeout to allow UI to update
         setTimeout(() => {
             try {
                 const newChart = generateChartWithLogic();
@@ -322,6 +324,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                 }
             } catch (error) {
                 console.error(error);
+                toast({ title: "Feil", description: "Kunne ikke generere klassekart.", variant: "destructive" });
             } finally {
                 setIsGenerating(false);
             }
@@ -351,6 +354,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
         let startRow: number | null = null;
         let startCol: number | null = null;
     
+        // Find where the active student is coming from
         if (activeId.startsWith('unplaced-')) {
             activeStudent = active.data.current?.studentName;
         } else if (activeId.startsWith('desk-')) {
@@ -362,6 +366,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     
         if (!activeStudent) return;
     
+        // Handle dropping back into unplaced area
         if (overId === 'unplaced-area') {
             if (startRow !== null && startCol !== null) { 
                 newChart[startRow][startCol] = [];
@@ -371,22 +376,29 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
             return;
         }
     
+        // Handle dropping onto a desk
         if (overId.startsWith('desk-')) {
             const parts = overId.split('-');
             const endRow = parseInt(parts[1], 10);
             const endCol = parseInt(parts[2], 10);
             
+            // If dropping on an invalid spot (not a desk), cancel
             if(newChart[endRow][endCol] === null) return;
 
             const overStudent = newChart[endRow][endCol]?.[0] || null;
     
+            // If dropping on the same desk, do nothing
             if (startRow === endRow && startCol === endCol) return;
     
+            // Place the active student in the new spot
             newChart[endRow][endCol] = [activeStudent];
     
+            // Handle the student that was in the "over" spot
             if (startRow !== null && startCol !== null) { 
+                // This was a desk-to-desk swap
                 newChart[startRow][startCol] = overStudent ? [overStudent] : [];
             } else { 
+                // This was an unplaced-to-desk move
                 setUnplacedStudents(prev => {
                     const next = prev.filter(s => s !== activeStudent);
                     if (overStudent) {
@@ -418,7 +430,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
         if (!activeDragId) return null;
 
         if (activeDragId.startsWith('unplaced-')) {
-            return activeDragId.replace('unplaced-', '');
+            return active.data.current?.studentName;
         }
 
         if (activeDragId.startsWith('desk-') && localSeatingChart) {
@@ -561,9 +573,9 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                             
                             {!isGenerating && activeLayout && (
                                 <ScrollArea className="w-full">
-                                    <div className="p-1">
+                                    <div className="p-1" style={{minWidth: `${activeLayout.cols * 6}rem`}}>
                                         <div className="grid gap-2 w-full" style={{ 
-                                            gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(5rem, 1fr))`,
+                                            gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))`,
                                         }}>
                                             {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
                                                 <React.Fragment key={rowIndex}>
