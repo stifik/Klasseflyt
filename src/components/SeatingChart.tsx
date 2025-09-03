@@ -66,7 +66,7 @@ const DroppableDesk = ({ id, children, isOver }: { id: string, children: React.R
         <div
             ref={setNodeRef}
             className={cn(
-                "relative flex items-center justify-center h-16 border rounded-lg transition-colors w-full",
+                "relative flex items-center justify-center h-full border rounded-lg transition-colors w-full aspect-square",
                 isOver ? "bg-primary/10" : "bg-transparent",
                 !hasChild ? "border-dashed" : ""
             )}
@@ -459,30 +459,18 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     return (
         <div className="grid gap-6 md:grid-cols-3">
             <div className="md:col-span-1 space-y-6">
-                <Dialog open={isDesignerOpen} onOpenChange={setIsDesignerOpen}>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Klasserom-layout</CardTitle>
-                            <CardDescription>Velg en mal for klasserommet, eller design din egen.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex gap-2">
-                                <Select value={appSettings.selectedSeatingLayoutId || ""} onValueChange={handleSelectedLayoutChange}>
-                                    <SelectTrigger><SelectValue placeholder="Velg layout..." /></SelectTrigger>
-                                    <SelectContent>
-                                        {layouts.map(l => <SelectItem key={l.id} value={l.id}>{l.name} ({l.seatCount} plasser)</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                                {appSettings.selectedSeatingLayoutId && <Button size="icon" variant="ghost" onClick={() => handleDeleteLayout(appSettings.selectedSeatingLayoutId as string)}><Trash2 className="text-destructive" /></Button>}
-                            </div>
-                            <DialogTrigger asChild>
-                                <Button variant="outline" className="w-full"><LayoutTemplate className="mr-2" />Design Ny Layout</Button>
-                            </DialogTrigger>
-                        </CardContent>
-                    </Card>
-                    <LayoutDesigner onSave={handleLayoutSaved} onCancel={() => setIsDesignerOpen(false)} />
-                </Dialog>
-
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Generer Klassekart</CardTitle>
+                        <CardDescription>Bruk den valgte layouten og reglene til å generere et nytt, tilfeldig klassekart.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button onClick={handleGenerateClick} disabled={isGenerating || !activeLayout} className="w-full">
+                            {isGenerating ? <Loader2 className="mr-2 animate-spin" /> : <Shuffle className="mr-2" />}
+                            {seatingChart ? 'Generer nytt klassekart' : 'Generer klassekart'}
+                        </Button>
+                    </CardContent>
+                </Card>
                 <Card>
                     <CardHeader>
                         <CardTitle>Innstillinger for generering</CardTitle>
@@ -547,18 +535,29 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                     </CardContent>
                 </Card>
                 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Generer Klassekart</CardTitle>
-                        <CardDescription>Bruk den valgte layouten og reglene til å generere et nytt, tilfeldig klassekart.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Button onClick={handleGenerateClick} disabled={isGenerating || !activeLayout} className="w-full">
-                            {isGenerating ? <Loader2 className="mr-2 animate-spin" /> : <Shuffle className="mr-2" />}
-                            {seatingChart ? 'Generer nytt klassekart' : 'Generer klassekart'}
-                        </Button>
-                    </CardContent>
-                </Card>
+                 <Dialog open={isDesignerOpen} onOpenChange={setIsDesignerOpen}>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Klasserom-layout</CardTitle>
+                            <CardDescription>Velg en mal for klasserommet, eller design din egen.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex gap-2">
+                                <Select value={appSettings.selectedSeatingLayoutId || ""} onValueChange={handleSelectedLayoutChange}>
+                                    <SelectTrigger><SelectValue placeholder="Velg layout..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {layouts.map(l => <SelectItem key={l.id} value={l.id}>{l.name} ({l.seatCount} plasser)</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                {appSettings.selectedSeatingLayoutId && <Button size="icon" variant="ghost" onClick={() => handleDeleteLayout(appSettings.selectedSeatingLayoutId as string)}><Trash2 className="text-destructive" /></Button>}
+                            </div>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" className="w-full"><LayoutTemplate className="mr-2" />Design Ny Layout</Button>
+                            </DialogTrigger>
+                        </CardContent>
+                    </Card>
+                    <LayoutDesigner onSave={handleLayoutSaved} onCancel={() => setIsDesignerOpen(false)} />
+                </Dialog>
             </div>
 
             <div className="md:col-span-2">
@@ -574,8 +573,8 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                             {isGenerating && <div className="flex items-center justify-center h-96"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>}
                             
                             {!isGenerating && activeLayout && (
-                                <ScrollArea className="w-full">
-                                    <div className="p-1">
+                                <ScrollArea className="w-full whitespace-nowrap rounded-md border">
+                                    <div className="p-4" style={{minWidth: `${activeLayout.cols * 6}rem`}}>
                                         <div className="grid gap-2 w-full" style={{ 
                                             gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))`,
                                         }}>
@@ -621,7 +620,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                                         <h4 className="font-semibold mb-2 text-sm">Uplasserte elever</h4>
                                         <div className="flex flex-wrap gap-2">
                                             {unplacedStudents.map(studentName => (
-                                                <div key={`unplaced-${studentName}`}>
+                                                <div key={`unplaced-${studentName}`} className="w-24 h-16">
                                                      <DraggableStudent id={`unplaced-${studentName}`} studentName={studentName} />
                                                 </div>
                                             ))}
@@ -645,3 +644,4 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 }
 
     
+
