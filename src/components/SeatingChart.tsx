@@ -13,9 +13,9 @@ import { useToast } from "@/hooks/use-toast";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
-import { Switch } from "@/components/ui/switch";
 import { v4 as uuidv4 } from 'uuid';
-import { ScrollArea } from "./ui/scroll-area";
+import { Switch } from "./ui/switch";
+
 
 type SeatingChartData = (string[] | null)[][];
 type AvoidPair = [string, string];
@@ -337,7 +337,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
   };
 
   return (
-    <div className="grid gap-6 md:grid-cols-[1fr,2fr]">
+    <div className="grid gap-6 md:grid-cols-2">
         <div className="md:col-span-1 space-y-4">
             <Card>
                 <CardHeader>
@@ -489,12 +489,12 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                         <div className="mt-4">
                             <DroppableDesk id="unplaced-area" isOver={overId === 'unplaced-area'}>
                                 <div className="p-4 w-full min-h-[10rem] h-full">
-                                    <h4 className="font-semibold mb-2 text-sm">Uplasserte elever ({unplacedStudents.length})</h4>
-                                    <div className="flex flex-wrap gap-2">
+                                    <h4 className="font-semibold mb-2 text-sm text-center">Uplasserte elever ({unplacedStudents.length})</h4>
+                                    <div className="flex flex-wrap gap-2 justify-center">
                                         {unplacedStudents.map(studentName => (
-                                            <div key={`unplaced-div-${studentName}`} className="w-24 h-16">
-                                               {activeDragId !== `unplaced-${studentName}` && (
-                                                  <DraggableStudent id={`unplaced-${studentName}`} studentName={studentName} />
+                                            <div key={`unplaced-div-${studentName}`} className="w-[6.25rem] h-16">
+                                                {activeDragId !== `unplaced-${studentName}` && (
+                                                    <DraggableStudent id={`unplaced-${studentName}`} studentName={studentName} />
                                                 )}
                                             </div>
                                         ))}
