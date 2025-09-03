@@ -431,7 +431,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                         </SelectContent>
                     </Select>
                     {activeLayout && (
-                        <Button variant="destructive-outline" size="sm" className="w-full" onClick={() => handleDeleteLayout(activeLayout.id!)}>
+                        <Button variant="destructive" size="sm" className="w-full" onClick={() => handleDeleteLayout(activeLayout.id!)}>
                             <Trash2 className="mr-2" /> Slett valgt layout
                         </Button>
                     )}
@@ -463,8 +463,8 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                         {isGenerating && <div className="flex items-center justify-center h-96"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>}
                         
                         {!isGenerating && localSeatingChart && activeLayout && (
-                            <ScrollArea className="w-full whitespace-nowrap rounded-md border">
-                                <div className="p-4 inline-block" style={{ minWidth: '100%' }}>
+                            <div className="w-full overflow-x-auto">
+                                <div className="p-1 inline-block" style={{ minWidth: '100%' }}>
                                     <div className="grid gap-1 w-full" style={{ 
                                         gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))`,
                                     }}>
@@ -484,20 +484,18 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                                         ))}
                                     </div>
                                 </div>
-                            </ScrollArea>
+                            </div>
                         )}
                         <div className="mt-4">
                             <DroppableDesk id="unplaced-area" isOver={overId === 'unplaced-area'}>
-                                <div className="p-4 w-full min-h-[10rem] h-full overflow-y-auto">
+                                <div className="p-4 w-full min-h-[10rem] h-full">
                                     <h4 className="font-semibold mb-2 text-sm">Uplasserte elever ({unplacedStudents.length})</h4>
                                     <div className="flex flex-wrap gap-2">
                                         {unplacedStudents.map(studentName => (
-                                            <div key={`unplaced-div-${studentName}`} className="w-24">
-                                                <div className="h-16">
-                                                   {activeDragId !== `unplaced-${studentName}` && (
-                                                      <DraggableStudent id={`unplaced-${studentName}`} studentName={studentName} />
-                                                    )}
-                                                </div>
+                                            <div key={`unplaced-div-${studentName}`} className="w-24 h-16">
+                                               {activeDragId !== `unplaced-${studentName}` && (
+                                                  <DraggableStudent id={`unplaced-${studentName}`} studentName={studentName} />
+                                                )}
                                             </div>
                                         ))}
                                     </div>
