@@ -81,7 +81,7 @@ const UnplacedArea = ({ id, children, isOver }: { id: string; children: React.Re
     <div
       ref={setNodeRef}
       className={cn(
-        "w-full rounded-lg border border-dashed p-4 transition-colors",
+        "w-full rounded-lg border p-4 transition-colors",
         isOver ? "bg-primary/10" : "bg-transparent"
       )}
     >
@@ -503,12 +503,9 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                                 <div className="grid grid-cols-4 gap-2">
                                     {unplacedStudents.map(studentName => {
                                         const unplacedId = `unplaced-${studentName}`;
-                                        if (activeDragId === unplacedId) {
-                                            return <div key={`placeholder-${studentName}`} className="h-16 w-full" />;
-                                        }
                                         return (
-                                            <div key={unplacedId} className="h-16 w-full">
-                                                <DraggableStudent id={unplacedId} studentName={studentName} />
+                                            <div key={unplacedId} className="h-16 w-24">
+                                                <DraggableStudent id={unplacedId} studentName={activeDragId === unplacedId ? null : studentName} />
                                             </div>
                                         );
                                     })}
