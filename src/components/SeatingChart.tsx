@@ -575,10 +575,9 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                             
                             {!isGenerating && activeLayout && (
                                 <ScrollArea className="w-full whitespace-nowrap rounded-md border">
-                                    <div className="p-4">
+                                    <div className="p-4" style={{ minWidth: `${activeLayout.cols * 6}rem` }}>
                                         <div className="grid gap-2 w-full" style={{ 
                                             gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))`,
-                                            minWidth: `${activeLayout.cols * 6}rem`
                                         }}>
                                             {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
                                                 <React.Fragment key={rowIndex}>
@@ -646,6 +645,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 }
 
     
+
 
 
 
