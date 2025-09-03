@@ -50,7 +50,7 @@ const DraggableStudent = ({ studentName, id }: DeskProps) => {
   
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={cn(
-        "flex items-center justify-center h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1 w-24",
+        "flex items-center justify-center h-full text-center bg-secondary touch-none cursor-grab rounded-lg p-1 w-full",
         isDragging && 'opacity-50'
     )}>
       <p className="text-xs font-medium whitespace-normal">{studentName}</p>
@@ -481,13 +481,18 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                         <div className="mt-4">
                             <DroppableDesk id="unplaced-area" isOver={overId === 'unplaced-area'}>
                                 <div className="p-4 w-full min-h-[10rem] h-full">
-                                    <h4 className="font-semibold mb-2 text-sm text-center">Uplasserte elever ({unplacedStudents.length})</h4>
+                                    <h4 className="font-semibold mb-2 pt-2 text-sm text-center">Uplasserte elever ({unplacedStudents.length})</h4>
                                     <div className="flex flex-wrap gap-2 justify-center">
                                         {unplacedStudents.map(studentName => {
-                                            if (activeDragId === `unplaced-${studentName}`) {
+                                            const unplacedId = `unplaced-${studentName}`;
+                                            if (activeDragId === unplacedId) {
                                                 return <div key={`placeholder-${studentName}`} className="h-16 w-24" />;
                                             }
-                                            return <DraggableStudent key={`unplaced-${studentName}`} id={`unplaced-${studentName}`} studentName={studentName} />;
+                                            return (
+                                                <div key={unplacedId} className="w-24 h-16">
+                                                    <DraggableStudent id={unplacedId} studentName={studentName} />
+                                                </div>
+                                            );
                                         })}
                                     </div>
                                 </div>
