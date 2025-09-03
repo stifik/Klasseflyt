@@ -460,7 +460,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     return (
         <div className="grid gap-6 md:grid-cols-3">
             <div className="md:col-span-1 space-y-6">
-                 <Card>
+                <Card>
                     <CardHeader>
                         <CardTitle>Generer Klassekart</CardTitle>
                         <CardDescription>Bruk den valgte layouten og reglene til å generere et nytt, tilfeldig klassekart.</CardDescription>
@@ -472,6 +472,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                         </Button>
                     </CardContent>
                 </Card>
+
                 <Card>
                     <CardHeader>
                         <CardTitle>Innstillinger for generering</CardTitle>
@@ -575,7 +576,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                             
                             {!isGenerating && activeLayout && (
                                 <ScrollArea className="w-full whitespace-nowrap rounded-md border">
-                                    <div className="p-4" style={{ minWidth: `${activeLayout.cols * 6}rem` }}>
+                                    <div className="p-4" style={{ minWidth: `${activeLayout.cols * 7}rem` }}>
                                         <div className="grid gap-2 w-full" style={{ 
                                             gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))`,
                                         }}>
@@ -614,27 +615,28 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                                     <ScrollBar orientation="horizontal" />
                                 </ScrollArea>
                             )}
-
                              {unplacedStudents.length > 0 && (
-                                <DroppableDesk id="unplaced-area" isOver={overId === 'unplaced-area'}>
-                                    <div className="p-4 w-full">
-                                        <h4 className="font-semibold mb-2 text-sm">Uplasserte elever</h4>
-                                        <div className="flex flex-wrap gap-2">
-                                            {unplacedStudents.map(studentName => (
-                                                <div key={`unplaced-${studentName}`} className="w-24 h-16">
-                                                     <DraggableStudent id={`unplaced-${studentName}`} studentName={studentName} />
-                                                </div>
-                                            ))}
+                                <div className="mt-4">
+                                    <DroppableDesk id="unplaced-area" isOver={overId === 'unplaced-area'}>
+                                        <div className="p-4 w-full">
+                                            <h4 className="font-semibold mb-2 text-sm">Uplasserte elever</h4>
+                                            <div className="flex flex-wrap gap-2">
+                                                {unplacedStudents.map(studentName => (
+                                                    <div key={`unplaced-${studentName}`} className="w-24 h-16">
+                                                        <DraggableStudent id={`unplaced-${studentName}`} studentName={studentName} />
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                </DroppableDesk>
+                                    </DroppableDesk>
+                                </div>
                             )}
                         </CardContent>
                     </Card>
                     <DragOverlay>
                         {activeDragId && draggedStudentName ? (
                             <div className="flex items-center justify-center h-16 text-center bg-secondary cursor-grabbing rounded-lg shadow-lg p-1 w-24">
-                                <p className="text-xs font-medium whitespace-normal break-all">{draggedStudentName}</p>
+                                <p className="text-xs font-medium whitespace-pre-line break-all">{draggedStudentName.replace(/ /g, '\n')}</p>
                             </div>
                         ) : null}
                     </DragOverlay>
@@ -645,6 +647,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 }
 
     
+
 
 
 
