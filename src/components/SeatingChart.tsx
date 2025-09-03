@@ -13,8 +13,9 @@ import { useToast } from "@/hooks/use-toast";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
-import { Switch } from "./ui/switch";
+import { Switch } from "@/components/ui/switch";
 import { v4 as uuidv4 } from 'uuid';
+import { ScrollArea } from "./ui/scroll-area";
 
 type SeatingChartData = (string[] | null)[][];
 type AvoidPair = [string, string];
@@ -84,14 +85,9 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 };
 
 const calculateUnplacedStudents = (currentChart: SeatingChartData | null, allStudents: Student[]) => {
-    if (currentChart) {
-        const placedStudents = new Set(currentChart.flat().filter(Boolean).flat());
-        const allStudentNames = new Set(allStudents.map(s => s.name));
-        return Array.from(allStudentNames).filter(name => !placedStudents.has(name));
-    } else if (allStudents.length > 0) {
-        return allStudents.map(s => s.name);
-    }
-    return [];
+    if (!currentChart) return allStudents.map(s => s.name);
+    const placedStudents = new Set(currentChart.flat().filter(Boolean).flat());
+    return allStudents.map(s => s.name).filter(name => !placedStudents.has(name));
 };
 
 
@@ -341,43 +337,8 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
   };
 
   return (
-    <div className="grid gap-6 md:grid-cols-3">
+    <div className="grid gap-6 md:grid-cols-[1fr,2fr]">
         <div className="md:col-span-1 space-y-4">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Layout</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                     <Select
-                        value={appSettings.selectedSeatingLayoutId || ""}
-                        onValueChange={(id) => onAppSettingsChange({ ...appSettings, selectedSeatingLayoutId: id })}
-                    >
-                        <SelectTrigger>
-                            <SelectValue placeholder="Velg en layout..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {layouts.map(l => <SelectItem key={l.id} value={l.id!}>{l.name} ({l.rows}x{l.cols})</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    {activeLayout && (
-                        <Button variant="destructive-outline" size="sm" className="w-full" onClick={() => handleDeleteLayout(activeLayout.id!)}>
-                            <Trash2 className="mr-2" /> Slett valgt layout
-                        </Button>
-                    )}
-                    <div className="pt-4 border-t space-y-2">
-                        <Label>Ny Layout</Label>
-                        <Input placeholder="Navn på layout" value={newLayoutName} onChange={e => setNewLayoutName(e.target.value)} />
-                        <div className="flex gap-2">
-                            <Input type="number" placeholder="Rader" value={newLayoutRows} onChange={e => setNewLayoutRows(Number(e.target.value))} />
-                            <Input type="number" placeholder="Kolonner" value={newLayoutCols} onChange={e => setNewLayoutCols(Number(e.target.value))} />
-                        </div>
-                        <Button onClick={handleCreateLayout} className="w-full">
-                            <Plus className="mr-2" /> Lag ny
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-
             <Card>
                 <CardHeader>
                     <CardTitle>Generer Klassekart</CardTitle>
@@ -453,9 +414,43 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                     </div>
                 </CardContent>
             </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Layout</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                     <Select
+                        value={appSettings.selectedSeatingLayoutId || ""}
+                        onValueChange={(id) => onAppSettingsChange({ ...appSettings, selectedSeatingLayoutId: id })}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Velg en layout..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {layouts.map(l => <SelectItem key={l.id} value={l.id!}>{l.name} ({l.rows}x{l.cols})</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    {activeLayout && (
+                        <Button variant="destructive-outline" size="sm" className="w-full" onClick={() => handleDeleteLayout(activeLayout.id!)}>
+                            <Trash2 className="mr-2" /> Slett valgt layout
+                        </Button>
+                    )}
+                    <div className="pt-4 border-t space-y-2">
+                        <Label>Ny Layout</Label>
+                        <Input placeholder="Navn på layout" value={newLayoutName} onChange={e => setNewLayoutName(e.target.value)} />
+                        <div className="flex gap-2">
+                            <Input type="number" placeholder="Rader" value={newLayoutRows} onChange={e => setNewLayoutRows(Number(e.target.value))} />
+                            <Input type="number" placeholder="Kolonner" value={newLayoutCols} onChange={e => setNewLayoutCols(Number(e.target.value))} />
+                        </div>
+                        <Button onClick={handleCreateLayout} className="w-full">
+                            <Plus className="mr-2" /> Lag ny
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
 
-        <div className="md:col-span-2">
+        <div className="md:col-span-1">
              <DndContext onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
                 <Card className="min-h-[600px]">
                     <CardHeader>
@@ -468,28 +463,30 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                         {isGenerating && <div className="flex items-center justify-center h-96"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>}
                         
                         {!isGenerating && localSeatingChart && activeLayout && (
-                             <div className="p-4 border rounded-md">
-                                <div className="grid gap-1 w-full" style={{ 
-                                    gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))`,
-                                }}>
-                                    {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
-                                        Array.from({ length: activeLayout.cols }).map((_, colIndex) => {
-                                            if (!activeLayout.layout[rowIndex]?.[colIndex]) {
-                                                return <div key={`${rowIndex}-${colIndex}`} className="w-full h-16" />;
-                                            }
-                                            const id = `desk-${rowIndex}-${colIndex}`;
-                                            const studentName = localSeatingChart[rowIndex]?.[colIndex]?.[0] || null;
-                                            return (
-                                                <DroppableDesk key={id} id={id} isOver={overId === id}>
-                                                    {studentName && activeDragId !== id && <DraggableStudent id={id} studentName={studentName} />}
-                                                </DroppableDesk>
-                                            );
-                                        })
-                                    ))}
+                            <ScrollArea className="w-full whitespace-nowrap rounded-md border">
+                                <div className="p-4 inline-block" style={{ minWidth: '100%' }}>
+                                    <div className="grid gap-1 w-full" style={{ 
+                                        gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))`,
+                                    }}>
+                                        {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
+                                            Array.from({ length: activeLayout.cols }).map((_, colIndex) => {
+                                                if (!activeLayout.layout[rowIndex]?.[colIndex]) {
+                                                    return <div key={`${rowIndex}-${colIndex}`} className="w-full h-16" />;
+                                                }
+                                                const id = `desk-${rowIndex}-${colIndex}`;
+                                                const studentName = localSeatingChart[rowIndex]?.[colIndex]?.[0] || null;
+                                                return (
+                                                    <DroppableDesk key={id} id={id} isOver={overId === id}>
+                                                        {studentName && activeDragId !== id && <DraggableStudent id={id} studentName={studentName} />}
+                                                    </DroppableDesk>
+                                                );
+                                            })
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                            </ScrollArea>
                         )}
-                         <div className="mt-4">
+                        <div className="mt-4">
                             <DroppableDesk id="unplaced-area" isOver={overId === 'unplaced-area'}>
                                 <div className="p-4 w-full min-h-[10rem] h-full overflow-y-auto">
                                     <h4 className="font-semibold mb-2 text-sm">Uplasserte elever ({unplacedStudents.length})</h4>
