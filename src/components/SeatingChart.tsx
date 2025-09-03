@@ -460,7 +460,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     return (
         <div className="grid gap-6 md:grid-cols-3">
             <div className="md:col-span-1 space-y-6">
-                <Card>
+                 <Card>
                     <CardHeader>
                         <CardTitle>Generer Klassekart</CardTitle>
                         <CardDescription>Bruk den valgte layouten og reglene til å generere et nytt, tilfeldig klassekart.</CardDescription>
@@ -647,6 +647,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 }
 
     
+
 
 
 
