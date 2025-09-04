@@ -162,6 +162,10 @@ export type ReportSettings = {
   greeting: string;
   closing: string;
   teacherName: string;
+  positiveFeedbackMessage?: string;
+  positiveFeedbackHomework?: string;
+  positiveFeedbackIpad?: string;
+  positiveFeedbackBoth?: string;
 
   // Student Report Settings
   includeHomeworkInReport?: boolean;

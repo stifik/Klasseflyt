@@ -83,7 +83,7 @@ const generateSummaryMessage = (
 
     // If there are no issues at all (and positive feedback is on), send a simple, very positive message.
     if (!hasIssues && !hasTestResults && settings.includePositiveFeedback) {
-        return `${settings.greeting}\nEn liten oppdatering for ${studentName} i uke ${week}: Alt har vært helt supert! God innsats.\n\n${settings.closing}\n${settings.teacherName}`;
+        return `${settings.greeting}\n${settings.positiveFeedbackMessage || `En liten oppdatering for ${studentName} i uke ${week}: Alt har vært helt supert! God innsats.`}\n\n${settings.closing}\n${settings.teacherName}`;
     }
 
     let message = `${settings.greeting}\nEn liten oppsummering for ${studentName} i uke ${week}.\n\n`;
@@ -91,13 +91,13 @@ const generateSummaryMessage = (
 
     if (settings.includePositiveFeedback) {
         if (settings.includeHomework && homeworkIsPerfect && settings.includeIpad && ipadIsPerfect) {
-            positiveFeedback += "Veldig bra innsats med både lekser og iPad-ansvar denne uken!\n\n";
+            positiveFeedback += (settings.positiveFeedbackBoth || "Veldig bra innsats med både lekser og iPad-ansvar denne uken!") + "\n\n";
         } else {
             if (settings.includeHomework && homeworkIsPerfect) {
-                positiveFeedback += "All leksing denne uken er godkjent. Veldig bra!\n\n";
+                positiveFeedback += (settings.positiveFeedbackHomework || "All leksing denne uken er godkjent. Veldig bra!") + "\n\n";
             }
             if (settings.includeIpad && ipadIsPerfect) {
-                positiveFeedback += "Full pott på iPad-ansvar denne uken. Supert!\n\n";
+                positiveFeedback += (settings.positiveFeedbackIpad || "Full pott på iPad-ansvar denne uken. Supert!") + "\n\n";
             }
         }
     }

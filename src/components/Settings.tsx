@@ -47,6 +47,7 @@ import { cn } from "@/lib/utils";
 import * as LucideIcons from "lucide-react";
 import DPIA from "./DPIA";
 import { format } from "date-fns";
+import { Textarea } from "./ui/textarea";
 
 
 interface SettingsProps {
@@ -733,6 +734,23 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                                 <div className="space-y-1">
                                     <Label htmlFor="teacherName">Ditt navn (for signatur)</Label>
                                     <Input id="teacherName" value={localSettings.reportSettings.teacherName} onChange={(e) => handleReportSettingChange('teacherName', e.target.value)} />
+                                </div>
+                                <Separator />
+                                 <div className="space-y-1">
+                                    <Label htmlFor="positiveFeedbackMessage">Ros: Prikkfri uke</Label>
+                                    <Textarea id="positiveFeedbackMessage" value={localSettings.reportSettings.positiveFeedbackMessage} onChange={(e) => handleReportSettingChange('positiveFeedbackMessage', e.target.value)} />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label htmlFor="positiveFeedbackHomework">Ros: Kun lekser</Label>
+                                    <Textarea id="positiveFeedbackHomework" value={localSettings.reportSettings.positiveFeedbackHomework} onChange={(e) => handleReportSettingChange('positiveFeedbackHomework', e.target.value)} />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label htmlFor="positiveFeedbackIpad">Ros: Kun iPad</Label>
+                                    <Textarea id="positiveFeedbackIpad" value={localSettings.reportSettings.positiveFeedbackIpad} onChange={(e) => handleReportSettingChange('positiveFeedbackIpad', e.target.value)} />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label htmlFor="positiveFeedbackBoth">Ros: Både lekser og iPad</Label>
+                                    <Textarea id="positiveFeedbackBoth" value={localSettings.reportSettings.positiveFeedbackBoth} onChange={(e) => handleReportSettingChange('positiveFeedbackBoth', e.target.value)} />
                                 </div>
                             </div>
                         </div>

@@ -309,6 +309,10 @@ const defaultSettings: AppSettings = {
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
     includePositiveFeedback: false, includeTests: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren",
+    positiveFeedbackMessage: "En liten oppdatering for [Elev] i uke [Uke]: Alt har vært helt supert! God innsats.",
+    positiveFeedbackHomework: "All leksing denne uken er godkjent. Veldig bra!",
+    positiveFeedbackIpad: "Full pott på iPad-ansvar denne uken. Supert!",
+    positiveFeedbackBoth: "Veldig bra innsats med både lekser og iPad-ansvar denne uken!",
     includeHomeworkInReport: true,
     includeIpadInReport: true,
     includeRemarksInReport: true,
@@ -538,3 +542,4 @@ export async function importDatabase(data: { [key: string]: any[] }) {
 
 
   
+
