@@ -247,7 +247,7 @@ export class MySubClassedDexie extends Dexie {
             if (userSettings && userSettings.reportSettings) {
                 const { reportSettings } = userSettings;
                 if (!reportSettings.positiveFeedbackMessage) {
-                    reportSettings.positiveFeedbackMessage = "En liten oppdatering for [Elev] i uke [Uke]: Alt har vært helt supert! God innsats.";
+                    reportSettings.positiveFeedbackMessage = "Alt har vært helt supert! God innsats.";
                 }
                 if (!reportSettings.positiveFeedbackHomework) {
                     reportSettings.positiveFeedbackHomework = "All leksing denne uken er godkjent. Veldig bra!";
@@ -331,7 +331,7 @@ const defaultSettings: AppSettings = {
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
     includePositiveFeedback: false, includeTests: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren",
-    positiveFeedbackMessage: "En liten oppdatering for [Elev] i uke [Uke]: Alt har vært helt supert! God innsats.",
+    positiveFeedbackMessage: "Alt har vært helt supert! God innsats.",
     positiveFeedbackHomework: "All leksing denne uken er godkjent. Veldig bra!",
     positiveFeedbackIpad: "Full pott på iPad-ansvar denne uken. Supert!",
     positiveFeedbackBoth: "Veldig bra innsats med både lekser og iPad-ansvar denne uken!",
@@ -564,5 +564,6 @@ export async function importDatabase(data: { [key: string]: any[] }) {
 
 
   
+
 
 

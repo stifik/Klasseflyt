@@ -66,7 +66,6 @@ const generateSummaryMessage = (
     if (ipadNotChargedCount > 0) ipadIssues.push(`Ikke ladet: ${ipadNotChargedCount} gang(er)`);
     if (ipadNotBroughtCount > 0) ipadIssues.push(`Ikke medbrakt: ${ipadNotBroughtCount} gang(er)`);
 
-    // Check for issues only if the corresponding setting is enabled
     const hasHomeworkIssues = settings.includeHomework && homeworkIssues.length > 0;
     const hasIpadIssues = settings.includeIpad && ipadIssues.length > 0;
     const hasRemarks = settings.includeRemarks && remarksCount > 0;
@@ -74,70 +73,56 @@ const generateSummaryMessage = (
     
     const hasTestResults = settings.includeTests && weekTestResults.length > 0;
     
-    // Determine positive achievements
     const homeworkIsPerfect = settings.includeHomework && approvedAssignments.length > 0 && !hasHomeworkIssues;
     const ipadIsPerfect = settings.includeIpad && !hasIpadIssues;
 
-    // Don't send message if there's nothing to report (no issues, no tests, and positive feedback is off)
     if (!hasIssues && !hasTestResults && !settings.includePositiveFeedback) {
         return "";
     }
 
-    // If there are no issues AT ALL (respecting settings) and positive feedback is on, send the "spotless week" message.
+    let message = `${settings.greeting}\nEn liten oppsummering for ${studentName} i uke ${week}:\n\n`;
+    
     if (!hasIssues && settings.includePositiveFeedback) {
-        let message = `${settings.greeting}\n${settings.positiveFeedbackMessage || `En liten oppdatering for ${studentName} i uke ${week}: Alt har vært helt supert! God innsats.`}\n\n`;
-         if (hasTestResults) {
-            message += `Resultater:\n`;
-            weekTestResults.forEach(r => {
-                message += `- ${r.subjectName} (${r.testTitle}): ${r.score}/${r.maxScore} poeng\n`;
-            });
-            message += '\n';
-        }
-        message += `${settings.closing}\n${settings.teacherName}`;
-        return message;
-    }
-
-
-    let message = `${settings.greeting}\nEn liten oppsummering for ${studentName} i uke ${week}.\n\n`;
-    let positiveFeedback = "";
-
-    if (settings.includePositiveFeedback) {
-        if (homeworkIsPerfect && ipadIsPerfect) {
-            positiveFeedback += (settings.positiveFeedbackBoth || "Veldig bra innsats med både lekser og iPad-ansvar denne uken!") + "\n\n";
-        } else {
-            if (homeworkIsPerfect) {
-                positiveFeedback += (settings.positiveFeedbackHomework || "All leksing denne uken er godkjent. Veldig bra!") + "\n\n";
-            }
-            if (ipadIsPerfect) {
-                positiveFeedback += (settings.positiveFeedbackIpad || "Full pott på iPad-ansvar denne uken. Supert!") + "\n\n";
+        message += `${settings.positiveFeedbackMessage || `Alt har vært helt supert! God innsats.`}\n\n`;
+    } else {
+        let positiveFeedback = "";
+        if (settings.includePositiveFeedback) {
+            if (homeworkIsPerfect && ipadIsPerfect) {
+                positiveFeedback += (settings.positiveFeedbackBoth || "Veldig bra innsats med både lekser og iPad-ansvar denne uken!") + "\n\n";
+            } else {
+                if (homeworkIsPerfect) {
+                    positiveFeedback += (settings.positiveFeedbackHomework || "All leksing denne uken er godkjent. Veldig bra!") + "\n\n";
+                }
+                if (ipadIsPerfect) {
+                    positiveFeedback += (settings.positiveFeedbackIpad || "Full pott på iPad-ansvar denne uken. Supert!") + "\n\n";
+                }
             }
         }
-    }
-    
-    message += positiveFeedback;
+        message += positiveFeedback;
 
-    if (hasHomeworkIssues) {
-        message += `Status for lekser:\n`;
-        if (approvedAssignments.length > 0) {
-            message += `- Godkjent: ${approvedAssignments.join(', ')}\n`;
+        if (hasHomeworkIssues) {
+            message += `Status for lekser:\n`;
+            if (approvedAssignments.length > 0) {
+                message += `- Godkjent: ${approvedAssignments.join(', ')}\n`;
+            }
+            message += `- ${homeworkIssues.join('\n- ')}\n\n`;
         }
-        message += `- ${homeworkIssues.join('\n- ')}\n\n`;
+
+        if (hasIpadIssues) {
+            message += `iPad:\n- ${ipadIssues.join('\n- ')}\n\n`;
+        }
+        
+        if (hasRemarks) {
+            message += `Anmerkninger: ${remarksCount} stk\n\n`;
+        }
     }
 
-    if (hasIpadIssues) {
-        message += `iPad:\n- ${ipadIssues.join('\n- ')}\n\n`;
-    }
-    
     if (hasTestResults) {
         message += `Resultater:\n`;
         weekTestResults.forEach(r => {
             message += `- ${r.subjectName} (${r.testTitle}): ${r.score}/${r.maxScore} poeng\n`;
         });
         message += '\n';
-    }
-
-    if (hasRemarks) {
-        message += `Anmerkninger: ${remarksCount} stk\n\n`;
     }
 
     message += `${settings.closing}\n${settings.teacherName}`;
