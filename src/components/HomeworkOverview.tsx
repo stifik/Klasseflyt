@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX, Plus } from "lucide-react";
+import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -271,6 +272,28 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
     }
   };
 
+  const handleDeleteHomework = async (homeworkId: number) => {
+    try {
+        await db.transaction('rw', db.homework, db.submissions, async () => {
+            // Find all submissions for this homework
+            const subsToDelete = await db.submissions.where('homeworkId').equals(homeworkId).toArray();
+            const subIds = subsToDelete.map(s => s.id!);
+            
+            // Delete submissions
+            if (subIds.length > 0) {
+                await db.submissions.bulkDelete(subIds);
+            }
+            
+            // Delete homework
+            await db.homework.delete(homeworkId);
+        });
+        toast({ title: "Lekse slettet", description: "Leksen og alle tilhørende innleveringer er slettet.", variant: "destructive" });
+    } catch (error) {
+        console.error("Failed to delete homework:", error);
+        toast({ title: "Feil", description: "Kunne ikke slette leksen.", variant: "destructive" });
+    }
+  };
+
   const filteredHomework = useMemo(() => {
     if (!Array.isArray(homeworkList)) return [];
     return homeworkList
@@ -363,9 +386,32 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
                   <div>{subjects.find(s => s.id === hw.subjectId)?.name}</div>
                   <div className="font-normal">{hw.title}</div>
                   <div className="text-xs font-light text-muted-foreground">Uke {hw.week}</div>
-                  <Button variant="ghost" size="icon" className="absolute top-0 right-0 invisible h-6 w-6 group-hover:visible" onClick={() => handleCopyHomework(hw.id!)}>
-                    <Copy className="h-4 w-4"/>
-                  </Button>
+                  <div className="absolute top-0 right-0 flex invisible group-hover:visible">
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyHomework(hw.id!)}>
+                        <Copy className="h-4 w-4"/>
+                    </Button>
+                     <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                           <Button variant="ghost" size="icon" className="h-6 w-6">
+                                <Trash2 className="h-4 w-4 text-destructive"/>
+                           </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Dette vil slette leksen '{hw.title || subjects.find(s => s.id === hw.subjectId)?.name}' og alle innleveringer for alle elever. Handlingen kan ikke angres.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteHomework(hw.id!)}>
+                              Ja, slett leksen
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                  </div>
                 </TableHead>
               ))}
             </TableRow>
@@ -407,3 +453,5 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
     </div>
   );
 }
+
+    
