@@ -66,37 +66,49 @@ const generateSummaryMessage = (
     if (ipadNotChargedCount > 0) ipadIssues.push(`Ikke ladet: ${ipadNotChargedCount} gang(er)`);
     if (ipadNotBroughtCount > 0) ipadIssues.push(`Ikke medbrakt: ${ipadNotBroughtCount} gang(er)`);
 
-    const hasHomeworkIssues = homeworkIssues.length > 0;
-    const hasApprovedHomework = approvedAssignments.length > 0;
-    const hasIpadIssues = ipadIssues.length > 0;
-    const hasTestResults = weekTestResults.length > 0 && settings.includeTests;
-    const hasRemarks = remarksCount > 0 && settings.includeRemarks;
+    // Check for issues only if the corresponding setting is enabled
+    const hasHomeworkIssues = settings.includeHomework && homeworkIssues.length > 0;
+    const hasIpadIssues = settings.includeIpad && ipadIssues.length > 0;
+    const hasRemarks = settings.includeRemarks && remarksCount > 0;
     const hasIssues = hasHomeworkIssues || hasIpadIssues || hasRemarks;
+    
+    const hasTestResults = settings.includeTests && weekTestResults.length > 0;
+    
+    // Determine positive achievements
+    const homeworkIsPerfect = settings.includeHomework && approvedAssignments.length > 0 && !hasHomeworkIssues;
+    const ipadIsPerfect = settings.includeIpad && !hasIpadIssues;
 
-    const homeworkIsPerfect = !hasHomeworkIssues && hasApprovedHomework;
-    const ipadIsPerfect = !hasIpadIssues;
-
-    // Don't send message if there are no issues, no tests, and positive feedback is off.
+    // Don't send message if there's nothing to report (no issues, no tests, and positive feedback is off)
     if (!hasIssues && !hasTestResults && !settings.includePositiveFeedback) {
         return "";
     }
 
-    // If there are no issues at all (and positive feedback is on), send a simple, very positive message.
-    if (!hasIssues && !hasTestResults && settings.includePositiveFeedback) {
-        return `${settings.greeting}\n${settings.positiveFeedbackMessage || `En liten oppdatering for ${studentName} i uke ${week}: Alt har vært helt supert! God innsats.`}\n\n${settings.closing}\n${settings.teacherName}`;
+    // If there are no issues AT ALL (respecting settings) and positive feedback is on, send the "spotless week" message.
+    if (!hasIssues && settings.includePositiveFeedback) {
+        let message = `${settings.greeting}\n${settings.positiveFeedbackMessage || `En liten oppdatering for ${studentName} i uke ${week}: Alt har vært helt supert! God innsats.`}\n\n`;
+         if (hasTestResults) {
+            message += `Resultater:\n`;
+            weekTestResults.forEach(r => {
+                message += `- ${r.subjectName} (${r.testTitle}): ${r.score}/${r.maxScore} poeng\n`;
+            });
+            message += '\n';
+        }
+        message += `${settings.closing}\n${settings.teacherName}`;
+        return message;
     }
+
 
     let message = `${settings.greeting}\nEn liten oppsummering for ${studentName} i uke ${week}.\n\n`;
     let positiveFeedback = "";
 
     if (settings.includePositiveFeedback) {
-        if (settings.includeHomework && homeworkIsPerfect && settings.includeIpad && ipadIsPerfect) {
+        if (homeworkIsPerfect && ipadIsPerfect) {
             positiveFeedback += (settings.positiveFeedbackBoth || "Veldig bra innsats med både lekser og iPad-ansvar denne uken!") + "\n\n";
         } else {
-            if (settings.includeHomework && homeworkIsPerfect) {
+            if (homeworkIsPerfect) {
                 positiveFeedback += (settings.positiveFeedbackHomework || "All leksing denne uken er godkjent. Veldig bra!") + "\n\n";
             }
-            if (settings.includeIpad && ipadIsPerfect) {
+            if (ipadIsPerfect) {
                 positiveFeedback += (settings.positiveFeedbackIpad || "Full pott på iPad-ansvar denne uken. Supert!") + "\n\n";
             }
         }
@@ -104,15 +116,15 @@ const generateSummaryMessage = (
     
     message += positiveFeedback;
 
-    if (settings.includeHomework && hasHomeworkIssues) {
+    if (hasHomeworkIssues) {
         message += `Status for lekser:\n`;
-        if (hasApprovedHomework) {
+        if (approvedAssignments.length > 0) {
             message += `- Godkjent: ${approvedAssignments.join(', ')}\n`;
         }
         message += `- ${homeworkIssues.join('\n- ')}\n\n`;
     }
 
-    if (settings.includeIpad && hasIpadIssues) {
+    if (hasIpadIssues) {
         message += `iPad:\n- ${ipadIssues.join('\n- ')}\n\n`;
     }
     
@@ -713,3 +725,5 @@ export default function Reports(props: ReportsProps) {
         </Tabs>
     )
 }
+
+    
