@@ -241,6 +241,28 @@ export class MySubClassedDexie extends Dexie {
             seatingLayouts: '++id, name, *lockedDesks'
         });
 
+        // Version 16: Add default values for positive feedback text templates
+        this.version(16).stores({}).upgrade(async (tx) => {
+            const userSettings = await tx.table('settings').get('userSettings');
+            if (userSettings && userSettings.reportSettings) {
+                const { reportSettings } = userSettings;
+                if (!reportSettings.positiveFeedbackMessage) {
+                    reportSettings.positiveFeedbackMessage = "En liten oppdatering for [Elev] i uke [Uke]: Alt har vært helt supert! God innsats.";
+                }
+                if (!reportSettings.positiveFeedbackHomework) {
+                    reportSettings.positiveFeedbackHomework = "All leksing denne uken er godkjent. Veldig bra!";
+                }
+                if (!reportSettings.positiveFeedbackIpad) {
+                    reportSettings.positiveFeedbackIpad = "Full pott på iPad-ansvar denne uken. Supert!";
+                }
+                if (!reportSettings.positiveFeedbackBoth) {
+                    reportSettings.positiveFeedbackBoth = "Veldig bra innsats med både lekser og iPad-ansvar denne uken!";
+                }
+                userSettings.reportSettings = reportSettings;
+                await tx.table('settings').put(userSettings);
+            }
+        });
+
 
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
@@ -542,4 +564,5 @@ export async function importDatabase(data: { [key: string]: any[] }) {
 
 
   
+
 
