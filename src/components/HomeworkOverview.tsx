@@ -85,7 +85,7 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
 
   const handleAdd = () => {
     if (subjectId) {
-      const finalTitle = title.trim() || subjects.find(s => s.id === subjectId)?.name || "Lekse";
+      const finalTitle = title.trim();
       onAddHomework(finalTitle, subjectId, defaultStatus);
       setTitle("");
       setSubjectId("");
@@ -235,7 +235,7 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
           date: newDate,
           week: getWeekNumber(newDate),
         });
-        toast({ title: "Lekse lagt til", description: `"${title}" er lagt til i oversikten.` });
+        toast({ title: "Lekse lagt til", description: `"${title || subjects.find(s => s.id === subjectId)?.name}" er lagt til i oversikten.` });
 
         if (defaultStatus !== "none") {
             const problemStatuses: HomeworkStatus[] = ["Ikke levert", "Må rettes", "Glemt bok"];

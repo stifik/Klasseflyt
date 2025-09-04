@@ -56,25 +56,26 @@ const generateSummaryMessage = (
     weekTestResults: { subjectName: string, testTitle: string, score: number, maxScore: number }[],
     settings: ReportSettings,
 ): string => {
-
+    
     const homeworkIssues: string[] = [];
-    if (missingAssignments.length > 0) homeworkIssues.push(`Ikke levert: ${missingAssignments.join(', ')}`);
-    if (incompleteAssignments.length > 0) homeworkIssues.push(`Må rettes: ${incompleteAssignments.join(', ')}`);
-    if (forgottenBooks.length > 0) homeworkIssues.push(`Glemt bok: ${forgottenBooks.join(', ')}`);
-    
-    const ipadIssues: string[] = [];
-    if (ipadNotChargedCount > 0) ipadIssues.push(`Ikke ladet: ${ipadNotChargedCount} gang(er)`);
-    if (ipadNotBroughtCount > 0) ipadIssues.push(`Ikke medbrakt: ${ipadNotBroughtCount} gang(er)`);
+    if (settings.includeHomework) {
+        if (missingAssignments.length > 0) homeworkIssues.push(`Ikke levert: ${missingAssignments.join(', ')}`);
+        if (incompleteAssignments.length > 0) homeworkIssues.push(`Må rettes: ${incompleteAssignments.join(', ')}`);
+        if (forgottenBooks.length > 0) homeworkIssues.push(`Glemt bok: ${forgottenBooks.join(', ')}`);
+    }
 
-    const hasHomeworkIssues = settings.includeHomework && homeworkIssues.length > 0;
-    const hasIpadIssues = settings.includeIpad && ipadIssues.length > 0;
+    const ipadIssues: string[] = [];
+    if (settings.includeIpad) {
+        if (ipadNotChargedCount > 0) ipadIssues.push(`Ikke ladet: ${ipadNotChargedCount} gang(er)`);
+        if (ipadNotBroughtCount > 0) ipadIssues.push(`Ikke medbrakt: ${ipadNotBroughtCount} gang(er)`);
+    }
+
     const hasRemarks = settings.includeRemarks && remarksCount > 0;
-    const hasIssues = hasHomeworkIssues || hasIpadIssues || hasRemarks;
-    
+    const hasIssues = homeworkIssues.length > 0 || ipadIssues.length > 0 || hasRemarks;
     const hasTestResults = settings.includeTests && weekTestResults.length > 0;
     
-    const homeworkIsPerfect = settings.includeHomework && approvedAssignments.length > 0 && !hasHomeworkIssues;
-    const ipadIsPerfect = settings.includeIpad && !hasIpadIssues;
+    const homeworkIsPerfect = settings.includeHomework && approvedAssignments.length > 0 && homeworkIssues.length === 0;
+    const ipadIsPerfect = settings.includeIpad && ipadIssues.length === 0;
 
     if (!hasIssues && !hasTestResults && !settings.includePositiveFeedback) {
         return "";
@@ -82,39 +83,37 @@ const generateSummaryMessage = (
 
     let message = `${settings.greeting}\nEn liten oppsummering for ${studentName} i uke ${week}:\n\n`;
     
-    if (!hasIssues && settings.includePositiveFeedback) {
-        message += `${settings.positiveFeedbackMessage || `Alt har vært helt supert! God innsats.`}\n\n`;
-    } else {
-        let positiveFeedback = "";
-        if (settings.includePositiveFeedback) {
+    if (settings.includePositiveFeedback) {
+        if (!hasIssues) {
+            message += `${settings.positiveFeedbackMessage}\n\n`;
+        } else {
             if (homeworkIsPerfect && ipadIsPerfect) {
-                positiveFeedback += (settings.positiveFeedbackBoth || "Veldig bra innsats med både lekser og iPad-ansvar denne uken!") + "\n\n";
+                message += `${settings.positiveFeedbackBoth}\n\n`;
             } else {
                 if (homeworkIsPerfect) {
-                    positiveFeedback += (settings.positiveFeedbackHomework || "All leksing denne uken er godkjent. Veldig bra!") + "\n\n";
+                    message += `${settings.positiveFeedbackHomework}\n\n`;
                 }
                 if (ipadIsPerfect) {
-                    positiveFeedback += (settings.positiveFeedbackIpad || "Full pott på iPad-ansvar denne uken. Supert!") + "\n\n";
+                    message += `${settings.positiveFeedbackIpad}\n\n`;
                 }
             }
         }
-        message += positiveFeedback;
+    }
 
-        if (hasHomeworkIssues) {
-            message += `Status for lekser:\n`;
-            if (approvedAssignments.length > 0) {
-                message += `- Godkjent: ${approvedAssignments.join(', ')}\n`;
-            }
-            message += `- ${homeworkIssues.join('\n- ')}\n\n`;
+    if (homeworkIssues.length > 0) {
+        message += `Status for lekser:\n`;
+        if (approvedAssignments.length > 0) {
+            message += `- Godkjent: ${approvedAssignments.join(', ')}\n`;
         }
+        message += `- ${homeworkIssues.join('\n- ')}\n\n`;
+    }
 
-        if (hasIpadIssues) {
-            message += `iPad:\n- ${ipadIssues.join('\n- ')}\n\n`;
-        }
-        
-        if (hasRemarks) {
-            message += `Anmerkninger: ${remarksCount} stk\n\n`;
-        }
+    if (ipadIssues.length > 0) {
+        message += `iPad:\n- ${ipadIssues.join('\n- ')}\n\n`;
+    }
+    
+    if (hasRemarks) {
+        message += `Anmerkninger: ${remarksCount} stk\n\n`;
     }
 
     if (hasTestResults) {
@@ -201,7 +200,11 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
             const formatHomeworkWithSubject = (s: Submission) => {
                 const hw = safeHomework.find(h => h.id === s.homeworkId);
                 const subject = subjects.find(sub => sub.id === hw?.subjectId);
-                return `${subject?.name || 'Ukjent'} (${hw?.title || ''})`;
+                if (!subject) return 'Ukjent';
+                if (hw?.title) {
+                    return `${subject.name} (${hw.title})`;
+                }
+                return subject.name;
             };
             
             const formattedTestResults = studentWeekTestResults.map(r => {
