@@ -382,7 +382,7 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
             <TableRow>
               <TableHead className="sticky left-0 z-10 font-bold bg-background">Elev</TableHead>
               {filteredHomework.map(hw => (
-                <TableHead key={hw.id} className="text-center group">
+                <TableHead key={hw.id} className="text-center group relative">
                   <div>{subjects.find(s => s.id === hw.subjectId)?.name}</div>
                   <div className="font-normal">{hw.title}</div>
                   <div className="text-xs font-light text-muted-foreground">Uke {hw.week}</div>
