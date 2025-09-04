@@ -84,8 +84,9 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
   const [defaultStatus, setDefaultStatus] = useState<HomeworkStatus | "none">("none");
 
   const handleAdd = () => {
-    if (title && subjectId) {
-      onAddHomework(title, subjectId, defaultStatus);
+    if (subjectId) {
+      const finalTitle = title.trim() || subjects.find(s => s.id === subjectId)?.name || "Lekse";
+      onAddHomework(finalTitle, subjectId, defaultStatus);
       setTitle("");
       setSubjectId("");
       setDefaultStatus("none");
@@ -117,7 +118,7 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
         </DialogHeader>
         <div className="space-y-4">
           <Input 
-            placeholder="Tittel på leksen" 
+            placeholder="Tittel på leksen (valgfritt)" 
             value={title} 
             onChange={(e) => setTitle(e.target.value)}
           />
@@ -149,7 +150,7 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setIsOpen(false)}>Avbryt</Button>
-          <Button onClick={handleAdd} disabled={!title || !subjectId}>Legg til</Button>
+          <Button onClick={handleAdd} disabled={!subjectId}>Legg til</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
