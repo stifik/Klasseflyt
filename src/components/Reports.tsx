@@ -70,31 +70,53 @@ const generateSummaryMessage = (
     const hasApprovedHomework = approvedAssignments.length > 0;
     const hasIpadIssues = ipadIssues.length > 0;
     const hasTestResults = weekTestResults.length > 0 && settings.includeTests;
-    const hasIssues = hasHomeworkIssues || hasIpadIssues || (remarksCount > 0 && settings.includeRemarks);
+    const hasRemarks = remarksCount > 0 && settings.includeRemarks;
+    const hasIssues = hasHomeworkIssues || hasIpadIssues || hasRemarks;
+
+    const homeworkIsPerfect = !hasHomeworkIssues && hasApprovedHomework;
+    const ipadIsPerfect = !hasIpadIssues;
+
+    // Don't send message if there are no issues, no tests, and positive feedback is off.
+    if (!hasIssues && !hasTestResults && !settings.includePositiveFeedback) {
+        return "";
+    }
+
+    // If there are no issues at all (and positive feedback is on), send a simple, very positive message.
+    if (!hasIssues && !hasTestResults && settings.includePositiveFeedback) {
+        return `${settings.greeting}\nEn liten oppdatering for ${studentName} i uke ${week}: Alt har vært helt supert! God innsats.\n\n${settings.closing}\n${settings.teacherName}`;
+    }
 
     let message = `${settings.greeting}\nEn liten oppsummering for ${studentName} i uke ${week}.\n\n`;
-      
-    if (settings.includeHomework) {
-        if (hasHomeworkIssues) {
-            message += `Status for lekser:\n`;
-            if (hasApprovedHomework) {
-                message += `- Godkjent: ${approvedAssignments.join(', ')}\n`;
+    let positiveFeedback = "";
+
+    if (settings.includePositiveFeedback) {
+        if (settings.includeHomework && homeworkIsPerfect && settings.includeIpad && ipadIsPerfect) {
+            positiveFeedback += "Veldig bra innsats med både lekser og iPad-ansvar denne uken!\n\n";
+        } else {
+            if (settings.includeHomework && homeworkIsPerfect) {
+                positiveFeedback += "All leksing denne uken er godkjent. Veldig bra!\n\n";
             }
-            message += `- ${homeworkIssues.join('\n- ')}\n\n`;
-        } else if (settings.includePositiveFeedback && hasApprovedHomework) {
-             if (hasIssues || hasTestResults) {
-                message += `Lekser: All leksing denne uken er godkjent. Veldig bra innsats!\n\n`;
-            } else {
-                 message = `${settings.greeting}\nEn liten oppdatering for ${studentName} i uke ${week}: Alt har vært helt supert! God innsats.\n\n`;
+            if (settings.includeIpad && ipadIsPerfect) {
+                positiveFeedback += "Full pott på iPad-ansvar denne uken. Supert!\n\n";
             }
         }
+    }
+    
+    message += positiveFeedback;
+
+    if (settings.includeHomework && hasHomeworkIssues) {
+        message += `Status for lekser:\n`;
+        if (hasApprovedHomework) {
+            message += `- Godkjent: ${approvedAssignments.join(', ')}\n`;
+        }
+        message += `- ${homeworkIssues.join('\n- ')}\n\n`;
     }
 
     if (settings.includeIpad && hasIpadIssues) {
         message += `iPad:\n- ${ipadIssues.join('\n- ')}\n\n`;
     }
     
-    if (settings.includeTests && weekTestResults.length > 0) {
+    if (hasTestResults) {
         message += `Resultater:\n`;
         weekTestResults.forEach(r => {
             message += `- ${r.subjectName} (${r.testTitle}): ${r.score}/${r.maxScore} poeng\n`;
@@ -102,19 +124,9 @@ const generateSummaryMessage = (
         message += '\n';
     }
 
-    if (settings.includeRemarks && remarksCount > 0) {
+    if (hasRemarks) {
         message += `Anmerkninger: ${remarksCount} stk\n\n`;
     }
-
-    // Don't send message if there are no issues and positive feedback is off.
-    if (!hasIssues && !hasTestResults && !settings.includePositiveFeedback) {
-        return "";
-    }
-    
-    if (!hasIssues && !hasTestResults && settings.includePositiveFeedback && !hasApprovedHomework) {
-        message = `${settings.greeting}\nEn liten oppdatering for ${studentName} i uke ${week}: Alt har vært helt supert! God innsats.\n\n`;
-    }
-
 
     message += `${settings.closing}\n${settings.teacherName}`;
     return message;
