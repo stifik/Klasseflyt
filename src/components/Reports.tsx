@@ -69,6 +69,7 @@ const generateSummaryMessage = (
     const hasHomeworkIssues = homeworkIssues.length > 0;
     const hasApprovedHomework = approvedAssignments.length > 0;
     const hasIpadIssues = ipadIssues.length > 0;
+    const hasTestResults = weekTestResults.length > 0 && settings.includeTests;
     const hasIssues = hasHomeworkIssues || hasIpadIssues || (remarksCount > 0 && settings.includeRemarks);
 
     let message = `${settings.greeting}\nEn liten oppsummering for ${studentName} i uke ${week}.\n\n`;
@@ -81,7 +82,7 @@ const generateSummaryMessage = (
             }
             message += `- ${homeworkIssues.join('\n- ')}\n\n`;
         } else if (settings.includePositiveFeedback && hasApprovedHomework) {
-             if (hasIssues) {
+             if (hasIssues || hasTestResults) {
                 message += `Lekser: All leksing denne uken er godkjent. Veldig bra innsats!\n\n`;
             } else {
                  message = `${settings.greeting}\nEn liten oppdatering for ${studentName} i uke ${week}: Alt har vært helt supert! God innsats.\n\n`;
@@ -106,11 +107,11 @@ const generateSummaryMessage = (
     }
 
     // Don't send message if there are no issues and positive feedback is off.
-    if (!hasIssues && !settings.includePositiveFeedback) {
+    if (!hasIssues && !hasTestResults && !settings.includePositiveFeedback) {
         return "";
     }
     
-    if (!hasIssues && settings.includePositiveFeedback && !hasApprovedHomework) {
+    if (!hasIssues && !hasTestResults && settings.includePositiveFeedback && !hasApprovedHomework) {
         message = `${settings.greeting}\nEn liten oppdatering for ${studentName} i uke ${week}: Alt har vært helt supert! God innsats.\n\n`;
     }
 
