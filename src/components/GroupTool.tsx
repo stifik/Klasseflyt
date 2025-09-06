@@ -8,13 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
-import { Shuffle, Users, CheckSquare, GripVertical, Bot, Info } from "lucide-react";
+import { Shuffle, Users, CheckSquare, GripVertical, Bot, Info, Library } from "lucide-react";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, closestCorners, useSensor, PointerSensor, TouchSensor } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 
 
 interface GroupToolProps {
@@ -64,7 +65,7 @@ const DroppableStation = ({ station, children, isOver, hint, assignments }: { st
     const isFull = station.capacity && assignments.length >= station.capacity;
 
     return (
-        <Card ref={setNodeRef} className={cn("h-full transition-colors", isOver && "bg-primary/10", hint?.isBest && "bg-green-100 dark:bg-green-900/20", isFull && "bg-muted/50")}>
+        <Card ref={setNodeRef} className={cn("h-full transition-colors flex-shrink-0 w-64", isOver && "bg-primary/10", hint?.isBest && "bg-green-100 dark:bg-green-900/20", isFull && "bg-muted/50")}>
             <CardHeader>
                 <CardTitle className="flex items-center justify-between text-base">
                     {station.name}
@@ -113,7 +114,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
-    const recentLogs = stationAssignmentLogs.filter(log => new Date(log.date) > thirtyDaysAgo);
+    const recentLogs = (stationAssignmentLogs || []).filter(log => new Date(log.date) > thirtyDaysAgo);
 
     recentLogs.forEach(log => {
         if (!history[log.studentId]) history[log.studentId] = {};
@@ -267,7 +268,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
       return [null, null];
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
+ const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveDragGroup(null);
 
@@ -277,15 +278,13 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
 
     const activeId = active.id.toString();
     const overId = over.id.toString();
-    
-    // Find the container for what's being dragged over
-    const [overGroup, overContainerId] = findGroupAndContainer(overId);
-    
+
     const [activeGroup, sourceContainerId] = findGroupAndContainer(activeId);
-    
     if (!activeGroup || !sourceContainerId) return;
 
-    // overId can be a group or a container. We need the container.
+    // Find the container for what's being dragged over.
+    // It can be a group or a container. We need the container ID.
+    const [overGroup, overContainerId] = findGroupAndContainer(overId);
     const destinationContainerId = overContainerId || overId;
 
     if (sourceContainerId === destinationContainerId) {
@@ -314,7 +313,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     // Add to destination
     if (destinationContainerId === 'unassigned') {
         newUnassigned.push(activeGroup);
-    } else {
+    } else if (workstations.some(ws => ws.id === destinationContainerId)) {
         if (!newAssignments[destinationContainerId]) {
             newAssignments[destinationContainerId] = [];
         }
@@ -324,6 +323,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     setUnassignedGroups(newUnassigned);
     setStationAssignments(newAssignments);
 };
+
 
   const handleDragStart = (event: any) => {
       setActiveDragGroup(event.active.data.current.group);
@@ -387,19 +387,24 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                         </Button>
                     </div>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    <DroppableStation station={{id: 'unassigned', name: 'Ufordelte Grupper'}} isOver={false} hint={null} assignments={unassignedGroups}>
-                        {unassignedGroups.map((group, index) => (
-                           <DraggableGroup key={group.id} group={group} groupNumber={index + 1} />
-                        ))}
-                    </DroppableStation>
-                    {workstations.map(station => (
-                        <DroppableStation key={station.id} station={station} isOver={false} hint={stationHints[station.id] || null} assignments={stationAssignments[station.id] || []}>
-                            {(stationAssignments[station.id] || []).map((group, index) => (
-                                <DraggableGroup key={group.id} group={group} groupNumber={index + 1} />
+                <CardContent>
+                    <ScrollArea className="w-full pb-4">
+                      <div className="flex gap-4">
+                        <DroppableStation station={{id: 'unassigned', name: 'Ufordelte Grupper'}} isOver={false} hint={null} assignments={unassignedGroups}>
+                            {unassignedGroups.map((group, index) => (
+                               <DraggableGroup key={group.id} group={group} groupNumber={index + 1} />
                             ))}
                         </DroppableStation>
-                    ))}
+                        {workstations.map(station => (
+                            <DroppableStation key={station.id} station={station} isOver={false} hint={stationHints[station.id] || null} assignments={stationAssignments[station.id] || []}>
+                                {(stationAssignments[station.id] || []).map((group, index) => (
+                                    <DraggableGroup key={group.id} group={group} groupNumber={index + 1} />
+                                ))}
+                            </DroppableStation>
+                        ))}
+                      </div>
+                      <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
                 </CardContent>
             </Card>
             <DragOverlay>
