@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { Student, Remark, SeatingChartData, AppSettings } from "@/lib/types";
+import type { Student, Remark, SeatingChartData, AppSettings, SeatingLayout } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -24,9 +24,10 @@ interface RemarksProps {
   onUpdate: () => void;
   seatingChart: SeatingChartData | null;
   settings: AppSettings;
+  activeLayout: SeatingLayout | null;
 }
 
-export default function Remarks({ students, initialRemarks, onUpdate, seatingChart, settings }: RemarksProps) {
+export default function Remarks({ students, initialRemarks, onUpdate, seatingChart, settings, activeLayout }: RemarksProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [currentPeriod, setCurrentPeriod] = useState<number>(1);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -177,10 +178,6 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
     <div className="w-28 h-20" />
   );
   
-  const displayedChart = isFlipped 
-    ? seatingChart?.map(row => [...row].reverse()).reverse() 
-    : seatingChart;
-
   return (
     <Card>
       <CardHeader>
@@ -242,29 +239,33 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
         </div>
       </CardHeader>
       <CardContent>
-        {displayedChart ? (
-            <div className="grid gap-y-4">
-                {displayedChart.map((row, rowIndex) => (
-                    <div key={rowIndex} className="flex flex-wrap justify-start gap-x-4 gap-y-4">
-                        {row.map((desk, deskIndex) => (
-                           <div key={deskIndex} className="flex gap-1">
-                                {desk ? desk.map((studentName) => {
-                                    const student = students.find(s => s.name === studentName);
-                                    return student ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={student?.id || deskIndex} />;
-                                }) : <EmptyDesk />}
-                           </div>
-                        ))}
+        {seatingChart && activeLayout ? (
+             <div className="grid gap-y-4">
+                {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
+                     <div key={rowIndex} className="flex flex-wrap justify-start gap-x-4 gap-y-4">
+                        {Array.from({ length: activeLayout.cols }).map((_, colIndex) => {
+                            if (!activeLayout.layout[rowIndex]?.[colIndex]) {
+                                return <EmptyDesk key={colIndex} />;
+                            }
+                            // Apply flip transformation if needed
+                            const finalRowIndex = isFlipped ? (activeLayout.rows - 1 - rowIndex) : rowIndex;
+                            const finalColIndex = isFlipped ? (activeLayout.cols - 1 - colIndex) : colIndex;
+                            const studentName = seatingChart[finalRowIndex]?.[finalColIndex]?.[0];
+                            const student = studentName ? students.find(s => s.name === studentName) : null;
+                            
+                            return student ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={colIndex} />;
+                        })}
                     </div>
                 ))}
             </div>
-        ) : seatingChart ? (
-          <div className="flex items-center justify-center h-48 text-muted-foreground">
-              <p>Klassekartet er tomt. Gå til "Klassekart" for å generere et.</p>
-          </div>
-          ) : (
+        ) : !seatingChart ? (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {students.map((student) => <StudentButton key={student.id} student={student} />)}
           </div>
+        ) : (
+             <div className="flex items-center justify-center h-48 text-muted-foreground">
+                <p>Klassekartet er tomt. Gå til "Klasseverktøy &gt; Klassekart" for å generere et.</p>
+            </div>
         )}
       </CardContent>
     </Card>

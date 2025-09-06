@@ -69,7 +69,8 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
     const stationAssignmentLogs = useLiveQuery(() => tabKey === 'classroomTools' ? db.stationAssignmentLogs.orderBy('date').reverse().toArray() : undefined, [tabKey]);
     const groupSets = useLiveQuery(() => tabKey === 'classroomTools' ? db.groupSets.orderBy('createdAt').reverse().toArray() : undefined, [tabKey]);
     
-    const activeLayoutId = tabKey === 'classroomTools' ? props.appSettings?.selectedSeatingLayoutId : null;
+    // activeLayout is needed by multiple tabs to render the chart correctly
+    const activeLayoutId = props.appSettings?.selectedSeatingLayoutId;
     const activeLayout = useLiveQuery(async () => {
         if (activeLayoutId) {
             return db.seatingLayouts.get(activeLayoutId);

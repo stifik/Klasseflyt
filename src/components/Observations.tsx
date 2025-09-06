@@ -2,7 +2,7 @@
 "use client";
 
 import type { FC } from "react";
-import type { Student, Remark, SeatingChartData, AppSettings, HourlyCheck } from "@/lib/types";
+import type { Student, Remark, SeatingChartData, AppSettings, HourlyCheck, SeatingLayout } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import HourlyCheckComponent from "./HourlyCheck";
 import RemarksComponent from "./Remarks";
@@ -14,6 +14,7 @@ interface ObservationsProps {
   onUpdate: () => void;
   seatingChart: SeatingChartData | null;
   settings: AppSettings;
+  activeLayout: SeatingLayout | null;
 }
 
 const Observations: FC<ObservationsProps> = (props) => {
@@ -30,6 +31,7 @@ const Observations: FC<ObservationsProps> = (props) => {
             onUpdate={props.onUpdate}
             seatingChart={props.seatingChart}
             settings={props.settings}
+            activeLayout={props.activeLayout}
         />
       </TabsContent>
       <TabsContent value="remarks">
@@ -39,6 +41,7 @@ const Observations: FC<ObservationsProps> = (props) => {
             onUpdate={props.onUpdate}
             seatingChart={props.seatingChart}
             settings={props.settings}
+            activeLayout={props.activeLayout}
         />
       </TabsContent>
     </Tabs>

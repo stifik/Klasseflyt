@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Student, DailyCheck, SeatingChartData } from "@/lib/types";
+import type { Student, DailyCheck, SeatingChartData, SeatingLayout } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -22,9 +22,10 @@ type IpadStatus = "OK" | "NotCharged" | "NotBrought";
 interface DailyChecklistProps {
   students: Student[];
   seatingChart: SeatingChartData | null;
+  activeLayout: SeatingLayout | null;
 }
 
-export default function DailyChecklist({ students, seatingChart }: DailyChecklistProps) {
+export default function DailyChecklist({ students, seatingChart, activeLayout }: DailyChecklistProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [isFlipped, setIsFlipped] = useState(false);
   const { toast } = useToast();
@@ -140,29 +141,33 @@ export default function DailyChecklist({ students, seatingChart }: DailyChecklis
         </div>
       </CardHeader>
       <CardContent>
-        {displayedChart ? (
+        {seatingChart && activeLayout ? (
             <div className="grid gap-y-4">
-                {displayedChart.map((row, rowIndex) => (
-                    <div key={rowIndex} className="flex flex-wrap justify-start gap-x-4 gap-y-4">
-                        {row.map((desk, deskIndex) => (
-                           <div key={deskIndex} className="flex gap-1">
-                                {desk ? desk.map((studentName, studentIndex) => {
-                                    const student = students.find(s => s.name === studentName);
-                                    return student ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={studentIndex} />;
-                                }) : <EmptyDesk />}
-                           </div>
-                        ))}
+                {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
+                     <div key={rowIndex} className="flex flex-wrap justify-start gap-x-4 gap-y-4">
+                        {Array.from({ length: activeLayout.cols }).map((_, colIndex) => {
+                            if (!activeLayout.layout[rowIndex]?.[colIndex]) {
+                                return <EmptyDesk key={colIndex} />;
+                            }
+                            // Apply flip transformation if needed
+                            const finalRowIndex = isFlipped ? (activeLayout.rows - 1 - rowIndex) : rowIndex;
+                            const finalColIndex = isFlipped ? (activeLayout.cols - 1 - colIndex) : colIndex;
+                            const studentName = seatingChart[finalRowIndex]?.[finalColIndex]?.[0];
+                            const student = studentName ? students.find(s => s.name === studentName) : null;
+                            
+                            return student ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={colIndex} />;
+                        })}
                     </div>
                 ))}
             </div>
-        ) : seatingChart ? (
-             <div className="flex items-center justify-center h-48 text-muted-foreground">
-                <p>Klassekartet er tomt. Gå til "Klassekart" for å generere et.</p>
-            </div>
-        ) : (
+        ) : !seatingChart ? (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {students.map((student) => <StudentButton key={student.id} student={student} />)}
           </div>
+        ) : (
+             <div className="flex items-center justify-center h-48 text-muted-foreground">
+                <p>Klassekartet er tomt. Gå til "Klasseverktøy &gt; Klassekart" for å generere et.</p>
+            </div>
         )}
       </CardContent>
     </Card>
