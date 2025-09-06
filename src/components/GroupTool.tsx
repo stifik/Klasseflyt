@@ -33,6 +33,7 @@ type GroupingStrategy = "numberOfGroups" | "studentsPerGroup";
 type GroupWithId = {
     id: string;
     studentIds: string[];
+    groupNumber: number; // Permanent group number
 };
 
 // Fisher-Yates shuffle algorithm
@@ -45,7 +46,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return newArray;
 };
 
-const DraggableGroup = ({ group, groupNumber, studentMap }: { group: GroupWithId; groupNumber: number, studentMap: Map<string, string> }) => {
+const DraggableGroup = ({ group, studentMap }: { group: GroupWithId; studentMap: Map<string, string> }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: group.id,
     data: { group },
@@ -56,7 +57,7 @@ const DraggableGroup = ({ group, groupNumber, studentMap }: { group: GroupWithId
   return (
     <Card ref={setNodeRef} {...listeners} {...attributes} className={cn("touch-none cursor-grab", isDragging && "opacity-50")}>
       <CardHeader className="flex flex-row items-center justify-between p-2">
-        <CardTitle className="text-sm font-medium">Gruppe {groupNumber}</CardTitle>
+        <CardTitle className="text-sm font-medium">Gruppe {group.groupNumber}</CardTitle>
         <GripVertical className="w-4 h-4 text-muted-foreground" />
       </CardHeader>
       <CardContent className="p-2 pt-0 text-xs">
@@ -209,7 +210,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
       }
     }
     
-    const groupsWithIds: GroupWithId[] = groups.map(g => ({ id: uuidv4(), studentIds: g.map(s => s.id!) }));
+    const groupsWithIds: GroupWithId[] = groups.map((g, index) => ({ id: uuidv4(), studentIds: g.map(s => s.id!), groupNumber: index + 1 }));
     setUnassignedGroups(groupsWithIds);
     setActiveGroupSet(null); // Clear active project group
 
@@ -220,7 +221,12 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
   
   const handleLoadGroupSet = (groupSet: GroupSet) => {
       setActiveGroupSet(groupSet);
-      setUnassignedGroups(groupSet.groups);
+      // Ensure loaded groups have a groupNumber for consistency
+      const groupsWithNumbers: GroupWithId[] = groupSet.groups.map((g, index) => ({
+          ...g,
+          groupNumber: index + 1
+      }));
+      setUnassignedGroups(groupsWithNumbers);
       
       const initialAssignments: Record<string, GroupWithId[]> = {};
       workstations.forEach(ws => { initialAssignments[ws.id] = [] });
@@ -418,7 +424,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     try {
         const newId = await db.groupSets.add(newGroupSet as GroupSet);
         toast({ title: "Grupper lagret", description: `"${name.trim()}" er lagret.`});
-        const savedGroupSet = { ...newGroupSet, id: newId as string };
+        const savedGroupSet = { ...newGroupSet, id: newId as string, groups: allGroups.map((g,i) => ({...g, groupNumber: i+1})) };
         setActiveGroupSet(savedGroupSet);
     } catch(e) {
         toast({ title: "Feil", description: "Kunne ikke lagre gruppesett.", variant: "destructive" });
@@ -571,16 +577,16 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                         <div className="lg:col-span-1">
                             <DroppableStation station={{id: 'unassigned', name: `Ufordelte Grupper (${unassignedGroups.length})`}} isOver={false} hint={null} assignments={unassignedGroups} studentMap={studentMap}>
-                                {unassignedGroups.map((group, index) => (
-                                   <DraggableGroup key={group.id} group={group} groupNumber={index + 1} studentMap={studentMap} />
+                                {unassignedGroups.map((group) => (
+                                   <DraggableGroup key={group.id} group={group} studentMap={studentMap} />
                                 ))}
                             </DroppableStation>
                         </div>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:col-span-2">
                             {workstations.map(station => (
                                 <DroppableStation key={station.id} station={station} isOver={false} hint={stationHints[station.id] || null} assignments={stationAssignments[station.id] || []} studentMap={studentMap}>
-                                    {(stationAssignments[station.id] || []).map((group, index) => (
-                                        <DraggableGroup key={group.id} group={group} groupNumber={index + 1} studentMap={studentMap} />
+                                    {(stationAssignments[station.id] || []).map((group) => (
+                                        <DraggableGroup key={group.id} group={group} studentMap={studentMap} />
                                     ))}
                                 </DroppableStation>
                             ))}
@@ -589,7 +595,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                 </CardContent>
             </Card>
             <DragOverlay>
-                {activeDragGroup ? <DraggableGroup group={activeDragGroup} groupNumber={1} studentMap={studentMap} /> : null}
+                {activeDragGroup ? <DraggableGroup group={activeDragGroup} studentMap={studentMap} /> : null}
             </DragOverlay>
         </DndContext>
       )}
