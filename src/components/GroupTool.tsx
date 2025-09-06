@@ -144,6 +144,8 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     const overId = over.id.toString();
     const group = active.data.current?.group;
 
+    if (!group) return;
+
     const newUnassigned = [...unassignedGroups];
     const newAssignments = { ...stationAssignments };
 
@@ -167,6 +169,9 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     // Add the group to its destination
     if (overId.startsWith('station-')) {
         const stationId = overId.substring('station-'.length);
+        if (!newAssignments[stationId]) {
+            newAssignments[stationId] = [];
+        }
         newAssignments[stationId].push(group);
     } else { // Dropped on unassigned area
         newUnassigned.push(group);
