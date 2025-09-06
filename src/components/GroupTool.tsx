@@ -15,7 +15,6 @@ import { db } from "@/lib/db";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 
 
 interface GroupToolProps {
@@ -62,7 +61,8 @@ const DraggableGroup = ({ group, groupNumber }: { group: GroupWithId; groupNumbe
 
 const DroppableStation = ({ station, children, isOver, hint, assignments }: { station: Workstation, children: React.ReactNode, isOver: boolean, hint: { text: string, isBest: boolean } | null, assignments: GroupWithId[] }) => {
     const { setNodeRef } = useDroppable({ id: station.id });
-    const isFull = station.capacity && assignments.length >= station.capacity;
+    const studentCount = assignments.reduce((sum, group) => sum + group.students.length, 0);
+    const isFull = station.capacity && studentCount >= station.capacity;
 
     return (
         <Card ref={setNodeRef} className={cn("transition-colors", isOver && "bg-primary/10", hint?.isBest && "bg-green-100 dark:bg-green-900/20", isFull && "bg-muted/50")}>
@@ -71,7 +71,7 @@ const DroppableStation = ({ station, children, isOver, hint, assignments }: { st
                     {station.name}
                      {station.capacity && (
                         <span className="text-xs font-normal text-muted-foreground">
-                            {assignments.length} / {station.capacity}
+                            {studentCount} / {station.capacity}
                         </span>
                      )}
                 </CardTitle>
@@ -195,33 +195,33 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     while (groupsToAssign.length > 0) {
         const group = groupsToAssign.shift()!;
         
-        let bestStationId = workstations[0].id;
+        let bestStationId: string | null = null;
         let minCost = Infinity;
-        let minCount = Infinity;
 
-        // Find the station with the lowest cost, preferring stations with fewer groups
-        workstations.forEach(station => {
-            const cost = calculateCost(group, station.id);
-            const count = newAssignments[station.id].length;
-            const capacity = station.capacity;
-
-            // Skip station if it's full
-            if (capacity && count >= capacity) {
-                return;
-            }
+        // Find the best available station
+        for (const station of workstations) {
+            const currentStudentCount = (newAssignments[station.id] || []).reduce((sum, g) => sum + g.students.length, 0);
+            const canFit = !station.capacity || (currentStudentCount + group.students.length <= station.capacity);
             
-            if (count < minCount || (count === minCount && cost < minCost)) {
-                minCost = cost;
-                minCount = count;
-                bestStationId = station.id;
+            if (canFit) {
+                const cost = calculateCost(group, station.id);
+                if (cost < minCost) {
+                    minCost = cost;
+                    bestStationId = station.id;
+                }
             }
-        });
+        }
         
-        newAssignments[bestStationId].push(group);
+        if (bestStationId) {
+             newAssignments[bestStationId].push(group);
+        } else {
+            // If no station can fit the group, put it back
+            toast({ title: "En gruppe fikk ikke plass", description: `En gruppe på ${group.students.length} elever fikk ikke plass og er lagt tilbake i ufordelte.`, variant: "destructive" });
+        }
     }
     
     setStationAssignments(newAssignments);
-    setUnassignedGroups([]);
+    setUnassignedGroups(groupsToAssign);
     toast({ title: "Grupper fordelt!", description: "Gruppene er automatisk fordelt på stasjonene." });
   };
 
@@ -293,9 +293,12 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
 
     // Check capacity before moving
     const destStation = workstations.find(ws => ws.id === destinationContainerId);
-    if (destStation?.capacity && (stationAssignments[destinationContainerId]?.length || 0) >= destStation.capacity) {
-        toast({ title: "Stasjonen er full", description: `"${destStation.name}" har ikke plass til flere grupper.`, variant: "destructive" });
-        return;
+    if (destStation?.capacity) {
+        const studentCountInDest = (stationAssignments[destinationContainerId] || []).reduce((sum, group) => sum + group.students.length, 0);
+        if (studentCountInDest + activeGroup.students.length > destStation.capacity) {
+            toast({ title: "Stasjonen er full", description: `"${destStation.name}" har ikke plass til denne gruppen.`, variant: "destructive" });
+            return;
+        }
     }
 
     const newUnassigned = [...unassignedGroups];
