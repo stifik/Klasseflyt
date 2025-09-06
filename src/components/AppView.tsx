@@ -65,7 +65,7 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
     // Data specific to ClassroomTools
     const history = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingChartHistory.orderBy('createdAt').reverse().toArray() : undefined, [tabKey]);
     const layouts = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingLayouts.toArray() : undefined, [tabKey]);
-    const stationAssignmentLogs = useLiveQuery(() => tabKey === 'classroomTools' ? db.stationAssignmentLogs.toArray() : undefined, [tabKey]);
+    const stationAssignmentLogs = useLiveQuery(() => tabKey === 'classroomTools' ? db.stationAssignmentLogs.orderBy('date').reverse().toArray() : undefined, [tabKey]);
     
     const activeLayoutId = tabKey === 'classroomTools' ? props.appSettings?.selectedSeatingLayoutId : null;
     const activeLayout = useLiveQuery(async () => {

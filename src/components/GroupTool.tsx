@@ -2,13 +2,13 @@
 "use client";
 
 import { useState } from "react";
-import type { Student, StationAssignmentLog, Workstation } from "@/lib/types";
+import type { Student, StationAssignmentLog, Workstation, AppSettings } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
-import { Shuffle, Users, CheckSquare, GripVertical } from "lucide-react";
+import { Shuffle, Users, CheckSquare, GripVertical, Bot } from "lucide-react";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, closestCorners } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
@@ -17,7 +17,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 interface GroupToolProps {
   students: Student[];
-  appSettings: { workstations?: Workstation[] };
+  appSettings: AppSettings;
   stationAssignmentLogs?: StationAssignmentLog[];
 }
 
@@ -72,7 +72,7 @@ const DroppableStation = ({ station, children }: { station: Workstation, childre
 };
 
 
-export default function GroupTool({ students, appSettings, stationAssignmentLogs }: GroupToolProps) {
+export default function GroupTool({ students, appSettings, stationAssignmentLogs = [] }: GroupToolProps) {
   const [strategy, setStrategy] = useState<GroupingStrategy>("numberOfGroups");
   const [groupValue, setGroupValue] = useState<number>(4);
   
@@ -115,6 +115,55 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     workstations.forEach(ws => { initialAssignments[ws.id] = [] });
     setStationAssignments(initialAssignments);
   };
+
+  const handleAutoAssign = () => {
+    if (unassignedGroups.length === 0 || workstations.length === 0) return;
+
+    const studentHistory: Record<string, Record<string, number>> = {};
+    stationAssignmentLogs.forEach(log => {
+        if (!studentHistory[log.studentId]) studentHistory[log.studentId] = {};
+        studentHistory[log.studentId][log.stationId] = (studentHistory[log.studentId][log.stationId] || 0) + 1;
+    });
+
+    const calculateCost = (group: GroupWithId, stationId: string) => {
+        return group.students.reduce((totalCost, student) => {
+            return totalCost + (studentHistory[student.id!]?.[stationId] || 0);
+        }, 0);
+    };
+
+    const newAssignments: Record<string, GroupWithId[]> = {};
+    workstations.forEach(ws => { newAssignments[ws.id] = [] });
+    let groupsToAssign = [...unassignedGroups];
+    
+    // Distribute groups as evenly as possible first
+    let stationIndex = 0;
+    while (groupsToAssign.length > 0) {
+        const group = groupsToAssign.shift()!;
+        
+        let bestStationId = workstations[0].id;
+        let minCost = Infinity;
+        let minCount = Infinity;
+
+        // Find the station with the lowest cost, preferring stations with fewer groups
+        workstations.forEach(station => {
+            const cost = calculateCost(group, station.id);
+            const count = newAssignments[station.id].length;
+            
+            if (count < minCount || (count === minCount && cost < minCost)) {
+                minCost = cost;
+                minCount = count;
+                bestStationId = station.id;
+            }
+        });
+        
+        newAssignments[bestStationId].push(group);
+    }
+    
+    setStationAssignments(newAssignments);
+    setUnassignedGroups([]);
+    toast({ title: "Grupper fordelt!", description: "Gruppene er automatisk fordelt på stasjonene." });
+  };
+
 
   const handleLogSession = async () => {
     const logs: Omit<StationAssignmentLog, 'id'>[] = [];
@@ -241,11 +290,16 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                 <CardHeader className="flex flex-row justify-between items-center">
                     <div>
                         <CardTitle>Fordel Grupper</CardTitle>
-                        <CardDescription>Dra gruppene til de ulike arbeidsstasjonene.</CardDescription>
+                        <CardDescription>Dra gruppene til stasjonene, eller bruk automatisk fordeling.</CardDescription>
                     </div>
-                    <Button onClick={handleLogSession}>
-                        <CheckSquare className="mr-2"/> Loggfør økt
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={handleAutoAssign} disabled={unassignedGroups.length === 0 || workstations.length === 0}>
+                            <Bot className="mr-2" /> Fordel Stasjoner
+                        </Button>
+                        <Button onClick={handleLogSession}>
+                            <CheckSquare className="mr-2"/> Loggfør økt
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     <DroppableStation station={{id: 'unassigned', name: 'Ufordelte Grupper'}}>
