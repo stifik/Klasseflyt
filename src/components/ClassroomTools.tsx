@@ -2,7 +2,7 @@
 "use client";
 
 import { FC, useEffect } from "react";
-import type { SeatingChartData, SeatingLayout, Student, SeatingChartRecord, AppSettings } from "@/lib/types";
+import type { SeatingChartData, SeatingLayout, Student, SeatingChartRecord, AppSettings, StationAssignmentLog } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import GroupTool from "./GroupTool";
 import StudentPicker from "./StudentPicker";
@@ -21,10 +21,11 @@ interface ClassroomToolsProps {
   onLayoutsChange: (layouts: SeatingLayout[]) => void;
   activeSubTab?: string | null;
   onSubTabChange: (subTab: string) => void;
+  stationAssignmentLogs?: StationAssignmentLog[];
 }
 
 const ClassroomTools: FC<ClassroomToolsProps> = (props) => {
-  const { students, seatingChart, activeLayout, activeSubTab, onSubTabChange } = props;
+  const { students, seatingChart, activeLayout, activeSubTab, onSubTabChange, appSettings, stationAssignmentLogs } = props;
 
   const defaultSubTab = "seating-chart";
   
@@ -51,7 +52,7 @@ const ClassroomTools: FC<ClassroomToolsProps> = (props) => {
         <SeatingChart {...props} />
       </TabsContent>
       <TabsContent value="group-tool">
-        <GroupTool students={students} />
+        <GroupTool students={students} appSettings={appSettings} stationAssignmentLogs={stationAssignmentLogs} />
       </TabsContent>
       <TabsContent value="student-picker">
         <StudentPicker students={students} seatingChart={seatingChart} activeLayout={activeLayout} />

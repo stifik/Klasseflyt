@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -22,6 +22,7 @@ export class MySubClassedDexie extends Dexie {
     testResults!: Table<TestResult, number>;
     learningGoals!: Table<LearningGoal, string>;
     goalAchievements!: Table<GoalAchievement, string>;
+    stationAssignmentLogs!: Table<StationAssignmentLog, number>;
 
 
     constructor() {
@@ -262,6 +263,20 @@ export class MySubClassedDexie extends Dexie {
                 await tx.table('settings').put(userSettings);
             }
         });
+        
+        this.version(17).stores({
+            stationAssignmentLogs: '++id, &[studentId+date], studentId, date',
+        }).upgrade(async (tx) => {
+            const userSettings = await tx.table('settings').get('userSettings');
+            if (userSettings && !userSettings.workstations) {
+                userSettings.workstations = [
+                    { id: uuidv4(), name: 'Bibliotek' },
+                    { id: uuidv4(), name: 'Grupperom 1' },
+                    { id: uuidv4(), name: 'I klasserommet' },
+                ];
+                await tx.table('settings').put(userSettings);
+            }
+        });
 
 
         this.on('populate', async () => {
@@ -353,6 +368,11 @@ const defaultSettings: AppSettings = {
   selectedSeatingLayoutId: null,
   remarkTypes: ["Generell", "Forstyrrer andre", "Mangler utstyr", "Upassende språk", "Gjorde en god innsats"],
   behaviorTypes: defaultBehaviorTypes,
+  workstations: [
+    { id: uuidv4(), name: 'Bibliotek' },
+    { id: uuidv4(), name: 'Grupperom 1' },
+    { id: uuidv4(), name: 'I klasserommet' },
+  ],
   dpiaAnalysis: defaultDPIAAnalysis,
   onboardingCompleted: false,
 };
@@ -386,6 +406,7 @@ export async function resetDatabase() {
             selectedSeatingLayoutId: defaultSettings.selectedSeatingLayoutId,
             remarkTypes: defaultSettings.remarkTypes,
             behaviorTypes: defaultSettings.behaviorTypes,
+            workstations: defaultSettings.workstations,
             dpiaAnalysis: defaultSettings.dpiaAnalysis,
             onboardingCompleted: true,
         };
@@ -410,7 +431,7 @@ export async function resetDatabase() {
         const homeworkToAdd: Omit<Homework, 'id'>[] = [];
 
         if (norskSubject?.id) homeworkToAdd.push({ title: "Lesing kap. 2", subjectId: norskSubject.id, week: thisWeek, date: new Date() });
-        if (engelskSubject?.id) homeworkToAdd.push({ title: "Gloser", subjectId: engelskSubject.id, week: thisWeek, date: new Date() });
+        if (engelskSubject?.id) homeworkToAdd.push({ title: "", subjectId: engelskSubject.id, week: thisWeek, date: new Date() });
         if (matteSubject?.id) homeworkToAdd.push({ title: "Oppg. 3.1-3.5", subjectId: matteSubject.id, week: thisWeek, date: new Date() });
         if (naturfagSubject?.id) homeworkToAdd.push({ title: "Verdensrommet", subjectId: naturfagSubject.id, week: thisWeek - 1, date: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000) });
         

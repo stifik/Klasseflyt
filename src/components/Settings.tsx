@@ -4,11 +4,11 @@
 
 import * as React from "react";
 import { useState, useEffect, useRef } from "react";
-import type { Student, Subject, AppSettings, TabKey, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis } from "@/lib/types";
+import type { Student, Subject, AppSettings, TabKey, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Workstation } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Eye, LayoutDashboard, Group, ShieldCheck, Award, Upload, Download, FileText } from "lucide-react";
+import { Plus, Trash2, Database, AlertTriangle, SettingsIcon, GripVertical, MessageSquareQuote, Clock, NotebookText, Eye, LayoutDashboard, Group, ShieldCheck, Award, Upload, Download, FileText, Library } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -127,6 +127,7 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
   const [newBehaviorLabel, setNewBehaviorLabel] = useState("");
   const [newBehaviorIcon, setNewBehaviorIcon] = useState<string>(availableIcons[0]);
   const [newBehaviorColor, setNewBehaviorColor] = useState<BehaviorType['color']>(availableColors[0]);
+  const [newWorkstation, setNewWorkstation] = useState("");
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [localSettings, setLocalSettings] = useState(initialSettings);
@@ -228,6 +229,20 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
   const handleDeleteBehaviorType = (idToDelete: string) => {
       const updatedTypes = localSettings.behaviorTypes?.filter(t => t.id !== idToDelete);
       handleSettingChange({ behaviorTypes: updatedTypes });
+  };
+
+  const handleAddWorkstation = () => {
+    if (newWorkstation.trim()) {
+      const newStation: Workstation = { id: uuidv4(), name: newWorkstation.trim() };
+      const updatedStations = [...(localSettings.workstations || []), newStation];
+      handleSettingChange({ workstations: updatedStations });
+      setNewWorkstation("");
+    }
+  };
+
+  const handleDeleteWorkstation = (idToDelete: string) => {
+    const updatedStations = localSettings.workstations?.filter(ws => ws.id !== idToDelete);
+    handleSettingChange({ workstations: updatedStations });
   };
 
   const handleResetDatabase = async () => {
@@ -448,7 +463,7 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                     <AccordionTrigger className="p-0 hover:no-underline">
                         <CardTitle className="flex items-center"><NotebookText className="mr-2" />Administrer Innhold</CardTitle>
                     </AccordionTrigger>
-                    <CardDescription>Administrer elever, fag og anmerkningstyper.</CardDescription>
+                    <CardDescription>Administrer elever, fag, anmerkningstyper og arbeidsstasjoner.</CardDescription>
                 </CardHeader>
                  <AccordionContent asChild>
                     <CardContent className="pt-4">
@@ -554,6 +569,30 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                                             <li key={type} className="flex items-center justify-between p-2 rounded-md bg-secondary">
                                                 <span>{type}</span>
                                                 <Button variant="ghost" size="icon" onClick={() => handleDeleteRemarkType(type)}>
+                                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                                </Button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </AccordionContent>
+                            </AccordionItem>
+                             <AccordionItem value="workstations">
+                                <AccordionTrigger>Administrer Arbeidsstasjoner ({(localSettings.workstations || []).length})</AccordionTrigger>
+                                <AccordionContent className="pt-2">
+                                    <div className="flex gap-2 mb-4">
+                                        <Input
+                                            value={newWorkstation}
+                                            onChange={(e) => setNewWorkstation(e.target.value)}
+                                            placeholder="Ny arbeidsstasjon..."
+                                            onKeyDown={(e) => e.key === 'Enter' && handleAddWorkstation()}
+                                        />
+                                        <Button onClick={handleAddWorkstation}><Plus className="mr-2" /> Legg til</Button>
+                                    </div>
+                                    <ul className="space-y-2">
+                                        {(localSettings.workstations || []).map((ws) => (
+                                            <li key={ws.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
+                                                <span className="flex items-center gap-2"><Library className="w-4 h-4"/>{ws.name}</span>
+                                                <Button variant="ghost" size="icon" onClick={() => handleDeleteWorkstation(ws.id)}>
                                                     <Trash2 className="w-4 h-4 text-destructive" />
                                                 </Button>
                                             </li>

@@ -2,16 +2,22 @@
 "use client";
 
 import { useState } from "react";
-import type { Student } from "@/lib/types";
+import type { Student, StationAssignmentLog, Workstation } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
-import { Shuffle, Users } from "lucide-react";
+import { Shuffle, Users, CheckSquare, GripVertical } from "lucide-react";
+import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, closestCorners } from "@dnd-kit/core";
+import { cn } from "@/lib/utils";
+import { db } from "@/lib/db";
+import { useToast } from "@/hooks/use-toast";
 
 interface GroupToolProps {
   students: Student[];
+  appSettings: { workstations?: Workstation[] };
+  stationAssignmentLogs?: StationAssignmentLog[];
 }
 
 type GroupingStrategy = "numberOfGroups" | "studentsPerGroup";
@@ -26,22 +32,59 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return newArray;
 };
 
-export default function GroupTool({ students }: GroupToolProps) {
+const DraggableGroup = ({ group, id }: { group: Student[]; id: string }) => {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `group-${id}`,
+    data: { group },
+  });
+  
+  return (
+    <Card ref={setNodeRef} {...listeners} {...attributes} className={cn("touch-none cursor-grab", isDragging && "opacity-50")}>
+      <CardHeader className="flex flex-row items-center justify-between p-2">
+        <CardTitle className="text-sm font-medium">Gruppe {id}</CardTitle>
+        <GripVertical className="w-4 h-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent className="p-2 pt-0 text-xs">
+          {group.map(s => s.name).join(', ')}
+      </CardContent>
+    </Card>
+  );
+};
+
+const DroppableStation = ({ station, children }: { station: Workstation, children: React.ReactNode }) => {
+    const { setNodeRef, isOver } = useDroppable({ id: `station-${station.id}` });
+    return (
+        <Card ref={setNodeRef} className={cn("h-full", isOver && "bg-primary/10")}>
+            <CardHeader>
+                <CardTitle>{station.name}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {children}
+            </CardContent>
+        </Card>
+    );
+};
+
+
+export default function GroupTool({ students, appSettings, stationAssignmentLogs }: GroupToolProps) {
   const [strategy, setStrategy] = useState<GroupingStrategy>("numberOfGroups");
   const [groupValue, setGroupValue] = useState<number>(4);
-  const [generatedGroups, setGeneratedGroups] = useState<Student[][]>([]);
-  const [unassignedStudents, setUnassignedStudents] = useState<Student[]>([]);
+  
+  const [unassignedGroups, setUnassignedGroups] = useState<Student[][]>([]);
+  const [stationAssignments, setStationAssignments] = useState<Record<string, Student[][]>>({});
+  const [activeDragGroup, setActiveDragGroup] = useState<Student[] | null>(null);
+
+  const { toast } = useToast();
+  const workstations = appSettings.workstations || [];
 
   const handleGenerateGroups = () => {
     if (groupValue <= 0 || students.length === 0) {
-      setGeneratedGroups([]);
-      setUnassignedStudents([]);
+      setUnassignedGroups([]);
       return;
     }
 
     const shuffledStudents = shuffleArray(students);
     const groups: Student[][] = [];
-    let remainingStudents = [...shuffledStudents];
 
     if (strategy === "numberOfGroups") {
       const numGroups = Math.min(groupValue, shuffledStudents.length);
@@ -51,114 +94,166 @@ export default function GroupTool({ students }: GroupToolProps) {
       shuffledStudents.forEach((student, index) => {
         groups[index % numGroups].push(student);
       });
-      setUnassignedStudents([]);
     } else { // studentsPerGroup
+      let remainingStudents = [...shuffledStudents];
       const numStudentsPerGroup = groupValue;
-      const numGroups = Math.floor(shuffledStudents.length / numStudentsPerGroup);
-      for (let i = 0; i < numGroups; i++) {
+      while(remainingStudents.length > 0) {
         groups.push(remainingStudents.splice(0, numStudentsPerGroup));
       }
-      setUnassignedStudents(remainingStudents);
     }
-
-    setGeneratedGroups(groups);
+    setUnassignedGroups(groups);
+    const initialAssignments: Record<string, Student[][]> = {};
+    workstations.forEach(ws => { initialAssignments[ws.id] = [] });
+    setStationAssignments(initialAssignments);
   };
 
-  return (
-    <div className="grid gap-6 md:grid-cols-3">
-      <div className="md:col-span-1">
-        <Card>
-          <CardHeader>
-            <CardTitle>Gruppegenerator</CardTitle>
-            <CardDescription>
-              Lag tilfeldige grupper basert på antall grupper eller elever per gruppe.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <RadioGroup value={strategy} onValueChange={(value) => setStrategy(value as GroupingStrategy)}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="numberOfGroups" id="r1" />
-                <Label htmlFor="r1">Antall grupper</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="studentsPerGroup" id="r2" />
-                <Label htmlFor="r2">Elever per gruppe</Label>
-              </div>
-            </RadioGroup>
-            <div>
-              <Label htmlFor="group-value">
-                {strategy === "numberOfGroups" ? "Hvor mange grupper?" : "Hvor mange elever per gruppe?"}
-              </Label>
-              <Input
-                id="group-value"
-                type="number"
-                min="1"
-                value={groupValue}
-                onChange={(e) => setGroupValue(Math.max(1, parseInt(e.target.value, 10) || 1))}
-              />
-            </div>
-            <Button onClick={handleGenerateGroups} className="w-full">
-              <Shuffle className="mr-2" />
-              Generer Grupper
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+  const handleLogSession = async () => {
+    const logs: Omit<StationAssignmentLog, 'id'>[] = [];
+    const date = new Date();
+    
+    Object.entries(stationAssignments).forEach(([stationId, groups]) => {
+        groups.forEach(group => {
+            group.forEach(student => {
+                logs.push({ studentId: student.id!, stationId, date });
+            });
+        });
+    });
 
-      <div className="md:col-span-2">
-        <Card className="min-h-[400px]">
-          <CardHeader>
-            <CardTitle>Resultat</CardTitle>
-            <CardDescription>
-              De genererte gruppene vil vises her.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {generatedGroups.length > 0 ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {generatedGroups.map((group, index) => (
-                  <Card key={index} className="flex flex-col">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Gruppe {index + 1}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-2">
-                        {group.map(student => (
-                          <li key={student.id} className="flex items-center gap-2">
-                             <Users className="w-4 h-4 text-muted-foreground" />
-                             <span>{student.name}</span>
-                          </li>
+    if (logs.length === 0) {
+        toast({ title: "Ingen grupper fordelt", description: "Dra grupper til stasjoner for å loggføre.", variant: "destructive" });
+        return;
+    }
+    
+    try {
+        await db.stationAssignmentLogs.bulkAdd(logs as StationAssignmentLog[]);
+        toast({ title: "Økt loggført!", description: "Gruppefordelingen er lagret i historikken."});
+        setUnassignedGroups([]);
+        setStationAssignments({});
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Feil", description: "Kunne ikke loggføre økten.", variant: "destructive" });
+    }
+  };
+  
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveDragGroup(null);
+    if (!over) return;
+    
+    const activeId = active.id.toString();
+    const overId = over.id.toString();
+    const group = active.data.current?.group;
+
+    const newUnassigned = [...unassignedGroups];
+    const newAssignments = { ...stationAssignments };
+
+    // Find and remove the group from its source
+    let sourceFound = false;
+    for (const stationId in newAssignments) {
+        const index = newAssignments[stationId].findIndex(g => JSON.stringify(g) === JSON.stringify(group));
+        if (index > -1) {
+            newAssignments[stationId].splice(index, 1);
+            sourceFound = true;
+            break;
+        }
+    }
+    if (!sourceFound) {
+        const index = newUnassigned.findIndex(g => JSON.stringify(g) === JSON.stringify(group));
+        if (index > -1) {
+            newUnassigned.splice(index, 1);
+        }
+    }
+
+    // Add the group to its destination
+    if (overId.startsWith('station-')) {
+        const stationId = overId.substring('station-'.length);
+        newAssignments[stationId].push(group);
+    } else { // Dropped on unassigned area
+        newUnassigned.push(group);
+    }
+    
+    setUnassignedGroups(newUnassigned);
+    setStationAssignments(newAssignments);
+  };
+
+  const handleDragStart = (event: any) => {
+      setActiveDragGroup(event.active.data.current.group);
+  };
+
+  const showAssignmentView = unassignedGroups.length > 0 || Object.values(stationAssignments).some(v => v.length > 0);
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Gruppegenerator</CardTitle>
+          <CardDescription>
+            Lag tilfeldige grupper og fordel dem på arbeidsstasjoner.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <RadioGroup value={strategy} onValueChange={(value) => setStrategy(value as GroupingStrategy)}>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="numberOfGroups" id="r1" />
+              <Label htmlFor="r1">Antall grupper</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="studentsPerGroup" id="r2" />
+              <Label htmlFor="r2">Elever per gruppe</Label>
+            </div>
+          </RadioGroup>
+          <div>
+            <Label htmlFor="group-value">
+              {strategy === "numberOfGroups" ? "Hvor mange grupper?" : "Hvor mange elever per gruppe?"}
+            </Label>
+            <Input
+              id="group-value"
+              type="number"
+              min="1"
+              value={groupValue}
+              onChange={(e) => setGroupValue(Math.max(1, parseInt(e.target.value, 10) || 1))}
+            />
+          </div>
+          <Button onClick={handleGenerateGroups} className="w-full">
+            <Shuffle className="mr-2" />
+            Generer Grupper
+          </Button>
+        </CardContent>
+      </Card>
+      
+      {showAssignmentView && (
+        <DndContext onDragEnd={handleDragEnd} onDragStart={handleDragStart} collisionDetection={closestCorners}>
+            <Card>
+                <CardHeader className="flex flex-row justify-between items-center">
+                    <div>
+                        <CardTitle>Fordel Grupper</CardTitle>
+                        <CardDescription>Dra gruppene til de ulike arbeidsstasjonene.</CardDescription>
+                    </div>
+                    <Button onClick={handleLogSession}>
+                        <CheckSquare className="mr-2"/> Loggfør økt
+                    </Button>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <DroppableStation station={{id: 'unassigned', name: 'Ufordelte Grupper'}}>
+                        {unassignedGroups.map((group, index) => (
+                           <DraggableGroup key={index} group={group} id={`${index + 1}`} />
                         ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                ))}
-                {unassignedStudents.length > 0 && (
-                   <Card className="border-dashed">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Elever uten gruppe</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-2">
-                        {unassignedStudents.map(student => (
-                          <li key={student.id} className="flex items-center gap-2">
-                             <Users className="w-4 h-4 text-muted-foreground" />
-                             <span>{student.name}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-64 text-muted-foreground">
-                <p>Ingen grupper generert ennå.</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                    </DroppableStation>
+                    {workstations.map(station => (
+                        <DroppableStation key={station.id} station={station}>
+                            {(stationAssignments[station.id] || []).map((group, index) => (
+                                <DraggableGroup key={index} group={group} id={`${index + 1}`} />
+                            ))}
+                        </DroppableStation>
+                    ))}
+                </CardContent>
+            </Card>
+            <DragOverlay>
+                {activeDragGroup ? <DraggableGroup group={activeDragGroup} id="overlay" /> : null}
+            </DragOverlay>
+        </DndContext>
+      )}
+
     </div>
   );
 }

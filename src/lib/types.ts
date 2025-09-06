@@ -194,6 +194,18 @@ export type DPIAAnalysis = {
   riskMeasures: string;
 };
 
+export type Workstation = {
+  id: string;
+  name: string;
+};
+
+export type StationAssignmentLog = {
+  id?: number;
+  studentId: string;
+  stationId: string;
+  date: Date;
+};
+
 export type AppSettings = {
   tabs: Record<TabKey, boolean>;
   tabOrder: TabKey[];
@@ -203,6 +215,7 @@ export type AppSettings = {
   selectedSeatingLayoutId?: string | null;
   remarkTypes?: string[];
   behaviorTypes?: BehaviorType[];
+  workstations?: Workstation[];
   dpiaAnalysis?: DPIAAnalysis;
   onboardingCompleted?: boolean;
   seatingChartRules?: SeatingChartRules;
