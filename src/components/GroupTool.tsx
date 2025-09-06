@@ -570,7 +570,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                 <CardContent>
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                         <div className="lg:col-span-1">
-                            <DroppableStation station={{id: 'unassigned', name: 'Ufordelte Grupper'}} isOver={false} hint={null} assignments={unassignedGroups} studentMap={studentMap}>
+                            <DroppableStation station={{id: 'unassigned', name: `Ufordelte Grupper (${unassignedGroups.length})`}} isOver={false} hint={null} assignments={unassignedGroups} studentMap={studentMap}>
                                 {unassignedGroups.map((group, index) => (
                                    <DraggableGroup key={group.id} group={group} groupNumber={index + 1} studentMap={studentMap} />
                                 ))}
