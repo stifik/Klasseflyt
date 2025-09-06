@@ -1,19 +1,21 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { Student, StationAssignmentLog, Workstation, AppSettings } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
-import { Shuffle, Users, CheckSquare, GripVertical, Bot } from "lucide-react";
+import { Shuffle, Users, CheckSquare, GripVertical, Bot, Info } from "lucide-react";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, closestCorners } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+
 
 interface GroupToolProps {
   students: Student[];
@@ -57,12 +59,26 @@ const DraggableGroup = ({ group, groupNumber }: { group: GroupWithId; groupNumbe
   );
 };
 
-const DroppableStation = ({ station, children }: { station: Workstation, children: React.ReactNode }) => {
-    const { setNodeRef, isOver } = useDroppable({ id: `station-${station.id}` });
+const DroppableStation = ({ station, children, isOver, hint }: { station: Workstation, children: React.ReactNode, isOver: boolean, hint: { text: string, isBest: boolean } | null }) => {
+    const { setNodeRef } = useDroppable({ id: `station-${station.id}` });
     return (
-        <Card ref={setNodeRef} className={cn("h-full", isOver && "bg-primary/10")}>
+        <Card ref={setNodeRef} className={cn("h-full transition-colors", isOver && "bg-primary/10", hint?.isBest && "bg-green-100 dark:bg-green-900/20")}>
             <CardHeader>
-                <CardTitle>{station.name}</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                    {station.name}
+                     {hint && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span className={cn("text-xs font-normal px-2 py-1 rounded-full", hint.isBest ? "bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200" : "bg-secondary")}>
+                                    {hint.text}
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Antall elever i gruppen som har vært her før.</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    )}
+                </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
                 {children}
@@ -82,6 +98,44 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
 
   const { toast } = useToast();
   const workstations = appSettings.workstations || [];
+
+  const studentHistory = useMemo(() => {
+    const history: Record<string, Record<string, number>> = {};
+    stationAssignmentLogs.forEach(log => {
+        if (!history[log.studentId]) history[log.studentId] = {};
+        history[log.studentId][log.stationId] = (history[log.studentId][log.stationId] || 0) + 1;
+    });
+    return history;
+  }, [stationAssignmentLogs]);
+
+  const calculateCost = (group: GroupWithId, stationId: string): number => {
+    if (!group) return 0;
+    return group.students.reduce((totalCost, student) => {
+        return totalCost + (studentHistory[student.id!]?.[stationId] || 0);
+    }, 0);
+  };
+  
+  const stationHints = useMemo(() => {
+    if (!activeDragGroup) return {};
+
+    const costs = workstations.map(station => ({
+      stationId: station.id,
+      cost: calculateCost(activeDragGroup, station.id),
+    }));
+
+    const minCost = Math.min(...costs.map(c => c.cost));
+    
+    const hints: Record<string, { text: string; isBest: boolean }> = {};
+    costs.forEach(({ stationId, cost }) => {
+      hints[stationId] = {
+        text: `${cost}/${activeDragGroup.students.length} har vært her`,
+        isBest: cost === minCost,
+      };
+    });
+    return hints;
+
+  }, [activeDragGroup, workstations, calculateCost]);
+
 
   const handleGenerateGroups = () => {
     if (groupValue <= 0 || students.length === 0) {
@@ -118,25 +172,11 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
 
   const handleAutoAssign = () => {
     if (unassignedGroups.length === 0 || workstations.length === 0) return;
-
-    const studentHistory: Record<string, Record<string, number>> = {};
-    stationAssignmentLogs.forEach(log => {
-        if (!studentHistory[log.studentId]) studentHistory[log.studentId] = {};
-        studentHistory[log.studentId][log.stationId] = (studentHistory[log.studentId][log.stationId] || 0) + 1;
-    });
-
-    const calculateCost = (group: GroupWithId, stationId: string) => {
-        return group.students.reduce((totalCost, student) => {
-            return totalCost + (studentHistory[student.id!]?.[stationId] || 0);
-        }, 0);
-    };
-
+    
     const newAssignments: Record<string, GroupWithId[]> = {};
     workstations.forEach(ws => { newAssignments[ws.id] = [] });
     let groupsToAssign = [...unassignedGroups];
     
-    // Distribute groups as evenly as possible first
-    let stationIndex = 0;
     while (groupsToAssign.length > 0) {
         const group = groupsToAssign.shift()!;
         
@@ -205,12 +245,12 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     if (!group) return;
 
     const newUnassigned = [...unassignedGroups];
-    const newAssignments = { ...stationAssignments };
+    const newAssignments = JSON.parse(JSON.stringify(stationAssignments));
 
     // Find and remove the group from its source
     let sourceFound = false;
     for (const stationId in newAssignments) {
-        const index = newAssignments[stationId].findIndex(g => g.id === activeId);
+        const index = newAssignments[stationId].findIndex((g: GroupWithId) => g.id === activeId);
         if (index > -1) {
             newAssignments[stationId].splice(index, 1);
             sourceFound = true;
@@ -302,13 +342,13 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                     </div>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    <DroppableStation station={{id: 'unassigned', name: 'Ufordelte Grupper'}}>
+                    <DroppableStation station={{id: 'unassigned', name: 'Ufordelte Grupper'}} isOver={false} hint={null}>
                         {unassignedGroups.map((group, index) => (
                            <DraggableGroup key={group.id} group={group} groupNumber={index + 1} />
                         ))}
                     </DroppableStation>
                     {workstations.map(station => (
-                        <DroppableStation key={station.id} station={station}>
+                        <DroppableStation key={station.id} station={station} isOver={false} hint={stationHints[station.id] || null}>
                             {(stationAssignments[station.id] || []).map((group, index) => (
                                 <DraggableGroup key={group.id} group={group} groupNumber={index + 1} />
                             ))}
@@ -325,3 +365,5 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     </div>
   );
 }
+
+    
