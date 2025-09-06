@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { Shuffle, Users, CheckSquare, GripVertical, Bot, Info } from "lucide-react";
-import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, closestCorners } from "@dnd-kit/core";
+import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, closestCorners, useSensor, PointerSensor, TouchSensor } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { useToast } from "@/hooks/use-toast";
@@ -60,7 +60,7 @@ const DraggableGroup = ({ group, groupNumber }: { group: GroupWithId; groupNumbe
 };
 
 const DroppableStation = ({ station, children, isOver, hint }: { station: Workstation, children: React.ReactNode, isOver: boolean, hint: { text: string, isBest: boolean } | null }) => {
-    const { setNodeRef } = useDroppable({ id: `station-${station.id}` });
+    const { setNodeRef } = useDroppable({ id: station.id });
     return (
         <Card ref={setNodeRef} className={cn("h-full transition-colors", isOver && "bg-primary/10", hint?.isBest && "bg-green-100 dark:bg-green-900/20")}>
             <CardHeader>
@@ -238,54 +238,64 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     }
   };
   
+  const findGroupAndContainer = (groupId: string): [GroupWithId, string] | [null, null] => {
+      if (unassignedGroups.some(g => g.id === groupId)) {
+          return [unassignedGroups.find(g => g.id === groupId)!, 'unassigned'];
+      }
+      for (const stationId in stationAssignments) {
+          if (stationAssignments[stationId].some(g => g.id === groupId)) {
+              return [stationAssignments[stationId].find(g => g.id === groupId)!, stationId];
+          }
+      }
+      return [null, null];
+  }
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over) {
-      setActiveDragGroup(null);
-      return;
-    }
     setActiveDragGroup(null);
-    
+
+    if (!over) {
+        return;
+    }
+
     const activeId = active.id.toString();
     const overId = over.id.toString();
-    const group = active.data.current?.group;
+    const [group, sourceContainerId] = findGroupAndContainer(activeId);
+    
+    if (!group || !sourceContainerId) return;
 
-    if (!group) return;
+    // overId will be the station ID (container), not a group ID
+    const destinationContainerId = overId;
+
+    if (sourceContainerId === destinationContainerId) {
+        return; // Dropped in the same container
+    }
 
     const newUnassigned = [...unassignedGroups];
     const newAssignments = JSON.parse(JSON.stringify(stationAssignments));
 
-    // Find and remove the group from its source
-    let sourceFound = false;
-    for (const stationId in newAssignments) {
-        const index = newAssignments[stationId].findIndex((g: GroupWithId) => g.id === activeId);
-        if (index > -1) {
-            newAssignments[stationId].splice(index, 1);
-            sourceFound = true;
-            break;
-        }
-    }
-    if (!sourceFound) {
+    // Remove from source
+    if (sourceContainerId === 'unassigned') {
         const index = newUnassigned.findIndex(g => g.id === activeId);
-        if (index > -1) {
-            newUnassigned.splice(index, 1);
-        }
+        if (index > -1) newUnassigned.splice(index, 1);
+    } else {
+        const index = newAssignments[sourceContainerId].findIndex((g: GroupWithId) => g.id === activeId);
+        if (index > -1) newAssignments[sourceContainerId].splice(index, 1);
     }
 
-    // Add the group to its destination
-    if (overId.startsWith('station-')) {
-        const stationId = overId.substring('station-'.length);
-        if (!newAssignments[stationId]) {
-            newAssignments[stationId] = [];
-        }
-        newAssignments[stationId].push(group);
-    } else { // Dropped on unassigned area
+    // Add to destination
+    if (destinationContainerId === 'unassigned') {
         newUnassigned.push(group);
+    } else {
+        if (!newAssignments[destinationContainerId]) {
+            newAssignments[destinationContainerId] = [];
+        }
+        newAssignments[destinationContainerId].push(group);
     }
     
     setUnassignedGroups(newUnassigned);
     setStationAssignments(newAssignments);
-  };
+};
 
   const handleDragStart = (event: any) => {
       setActiveDragGroup(event.active.data.current.group);
@@ -373,5 +383,3 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     </div>
   );
 }
-
-    
