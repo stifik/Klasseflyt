@@ -127,7 +127,10 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
   const [newBehaviorLabel, setNewBehaviorLabel] = useState("");
   const [newBehaviorIcon, setNewBehaviorIcon] = useState<string>(availableIcons[0]);
   const [newBehaviorColor, setNewBehaviorColor] = useState<BehaviorType['color']>(availableColors[0]);
-  const [newWorkstation, setNewWorkstation] = useState("");
+  
+  const [newWorkstationName, setNewWorkstationName] = useState("");
+  const [newWorkstationCapacity, setNewWorkstationCapacity] = useState<string>("");
+
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [localSettings, setLocalSettings] = useState(initialSettings);
@@ -232,11 +235,17 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
   };
 
   const handleAddWorkstation = () => {
-    if (newWorkstation.trim()) {
-      const newStation: Workstation = { id: uuidv4(), name: newWorkstation.trim() };
+    if (newWorkstationName.trim()) {
+      const capacity = newWorkstationCapacity ? parseInt(newWorkstationCapacity, 10) : undefined;
+      const newStation: Workstation = { 
+        id: uuidv4(), 
+        name: newWorkstationName.trim(),
+        capacity: capacity && !isNaN(capacity) ? capacity : undefined,
+      };
       const updatedStations = [...(localSettings.workstations || []), newStation];
       handleSettingChange({ workstations: updatedStations });
-      setNewWorkstation("");
+      setNewWorkstationName("");
+      setNewWorkstationCapacity("");
     }
   };
 
@@ -581,17 +590,27 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                                 <AccordionContent className="pt-2">
                                     <div className="flex gap-2 mb-4">
                                         <Input
-                                            value={newWorkstation}
-                                            onChange={(e) => setNewWorkstation(e.target.value)}
-                                            placeholder="Ny arbeidsstasjon..."
-                                            onKeyDown={(e) => e.key === 'Enter' && handleAddWorkstation()}
+                                            value={newWorkstationName}
+                                            onChange={(e) => setNewWorkstationName(e.target.value)}
+                                            placeholder="Navn på stasjon..."
+                                        />
+                                        <Input
+                                            type="number"
+                                            value={newWorkstationCapacity}
+                                            onChange={(e) => setNewWorkstationCapacity(e.target.value)}
+                                            placeholder="Antall plasser"
+                                            className="w-32"
                                         />
                                         <Button onClick={handleAddWorkstation}><Plus className="mr-2" /> Legg til</Button>
                                     </div>
                                     <ul className="space-y-2">
                                         {(localSettings.workstations || []).map((ws) => (
                                             <li key={ws.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
-                                                <span className="flex items-center gap-2"><Library className="w-4 h-4"/>{ws.name}</span>
+                                                <span className="flex items-center gap-2">
+                                                    <Library className="w-4 h-4"/>
+                                                    {ws.name}
+                                                    {ws.capacity && <span className="text-xs text-muted-foreground">({ws.capacity} plasser)</span>}
+                                                </span>
                                                 <Button variant="ghost" size="icon" onClick={() => handleDeleteWorkstation(ws.id)}>
                                                     <Trash2 className="w-4 h-4 text-destructive" />
                                                 </Button>

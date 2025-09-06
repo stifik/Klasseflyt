@@ -197,6 +197,7 @@ export type DPIAAnalysis = {
 export type Workstation = {
   id: string;
   name: string;
+  capacity?: number;
 };
 
 export type StationAssignmentLog = {

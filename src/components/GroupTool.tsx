@@ -59,17 +59,26 @@ const DraggableGroup = ({ group, groupNumber }: { group: GroupWithId; groupNumbe
   );
 };
 
-const DroppableStation = ({ station, children, isOver, hint }: { station: Workstation, children: React.ReactNode, isOver: boolean, hint: { text: string, isBest: boolean } | null }) => {
+const DroppableStation = ({ station, children, isOver, hint, assignments }: { station: Workstation, children: React.ReactNode, isOver: boolean, hint: { text: string, isBest: boolean } | null, assignments: GroupWithId[] }) => {
     const { setNodeRef } = useDroppable({ id: station.id });
+    const isFull = station.capacity && assignments.length >= station.capacity;
+
     return (
-        <Card ref={setNodeRef} className={cn("h-full transition-colors", isOver && "bg-primary/10", hint?.isBest && "bg-green-100 dark:bg-green-900/20")}>
+        <Card ref={setNodeRef} className={cn("h-full transition-colors", isOver && "bg-primary/10", hint?.isBest && "bg-green-100 dark:bg-green-900/20", isFull && "bg-muted/50")}>
             <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+                <CardTitle className="flex items-center justify-between text-base">
                     {station.name}
+                     {station.capacity && (
+                        <span className="text-xs font-normal text-muted-foreground">
+                            {assignments.length} / {station.capacity}
+                        </span>
+                     )}
+                </CardTitle>
+                 <CardDescription className="flex items-center justify-between text-xs">
                      {hint && (
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <span className={cn("text-xs font-normal px-2 py-1 rounded-full", hint.isBest ? "bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200" : "bg-secondary")}>
+                                <span className={cn("font-normal px-2 py-0.5 rounded-full", hint.isBest ? "bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200" : "bg-secondary")}>
                                     {hint.text}
                                 </span>
                             </TooltipTrigger>
@@ -78,7 +87,7 @@ const DroppableStation = ({ station, children, isOver, hint }: { station: Workst
                             </TooltipContent>
                         </Tooltip>
                     )}
-                </CardTitle>
+                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
                 {children}
@@ -193,6 +202,12 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
         workstations.forEach(station => {
             const cost = calculateCost(group, station.id);
             const count = newAssignments[station.id].length;
+            const capacity = station.capacity;
+
+            // Skip station if it's full
+            if (capacity && count >= capacity) {
+                return;
+            }
             
             if (count < minCount || (count === minCount && cost < minCost)) {
                 minCost = cost;
@@ -239,12 +254,14 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
   };
   
   const findGroupAndContainer = (groupId: string): [GroupWithId, string] | [null, null] => {
-      if (unassignedGroups.some(g => g.id === groupId)) {
-          return [unassignedGroups.find(g => g.id === groupId)!, 'unassigned'];
+      const unassignedGroup = unassignedGroups.find(g => g.id === groupId);
+      if (unassignedGroup) {
+          return [unassignedGroup, 'unassigned'];
       }
       for (const stationId in stationAssignments) {
-          if (stationAssignments[stationId].some(g => g.id === groupId)) {
-              return [stationAssignments[stationId].find(g => g.id === groupId)!, stationId];
+          const groupInStation = stationAssignments[stationId].find(g => g.id === groupId);
+          if (groupInStation) {
+              return [groupInStation, stationId];
           }
       }
       return [null, null];
@@ -260,15 +277,26 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
 
     const activeId = active.id.toString();
     const overId = over.id.toString();
-    const [group, sourceContainerId] = findGroupAndContainer(activeId);
     
-    if (!group || !sourceContainerId) return;
+    // Find the container for what's being dragged over
+    const [overGroup, overContainerId] = findGroupAndContainer(overId);
+    
+    const [activeGroup, sourceContainerId] = findGroupAndContainer(activeId);
+    
+    if (!activeGroup || !sourceContainerId) return;
 
-    // overId will be the station ID (container), not a group ID
-    const destinationContainerId = overId;
+    // overId can be a group or a container. We need the container.
+    const destinationContainerId = overContainerId || overId;
 
     if (sourceContainerId === destinationContainerId) {
         return; // Dropped in the same container
+    }
+
+    // Check capacity before moving
+    const destStation = workstations.find(ws => ws.id === destinationContainerId);
+    if (destStation?.capacity && (stationAssignments[destinationContainerId]?.length || 0) >= destStation.capacity) {
+        toast({ title: "Stasjonen er full", description: `"${destStation.name}" har ikke plass til flere grupper.`, variant: "destructive" });
+        return;
     }
 
     const newUnassigned = [...unassignedGroups];
@@ -285,12 +313,12 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
 
     // Add to destination
     if (destinationContainerId === 'unassigned') {
-        newUnassigned.push(group);
+        newUnassigned.push(activeGroup);
     } else {
         if (!newAssignments[destinationContainerId]) {
             newAssignments[destinationContainerId] = [];
         }
-        newAssignments[destinationContainerId].push(group);
+        newAssignments[destinationContainerId].push(activeGroup);
     }
     
     setUnassignedGroups(newUnassigned);
@@ -360,13 +388,13 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                     </div>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    <DroppableStation station={{id: 'unassigned', name: 'Ufordelte Grupper'}} isOver={false} hint={null}>
+                    <DroppableStation station={{id: 'unassigned', name: 'Ufordelte Grupper'}} isOver={false} hint={null} assignments={unassignedGroups}>
                         {unassignedGroups.map((group, index) => (
                            <DraggableGroup key={group.id} group={group} groupNumber={index + 1} />
                         ))}
                     </DroppableStation>
                     {workstations.map(station => (
-                        <DroppableStation key={station.id} station={station} isOver={false} hint={stationHints[station.id] || null}>
+                        <DroppableStation key={station.id} station={station} isOver={false} hint={stationHints[station.id] || null} assignments={stationAssignments[station.id] || []}>
                             {(stationAssignments[station.id] || []).map((group, index) => (
                                 <DraggableGroup key={group.id} group={group} groupNumber={index + 1} />
                             ))}
