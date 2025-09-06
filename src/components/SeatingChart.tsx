@@ -657,7 +657,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                             <div className="w-full overflow-x-auto">
                                 <div className="p-1 inline-block" style={{ minWidth: '100%' }}>
                                     <div className="grid gap-1 w-full" style={{ 
-                                        gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(96px, 1fr))`,
+                                        gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))`,
                                     }}>
                                         {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
                                             Array.from({ length: activeLayout.cols }).map((_, colIndex) => {
@@ -708,6 +708,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     </div>
   );
 }
+
 
 
 
