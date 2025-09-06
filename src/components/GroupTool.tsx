@@ -240,8 +240,11 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
   
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    if (!over) {
+      setActiveDragGroup(null);
+      return;
+    }
     setActiveDragGroup(null);
-    if (!over) return;
     
     const activeId = active.id.toString();
     const overId = over.id.toString();
