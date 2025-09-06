@@ -319,7 +319,7 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
                      <div key={rowIndex} className="flex flex-wrap justify-start gap-x-4 gap-y-4">
                         {Array.from({ length: activeLayout.cols }).map((_, colIndex) => {
                             if (!activeLayout.layout[rowIndex]?.[colIndex]) {
-                                return <EmptyDesk key={colIndex} />;
+                                return <EmptyDesk key={`empty-${rowIndex}-${colIndex}`} />;
                             }
                             // Apply flip transformation if needed
                             const finalRowIndex = isFlipped ? (activeLayout.rows - 1 - rowIndex) : rowIndex;
@@ -327,7 +327,7 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
                             const studentName = seatingChart[finalRowIndex]?.[finalColIndex]?.[0];
                             const student = studentName ? students.find(s => s.name === studentName) : null;
                             
-                            return student ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={colIndex} />;
+                            return student ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={`empty-${rowIndex}-${colIndex}`} />;
                         })}
                     </div>
                 ))}
