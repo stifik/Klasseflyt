@@ -101,7 +101,12 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
 
   const studentHistory = useMemo(() => {
     const history: Record<string, Record<string, number>> = {};
-    stationAssignmentLogs.forEach(log => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const recentLogs = stationAssignmentLogs.filter(log => new Date(log.date) > thirtyDaysAgo);
+
+    recentLogs.forEach(log => {
         if (!history[log.studentId]) history[log.studentId] = {};
         history[log.studentId][log.stationId] = (history[log.studentId][log.stationId] || 0) + 1;
     });
@@ -134,7 +139,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     });
     return hints;
 
-  }, [activeDragGroup, workstations, calculateCost]);
+  }, [activeDragGroup, workstations, studentHistory]);
 
 
   const handleGenerateGroups = () => {
