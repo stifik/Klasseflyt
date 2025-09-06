@@ -399,14 +399,21 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
   };
 
   const handleSaveGroupSet = async (name: string) => {
-    if (!name.trim() || unassignedGroups.length === 0) {
+    if (!name.trim()) {
         toast({ title: "Navn mangler", description: "Gi gruppesettet et navn.", variant: "destructive" });
         return;
     }
+
+    const allGroups = [...unassignedGroups, ...Object.values(stationAssignments).flat()];
+    if (allGroups.length === 0) {
+        toast({ title: "Ingen grupper", description: "Generer grupper før du lagrer.", variant: "destructive" });
+        return;
+    }
+
     const newGroupSet: Omit<GroupSet, 'id'> = {
         name: name.trim(),
         createdAt: new Date(),
-        groups: unassignedGroups.map(g => ({ id: g.id, studentIds: g.studentIds })),
+        groups: allGroups.map(g => ({ id: g.id, studentIds: g.studentIds })),
     };
     try {
         const newId = await db.groupSets.add(newGroupSet as GroupSet);
@@ -433,6 +440,8 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
 
 
   const showAssignmentView = unassignedGroups.length > 0 || Object.values(stationAssignments).some(v => v.length > 0);
+  const totalGeneratedGroups = unassignedGroups.length + Object.values(stationAssignments).flat().length;
+
 
   return (
     <div className="space-y-6">
@@ -444,7 +453,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-4 p-4 border rounded-lg">
                     <Label>Lag nye, tilfeldige grupper</Label>
                     <RadioGroup value={strategy} onValueChange={(value) => setStrategy(value as GroupingStrategy)}>
@@ -528,7 +537,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                         <CardDescription>Dra gruppene til stasjonene, eller bruk automatisk fordeling.</CardDescription>
                     </div>
                     <div className="flex gap-2">
-                        {!activeGroupSet && unassignedGroups.length > 0 && (
+                        {!activeGroupSet && totalGeneratedGroups > 0 && (
                             <Dialog>
                                 <DialogTrigger asChild>
                                     <Button variant="outline"><Save className="mr-2" /> Lagre grupper</Button>
@@ -588,3 +597,5 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     </div>
   );
 }
+
+    
