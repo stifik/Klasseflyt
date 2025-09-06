@@ -6,7 +6,7 @@ import type { Student, Remark, SeatingChartData, AppSettings } from "@/lib/types
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, CheckCircle2 } from "lucide-react";
+import { Calendar as CalendarIcon, CheckCircle2, MinusCircle } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -84,8 +84,8 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
            d1.getDate() === d2.getDate();
   }
   
-  const getRemarkForStudent = (studentId: string, checkDate: Date, period: number, type: string): Remark | undefined => {
-    return localRemarks.find(
+  const getRemarksForStudent = (studentId: string, checkDate: Date, period: number, type: string): Remark[] => {
+    return localRemarks.filter(
       (r) =>
         r.studentId === studentId &&
         isSameDay(new Date(r.date), checkDate) &&
@@ -94,52 +94,78 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
     );
   };
 
-  const handleStudentClick = async (studentId: string) => {
+  const handleAddRemark = async (studentId: string) => {
     if (!activeRemarkType) return;
+    const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
+    const dateStartOfDay = new Date(date);
+    dateStartOfDay.setHours(0, 0, 0, 0);
+    
+    const newRemark: Omit<Remark, 'id'> = { studentId, date: dateStartOfDay, period: currentPeriod, type: activeRemarkType };
+    const tempId = -1 * Date.now();
+    setLocalRemarks(prev => [...prev, { ...newRemark, id: tempId }]);
+    try {
+        const newId = await db.remarks.add(newRemark as Remark);
+        setLocalRemarks(prev => prev.map(r => r.id === tempId ? { ...newRemark, id: newId } : r));
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Feil", description: `Kunne ikke lagre anmerkning for ${studentName}.`, variant: "destructive" });
+        setLocalRemarks(prev => prev.filter(r => r.id !== tempId));
+    }
+  };
 
+  const handleRemoveRemark = async (studentId: string) => {
+    if (!activeRemarkType) return;
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
     const dateStartOfDay = new Date(date);
     dateStartOfDay.setHours(0, 0, 0, 0);
 
-    const existingRemark = getRemarkForStudent(studentId, dateStartOfDay, currentPeriod, activeRemarkType);
+    // Find the last remark of this type to remove
+    const remarksForStudent = getRemarksForStudent(studentId, dateStartOfDay, currentPeriod, activeRemarkType);
+    if (remarksForStudent.length === 0) return;
     
-    if (existingRemark) {
-        setLocalRemarks(prev => prev.filter(r => r.id !== existingRemark.id));
-        try {
-            await db.remarks.delete(existingRemark.id!);
-        } catch (error) {
-             console.error(error);
-             toast({ title: "Feil", description: `Kunne ikke fjerne anmerkning for ${studentName}.`, variant: "destructive" });
-             setLocalRemarks(prev => [...prev, existingRemark]); // Revert on failure
-        }
-    } else {
-        const newRemark: Omit<Remark, 'id'> = { studentId, date: dateStartOfDay, period: currentPeriod, type: activeRemarkType };
-        const tempId = -1 * Date.now(); // Temporary ID for UI state
-        setLocalRemarks(prev => [...prev, { ...newRemark, id: tempId }]);
-        try {
-            const newId = await db.remarks.add(newRemark as Remark);
-            setLocalRemarks(prev => prev.map(r => r.id === tempId ? { ...newRemark, id: newId } : r)); // Update with real ID
-        } catch (error) {
-            console.error(error);
-            toast({ title: "Feil", description: `Kunne ikke lagre anmerkning for ${studentName}.`, variant: "destructive" });
-            setLocalRemarks(prev => prev.filter(r => r.id !== tempId)); // Revert on failure
-        }
+    const remarkToRemove = remarksForStudent.sort((a,b) => (b.id ?? 0) - (a.id ?? 0))[0];
+
+    setLocalRemarks(prev => prev.filter(r => r.id !== remarkToRemove.id));
+    try {
+        await db.remarks.delete(remarkToRemove.id!);
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Feil", description: `Kunne ikke fjerne anmerkning for ${studentName}.`, variant: "destructive" });
+        setLocalRemarks(prev => [...prev, remarkToRemove]); // Revert on failure
     }
   };
 
+
   const StudentButton = ({ student }: { student: Student }) => {
-    const hasRemark = !!getRemarkForStudent(student.id, date, currentPeriod, activeRemarkType || '');
+    const remarks = getRemarksForStudent(student.id, date, currentPeriod, activeRemarkType || '');
+    const count = remarks.length;
 
     return (
         <button
-            onClick={() => handleStudentClick(student.id)}
+            onClick={() => handleAddRemark(student.id)}
             className={cn(
                 "relative flex flex-col items-center justify-center p-2 text-center border rounded-lg w-28 h-20 transition-all",
-                hasRemark ? "bg-yellow-100 border-yellow-300" : "bg-secondary hover:bg-muted"
+                count > 0 ? "bg-yellow-100 border-yellow-300" : "bg-secondary hover:bg-muted"
             )}
         >
              <span className="text-xs font-semibold">{student.name}</span>
-             {hasRemark && <CheckCircle2 className="absolute w-5 h-5 text-yellow-600 top-2 right-2" />}
+             {count > 0 && (
+                <div className="flex items-center justify-center text-yellow-800">
+                    <span className="text-xl font-bold">{count}</span>
+                </div>
+             )}
+             {count > 0 && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation(); // Prevent adding another remark
+                        handleRemoveRemark(student.id);
+                    }}
+                    className="absolute top-1 right-1 flex items-center justify-center w-5 h-5 rounded-full bg-yellow-200 hover:bg-yellow-300"
+                    aria-label="Fjern en anmerkning"
+                >
+                    <MinusCircle className="w-4 h-4 text-yellow-700" />
+                </button>
+             )}
         </button>
     );
   };
@@ -159,7 +185,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
           <div>
             <CardTitle>Anmerkninger</CardTitle>
             <CardDescription>
-              Velg en anmerkning, og klikk deretter på elevene det gjelder.
+              Velg en anmerkning, og klikk deretter på elevene det gjelder for å telle hendelser.
             </CardDescription>
               {seatingChart && (
               <div className="flex items-center space-x-2 mt-4">
