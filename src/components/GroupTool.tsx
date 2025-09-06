@@ -13,6 +13,7 @@ import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay,
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { useToast } from "@/hooks/use-toast";
+import { v4 as uuidv4 } from 'uuid';
 
 interface GroupToolProps {
   students: Student[];
@@ -21,6 +22,11 @@ interface GroupToolProps {
 }
 
 type GroupingStrategy = "numberOfGroups" | "studentsPerGroup";
+
+type GroupWithId = {
+    id: string;
+    students: Student[];
+};
 
 // Fisher-Yates shuffle algorithm
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -32,20 +38,20 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return newArray;
 };
 
-const DraggableGroup = ({ group, id }: { group: Student[]; id: string }) => {
+const DraggableGroup = ({ group, groupNumber }: { group: GroupWithId; groupNumber: number }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `group-${id}`,
+    id: group.id,
     data: { group },
   });
   
   return (
     <Card ref={setNodeRef} {...listeners} {...attributes} className={cn("touch-none cursor-grab", isDragging && "opacity-50")}>
       <CardHeader className="flex flex-row items-center justify-between p-2">
-        <CardTitle className="text-sm font-medium">Gruppe {id}</CardTitle>
+        <CardTitle className="text-sm font-medium">Gruppe {groupNumber}</CardTitle>
         <GripVertical className="w-4 h-4 text-muted-foreground" />
       </CardHeader>
       <CardContent className="p-2 pt-0 text-xs">
-          {group.map(s => s.name).join(', ')}
+          {group.students.map(s => s.name).join(', ')}
       </CardContent>
     </Card>
   );
@@ -70,9 +76,9 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
   const [strategy, setStrategy] = useState<GroupingStrategy>("numberOfGroups");
   const [groupValue, setGroupValue] = useState<number>(4);
   
-  const [unassignedGroups, setUnassignedGroups] = useState<Student[][]>([]);
-  const [stationAssignments, setStationAssignments] = useState<Record<string, Student[][]>>({});
-  const [activeDragGroup, setActiveDragGroup] = useState<Student[] | null>(null);
+  const [unassignedGroups, setUnassignedGroups] = useState<GroupWithId[]>([]);
+  const [stationAssignments, setStationAssignments] = useState<Record<string, GroupWithId[]>>({});
+  const [activeDragGroup, setActiveDragGroup] = useState<GroupWithId | null>(null);
 
   const { toast } = useToast();
   const workstations = appSettings.workstations || [];
@@ -101,8 +107,11 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
         groups.push(remainingStudents.splice(0, numStudentsPerGroup));
       }
     }
-    setUnassignedGroups(groups);
-    const initialAssignments: Record<string, Student[][]> = {};
+    
+    const groupsWithIds: GroupWithId[] = groups.map(g => ({ id: uuidv4(), students: g }));
+    setUnassignedGroups(groupsWithIds);
+
+    const initialAssignments: Record<string, GroupWithId[]> = {};
     workstations.forEach(ws => { initialAssignments[ws.id] = [] });
     setStationAssignments(initialAssignments);
   };
@@ -113,7 +122,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     
     Object.entries(stationAssignments).forEach(([stationId, groups]) => {
         groups.forEach(group => {
-            group.forEach(student => {
+            group.students.forEach(student => {
                 logs.push({ studentId: student.id!, stationId, date });
             });
         });
@@ -152,7 +161,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     // Find and remove the group from its source
     let sourceFound = false;
     for (const stationId in newAssignments) {
-        const index = newAssignments[stationId].findIndex(g => JSON.stringify(g) === JSON.stringify(group));
+        const index = newAssignments[stationId].findIndex(g => g.id === activeId);
         if (index > -1) {
             newAssignments[stationId].splice(index, 1);
             sourceFound = true;
@@ -160,7 +169,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
         }
     }
     if (!sourceFound) {
-        const index = newUnassigned.findIndex(g => JSON.stringify(g) === JSON.stringify(group));
+        const index = newUnassigned.findIndex(g => g.id === activeId);
         if (index > -1) {
             newUnassigned.splice(index, 1);
         }
@@ -241,20 +250,20 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                 <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     <DroppableStation station={{id: 'unassigned', name: 'Ufordelte Grupper'}}>
                         {unassignedGroups.map((group, index) => (
-                           <DraggableGroup key={index} group={group} id={`${index + 1}`} />
+                           <DraggableGroup key={group.id} group={group} groupNumber={index + 1} />
                         ))}
                     </DroppableStation>
                     {workstations.map(station => (
                         <DroppableStation key={station.id} station={station}>
                             {(stationAssignments[station.id] || []).map((group, index) => (
-                                <DraggableGroup key={index} group={group} id={`${index + 1}`} />
+                                <DraggableGroup key={group.id} group={group} groupNumber={index + 1} />
                             ))}
                         </DroppableStation>
                     ))}
                 </CardContent>
             </Card>
             <DragOverlay>
-                {activeDragGroup ? <DraggableGroup group={activeDragGroup} id="overlay" /> : null}
+                {activeDragGroup ? <DraggableGroup group={activeDragGroup} groupNumber={1} /> : null}
             </DragOverlay>
         </DndContext>
       )}
