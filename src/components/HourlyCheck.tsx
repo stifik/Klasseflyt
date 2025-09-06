@@ -315,22 +315,25 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
       <CardContent>
         {seatingChart && activeLayout ? (
              <div className="grid gap-y-4">
-                {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
-                     <div key={rowIndex} className="flex flex-wrap justify-start gap-x-4 gap-y-4">
-                        {Array.from({ length: activeLayout.cols }).map((_, colIndex) => {
-                            if (!activeLayout.layout[rowIndex]?.[colIndex]) {
-                                return <EmptyDesk key={`empty-${rowIndex}-${colIndex}`} />;
-                            }
-                            // Apply flip transformation if needed
-                            const finalRowIndex = isFlipped ? (activeLayout.rows - 1 - rowIndex) : rowIndex;
-                            const finalColIndex = isFlipped ? (activeLayout.cols - 1 - colIndex) : colIndex;
-                            const studentName = seatingChart[finalRowIndex]?.[finalColIndex]?.[0];
-                            const student = studentName ? students.find(s => s.name === studentName) : null;
-                            
-                            return student ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={`empty-${rowIndex}-${colIndex}`} />;
-                        })}
-                    </div>
-                ))}
+                {Array.from({ length: activeLayout.rows }).map((_, r) => {
+                    const rowIndex = isFlipped ? activeLayout.rows - 1 - r : r;
+                    return (
+                         <div key={rowIndex} className="flex flex-wrap justify-start gap-x-4 gap-y-4">
+                            {Array.from({ length: activeLayout.cols }).map((_, c) => {
+                                const colIndex = isFlipped ? activeLayout.cols - 1 - c : c;
+                                
+                                if (!activeLayout.layout[rowIndex]?.[colIndex]) {
+                                    return <EmptyDesk key={`empty-${rowIndex}-${colIndex}`} />;
+                                }
+                                
+                                const studentName = seatingChart[rowIndex]?.[colIndex]?.[0];
+                                const student = studentName ? students.find(s => s.name === studentName) : null;
+                                
+                                return student ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={`desk-${rowIndex}-${colIndex}`} />;
+                            })}
+                        </div>
+                    );
+                })}
             </div>
         ) : !seatingChart ? (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
