@@ -141,10 +141,13 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
     const count = remarks.length;
 
     return (
-        <button
+        <div
+            role="button"
+            tabIndex={0}
             onClick={() => handleAddRemark(student.id)}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleAddRemark(student.id)}
             className={cn(
-                "relative flex flex-col items-center justify-center p-2 text-center border rounded-lg w-28 h-20 transition-all",
+                "relative flex flex-col items-center justify-center p-2 text-center border rounded-lg w-28 h-20 transition-all cursor-pointer",
                 count > 0 ? "bg-yellow-100 border-yellow-300" : "bg-secondary hover:bg-muted"
             )}
         >
@@ -166,7 +169,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
                     <MinusCircle className="w-4 h-4 text-yellow-700" />
                 </button>
              )}
-        </button>
+        </div>
     );
   };
 
