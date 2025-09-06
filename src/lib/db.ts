@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -23,6 +23,7 @@ export class MySubClassedDexie extends Dexie {
     learningGoals!: Table<LearningGoal, string>;
     goalAchievements!: Table<GoalAchievement, string>;
     stationAssignmentLogs!: Table<StationAssignmentLog, number>;
+    groupSets!: Table<GroupSet, string>;
 
 
     constructor() {
@@ -276,6 +277,11 @@ export class MySubClassedDexie extends Dexie {
                 ];
                 await tx.table('settings').put(userSettings);
             }
+        });
+
+        this.version(18).stores({
+            groupSets: '++id, name, createdAt',
+            stationAssignmentLogs: '++id, &[studentId+date], studentId, date, groupSetId, groupId',
         });
 
 

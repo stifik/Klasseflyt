@@ -1,33 +1,38 @@
 
+
 "use client";
 
 import { useState, useMemo } from "react";
-import type { Student, StationAssignmentLog, Workstation, AppSettings } from "@/lib/types";
+import type { Student, StationAssignmentLog, Workstation, AppSettings, GroupSet, GroupInSet } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
-import { Shuffle, Users, CheckSquare, GripVertical, Bot, Info, Library } from "lucide-react";
-import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, closestCorners, useSensor, PointerSensor, TouchSensor } from "@dnd-kit/core";
+import { Shuffle, Users, CheckSquare, GripVertical, Bot, Info, Library, Save, FolderOpen, Trash2 } from "lucide-react";
+import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, closestCorners } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { ScrollArea } from "./ui/scroll-area";
+import { formatDistanceToNow } from 'date-fns';
+import { nb } from 'date-fns/locale';
 
 interface GroupToolProps {
   students: Student[];
   appSettings: AppSettings;
   stationAssignmentLogs?: StationAssignmentLog[];
+  groupSets?: GroupSet[];
 }
 
 type GroupingStrategy = "numberOfGroups" | "studentsPerGroup";
 
 type GroupWithId = {
     id: string;
-    students: Student[];
+    studentIds: string[];
 };
 
 // Fisher-Yates shuffle algorithm
@@ -40,12 +45,14 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return newArray;
 };
 
-const DraggableGroup = ({ group, groupNumber }: { group: GroupWithId; groupNumber: number }) => {
+const DraggableGroup = ({ group, groupNumber, studentMap }: { group: GroupWithId; groupNumber: number, studentMap: Map<string, string> }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: group.id,
     data: { group },
   });
   
+  const studentNames = group.studentIds.map(id => studentMap.get(id) || 'Ukjent').join(', ');
+
   return (
     <Card ref={setNodeRef} {...listeners} {...attributes} className={cn("touch-none cursor-grab", isDragging && "opacity-50")}>
       <CardHeader className="flex flex-row items-center justify-between p-2">
@@ -53,15 +60,15 @@ const DraggableGroup = ({ group, groupNumber }: { group: GroupWithId; groupNumbe
         <GripVertical className="w-4 h-4 text-muted-foreground" />
       </CardHeader>
       <CardContent className="p-2 pt-0 text-xs">
-          {group.students.map(s => s.name).join(', ')}
+          {studentNames}
       </CardContent>
     </Card>
   );
 };
 
-const DroppableStation = ({ station, children, isOver, hint, assignments }: { station: Workstation, children: React.ReactNode, isOver: boolean, hint: { text: string, isBest: boolean } | null, assignments: GroupWithId[] }) => {
+const DroppableStation = ({ station, children, isOver, hint, assignments, studentMap }: { station: Workstation, children: React.ReactNode, isOver: boolean, hint: { text: string, isBest: boolean } | null, assignments: GroupWithId[], studentMap: Map<string, string> }) => {
     const { setNodeRef } = useDroppable({ id: station.id });
-    const studentCount = assignments.reduce((sum, group) => sum + group.students.length, 0);
+    const studentCount = assignments.reduce((sum, group) => sum + group.studentIds.length, 0);
     const isFull = station.capacity && studentCount >= station.capacity;
 
     return (
@@ -75,7 +82,7 @@ const DroppableStation = ({ station, children, isOver, hint, assignments }: { st
                         </span>
                      )}
                 </CardTitle>
-                 <CardDescription className="flex items-center justify-between text-xs">
+                 <CardDescription className="flex items-center justify-between text-xs min-h-[16px]">
                      {hint && (
                         <Tooltip>
                             <TooltipTrigger asChild>
@@ -98,23 +105,26 @@ const DroppableStation = ({ station, children, isOver, hint, assignments }: { st
 };
 
 
-export default function GroupTool({ students, appSettings, stationAssignmentLogs = [] }: GroupToolProps) {
+export default function GroupTool({ students, appSettings, stationAssignmentLogs = [], groupSets = [] }: GroupToolProps) {
   const [strategy, setStrategy] = useState<GroupingStrategy>("numberOfGroups");
   const [groupValue, setGroupValue] = useState<number>(4);
   
+  const [activeGroupSet, setActiveGroupSet] = useState<GroupSet | null>(null);
   const [unassignedGroups, setUnassignedGroups] = useState<GroupWithId[]>([]);
   const [stationAssignments, setStationAssignments] = useState<Record<string, GroupWithId[]>>({});
   const [activeDragGroup, setActiveDragGroup] = useState<GroupWithId | null>(null);
 
   const { toast } = useToast();
   const workstations = appSettings.workstations || [];
+  const studentMap = useMemo(() => new Map(students.map(s => [s.id!, s.name])), [students]);
+  const studentIdMap = useMemo(() => new Map(students.map(s => [s.name, s.id!])), [students]);
 
-  const studentHistory = useMemo(() => {
+  const individualStudentHistory = useMemo(() => {
     const history: Record<string, Record<string, number>> = {};
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
-    const recentLogs = (stationAssignmentLogs || []).filter(log => new Date(log.date) > thirtyDaysAgo);
+    const recentLogs = stationAssignmentLogs.filter(log => new Date(log.date) > thirtyDaysAgo);
 
     recentLogs.forEach(log => {
         if (!history[log.studentId]) history[log.studentId] = {};
@@ -123,10 +133,29 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     return history;
   }, [stationAssignmentLogs]);
 
+  const groupHistory = useMemo(() => {
+    const history: Record<string, Record<string, number>> = {};
+    if (!activeGroupSet) return history;
+    
+    const relevantLogs = stationAssignmentLogs.filter(log => log.groupSetId === activeGroupSet.id && log.groupId);
+    
+    relevantLogs.forEach(log => {
+        if (!history[log.groupId!]) history[log.groupId!] = {};
+        history[log.groupId!][log.stationId] = (history[log.groupId!][log.stationId] || 0) + 1;
+    });
+    return history;
+  }, [stationAssignmentLogs, activeGroupSet]);
+
+
   const calculateCost = (group: GroupWithId, stationId: string): number => {
     if (!group) return 0;
-    return group.students.reduce((totalCost, student) => {
-        return totalCost + (studentHistory[student.id!]?.[stationId] || 0);
+    // If we are in a project (activeGroupSet), use group history
+    if (activeGroupSet) {
+        return groupHistory[group.id]?.[stationId] || 0;
+    }
+    // Otherwise, use individual history
+    return group.studentIds.reduce((totalCost, studentId) => {
+        return totalCost + (individualStudentHistory[studentId]?.[stationId] || 0);
     }, 0);
   };
   
@@ -142,14 +171,17 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     
     const hints: Record<string, { text: string; isBest: boolean }> = {};
     costs.forEach(({ stationId, cost }) => {
-      hints[stationId] = {
-        text: `${cost}/${activeDragGroup.students.length} har vært her`,
-        isBest: cost === minCost,
-      };
+      let text = '';
+      if(activeGroupSet) {
+         text = `Gruppen har vært her ${cost} gang(er)`;
+      } else {
+         text = `${cost}/${activeDragGroup.studentIds.length} har vært her`;
+      }
+      hints[stationId] = { text, isBest: cost === minCost };
     });
     return hints;
 
-  }, [activeDragGroup, workstations, studentHistory]);
+  }, [activeDragGroup, workstations, individualStudentHistory, groupHistory, activeGroupSet]);
 
 
   const handleGenerateGroups = () => {
@@ -177,12 +209,23 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
       }
     }
     
-    const groupsWithIds: GroupWithId[] = groups.map(g => ({ id: uuidv4(), students: g }));
+    const groupsWithIds: GroupWithId[] = groups.map(g => ({ id: uuidv4(), studentIds: g.map(s => s.id!) }));
     setUnassignedGroups(groupsWithIds);
+    setActiveGroupSet(null); // Clear active project group
 
     const initialAssignments: Record<string, GroupWithId[]> = {};
     workstations.forEach(ws => { initialAssignments[ws.id] = [] });
     setStationAssignments(initialAssignments);
+  };
+  
+  const handleLoadGroupSet = (groupSet: GroupSet) => {
+      setActiveGroupSet(groupSet);
+      setUnassignedGroups(groupSet.groups);
+      
+      const initialAssignments: Record<string, GroupWithId[]> = {};
+      workstations.forEach(ws => { initialAssignments[ws.id] = [] });
+      setStationAssignments(initialAssignments);
+      toast({ title: `Lastet inn gruppesett: ${groupSet.name}`});
   };
 
   const handleAutoAssign = () => {
@@ -193,30 +236,31 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     let groupsToAssign = [...unassignedGroups];
     
     while (groupsToAssign.length > 0) {
-        const group = groupsToAssign.shift()!;
+        // Find the best group-station pair
+        let bestPair: { group: GroupWithId, stationId: string, cost: number, groupIndex: number } | null = null;
         
-        let bestStationId: string | null = null;
-        let minCost = Infinity;
+        for (let i = 0; i < groupsToAssign.length; i++) {
+            const group = groupsToAssign[i];
+            for (const station of workstations) {
+                 const currentStudentCount = (newAssignments[station.id] || []).reduce((sum, g) => sum + g.studentIds.length, 0);
+                 const canFit = !station.capacity || (currentStudentCount + group.studentIds.length <= station.capacity);
 
-        // Find the best available station
-        for (const station of workstations) {
-            const currentStudentCount = (newAssignments[station.id] || []).reduce((sum, g) => sum + g.students.length, 0);
-            const canFit = !station.capacity || (currentStudentCount + group.students.length <= station.capacity);
-            
-            if (canFit) {
-                const cost = calculateCost(group, station.id);
-                if (cost < minCost) {
-                    minCost = cost;
-                    bestStationId = station.id;
-                }
+                 if (canFit) {
+                     const cost = calculateCost(group, station.id);
+                     if (!bestPair || cost < bestPair.cost) {
+                         bestPair = { group, stationId: station.id, cost, groupIndex: i };
+                     }
+                 }
             }
         }
         
-        if (bestStationId) {
-             newAssignments[bestStationId].push(group);
+        if (bestPair) {
+            newAssignments[bestPair.stationId].push(bestPair.group);
+            groupsToAssign.splice(bestPair.groupIndex, 1);
         } else {
-            // If no station can fit the group, put it back
-            toast({ title: "En gruppe fikk ikke plass", description: `En gruppe på ${group.students.length} elever fikk ikke plass og er lagt tilbake i ufordelte.`, variant: "destructive" });
+             // If no group can be placed, break the loop
+             toast({ title: "En eller flere grupper fikk ikke plass", description: "Enkelte grupper var for store for de gjenværende stasjonene.", variant: "destructive" });
+             break;
         }
     }
     
@@ -232,8 +276,14 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     
     Object.entries(stationAssignments).forEach(([stationId, groups]) => {
         groups.forEach(group => {
-            group.students.forEach(student => {
-                logs.push({ studentId: student.id!, stationId, date });
+            group.studentIds.forEach(studentId => {
+                logs.push({ 
+                    studentId: studentId, 
+                    stationId, 
+                    date,
+                    groupSetId: activeGroupSet?.id,
+                    groupId: activeGroupSet ? group.id : undefined,
+                });
             });
         });
     });
@@ -248,6 +298,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
         toast({ title: "Økt loggført!", description: "Gruppefordelingen er lagret i historikken."});
         setUnassignedGroups([]);
         setStationAssignments({});
+        setActiveGroupSet(null);
     } catch (error) {
         console.error(error);
         toast({ title: "Feil", description: "Kunne ikke loggføre økten.", variant: "destructive" });
@@ -275,7 +326,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     if (!over) {
         return;
     }
-
+    
     const activeId = active.id.toString();
     const overId = over.id.toString();
 
@@ -294,43 +345,92 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     // Check capacity before moving
     const destStation = workstations.find(ws => ws.id === destinationContainerId);
     if (destStation?.capacity) {
-        const studentCountInDest = (stationAssignments[destinationContainerId] || []).reduce((sum, group) => sum + group.students.length, 0);
-        if (studentCountInDest + activeGroup.students.length > destStation.capacity) {
+        const studentCountInDest = (stationAssignments[destinationContainerId] || []).reduce((sum, group) => sum + group.studentIds.length, 0);
+        if (studentCountInDest + activeGroup.studentIds.length > destStation.capacity) {
             toast({ title: "Stasjonen er full", description: `"${destStation.name}" har ikke plass til denne gruppen.`, variant: "destructive" });
             return;
         }
     }
 
-    const newUnassigned = [...unassignedGroups];
-    const newAssignments = JSON.parse(JSON.stringify(stationAssignments));
-
-    // Remove from source
-    if (sourceContainerId === 'unassigned') {
-        const index = newUnassigned.findIndex(g => g.id === activeId);
-        if (index > -1) newUnassigned.splice(index, 1);
-    } else {
-        const index = newAssignments[sourceContainerId].findIndex((g: GroupWithId) => g.id === activeId);
-        if (index > -1) newAssignments[sourceContainerId].splice(index, 1);
-    }
-
-    // Add to destination
-    if (destinationContainerId === 'unassigned') {
-        newUnassigned.push(activeGroup);
-    } else if (workstations.some(ws => ws.id === destinationContainerId)) {
-        if (!newAssignments[destinationContainerId]) {
-            newAssignments[destinationContainerId] = [];
+    setStationAssignments(currentAssignments => {
+        const newAssignments = JSON.parse(JSON.stringify(currentAssignments));
+        
+        // Remove from source
+        let groupToMove: GroupWithId | null = null;
+        if (sourceContainerId === 'unassigned') {
+            const index = unassignedGroups.findIndex(g => g.id === activeId);
+            if (index > -1) {
+                groupToMove = unassignedGroups[index];
+                setUnassignedGroups(prev => prev.filter(g => g.id !== activeId));
+            }
+        } else {
+             const index = newAssignments[sourceContainerId]?.findIndex((g: GroupWithId) => g.id === activeId);
+             if (index > -1) {
+                groupToMove = newAssignments[sourceContainerId][index];
+                newAssignments[sourceContainerId].splice(index, 1);
+            }
         }
-        newAssignments[destinationContainerId].push(activeGroup);
-    }
-    
-    setUnassignedGroups(newUnassigned);
-    setStationAssignments(newAssignments);
+
+        if (!groupToMove) return currentAssignments;
+
+        // Add to destination
+        if (destinationContainerId === 'unassigned') {
+            setUnassignedGroups(prev => [...prev, groupToMove!]);
+        } else if (workstations.some(ws => ws.id === destinationContainerId)) {
+            if (!newAssignments[destinationContainerId]) {
+                newAssignments[destinationContainerId] = [];
+            }
+            newAssignments[destinationContainerId].push(groupToMove);
+        } else {
+            // Something went wrong, put it back
+            if (sourceContainerId === 'unassigned') {
+                setUnassignedGroups(prev => [...prev, groupToMove!]);
+            } else {
+                 newAssignments[sourceContainerId].push(groupToMove);
+            }
+        }
+        return newAssignments;
+    });
 };
 
 
   const handleDragStart = (event: any) => {
       setActiveDragGroup(event.active.data.current.group);
   };
+
+  const handleSaveGroupSet = async (name: string) => {
+    if (!name.trim() || unassignedGroups.length === 0) {
+        toast({ title: "Navn mangler", description: "Gi gruppesettet et navn.", variant: "destructive" });
+        return;
+    }
+    const newGroupSet: Omit<GroupSet, 'id'> = {
+        name: name.trim(),
+        createdAt: new Date(),
+        groups: unassignedGroups.map(g => ({ id: g.id, studentIds: g.studentIds })),
+    };
+    try {
+        const newId = await db.groupSets.add(newGroupSet as GroupSet);
+        toast({ title: "Grupper lagret", description: `"${name.trim()}" er lagret.`});
+        const savedGroupSet = { ...newGroupSet, id: newId as string };
+        setActiveGroupSet(savedGroupSet);
+    } catch(e) {
+        toast({ title: "Feil", description: "Kunne ikke lagre gruppesett.", variant: "destructive" });
+    }
+  };
+  
+  const handleDeleteGroupSet = async (id: string) => {
+      try {
+          await db.groupSets.delete(id);
+          if (activeGroupSet?.id === id) {
+              setActiveGroupSet(null);
+              setUnassignedGroups([]);
+          }
+          toast({ title: "Gruppesett slettet", variant: "destructive"});
+      } catch (e) {
+          toast({ title: "Feil", description: "Kunne ikke slette gruppesett.", variant: "destructive" });
+      }
+  };
+
 
   const showAssignmentView = unassignedGroups.length > 0 || Object.values(stationAssignments).some(v => v.length > 0);
 
@@ -340,36 +440,82 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
         <CardHeader>
           <CardTitle>Gruppegenerator</CardTitle>
           <CardDescription>
-            Lag tilfeldige grupper og fordel dem på arbeidsstasjoner.
+            Lag tilfeldige grupper, last inn lagrede grupper for prosjekter, og fordel dem på arbeidsstasjoner.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <RadioGroup value={strategy} onValueChange={(value) => setStrategy(value as GroupingStrategy)}>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="numberOfGroups" id="r1" />
-              <Label htmlFor="r1">Antall grupper</Label>
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4 p-4 border rounded-lg">
+                    <Label>Lag nye, tilfeldige grupper</Label>
+                    <RadioGroup value={strategy} onValueChange={(value) => setStrategy(value as GroupingStrategy)}>
+                        <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="numberOfGroups" id="r1" />
+                        <Label htmlFor="r1">Antall grupper</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="studentsPerGroup" id="r2" />
+                        <Label htmlFor="r2">Elever per gruppe</Label>
+                        </div>
+                    </RadioGroup>
+                    <div>
+                        <Label htmlFor="group-value">
+                        {strategy === "numberOfGroups" ? "Hvor mange grupper?" : "Hvor mange elever per gruppe?"}
+                        </Label>
+                        <Input
+                        id="group-value"
+                        type="number"
+                        min="1"
+                        value={groupValue}
+                        onChange={(e) => setGroupValue(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                        />
+                    </div>
+                    <Button onClick={handleGenerateGroups} className="w-full">
+                        <Shuffle className="mr-2" />
+                        Generer Nye Grupper
+                    </Button>
+                </div>
+                 <div className="space-y-2 p-4 border rounded-lg flex flex-col">
+                    <Label>Eller last inn et lagret gruppesett</Label>
+                    <ScrollArea className="flex-grow">
+                        <div className="space-y-2">
+                            {groupSets.map(gs => (
+                                <div key={gs.id} className="flex justify-between items-center p-2 rounded-md bg-secondary">
+                                    <div>
+                                        <p className="font-medium text-sm">{gs.name}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {gs.groups.length} grupper, laget {formatDistanceToNow(gs.createdAt, { addSuffix: true, locale: nb })}
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-1">
+                                         <Button size="sm" variant="outline" onClick={() => handleLoadGroupSet(gs)}>
+                                            <FolderOpen className="mr-2" /> Last inn
+                                         </Button>
+                                         <AlertDialog>
+                                             <AlertDialogTrigger asChild>
+                                                <Button size="icon" variant="ghost">
+                                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Slette gruppesett?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        Er du sikker på at du vil slette "{gs.name}"? Dette kan ikke angres.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDeleteGroupSet(gs.id!)}>Slett</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                         </AlertDialog>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                 </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="studentsPerGroup" id="r2" />
-              <Label htmlFor="r2">Elever per gruppe</Label>
-            </div>
-          </RadioGroup>
-          <div>
-            <Label htmlFor="group-value">
-              {strategy === "numberOfGroups" ? "Hvor mange grupper?" : "Hvor mange elever per gruppe?"}
-            </Label>
-            <Input
-              id="group-value"
-              type="number"
-              min="1"
-              value={groupValue}
-              onChange={(e) => setGroupValue(Math.max(1, parseInt(e.target.value, 10) || 1))}
-            />
-          </div>
-          <Button onClick={handleGenerateGroups} className="w-full">
-            <Shuffle className="mr-2" />
-            Generer Grupper
-          </Button>
         </CardContent>
       </Card>
       
@@ -378,10 +524,32 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
             <Card>
                 <CardHeader className="flex flex-row justify-between items-center">
                     <div>
-                        <CardTitle>Fordel Grupper</CardTitle>
+                        <CardTitle>{activeGroupSet ? `Fordel grupper for: ${activeGroupSet.name}` : "Fordel Grupper"}</CardTitle>
                         <CardDescription>Dra gruppene til stasjonene, eller bruk automatisk fordeling.</CardDescription>
                     </div>
                     <div className="flex gap-2">
+                        {!activeGroupSet && unassignedGroups.length > 0 && (
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline"><Save className="mr-2" /> Lagre grupper</Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Lagre gruppesett</DialogTitle>
+                                        <DialogDescription>Gi dette settet med grupper et navn for senere bruk (f.eks. "Naturfagsprosjekt").</DialogDescription>
+                                    </DialogHeader>
+                                    <Input id="group-set-name" placeholder="Navn på gruppesett..."/>
+                                    <DialogFooter>
+                                        <DialogClose asChild>
+                                            <Button variant="outline">Avbryt</Button>
+                                        </DialogClose>
+                                        <DialogClose asChild>
+                                            <Button onClick={() => handleSaveGroupSet((document.getElementById('group-set-name') as HTMLInputElement).value)}>Lagre</Button>
+                                        </DialogClose>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                        )}
                         <Button variant="outline" onClick={handleAutoAssign} disabled={unassignedGroups.length === 0 || workstations.length === 0}>
                             <Bot className="mr-2" /> Fordel Stasjoner
                         </Button>
@@ -393,17 +561,17 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                 <CardContent>
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                         <div className="lg:col-span-1">
-                            <DroppableStation station={{id: 'unassigned', name: 'Ufordelte Grupper'}} isOver={false} hint={null} assignments={unassignedGroups}>
+                            <DroppableStation station={{id: 'unassigned', name: 'Ufordelte Grupper'}} isOver={false} hint={null} assignments={unassignedGroups} studentMap={studentMap}>
                                 {unassignedGroups.map((group, index) => (
-                                   <DraggableGroup key={group.id} group={group} groupNumber={index + 1} />
+                                   <DraggableGroup key={group.id} group={group} groupNumber={index + 1} studentMap={studentMap} />
                                 ))}
                             </DroppableStation>
                         </div>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:col-span-2">
                             {workstations.map(station => (
-                                <DroppableStation key={station.id} station={station} isOver={false} hint={stationHints[station.id] || null} assignments={stationAssignments[station.id] || []}>
+                                <DroppableStation key={station.id} station={station} isOver={false} hint={stationHints[station.id] || null} assignments={stationAssignments[station.id] || []} studentMap={studentMap}>
                                     {(stationAssignments[station.id] || []).map((group, index) => (
-                                        <DraggableGroup key={group.id} group={group} groupNumber={index + 1} />
+                                        <DraggableGroup key={group.id} group={group} groupNumber={index + 1} studentMap={studentMap} />
                                     ))}
                                 </DroppableStation>
                             ))}
@@ -412,7 +580,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                 </CardContent>
             </Card>
             <DragOverlay>
-                {activeDragGroup ? <DraggableGroup group={activeDragGroup} groupNumber={1} /> : null}
+                {activeDragGroup ? <DraggableGroup group={activeDragGroup} groupNumber={1} studentMap={studentMap} /> : null}
             </DragOverlay>
         </DndContext>
       )}

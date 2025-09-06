@@ -200,11 +200,25 @@ export type Workstation = {
   capacity?: number;
 };
 
+export type GroupInSet = {
+  id: string; // Unique ID for this group within this set
+  studentIds: string[];
+};
+
+export type GroupSet = {
+  id?: string;
+  name: string;
+  createdAt: Date;
+  groups: GroupInSet[];
+};
+
 export type StationAssignmentLog = {
   id?: number;
   studentId: string;
   stationId: string;
   date: Date;
+  groupSetId?: string; // Optional: ID of the GroupSet
+  groupId?: string;    // Optional: ID of the specific group within the set
 };
 
 export type AppSettings = {
