@@ -162,12 +162,12 @@ const LayoutDesigner = ({ onSave, onCancel }: { onSave: (layout: SeatingLayout) 
     };
 
     return (
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-4xl flex flex-col max-h-[90svh]">
             <DialogHeader>
                 <DialogTitle>Design Klasserom-layout</DialogTitle>
                 <DialogDescription>Klikk eller dra i rutenettet for å definere hvor pultene skal stå. Gi layouten et navn og lagre.</DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-3 overflow-y-auto pr-4">
                 <div className="space-y-4">
                      <Input placeholder="Navn på layout (f.eks. 'Standard U-form')" value={name} onChange={(e) => setName(e.target.value)} />
                      <div className="grid grid-cols-2 gap-2">
@@ -181,7 +181,7 @@ const LayoutDesigner = ({ onSave, onCancel }: { onSave: (layout: SeatingLayout) 
                         Tips: Klikk for å bytte en rute. Hold inne og dra for å "male" flere ruter.
                      </div>
                 </div>
-                <div className="md:col-span-2 overflow-auto" onMouseUp={() => setIsMouseDown(false)} onMouseLeave={() => setIsMouseDown(false)}>
+                <div className="md:col-span-2" onMouseUp={() => setIsMouseDown(false)} onMouseLeave={() => setIsMouseDown(false)}>
                     <div className="grid gap-1 p-2 border rounded-lg bg-background" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
                         {layout.map((row, r) => row.map((isDesk, c) => (
                             <div
@@ -194,7 +194,7 @@ const LayoutDesigner = ({ onSave, onCancel }: { onSave: (layout: SeatingLayout) 
                     </div>
                 </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="pt-4 border-t">
                 <DialogClose asChild>
                     <Button variant="outline" onClick={onCancel}>Avbryt</Button>
                 </DialogClose>
@@ -254,7 +254,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
   }, [seatingChart, students]);
   
   
-  const handleRuleChange = (newRules: Partial<SeatingChartRules>) => {
+  const handleRuleChange = (newRules: Partial<AppSettings['seatingChartRules']>) => {
       onAppSettingsChange({
           ...appSettings,
           seatingChartRules: {
@@ -708,6 +708,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     </div>
   );
 }
+
 
 
 
