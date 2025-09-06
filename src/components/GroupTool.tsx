@@ -65,7 +65,7 @@ const DroppableStation = ({ station, children, isOver, hint, assignments }: { st
     const isFull = station.capacity && assignments.length >= station.capacity;
 
     return (
-        <Card ref={setNodeRef} className={cn("h-full transition-colors", isOver && "bg-primary/10", hint?.isBest && "bg-green-100 dark:bg-green-900/20", isFull && "bg-muted/50")}>
+        <Card ref={setNodeRef} className={cn("transition-colors", isOver && "bg-primary/10", hint?.isBest && "bg-green-100 dark:bg-green-900/20", isFull && "bg-muted/50")}>
             <CardHeader>
                 <CardTitle className="flex items-center justify-between text-base">
                     {station.name}
@@ -388,19 +388,23 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        <DroppableStation station={{id: 'unassigned', name: 'Ufordelte Grupper'}} isOver={false} hint={null} assignments={unassignedGroups}>
-                            {unassignedGroups.map((group, index) => (
-                               <DraggableGroup key={group.id} group={group} groupNumber={index + 1} />
-                            ))}
-                        </DroppableStation>
-                        {workstations.map(station => (
-                            <DroppableStation key={station.id} station={station} isOver={false} hint={stationHints[station.id] || null} assignments={stationAssignments[station.id] || []}>
-                                {(stationAssignments[station.id] || []).map((group, index) => (
-                                    <DraggableGroup key={group.id} group={group} groupNumber={index + 1} />
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                        <div className="lg:col-span-1">
+                            <DroppableStation station={{id: 'unassigned', name: 'Ufordelte Grupper'}} isOver={false} hint={null} assignments={unassignedGroups}>
+                                {unassignedGroups.map((group, index) => (
+                                   <DraggableGroup key={group.id} group={group} groupNumber={index + 1} />
                                 ))}
                             </DroppableStation>
-                        ))}
+                        </div>
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:col-span-2">
+                            {workstations.map(station => (
+                                <DroppableStation key={station.id} station={station} isOver={false} hint={stationHints[station.id] || null} assignments={stationAssignments[station.id] || []}>
+                                    {(stationAssignments[station.id] || []).map((group, index) => (
+                                        <DraggableGroup key={group.id} group={group} groupNumber={index + 1} />
+                                    ))}
+                                </DroppableStation>
+                            ))}
+                        </div>
                       </div>
                 </CardContent>
             </Card>
