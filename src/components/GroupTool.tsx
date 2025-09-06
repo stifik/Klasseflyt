@@ -65,7 +65,7 @@ const DroppableStation = ({ station, children, isOver, hint, assignments }: { st
     const isFull = station.capacity && assignments.length >= station.capacity;
 
     return (
-        <Card ref={setNodeRef} className={cn("h-full transition-colors flex-shrink-0 w-64", isOver && "bg-primary/10", hint?.isBest && "bg-green-100 dark:bg-green-900/20", isFull && "bg-muted/50")}>
+        <Card ref={setNodeRef} className={cn("h-full transition-colors", isOver && "bg-primary/10", hint?.isBest && "bg-green-100 dark:bg-green-900/20", isFull && "bg-muted/50")}>
             <CardHeader>
                 <CardTitle className="flex items-center justify-between text-base">
                     {station.name}
@@ -388,8 +388,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <ScrollArea className="w-full pb-4">
-                      <div className="flex gap-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                         <DroppableStation station={{id: 'unassigned', name: 'Ufordelte Grupper'}} isOver={false} hint={null} assignments={unassignedGroups}>
                             {unassignedGroups.map((group, index) => (
                                <DraggableGroup key={group.id} group={group} groupNumber={index + 1} />
@@ -403,8 +402,6 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                             </DroppableStation>
                         ))}
                       </div>
-                      <ScrollBar orientation="horizontal" />
-                    </ScrollArea>
                 </CardContent>
             </Card>
             <DragOverlay>
