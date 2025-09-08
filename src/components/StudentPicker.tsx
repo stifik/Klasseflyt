@@ -155,15 +155,15 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
 
     const handlePickStudent = async () => {
         if (studentsToPickFrom.length === 0 || isPicking) {
-             if (studentsToPickFrom.length === 0 && !isPicking) {
+            if (studentsToPickFrom.length === 0 && !isPicking) {
                 toast({ title: "Ingen elever å trekke", description: "Alle elever i gruppen er trukket. Nullstill historikken for å starte på nytt.", variant: "destructive" });
-             }
-             return;
+            }
+            return;
         }
-        
+
         setIsPicking(true);
         setPickedStudent(null);
-        
+
         let weightedList = studentsToPickFrom;
         if (withReplacement) {
             weightedList = studentsToPickFrom.flatMap(student => {
@@ -173,25 +173,33 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
                 return Array(weight).fill(student);
             });
         }
-        
-        const pick = () => {
-             const randomIndex = Math.floor(Math.random() * weightedList.length);
-             setPickedStudent(weightedList[randomIndex]);
+
+        const pickRandomStudent = () => {
+            const randomIndex = Math.floor(Math.random() * weightedList.length);
+            setPickedStudent(weightedList[randomIndex]);
         };
         
-        const interval = 100;
-        const duration = 2000;
-        let elapsed = 0;
-        const animationInterval = setInterval(() => {
-            pick();
-            elapsed += interval;
-            if (elapsed >= duration) {
-                clearInterval(animationInterval);
+        const finalPick = weightedList[Math.floor(Math.random() * weightedList.length)];
+        
+        const animationDuration = 2500; // Total duration in ms
+        const initialInterval = 50; // Start interval
+        const finalInterval = 500; // End interval
+        let currentTime = 0;
+        let currentInterval = initialInterval;
+
+        const runAnimation = () => {
+            pickRandomStudent();
+            currentTime += currentInterval;
+
+            // Simple easing: interval grows linearly
+            const progress = currentTime / animationDuration;
+            currentInterval = initialInterval + (finalInterval - initialInterval) * progress;
+            
+            if (currentTime < animationDuration) {
+                setTimeout(runAnimation, currentInterval);
+            } else {
                 setIsPicking(false);
-                
-                const finalPick = weightedList[Math.floor(Math.random() * weightedList.length)];
                 setPickedStudent(finalPick);
-                
                 if (selectedGroupId !== 'all') {
                     db.pickerLogs.add({
                         groupId: selectedGroupId,
@@ -200,7 +208,9 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
                     });
                 }
             }
-        }, interval);
+        };
+
+        runAnimation();
     };
     
     const handleSaveGroup = async (groupData: Omit<PickerGroup, 'id' | 'createdAt'> & { id?: string }) => {
