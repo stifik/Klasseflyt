@@ -9,6 +9,7 @@ import GroupTool from "./GroupTool";
 import StudentPicker from "./StudentPicker";
 import SeatingChart from "./SeatingChart";
 import { db } from "@/lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
 
 interface ClassroomToolsProps {
   students: Student[];
@@ -27,7 +28,9 @@ interface ClassroomToolsProps {
 }
 
 const ClassroomTools: FC<ClassroomToolsProps> = (props) => {
-  const { students, seatingChart, activeLayout, activeSubTab, onSubTabChange, appSettings, stationAssignmentLogs, groupSets } = props;
+  const { students, activeSubTab, onSubTabChange, appSettings, stationAssignmentLogs, groupSets } = props;
+  
+  const pickerGroups = useLiveQuery(() => db.pickerGroups.orderBy('createdAt').toArray());
 
   const defaultSubTab = "seating-chart";
   
@@ -57,7 +60,7 @@ const ClassroomTools: FC<ClassroomToolsProps> = (props) => {
         <GroupTool students={students} appSettings={appSettings} stationAssignmentLogs={stationAssignmentLogs} groupSets={groupSets} />
       </TabsContent>
       <TabsContent value="student-picker">
-        <StudentPicker students={students} seatingChart={seatingChart} activeLayout={activeLayout} />
+        <StudentPicker students={students} />
       </TabsContent>
     </Tabs>
   );

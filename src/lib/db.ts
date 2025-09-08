@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -24,6 +24,8 @@ export class MySubClassedDexie extends Dexie {
     goalAchievements!: Table<GoalAchievement, string>;
     stationAssignmentLogs!: Table<StationAssignmentLog, number>;
     groupSets!: Table<GroupSet, string>;
+    pickerGroups!: Table<PickerGroup, string>;
+    pickerLogs!: Table<PickerLog, number>;
 
 
     constructor() {
@@ -282,6 +284,11 @@ export class MySubClassedDexie extends Dexie {
         this.version(18).stores({
             groupSets: '++id, name, createdAt',
             stationAssignmentLogs: '++id, &[studentId+date], studentId, date, groupSetId, groupId',
+        });
+
+        this.version(19).stores({
+            pickerGroups: '++id, name, createdAt',
+            pickerLogs: '++id, groupId, studentId, date',
         });
 
 
@@ -597,3 +604,4 @@ export async function importDatabase(data: { [key: string]: any[] }) {
 
 
     
+

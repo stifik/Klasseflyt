@@ -221,6 +221,20 @@ export type StationAssignmentLog = {
   groupId?: string;    // Optional: ID of the specific group within the set
 };
 
+export type PickerGroup = {
+  id?: string;
+  name: string;
+  studentIds: string[];
+  createdAt: Date;
+};
+
+export type PickerLog = {
+  id?: number;
+  groupId: string;
+  studentId: string;
+  date: Date;
+};
+
 export type AppSettings = {
   tabs: Record<TabKey, boolean>;
   tabOrder: TabKey[];
@@ -235,5 +249,3 @@ export type AppSettings = {
   onboardingCompleted?: boolean;
   seatingChartRules?: SeatingChartRules;
 };
-
-    
