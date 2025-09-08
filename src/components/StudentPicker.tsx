@@ -128,7 +128,7 @@ const colorConfig: Record<PickerColor, { class: string, style?: React.CSSPropert
 export default function StudentPicker({ students, seatingChart, activeLayout, appSettings, onAppSettingsChange }: StudentPickerProps) {
     const [selectedGroupId, setSelectedGroupId] = useState<string>("all");
     const [withReplacement, setWithReplacement] = useState(false);
-    const [isPicking, setIsPicking] = useState(isPicking = false);
+    const [isPicking, setIsPicking] = useState(false);
     const [pickedStudent, setPickedStudent] = useState<Student | null>(null);
     const [sessionPickedStudentIds, setSessionPickedStudentIds] = useState<Set<string>>(new Set());
     const [currentAnimationStyle, setCurrentAnimationStyle] = useState<React.CSSProperties>({});
@@ -152,7 +152,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
     const studentMap = useMemo(() => new Map(students.map(s => [s.id!, s])), [students]);
 
     const availableStudents = useMemo(() => {
-        if (!pickerGroups) return [];
+        if (!pickerGroups) return students;
         if (selectedGroupId === 'all') return students;
         
         const group = pickerGroups.find(g => g.id === selectedGroupId);
@@ -163,43 +163,47 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
 
     const historyForGroup = useMemo(() => {
         if (!pickerLogs) return [];
-        if (selectedGroupId === 'all') {
-             return Array.from(sessionPickedStudentIds).map((id, index) => ({
-                id: index,
-                groupId: 'all',
-                studentId: id,
-                date: new Date() 
-            }));
-        }
-        return pickerLogs
-            .filter(log => log.groupId === selectedGroupId)
-            .sort((a, b) => b.date.getTime() - a.date.getTime());
+        
+        const groupLogs = selectedGroupId === 'all' 
+            ? [] // Session history is handled by sessionPickedStudentIds
+            : pickerLogs.filter(log => log.groupId === selectedGroupId);
+        
+        const sessionLogs = Array.from(sessionPickedStudentIds).map((id, index) => ({
+            id: -index, // Temporary negative ID for session logs
+            groupId: 'all',
+            studentId: id,
+            date: new Date() 
+        }));
+        
+        const combinedLogs = selectedGroupId === 'all' 
+            ? sessionLogs 
+            : groupLogs;
+
+        return combinedLogs.sort((a, b) => b.date.getTime() - a.date.getTime());
     }, [selectedGroupId, pickerLogs, sessionPickedStudentIds]);
     
     const studentLastPicked = useMemo(() => {
         const lastPickedMap = new Map<string, Date>();
-        historyForGroup.forEach(log => {
+        const logs = pickerLogs || []; // Use all logs for weighting
+        logs.forEach(log => {
             if (!lastPickedMap.has(log.studentId)) {
                 lastPickedMap.set(log.studentId, log.date);
             }
         });
         return lastPickedMap;
-    }, [historyForGroup]);
+    }, [pickerLogs]);
+    
+    const alreadyPickedIds = useMemo(() => {
+        if (withReplacement) return new Set<string>();
+        return new Set(historyForGroup.map(log => log.studentId));
+    }, [withReplacement, historyForGroup]);
     
     const studentsToPickFrom = useMemo(() => {
         if (withReplacement) {
             return availableStudents;
         }
-
-        const pickedStudentIds = new Set(historyForGroup.map(log => log.studentId));
-        return availableStudents.filter(student => !pickedStudentIds.has(student.id!));
-    }, [withReplacement, availableStudents, historyForGroup]);
-
-    const alreadyPickedIds = useMemo(() => {
-        if (withReplacement) return new Set<string>();
-        return new Set(historyForGroup.map(log => log.studentId));
-    }, [withReplacement, historyForGroup]);
-
+        return availableStudents.filter(student => !alreadyPickedIds.has(student.id!));
+    }, [withReplacement, availableStudents, alreadyPickedIds]);
 
     const playSound = (type: 'tick' | 'ding') => {
         if (!pickerSettings.soundEnabled || !audioCtxRef.current) return;
@@ -235,7 +239,11 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
 
         // Initialize AudioContext on user gesture
         if (!audioCtxRef.current) {
-            audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+            try {
+                audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+            } catch (e) {
+                console.error("Web Audio API is not supported in this browser.");
+            }
         }
 
         setIsPicking(true);
@@ -258,6 +266,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
         let colorIndex = 0;
 
         const pickRandomStudent = () => {
+            if (weightedList.length === 0) return;
             const randomIndex = Math.floor(Math.random() * weightedList.length);
             const student = weightedList[randomIndex];
             setPickedStudent(student);
@@ -273,18 +282,17 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
         
         const totalDuration = pickerSettings.animationDuration * 1000;
         const initialInterval = 50;
-        const finalInterval = 500;
         let currentTime = 0;
-        let currentInterval = initialInterval;
 
         const runAnimation = () => {
             pickRandomStudent();
             playSound('tick');
+            
+            const progress = currentTime / totalDuration;
+            const easing = 1 - Math.pow(1 - progress, 3); // Ease-out cubic
+            const currentInterval = initialInterval + (500 - initialInterval) * easing;
             currentTime += currentInterval;
 
-            const progress = currentTime / totalDuration;
-            currentInterval = initialInterval + (finalInterval - initialInterval) * progress;
-            
             if (currentTime < totalDuration) {
                 setTimeout(runAnimation, currentInterval);
             } else {
@@ -366,7 +374,8 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
             <div
                 className={cn(
                     "relative flex items-center justify-center border rounded-lg transition-all duration-300 w-full h-16",
-                    isPicked && !isRainbowPicking ? `${animationStyle.class} shadow-lg scale-105` : "bg-secondary",
+                    isPicked && !isRainbowPicking && animationStyle.class && `${animationStyle.class} shadow-lg scale-105`,
+                    !isPicked && "bg-secondary",
                     isPicking && !isRainbowPicking && "bg-muted",
                     isPicked && isRainbowPicking && 'shadow-lg scale-105',
                     isOutOfPlay && 'opacity-40'
