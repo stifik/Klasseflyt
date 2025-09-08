@@ -205,7 +205,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
-              <Calendar mode="single" selected={date} onSelect={(d) => { if (d) { setDate(d); setLocalRemarks(initialRemarks); } }} initialFocus />
+              <Calendar locale={nb} mode="single" selected={date} onSelect={(d) => { if (d) { setDate(d); setLocalRemarks(initialRemarks); } }} initialFocus />
             </PopoverContent>
           </Popover>
         </div>
@@ -267,7 +267,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
           </div>
         ) : (
              <div className="flex items-center justify-center h-48 text-muted-foreground">
-                <p>Klassekartet er tomt. Gå til "Klasseverktøy &gt; Klassekart" for å generere et.</p>
+                <p>Klassekartet er tomt. Gå til "Klasseverktøy > Klassekart" for å generere et.</p>
             </div>
         )}
       </CardContent>

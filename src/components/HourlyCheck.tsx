@@ -273,7 +273,7 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
-              <Calendar mode="single" selected={date} onSelect={(d) => { if (d) { setDate(d); setLocalChecks(initialChecks); } }} initialFocus />
+              <Calendar locale={nb} mode="single" selected={date} onSelect={(d) => { if (d) { setDate(d); setLocalChecks(initialChecks); } }} initialFocus />
             </PopoverContent>
           </Popover>
         </div>

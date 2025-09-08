@@ -135,7 +135,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout }:
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
-              <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
+              <Calendar locale={nb} mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
             </PopoverContent>
           </Popover>
         </div>

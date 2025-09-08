@@ -149,6 +149,7 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
               <Calendar
+                locale={nb}
                 mode="single"
                 selected={date}
                 onSelect={setDate}

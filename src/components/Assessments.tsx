@@ -99,6 +99,7 @@ const AddTestDialog: FC<{ subjects: Subject[]; learningGoals: LearningGoal[]; on
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
               <Calendar
+                locale={nb}
                 mode="single"
                 selected={date}
                 onSelect={setDate}
