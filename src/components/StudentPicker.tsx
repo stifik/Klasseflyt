@@ -122,7 +122,7 @@ const colorConfig: Record<PickerColor, { bgClass: string, borderClass: string }>
     green: { bgClass: 'bg-green-500/20', borderClass: 'border-green-500' },
     yellow: { bgClass: 'bg-yellow-500/20', borderClass: 'border-yellow-500' },
     red: { bgClass: 'bg-red-500/20', borderClass: 'border-red-500' },
-    rainbow: { bgClass: 'bg-transparent', borderClass: 'animate-rainbow-border' }
+    rainbow: { bgClass: 'animate-rainbow-border bg-background', borderClass: 'animate-rainbow-border' }
 };
 
 export default function StudentPicker({ students, seatingChart, activeLayout, appSettings, onAppSettingsChange }: StudentPickerProps) {
@@ -271,8 +271,9 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
             const availableForAnimation = weightedList.filter(s => s.id !== lastAnimatingStudentId);
             if (availableForAnimation.length === 0) {
                  if (weightedList.length > 0) {
-                    setAnimatingStudent(weightedList[0]);
-                    lastAnimatingStudentId = weightedList[0].id!;
+                    const nextAnimatingStudent = weightedList[0];
+                    setAnimatingStudent(nextAnimatingStudent);
+                    lastAnimatingStudentId = nextAnimatingStudent.id!;
                  }
                  return;
             };
@@ -383,13 +384,11 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
         let style = {};
         if (isAnimating && isRainbow) {
             style = currentAnimationStyle;
-        } else if (isPicked && isRainbow) {
-            style = { backgroundColor: 'hsl(120, 70%, 60%, 0.2)', borderColor: 'hsl(120, 70%, 60%)' };
         }
         
         const baseBgClass = isOutOfPlay ? 'bg-secondary/50' : 'bg-secondary';
         const animatingBgClass = animationStyleConfig?.bgClass;
-        const finalBgClass = isAnimating || isPicked ? animatingBgClass : baseBgClass;
+        const finalBgClass = isAnimating ? animatingBgClass : baseBgClass;
 
         return (
             <div
@@ -399,7 +398,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                     !isRainbow && finalBgClass,
                     isRainbow && (isPicked || isAnimating) && 'bg-background',
                     isOutOfPlay && 'opacity-40',
-                    animationStyleConfig && (isPicked || isAnimating) ? animationStyleConfig.borderClass : 'border-border'
+                    isPicked && isRainbow ? colorConfig.rainbow.borderClass : (animationStyleConfig && (isPicked || isAnimating) ? animationStyleConfig.borderClass : 'border-border')
                 )}
                 style={style}
             >
