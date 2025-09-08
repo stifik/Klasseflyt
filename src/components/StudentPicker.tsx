@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo, FC } from "react";
-import type { Student, PickerGroup, PickerLog } from "@/lib/types";
+import type { Student, PickerGroup, PickerLog, SeatingChartData, SeatingLayout } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Sparkles, History, Plus, Trash2, Users, Edit, RefreshCw } from "lucide-react";
@@ -25,6 +25,8 @@ import { Switch } from "./ui/switch";
 
 interface StudentPickerProps {
   students: Student[];
+  seatingChart: SeatingChartData | null;
+  activeLayout: SeatingLayout | null | undefined;
 }
 
 const EditGroupDialog: FC<{
@@ -103,7 +105,7 @@ const EditGroupDialog: FC<{
 };
 
 
-export default function StudentPicker({ students }: StudentPickerProps) {
+export default function StudentPicker({ students, seatingChart, activeLayout }: StudentPickerProps) {
     const [selectedGroupId, setSelectedGroupId] = useState<string>("all");
     const [withReplacement, setWithReplacement] = useState(false);
     const [isPicking, setIsPicking] = useState(false);
@@ -248,6 +250,20 @@ export default function StudentPicker({ students }: StudentPickerProps) {
             toast({ title: "Feil", description: "Kunne ikke nullstille historikken.", variant: "destructive" });
         }
     };
+    
+    const Desk = ({ studentName, isPicked, isPicking }: { studentName: string | null; isPicked: boolean, isPicking: boolean }) => {
+        return (
+            <div
+                className={cn(
+                    "relative flex items-center justify-center border rounded-lg transition-all duration-300 w-full h-16",
+                    isPicked ? "bg-primary/20 border-primary shadow-lg scale-105" : "bg-secondary",
+                    isPicking && "animate-pulse bg-muted"
+                )}
+            >
+                {studentName && <p className="text-xs font-medium text-center">{studentName}</p>}
+            </div>
+        );
+    };
 
     return (
         <div className="grid gap-6 md:grid-cols-3">
@@ -255,58 +271,82 @@ export default function StudentPicker({ students }: StudentPickerProps) {
                 <Card className="min-h-[400px]">
                     <CardHeader>
                         <CardTitle>Elev-trekker</CardTitle>
-                        <CardDescription>Trekk en tilfeldig elev fra hele klassen eller en egendefinert gruppe.</CardDescription>
+                        <CardDescription>Trekk en tilfeldig elev ved hjelp av klassekartet.</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex flex-col items-center justify-center space-y-6 pt-10">
-                        <div className="flex items-center space-x-2">
-                            <Label htmlFor="replacement-mode">Med tilbakelegging</Label>
-                            <Switch id="replacement-mode" checked={withReplacement} onCheckedChange={setWithReplacement} />
-                        </div>
-                        <div className={cn(
-                            "flex items-center justify-center w-48 h-24 text-center border-2 rounded-lg transition-all duration-300",
-                            isPicking && "border-dashed animate-pulse",
-                            pickedStudent && "border-primary bg-primary/10 scale-110",
-                            !pickedStudent && "border-border"
-                        )}>
-                            <p className="text-2xl font-bold text-primary">{pickedStudent?.name || "?"}</p>
-                        </div>
-                        <Button onClick={handlePickStudent} disabled={isPicking || studentsToPickFrom.length === 0} size="lg">
-                            <Sparkles className="mr-2" />
-                            {isPicking ? 'Trekker...' : 'Trekk elev'}
-                        </Button>
-                        <p className="text-xs text-muted-foreground">
-                            {studentsToPickFrom.length} av {availableStudents.length} elever igjen å trekke.
-                        </p>
+                    <CardContent>
+                        {seatingChart && activeLayout ? (
+                             <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${activeLayout.cols}, 1fr)` }}>
+                                {Array.from({ length: activeLayout.rows }).map((_, r) =>
+                                    Array.from({ length: activeLayout.cols }).map((_, c) => {
+                                        if (!activeLayout.layout[r]?.[c]) {
+                                            return <div key={`${r}-${c}`} />;
+                                        }
+                                        const studentName = seatingChart[r]?.[c]?.[0] || null;
+                                        const isPicked = studentName === pickedStudent?.name;
+                                        const isPickingStudent = isPicking && studentName === pickedStudent?.name;
+
+                                        return (
+                                            <Desk
+                                                key={`${r}-${c}`}
+                                                studentName={studentName}
+                                                isPicked={isPicked}
+                                                isPicking={isPickingStudent}
+                                            />
+                                        );
+                                    })
+                                )}
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center h-48 text-muted-foreground">
+                                <p>Generer et klassekart under "Klasseverktøy {'>'} Klassekart" for å bruke denne visningen.</p>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
             <div>
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-xl">Grupper & Historikk</CardTitle>
+                        <CardTitle className="text-xl">Kontrollpanel</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Velg gruppe..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">
-                                    <div className="flex items-center gap-2">
-                                        <Users className="w-4 h-4" /> Hele klassen ({students.length})
-                                    </div>
-                                </SelectItem>
-                                {pickerGroups?.map(g => (
-                                    <SelectItem key={g.id} value={g.id!}>
-                                         <div className="flex items-center gap-2">
-                                            {g.name} ({g.studentIds.length})
+                        <Button onClick={handlePickStudent} disabled={isPicking || studentsToPickFrom.length === 0} size="lg" className="w-full">
+                            <Sparkles className="mr-2" />
+                            {isPicking ? 'Trekker...' : 'Trekk elev'}
+                        </Button>
+                         <p className="text-xs text-center text-muted-foreground">
+                            {studentsToPickFrom.length} av {availableStudents.length} elever igjen å trekke.
+                        </p>
+                        
+                        <div className="space-y-2 pt-4 border-t">
+                            <Label>Innstillinger for trekking</Label>
+                            <div className="flex items-center justify-between p-2 border rounded-md">
+                                <Label htmlFor="replacement-mode" className="font-normal">Med tilbakelegging</Label>
+                                <Switch id="replacement-mode" checked={withReplacement} onCheckedChange={setWithReplacement} />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 pt-4 border-t">
+                            <Label>Velg gruppe</Label>
+                             <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Velg gruppe..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">
+                                        <div className="flex items-center gap-2">
+                                            <Users className="w-4 h-4" /> Hele klassen ({students.length})
                                         </div>
                                     </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        
-                        <div className="space-y-2">
+                                    {pickerGroups?.map(g => (
+                                        <SelectItem key={g.id} value={g.id!}>
+                                            <div className="flex items-center gap-2">
+                                                {g.name} ({g.studentIds.length})
+                                            </div>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                             <EditGroupDialog 
                                 students={students} 
                                 onSave={handleSaveGroup}
@@ -316,40 +356,9 @@ export default function StudentPicker({ students }: StudentPickerProps) {
                                     </Button>
                                 }
                             />
-                            {selectedGroupId !== 'all' && pickerGroups?.find(g => g.id === selectedGroupId) && (
-                               <div className="flex gap-2">
-                                 <EditGroupDialog
-                                    group={pickerGroups.find(g => g.id === selectedGroupId)}
-                                    students={students}
-                                    onSave={handleSaveGroup}
-                                    trigger={
-                                        <Button variant="outline" className="w-full">
-                                            <Edit className="mr-2" /> Rediger
-                                        </Button>
-                                    }
-                                 />
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="destructive" size="icon"><Trash2 /></Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Slette gruppe?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                Er du sikker? Dette vil slette gruppen og all tilhørende trekkhistorikk.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleDeleteGroup(selectedGroupId)}>Slett</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                               </div>
-                            )}
                         </div>
                         
-                        <div className="space-y-2">
+                        <div className="space-y-2 pt-4 border-t">
                             <div className="flex justify-between items-center">
                                 <h4 className="font-medium text-sm flex items-center gap-2">
                                     <History className="w-4 h-4 text-muted-foreground" />

@@ -28,7 +28,7 @@ interface ClassroomToolsProps {
 }
 
 const ClassroomTools: FC<ClassroomToolsProps> = (props) => {
-  const { students, activeSubTab, onSubTabChange, appSettings, stationAssignmentLogs, groupSets } = props;
+  const { students, activeSubTab, onSubTabChange, appSettings, stationAssignmentLogs, groupSets, seatingChart, activeLayout } = props;
   
   const pickerGroups = useLiveQuery(() => db.pickerGroups.orderBy('createdAt').toArray());
 
@@ -60,7 +60,7 @@ const ClassroomTools: FC<ClassroomToolsProps> = (props) => {
         <GroupTool students={students} appSettings={appSettings} stationAssignmentLogs={stationAssignmentLogs} groupSets={groupSets} />
       </TabsContent>
       <TabsContent value="student-picker">
-        <StudentPicker students={students} />
+        <StudentPicker students={students} seatingChart={seatingChart} activeLayout={activeLayout} />
       </TabsContent>
     </Tabs>
   );
