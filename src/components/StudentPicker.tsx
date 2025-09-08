@@ -1,11 +1,12 @@
 
+
 "use client";
 
-import { useState, useMemo, FC, useRef } from "react";
-import type { Student, PickerGroup, PickerLog, SeatingChartData, SeatingLayout } from "@/lib/types";
+import { useState, useMemo, FC, useRef, useEffect } from "react";
+import type { Student, PickerGroup, PickerLog, SeatingChartData, SeatingLayout, AppSettings, PickerSettings, PickerColor } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles, History, Plus, Trash2, Users, Edit, RefreshCw, Volume2, VolumeX } from "lucide-react";
+import { Sparkles, History, Plus, Trash2, Users, Edit, RefreshCw, Volume2, VolumeX, Palette } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Input } from "./ui/input";
@@ -22,12 +23,15 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Switch } from "./ui/switch";
 import { Slider } from "./ui/slider";
+import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover";
 
 
 interface StudentPickerProps {
   students: Student[];
   seatingChart: SeatingChartData | null;
   activeLayout: SeatingLayout | null | undefined;
+  appSettings: AppSettings;
+  onAppSettingsChange: (newSettings: AppSettings) => void;
 }
 
 const EditGroupDialog: FC<{
@@ -106,16 +110,39 @@ const EditGroupDialog: FC<{
 };
 
 
-export default function StudentPicker({ students, seatingChart, activeLayout }: StudentPickerProps) {
+const defaultPickerSettings: PickerSettings = {
+    animationDuration: 2.5,
+    soundEnabled: true,
+    animationColor: 'default',
+};
+
+const colorConfig: Record<PickerColor, { class: string, style?: React.CSSProperties }> = {
+    default: { class: 'bg-primary/20 border-primary' },
+    blue: { class: 'bg-blue-500/20 border-blue-500' },
+    green: { class: 'bg-green-500/20 border-green-500' },
+    yellow: { class: 'bg-yellow-500/20 border-yellow-500' },
+    red: { class: 'bg-red-500/20 border-red-500' },
+    rainbow: { class: 'animate-rainbow-border' }
+};
+
+export default function StudentPicker({ students, seatingChart, activeLayout, appSettings, onAppSettingsChange }: StudentPickerProps) {
     const [selectedGroupId, setSelectedGroupId] = useState<string>("all");
     const [withReplacement, setWithReplacement] = useState(false);
     const [isPicking, setIsPicking] = useState(false);
     const [pickedStudent, setPickedStudent] = useState<Student | null>(null);
-    const [animationDuration, setAnimationDuration] = useState(2.5);
-    const [isSoundEnabled, setIsSoundEnabled] = useState(true);
     const { toast } = useToast();
 
     const audioCtxRef = useRef<AudioContext | null>(null);
+
+    const pickerSettings = useMemo(() => ({
+        ...defaultPickerSettings,
+        ...(appSettings.pickerSettings || {})
+    }), [appSettings.pickerSettings]);
+
+    const handlePickerSettingChange = (update: Partial<PickerSettings>) => {
+        const newSettings = { ...pickerSettings, ...update };
+        onAppSettingsChange({ ...appSettings, pickerSettings: newSettings });
+    };
 
     const pickerGroups = useLiveQuery(() => db.pickerGroups.toArray(), []);
     const pickerLogs = useLiveQuery(() => db.pickerLogs.toArray(), []);
@@ -158,7 +185,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
     }, [withReplacement, selectedGroupId, availableStudents, historyForGroup]);
 
     const playSound = (type: 'tick' | 'ding') => {
-        if (!isSoundEnabled || !audioCtxRef.current) return;
+        if (!pickerSettings.soundEnabled || !audioCtxRef.current) return;
         const audioCtx = audioCtxRef.current;
         const oscillator = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
@@ -214,7 +241,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
         
         const finalPick = weightedList[Math.floor(Math.random() * weightedList.length)];
         
-        const totalDuration = animationDuration * 1000;
+        const totalDuration = pickerSettings.animationDuration * 1000;
         const initialInterval = 50;
         const finalInterval = 500;
         let currentTime = 0;
@@ -296,13 +323,17 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
     };
     
     const Desk = ({ studentName, isPicked, isPicking }: { studentName: string | null; isPicked: boolean, isPicking: boolean }) => {
+        const animationStyle = colorConfig[pickerSettings.animationColor];
+        
         return (
             <div
                 className={cn(
                     "relative flex items-center justify-center border rounded-lg transition-all duration-300 w-full h-16",
-                    isPicked ? "bg-primary/20 border-primary shadow-lg scale-105" : "bg-secondary",
-                    isPicking && "animate-pulse bg-muted"
+                    isPicked ? `${animationStyle.class} shadow-lg scale-105` : "bg-secondary",
+                    isPicking && "bg-muted",
+                    isPicking && pickerSettings.animationColor === 'rainbow' && animationStyle.class
                 )}
+                style={isPicking && pickerSettings.animationColor === 'rainbow' ? animationStyle.style : {}}
             >
                 {studentName && <p className="text-xs font-medium text-center">{studentName}</p>}
             </div>
@@ -365,10 +396,30 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
                         <div className="space-y-2 pt-4 border-t">
                              <div className="flex items-center justify-between">
                                 <Label>Innstillinger for trekking</Label>
-                                <Button variant="ghost" size="icon" onClick={() => setIsSoundEnabled(p => !p)}>
-                                    {isSoundEnabled ? <Volume2 className="w-4 h-4"/> : <VolumeX className="w-4 h-4"/>}
-                                    <span className="sr-only">{isSoundEnabled ? 'Slå av lyd' : 'Slå på lyd'}</span>
-                                </Button>
+                                <div className="flex items-center">
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="ghost" size="icon">
+                                                <Palette className="w-4 h-4" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-2">
+                                            <div className="flex gap-2">
+                                                {Object.entries(colorConfig).map(([key, value]) => (
+                                                     <button 
+                                                        key={key} 
+                                                        className={cn("w-6 h-6 rounded-full border-2", value.class, key === pickerSettings.animationColor ? 'ring-2 ring-ring ring-offset-2' : '')}
+                                                        onClick={() => handlePickerSettingChange({ animationColor: key as PickerColor })}
+                                                     />
+                                                ))}
+                                            </div>
+                                        </PopoverContent>
+                                    </Popover>
+                                    <Button variant="ghost" size="icon" onClick={() => handlePickerSettingChange({ soundEnabled: !pickerSettings.soundEnabled })}>
+                                        {pickerSettings.soundEnabled ? <Volume2 className="w-4 h-4"/> : <VolumeX className="w-4 h-4"/>}
+                                        <span className="sr-only">{pickerSettings.soundEnabled ? 'Slå av lyd' : 'Slå på lyd'}</span>
+                                    </Button>
+                                </div>
                             </div>
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between p-2 border rounded-md">
@@ -376,14 +427,14 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
                                     <Switch id="replacement-mode" checked={withReplacement} onCheckedChange={setWithReplacement} />
                                 </div>
                                 <div className="space-y-2">
-                                     <Label htmlFor="duration-slider">Varighet ({animationDuration.toFixed(1)}s)</Label>
+                                     <Label htmlFor="duration-slider">Varighet ({pickerSettings.animationDuration.toFixed(1)}s)</Label>
                                      <Slider
                                         id="duration-slider"
                                         min={1}
                                         max={10}
                                         step={0.5}
-                                        value={[animationDuration]}
-                                        onValueChange={(value) => setAnimationDuration(value[0])}
+                                        value={[pickerSettings.animationDuration]}
+                                        onValueChange={(value) => handlePickerSettingChange({ animationDuration: value[0] })}
                                      />
                                 </div>
                             </div>

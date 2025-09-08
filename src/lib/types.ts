@@ -235,6 +235,15 @@ export type PickerLog = {
   date: Date;
 };
 
+export type PickerColor = 'default' | 'blue' | 'green' | 'yellow' | 'red' | 'rainbow';
+
+export type PickerSettings = {
+    animationDuration: number;
+    soundEnabled: boolean;
+    animationColor: PickerColor;
+};
+
+
 export type AppSettings = {
   tabs: Record<TabKey, boolean>;
   tabOrder: TabKey[];
@@ -248,4 +257,5 @@ export type AppSettings = {
   dpiaAnalysis?: DPIAAnalysis;
   onboardingCompleted?: boolean;
   seatingChartRules?: SeatingChartRules;
+  pickerSettings?: PickerSettings;
 };
