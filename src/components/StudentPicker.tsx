@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useState, useMemo, FC } from "react";
+import { useState, useMemo, FC, useRef } from "react";
 import type { Student, PickerGroup, PickerLog, SeatingChartData, SeatingLayout } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles, History, Plus, Trash2, Users, Edit, RefreshCw } from "lucide-react";
+import { Sparkles, History, Plus, Trash2, Users, Edit, RefreshCw, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Input } from "./ui/input";
@@ -112,7 +112,10 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
     const [isPicking, setIsPicking] = useState(false);
     const [pickedStudent, setPickedStudent] = useState<Student | null>(null);
     const [animationDuration, setAnimationDuration] = useState(2.5);
+    const [isSoundEnabled, setIsSoundEnabled] = useState(true);
     const { toast } = useToast();
+
+    const audioCtxRef = useRef<AudioContext | null>(null);
 
     const pickerGroups = useLiveQuery(() => db.pickerGroups.toArray(), []);
     const pickerLogs = useLiveQuery(() => db.pickerLogs.toArray(), []);
@@ -154,6 +157,29 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
         return availableStudents.filter(student => !pickedStudentIds.has(student.id!));
     }, [withReplacement, selectedGroupId, availableStudents, historyForGroup]);
 
+    const playSound = (type: 'tick' | 'ding') => {
+        if (!isSoundEnabled || !audioCtxRef.current) return;
+        const audioCtx = audioCtxRef.current;
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        if (type === 'tick') {
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
+        } else { // 'ding'
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(1046.50, audioCtx.currentTime); // C6
+            gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+        }
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + (type === 'tick' ? 0.1 : 0.5));
+    };
 
     const handlePickStudent = async () => {
         if (studentsToPickFrom.length === 0 || isPicking) {
@@ -161,6 +187,11 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
                 toast({ title: "Ingen elever å trekke", description: "Alle elever i gruppen er trukket. Nullstill historikken for å starte på nytt.", variant: "destructive" });
             }
             return;
+        }
+
+        // Initialize AudioContext on user gesture
+        if (!audioCtxRef.current) {
+            audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
         }
 
         setIsPicking(true);
@@ -191,6 +222,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
 
         const runAnimation = () => {
             pickRandomStudent();
+            playSound('tick');
             currentTime += currentInterval;
 
             const progress = currentTime / totalDuration;
@@ -201,6 +233,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
             } else {
                 setIsPicking(false);
                 setPickedStudent(finalPick);
+                playSound('ding');
                 if (selectedGroupId !== 'all') {
                     db.pickerLogs.add({
                         groupId: selectedGroupId,
@@ -330,7 +363,13 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
                         </p>
                         
                         <div className="space-y-2 pt-4 border-t">
-                            <Label>Innstillinger for trekking</Label>
+                             <div className="flex items-center justify-between">
+                                <Label>Innstillinger for trekking</Label>
+                                <Button variant="ghost" size="icon" onClick={() => setIsSoundEnabled(p => !p)}>
+                                    {isSoundEnabled ? <Volume2 className="w-4 h-4"/> : <VolumeX className="w-4 h-4"/>}
+                                    <span className="sr-only">{isSoundEnabled ? 'Slå av lyd' : 'Slå på lyd'}</span>
+                                </Button>
+                            </div>
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between p-2 border rounded-md">
                                     <Label htmlFor="replacement-mode" className="font-normal">Med tilbakelegging</Label>
