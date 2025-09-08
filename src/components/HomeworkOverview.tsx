@@ -12,13 +12,16 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX, Plus, Trash2 } from "lucide-react";
+import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX, Plus, Trash2, Calendar as CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { getWeekNumber } from "@/lib/utils";
+import { getWeekNumber, cn } from "@/lib/utils";
 import { db } from "@/lib/db";
+import { format } from "date-fns";
+import { nb } from "date-fns/locale";
+import { Calendar } from "./ui/calendar";
 
 interface HomeworkOverviewProps {
   students: Student[];
@@ -78,19 +81,18 @@ const StatusPopover: FC<{ submission?: Submission; onStatusChange: (status: Home
   );
 };
 
-const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string, subjectId: string, defaultStatus: HomeworkStatus | "none") => void; }> = ({ subjects, onAddHomework }) => {
+const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string, subjectId: string, date: Date, defaultStatus: HomeworkStatus | "none") => void; }> = ({ subjects, onAddHomework }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState("");
+  const [date, setDate] = useState<Date | undefined>(new Date());
   const [defaultStatus, setDefaultStatus] = useState<HomeworkStatus | "none">("none");
 
   const handleAdd = () => {
-    if (subjectId) {
+    if (subjectId && date) {
       const finalTitle = title.trim();
-      onAddHomework(finalTitle, subjectId, defaultStatus);
-      setTitle("");
-      setSubjectId("");
-      setDefaultStatus("none");
+      onAddHomework(finalTitle, subjectId, date, defaultStatus);
+      resetState();
       setIsOpen(false);
     }
   };
@@ -98,6 +100,7 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
   const resetState = () => {
       setTitle("");
       setSubjectId("");
+      setDate(new Date());
       setDefaultStatus("none");
   }
 
@@ -131,6 +134,28 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
               {subjects.map(s => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}
             </SelectContent>
           </Select>
+           <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date ? format(date, "PPP", { locale: nb }) : <span>Velg en dato</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
            <div>
             <Label className="mb-2 block">Standardstatus for alle elever</Label>
              <RadioGroup value={defaultStatus} onValueChange={(v) => setDefaultStatus(v as HomeworkStatus | "none")}>
@@ -151,7 +176,7 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setIsOpen(false)}>Avbryt</Button>
-          <Button onClick={handleAdd} disabled={!subjectId}>Legg til</Button>
+          <Button onClick={handleAdd} disabled={!subjectId || !date}>Legg til</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -226,15 +251,13 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
     setCommentModal({ open: true, studentId, homeworkId });
   };
 
-  const handleAddHomework = async (title: string, subjectId: string, defaultStatus: HomeworkStatus | "none") => {
-    const newDate = new Date();
-    
+  const handleAddHomework = async (title: string, subjectId: string, date: Date, defaultStatus: HomeworkStatus | "none") => {
     try {
         const newHomeworkId = await db.homework.add({
           title,
           subjectId,
-          date: newDate,
-          week: getWeekNumber(newDate),
+          date: date,
+          week: getWeekNumber(date),
         });
         toast({ title: "Lekse lagt til", description: `"${title || subjects.find(s => s.id === subjectId)?.name}" er lagt til i oversikten.` });
 
@@ -453,5 +476,3 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
     </div>
   );
 }
-
-    
