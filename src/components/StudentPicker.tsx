@@ -116,13 +116,13 @@ const defaultPickerSettings: PickerSettings = {
     animationColor: 'default',
 };
 
-const colorConfig: Record<PickerColor, { bgClass: string, borderClass: string, style?: React.CSSProperties }> = {
+const colorConfig: Record<PickerColor, { bgClass: string, borderClass: string }> = {
     default: { bgClass: 'bg-primary/20', borderClass: 'border-primary' },
     blue: { bgClass: 'bg-blue-500/20', borderClass: 'border-blue-500' },
     green: { bgClass: 'bg-green-500/20', borderClass: 'border-green-500' },
     yellow: { bgClass: 'bg-yellow-500/20', borderClass: 'border-yellow-500' },
     red: { bgClass: 'bg-red-500/20', borderClass: 'border-red-500' },
-    rainbow: { bgClass: '', borderClass: '' }
+    rainbow: { bgClass: 'bg-transparent', borderClass: 'animate-rainbow-border' }
 };
 
 export default function StudentPicker({ students, seatingChart, activeLayout, appSettings, onAppSettingsChange }: StudentPickerProps) {
@@ -269,7 +269,13 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
 
         const pickRandomStudentForAnimation = () => {
             const availableForAnimation = weightedList.filter(s => s.id !== lastAnimatingStudentId);
-            if (availableForAnimation.length === 0) return; // Should not happen if weightedList is not empty
+            if (availableForAnimation.length === 0) {
+                 if (weightedList.length > 0) {
+                    setAnimatingStudent(weightedList[0]);
+                    lastAnimatingStudentId = weightedList[0].id!;
+                 }
+                 return;
+            };
 
             const randomAnimationIndex = Math.floor(Math.random() * availableForAnimation.length);
             const nextAnimatingStudent = availableForAnimation[randomAnimationIndex];
@@ -371,29 +377,29 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
     };
     
     const Desk = ({ studentName, isPicked, isAnimating, isOutOfPlay }: { studentName: string | null; isPicked: boolean, isAnimating: boolean, isOutOfPlay: boolean }) => {
-        const animationStyleConfig = colorConfig[pickerSettings.animationColor];
         const isRainbow = pickerSettings.animationColor === 'rainbow';
-        
-        let style = {};
-        if (isAnimating) {
-             style = isRainbow ? currentAnimationStyle : {};
-        } else if (isPicked) {
-             style = isRainbow ? { backgroundColor: 'hsl(120, 70%, 60%, 0.2)', borderColor: 'hsl(120, 70%, 60%)' } : {};
-        }
+        const animationStyleConfig = !isRainbow ? colorConfig[pickerSettings.animationColor] : undefined;
 
-        const bgClass = (isAnimating || isPicked) && !isRainbow ? animationStyleConfig.bgClass : 'bg-secondary';
-        const borderClass = (isPicked || isAnimating) && !isRainbow ? animationStyleConfig.borderClass : '';
+        let style = {};
+        if (isAnimating && isRainbow) {
+            style = currentAnimationStyle;
+        } else if (isPicked && isRainbow) {
+            style = { backgroundColor: 'hsl(120, 70%, 60%, 0.2)', borderColor: 'hsl(120, 70%, 60%)' };
+        }
+        
+        const baseBgClass = isOutOfPlay ? 'bg-secondary/50' : 'bg-secondary';
+        const animatingBgClass = animationStyleConfig?.bgClass;
+        const finalBgClass = isAnimating || isPicked ? animatingBgClass : baseBgClass;
 
         return (
             <div
                 className={cn(
                     "relative flex items-center justify-center border rounded-lg transition-all duration-100 w-full h-16",
                     (isPicked || isAnimating) && 'shadow-lg scale-105',
-                    (isPicked || isAnimating) && isRainbow && 'bg-background animate-rainbow-border',
-                    !isPicked && !isAnimating && "bg-secondary",
+                    !isRainbow && finalBgClass,
+                    isRainbow && (isPicked || isAnimating) && 'bg-background',
                     isOutOfPlay && 'opacity-40',
-                    bgClass,
-                    borderClass
+                    animationStyleConfig && (isPicked || isAnimating) ? animationStyleConfig.borderClass : 'border-border'
                 )}
                 style={style}
             >
@@ -401,7 +407,6 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
             </div>
         );
     };
-
 
     return (
         <div className="grid gap-6 md:grid-cols-3">
@@ -541,7 +546,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                                                         {Object.entries(colorConfig).map(([key, value]) => (
                                                             <button 
                                                                 key={key} 
-                                                                className={cn("w-6 h-6 rounded-full border-2", value.bgClass, value.borderClass, key === 'rainbow' ? 'animate-rainbow-border' : '', key === pickerSettings.animationColor ? 'ring-2 ring-ring ring-offset-2' : '')}
+                                                                className={cn("w-6 h-6 rounded-full border-2", key === 'rainbow' ? 'animate-rainbow-border bg-background' : `${value.bgClass} ${value.borderClass}`, key === pickerSettings.animationColor ? 'ring-2 ring-ring ring-offset-2' : '')}
                                                                 onClick={() => handlePickerSettingChange({ animationColor: key as PickerColor })}
                                                             />
                                                         ))}
@@ -574,12 +579,3 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
         </div>
     );
 }
-
-    
-
-    
-
-
-
-
-    
