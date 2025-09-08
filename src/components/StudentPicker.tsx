@@ -35,6 +35,9 @@ const EditGroupDialog: FC<{
     const [isOpen, setIsOpen] = useState(false);
     const [name, setName] = useState(group?.name || "");
     const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>(group?.studentIds || []);
+    
+    const allStudentIds = useMemo(() => students.map(s => s.id!), [students]);
+    const areAllSelected = useMemo(() => selectedStudentIds.length === allStudentIds.length, [selectedStudentIds, allStudentIds]);
 
     const handleSave = () => {
         if (!name.trim()) return;
@@ -43,6 +46,14 @@ const EditGroupDialog: FC<{
         if (!group) { // Reset for new group
             setName("");
             setSelectedStudentIds([]);
+        }
+    };
+    
+    const handleToggleSelectAll = () => {
+        if (areAllSelected) {
+            setSelectedStudentIds([]);
+        } else {
+            setSelectedStudentIds(allStudentIds);
         }
     };
     
@@ -58,7 +69,12 @@ const EditGroupDialog: FC<{
                 </DialogHeader>
                 <div className="space-y-4">
                     <Input placeholder="Navn på gruppen (f.eks. Ordenselever)" value={name} onChange={(e) => setName(e.target.value)} />
-                    <Label>Velg elever</Label>
+                     <div className="flex items-center justify-between">
+                        <Label>Velg elever</Label>
+                        <Button variant="link" onClick={handleToggleSelectAll}>
+                            {areAllSelected ? "Fjern alle" : "Velg alle"}
+                        </Button>
+                    </div>
                     <ScrollArea className="h-48 border rounded-md p-2">
                         {students.map(student => (
                             <div key={student.id} className="flex items-center space-x-2 p-1">
