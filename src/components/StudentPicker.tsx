@@ -385,23 +385,25 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
     const Desk = ({ studentName, isPicked, isPicking, isOutOfPlay }: { studentName: string | null; isPicked: boolean, isPicking: boolean, isOutOfPlay: boolean }) => {
         const animationStyle = colorConfig[pickerSettings.animationColor];
         const isRainbowPicking = isPicking && pickerSettings.animationColor === 'rainbow';
-        
+        const isFinalPick = isPicked && !isPicking;
+
         return (
             <div
                 className={cn(
                     "relative flex items-center justify-center border rounded-lg transition-all duration-300 w-full h-16",
-                    isPicked && !isRainbowPicking && animationStyle?.class && `${animationStyle.class} shadow-lg scale-105`,
+                    isFinalPick && animationStyle.class && `${animationStyle.class} shadow-lg scale-105`,
                     !isPicked && "bg-secondary",
                     isPicking && !isRainbowPicking && "bg-muted",
                     isPicked && isRainbowPicking && 'shadow-lg scale-105',
                     isOutOfPlay && 'opacity-40'
                 )}
-                 style={(isPicked && isRainbowPicking) ? currentAnimationStyle : {}}
+                style={(isPicked && isRainbowPicking) ? currentAnimationStyle : {}}
             >
                 {studentName && <p className="text-xs font-medium text-center">{studentName}</p>}
             </div>
         );
     };
+
 
     return (
         <div className="grid gap-6 md:grid-cols-3">
@@ -422,7 +424,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                                         const studentName = seatingChart[r]?.[c]?.[0] || null;
                                         const student = studentName ? students.find(s => s.name === studentName) : null;
                                         const isPicked = student?.name === pickedStudent?.name;
-                                        const isPickingStudent = isPicking && student?.name === pickedStudent?.name;
+                                        const isPickingStudent = isPicking && isPicked;
                                         const isOutOfPlay = student ? alreadyPickedIds.has(student.id!) && !isPicked : false;
 
                                         return (
