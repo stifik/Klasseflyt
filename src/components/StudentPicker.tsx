@@ -21,6 +21,7 @@ import { nb } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Switch } from "./ui/switch";
+import { Slider } from "./ui/slider";
 
 
 interface StudentPickerProps {
@@ -110,6 +111,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
     const [withReplacement, setWithReplacement] = useState(false);
     const [isPicking, setIsPicking] = useState(false);
     const [pickedStudent, setPickedStudent] = useState<Student | null>(null);
+    const [animationDuration, setAnimationDuration] = useState(2.5);
     const { toast } = useToast();
 
     const pickerGroups = useLiveQuery(() => db.pickerGroups.toArray(), []);
@@ -181,9 +183,9 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
         
         const finalPick = weightedList[Math.floor(Math.random() * weightedList.length)];
         
-        const animationDuration = 2500; // Total duration in ms
-        const initialInterval = 50; // Start interval
-        const finalInterval = 500; // End interval
+        const totalDuration = animationDuration * 1000;
+        const initialInterval = 50;
+        const finalInterval = 500;
         let currentTime = 0;
         let currentInterval = initialInterval;
 
@@ -191,11 +193,10 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
             pickRandomStudent();
             currentTime += currentInterval;
 
-            // Simple easing: interval grows linearly
-            const progress = currentTime / animationDuration;
+            const progress = currentTime / totalDuration;
             currentInterval = initialInterval + (finalInterval - initialInterval) * progress;
             
-            if (currentTime < animationDuration) {
+            if (currentTime < totalDuration) {
                 setTimeout(runAnimation, currentInterval);
             } else {
                 setIsPicking(false);
@@ -330,9 +331,22 @@ export default function StudentPicker({ students, seatingChart, activeLayout }: 
                         
                         <div className="space-y-2 pt-4 border-t">
                             <Label>Innstillinger for trekking</Label>
-                            <div className="flex items-center justify-between p-2 border rounded-md">
-                                <Label htmlFor="replacement-mode" className="font-normal">Med tilbakelegging</Label>
-                                <Switch id="replacement-mode" checked={withReplacement} onCheckedChange={setWithReplacement} />
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between p-2 border rounded-md">
+                                    <Label htmlFor="replacement-mode" className="font-normal">Med tilbakelegging</Label>
+                                    <Switch id="replacement-mode" checked={withReplacement} onCheckedChange={setWithReplacement} />
+                                </div>
+                                <div className="space-y-2">
+                                     <Label htmlFor="duration-slider">Varighet ({animationDuration.toFixed(1)}s)</Label>
+                                     <Slider
+                                        id="duration-slider"
+                                        min={1}
+                                        max={10}
+                                        step={0.5}
+                                        value={[animationDuration]}
+                                        onValueChange={(value) => setAnimationDuration(value[0])}
+                                     />
+                                </div>
                             </div>
                         </div>
 
