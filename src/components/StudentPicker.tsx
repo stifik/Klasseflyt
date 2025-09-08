@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useMemo, FC, useRef, useEffect } from "react";
@@ -24,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Switch } from "./ui/switch";
 import { Slider } from "./ui/slider";
 import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 
 interface StudentPickerProps {
@@ -129,7 +128,7 @@ const colorConfig: Record<PickerColor, { class: string, style?: React.CSSPropert
 export default function StudentPicker({ students, seatingChart, activeLayout, appSettings, onAppSettingsChange }: StudentPickerProps) {
     const [selectedGroupId, setSelectedGroupId] = useState<string>("all");
     const [withReplacement, setWithReplacement] = useState(false);
-    const [isPicking, setIsPicking] = useState(false);
+    const [isPicking, setIsPicking] = useState(isPicking = false);
     const [pickedStudent, setPickedStudent] = useState<Student | null>(null);
     const [sessionPickedStudentIds, setSessionPickedStudentIds] = useState<Set<string>>(new Set());
     const [currentAnimationStyle, setCurrentAnimationStyle] = useState<React.CSSProperties>({});
@@ -195,6 +194,11 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
         const pickedStudentIds = new Set(historyForGroup.map(log => log.studentId));
         return availableStudents.filter(student => !pickedStudentIds.has(student.id!));
     }, [withReplacement, availableStudents, historyForGroup]);
+
+    const alreadyPickedIds = useMemo(() => {
+        if (withReplacement) return new Set<string>();
+        return new Set(historyForGroup.map(log => log.studentId));
+    }, [withReplacement, historyForGroup]);
 
 
     const playSound = (type: 'tick' | 'ding') => {
@@ -354,7 +358,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
         }
     };
     
-    const Desk = ({ studentName, isPicked, isPicking }: { studentName: string | null; isPicked: boolean, isPicking: boolean }) => {
+    const Desk = ({ studentName, isPicked, isPicking, isOutOfPlay }: { studentName: string | null; isPicked: boolean, isPicking: boolean, isOutOfPlay: boolean }) => {
         const animationStyle = colorConfig[pickerSettings.animationColor];
         const isRainbowPicking = isPicking && pickerSettings.animationColor === 'rainbow';
         
@@ -364,7 +368,8 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                     "relative flex items-center justify-center border rounded-lg transition-all duration-300 w-full h-16",
                     isPicked && !isRainbowPicking ? `${animationStyle.class} shadow-lg scale-105` : "bg-secondary",
                     isPicking && !isRainbowPicking && "bg-muted",
-                    isPicked && isRainbowPicking && 'shadow-lg scale-105'
+                    isPicked && isRainbowPicking && 'shadow-lg scale-105',
+                    isOutOfPlay && 'opacity-40'
                 )}
                  style={(isPicked && isRainbowPicking) ? currentAnimationStyle : {}}
             >
@@ -390,8 +395,10 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                                             return <div key={`${r}-${c}`} />;
                                         }
                                         const studentName = seatingChart[r]?.[c]?.[0] || null;
-                                        const isPicked = studentName === pickedStudent?.name;
-                                        const isPickingStudent = isPicking && studentName === pickedStudent?.name;
+                                        const student = studentName ? students.find(s => s.name === studentName) : null;
+                                        const isPicked = student?.name === pickedStudent?.name;
+                                        const isPickingStudent = isPicking && student?.name === pickedStudent?.name;
+                                        const isOutOfPlay = student ? alreadyPickedIds.has(student.id!) && !isPicked : false;
 
                                         return (
                                             <Desk
@@ -399,6 +406,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                                                 studentName={studentName}
                                                 isPicked={isPicked}
                                                 isPicking={isPickingStudent}
+                                                isOutOfPlay={isOutOfPlay}
                                             />
                                         );
                                     })
@@ -541,3 +549,5 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
         </div>
     );
 }
+
+    
