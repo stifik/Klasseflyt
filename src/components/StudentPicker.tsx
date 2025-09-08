@@ -5,7 +5,7 @@ import { useState, useMemo, FC } from "react";
 import type { Student, PickerGroup, PickerLog } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles, History, Plus, Trash2, Users, Edit, Check, X } from "lucide-react";
+import { Sparkles, History, Plus, Trash2, Users, Edit, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Input } from "./ui/input";
@@ -20,6 +20,7 @@ import { formatDistanceToNow } from "date-fns";
 import { nb } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Switch } from "./ui/switch";
 
 
 interface StudentPickerProps {
@@ -104,6 +105,7 @@ const EditGroupDialog: FC<{
 
 export default function StudentPicker({ students }: StudentPickerProps) {
     const [selectedGroupId, setSelectedGroupId] = useState<string>("all");
+    const [withReplacement, setWithReplacement] = useState(false);
     const [isPicking, setIsPicking] = useState(false);
     const [pickedStudent, setPickedStudent] = useState<Student | null>(null);
     const { toast } = useToast();
@@ -139,27 +141,42 @@ export default function StudentPicker({ students }: StudentPickerProps) {
         });
         return lastPickedMap;
     }, [historyForGroup]);
+    
+    const studentsToPickFrom = useMemo(() => {
+        if (withReplacement || selectedGroupId === 'all') {
+            return availableStudents;
+        }
+        const pickedStudentIds = new Set(historyForGroup.map(log => log.studentId));
+        return availableStudents.filter(student => !pickedStudentIds.has(student.id!));
+    }, [withReplacement, selectedGroupId, availableStudents, historyForGroup]);
+
 
     const handlePickStudent = async () => {
-        if (availableStudents.length === 0 || isPicking) return;
+        if (studentsToPickFrom.length === 0 || isPicking) {
+             if (studentsToPickFrom.length === 0 && !isPicking) {
+                toast({ title: "Ingen elever å trekke", description: "Alle elever i gruppen er trukket. Nullstill historikken for å starte på nytt.", variant: "destructive" });
+             }
+             return;
+        }
         
         setIsPicking(true);
         setPickedStudent(null);
         
-        // Simple fairness: give students who haven't been picked, or were picked longest ago, a higher chance
-        const weightedList = availableStudents.flatMap(student => {
-            const lastPicked = studentLastPicked.get(student.id!);
-            const daysSincePicked = lastPicked ? (new Date().getTime() - lastPicked.getTime()) / (1000 * 3600 * 24) : 1000;
-            const weight = Math.max(1, Math.floor(Math.pow(daysSincePicked, 2))); // Square the days to give strong preference to those not picked recently
-            return Array(weight).fill(student);
-        });
+        let weightedList = studentsToPickFrom;
+        if (withReplacement) {
+            weightedList = studentsToPickFrom.flatMap(student => {
+                const lastPicked = studentLastPicked.get(student.id!);
+                const daysSincePicked = lastPicked ? (new Date().getTime() - lastPicked.getTime()) / (1000 * 3600 * 24) : 1000;
+                const weight = Math.max(1, Math.floor(Math.pow(daysSincePicked, 2)));
+                return Array(weight).fill(student);
+            });
+        }
         
         const pick = () => {
              const randomIndex = Math.floor(Math.random() * weightedList.length);
              setPickedStudent(weightedList[randomIndex]);
         };
         
-        // Animation
         const interval = 100;
         const duration = 2000;
         let elapsed = 0;
@@ -217,6 +234,21 @@ export default function StudentPicker({ students }: StudentPickerProps) {
         }
     };
 
+    const handleResetHistory = async () => {
+        if (selectedGroupId === 'all') {
+            toast({ title: "Kan ikke nullstille", description: "Historikk kan kun nullstilles for egendefinerte grupper."});
+            return;
+        };
+        try {
+            const logsToDelete = await db.pickerLogs.where({ groupId: selectedGroupId }).primaryKeys();
+            await db.pickerLogs.bulkDelete(logsToDelete);
+            setPickedStudent(null);
+            toast({ title: "Historikk nullstilt", description: "Du kan nå starte en ny trekning for denne gruppen."});
+        } catch (e) {
+            toast({ title: "Feil", description: "Kunne ikke nullstille historikken.", variant: "destructive" });
+        }
+    };
+
     return (
         <div className="grid gap-6 md:grid-cols-3">
             <div className="md:col-span-2">
@@ -226,6 +258,10 @@ export default function StudentPicker({ students }: StudentPickerProps) {
                         <CardDescription>Trekk en tilfeldig elev fra hele klassen eller en egendefinert gruppe.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-col items-center justify-center space-y-6 pt-10">
+                        <div className="flex items-center space-x-2">
+                            <Label htmlFor="replacement-mode">Med tilbakelegging</Label>
+                            <Switch id="replacement-mode" checked={withReplacement} onCheckedChange={setWithReplacement} />
+                        </div>
                         <div className={cn(
                             "flex items-center justify-center w-48 h-24 text-center border-2 rounded-lg transition-all duration-300",
                             isPicking && "border-dashed animate-pulse",
@@ -234,10 +270,13 @@ export default function StudentPicker({ students }: StudentPickerProps) {
                         )}>
                             <p className="text-2xl font-bold text-primary">{pickedStudent?.name || "?"}</p>
                         </div>
-                        <Button onClick={handlePickStudent} disabled={isPicking || availableStudents.length === 0} size="lg">
+                        <Button onClick={handlePickStudent} disabled={isPicking || studentsToPickFrom.length === 0} size="lg">
                             <Sparkles className="mr-2" />
                             {isPicking ? 'Trekker...' : 'Trekk elev'}
                         </Button>
+                        <p className="text-xs text-muted-foreground">
+                            {studentsToPickFrom.length} av {availableStudents.length} elever igjen å trekke.
+                        </p>
                     </CardContent>
                 </Card>
             </div>
@@ -311,10 +350,17 @@ export default function StudentPicker({ students }: StudentPickerProps) {
                         </div>
                         
                         <div className="space-y-2">
-                            <h4 className="font-medium text-sm flex items-center gap-2">
-                                <History className="w-4 h-4 text-muted-foreground" />
-                                Nylig trukket
-                            </h4>
+                            <div className="flex justify-between items-center">
+                                <h4 className="font-medium text-sm flex items-center gap-2">
+                                    <History className="w-4 h-4 text-muted-foreground" />
+                                    Nylig trukket
+                                </h4>
+                                {selectedGroupId !== 'all' && (
+                                    <Button variant="ghost" size="sm" onClick={handleResetHistory}>
+                                        <RefreshCw className="mr-2 h-3 w-3" /> Nullstill
+                                    </Button>
+                                )}
+                            </div>
                             <ScrollArea className="h-32">
                                 <ul className="text-sm text-muted-foreground space-y-1 pr-2">
                                     {historyForGroup.length > 0 ? historyForGroup.slice(0, 10).map(log => (
