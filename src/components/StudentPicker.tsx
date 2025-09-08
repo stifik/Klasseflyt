@@ -6,7 +6,7 @@ import { useState, useMemo, FC, useRef, useEffect } from "react";
 import type { Student, PickerGroup, PickerLog, SeatingChartData, SeatingLayout, AppSettings, PickerSettings, PickerColor } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles, History, Plus, Trash2, Users, Edit, RefreshCw, Volume2, VolumeX, Palette } from "lucide-react";
+import { Sparkles, History, Plus, Trash2, Users, Edit, RefreshCw, Volume2, VolumeX, Palette, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Input } from "./ui/input";
@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Switch } from "./ui/switch";
 import { Slider } from "./ui/slider";
 import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 
 
 interface StudentPickerProps {
@@ -122,7 +123,7 @@ const colorConfig: Record<PickerColor, { class: string, style?: React.CSSPropert
     green: { class: 'bg-green-500/20 border-green-500' },
     yellow: { class: 'bg-yellow-500/20 border-yellow-500' },
     red: { class: 'bg-red-500/20 border-red-500' },
-    rainbow: { class: '' } // Removed static class, will be handled dynamically
+    rainbow: { class: '' }
 };
 
 export default function StudentPicker({ students, seatingChart, activeLayout, appSettings, onAppSettingsChange }: StudentPickerProps) {
@@ -163,10 +164,18 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
 
     const historyForGroup = useMemo(() => {
         if (!pickerLogs) return [];
+        if (selectedGroupId === 'all') {
+             return Array.from(sessionPickedStudentIds).map((id, index) => ({
+                id: index,
+                groupId: 'all',
+                studentId: id,
+                date: new Date() 
+            }));
+        }
         return pickerLogs
             .filter(log => log.groupId === selectedGroupId)
             .sort((a, b) => b.date.getTime() - a.date.getTime());
-    }, [selectedGroupId, pickerLogs]);
+    }, [selectedGroupId, pickerLogs, sessionPickedStudentIds]);
     
     const studentLastPicked = useMemo(() => {
         const lastPickedMap = new Map<string, Date>();
@@ -183,13 +192,9 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
             return availableStudents;
         }
 
-        if (selectedGroupId === 'all') {
-            return availableStudents.filter(student => !sessionPickedStudentIds.has(student.id!));
-        }
-
         const pickedStudentIds = new Set(historyForGroup.map(log => log.studentId));
         return availableStudents.filter(student => !pickedStudentIds.has(student.id!));
-    }, [withReplacement, selectedGroupId, availableStudents, historyForGroup, sessionPickedStudentIds]);
+    }, [withReplacement, availableStudents, historyForGroup]);
 
 
     const playSound = (type: 'tick' | 'ding') => {
@@ -422,53 +427,6 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                         </p>
                         
                         <div className="space-y-2 pt-4 border-t">
-                             <div className="flex items-center justify-between">
-                                <Label>Innstillinger for trekking</Label>
-                                <div className="flex items-center">
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button variant="ghost" size="icon">
-                                                <Palette className="w-4 h-4" />
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-2">
-                                            <div className="flex gap-2">
-                                                {Object.entries(colorConfig).map(([key, value]) => (
-                                                     <button 
-                                                        key={key} 
-                                                        className={cn("w-6 h-6 rounded-full border-2", value.class, key === pickerSettings.animationColor ? 'ring-2 ring-ring ring-offset-2' : '')}
-                                                        onClick={() => handlePickerSettingChange({ animationColor: key as PickerColor })}
-                                                     />
-                                                ))}
-                                            </div>
-                                        </PopoverContent>
-                                    </Popover>
-                                    <Button variant="ghost" size="icon" onClick={() => handlePickerSettingChange({ soundEnabled: !pickerSettings.soundEnabled })}>
-                                        {pickerSettings.soundEnabled ? <Volume2 className="w-4 h-4"/> : <VolumeX className="w-4 h-4"/>}
-                                        <span className="sr-only">{pickerSettings.soundEnabled ? 'Slå av lyd' : 'Slå på lyd'}</span>
-                                    </Button>
-                                </div>
-                            </div>
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between p-2 border rounded-md">
-                                    <Label htmlFor="replacement-mode" className="font-normal">Med tilbakelegging</Label>
-                                    <Switch id="replacement-mode" checked={withReplacement} onCheckedChange={setWithReplacement} />
-                                </div>
-                                <div className="space-y-2">
-                                     <Label htmlFor="duration-slider">Varighet ({pickerSettings.animationDuration.toFixed(1)}s)</Label>
-                                     <Slider
-                                        id="duration-slider"
-                                        min={1}
-                                        max={10}
-                                        step={0.5}
-                                        value={[pickerSettings.animationDuration]}
-                                        onValueChange={(value) => handlePickerSettingChange({ animationDuration: value[0] })}
-                                     />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2 pt-4 border-t">
                             <Label>Velg gruppe</Label>
                              <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
                                 <SelectTrigger>
@@ -523,6 +481,60 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                                 </ul>
                             </ScrollArea>
                         </div>
+
+                        <Accordion type="single" collapsible className="w-full pt-4 border-t">
+                            <AccordionItem value="settings" className="border-b-0">
+                                <AccordionTrigger>
+                                     <h4 className="font-medium text-sm flex items-center gap-2">
+                                        <Settings className="w-4 h-4 text-muted-foreground" />
+                                        Innstillinger for trekking
+                                    </h4>
+                                </AccordionTrigger>
+                                <AccordionContent className="space-y-4 pt-2">
+                                     <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Button variant="ghost" size="icon" onClick={() => handlePickerSettingChange({ soundEnabled: !pickerSettings.soundEnabled })}>
+                                                {pickerSettings.soundEnabled ? <Volume2 className="w-4 h-4"/> : <VolumeX className="w-4 h-4"/>}
+                                                <span className="sr-only">{pickerSettings.soundEnabled ? 'Slå av lyd' : 'Slå på lyd'}</span>
+                                            </Button>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button variant="ghost" size="icon">
+                                                        <Palette className="w-4 h-4" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-2">
+                                                    <div className="flex gap-2">
+                                                        {Object.entries(colorConfig).map(([key, value]) => (
+                                                            <button 
+                                                                key={key} 
+                                                                className={cn("w-6 h-6 rounded-full border-2", value.class, key === 'rainbow' ? 'animate-rainbow-border' : '', key === pickerSettings.animationColor ? 'ring-2 ring-ring ring-offset-2' : '')}
+                                                                onClick={() => handlePickerSettingChange({ animationColor: key as PickerColor })}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
+                                         <div className="flex items-center space-x-2">
+                                            <Label htmlFor="replacement-mode" className="font-normal text-xs">Med tilbakelegging</Label>
+                                            <Switch id="replacement-mode" checked={withReplacement} onCheckedChange={setWithReplacement} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="duration-slider" className="text-xs">Varighet ({pickerSettings.animationDuration.toFixed(1)}s)</Label>
+                                        <Slider
+                                            id="duration-slider"
+                                            min={1}
+                                            max={10}
+                                            step={0.5}
+                                            value={[pickerSettings.animationDuration]}
+                                            onValueChange={(value) => handlePickerSettingChange({ animationDuration: value[0] })}
+                                        />
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
                     </CardContent>
                 </Card>
             </div>
