@@ -116,13 +116,13 @@ const defaultPickerSettings: PickerSettings = {
     animationColor: 'default',
 };
 
-const colorConfig: Record<PickerColor, { class: string, style?: React.CSSProperties }> = {
-    default: { class: 'bg-primary/20 border-primary' },
-    blue: { class: 'bg-blue-500/20 border-blue-500' },
-    green: { class: 'bg-green-500/20 border-green-500' },
-    yellow: { class: 'bg-yellow-500/20 border-yellow-500' },
-    red: { class: 'bg-red-500/20 border-red-500' },
-    rainbow: { class: '' }
+const colorConfig: Record<PickerColor, { bgClass: string, borderClass: string, style?: React.CSSProperties }> = {
+    default: { bgClass: 'bg-primary/20', borderClass: 'border-primary' },
+    blue: { bgClass: 'bg-blue-500/20', borderClass: 'border-blue-500' },
+    green: { bgClass: 'bg-green-500/20', borderClass: 'border-green-500' },
+    yellow: { bgClass: 'bg-yellow-500/20', borderClass: 'border-yellow-500' },
+    red: { bgClass: 'bg-red-500/20', borderClass: 'border-red-500' },
+    rainbow: { bgClass: '', borderClass: '' }
 };
 
 export default function StudentPicker({ students, seatingChart, activeLayout, appSettings, onAppSettingsChange }: StudentPickerProps) {
@@ -130,16 +130,12 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
     const [withReplacement, setWithReplacement] = useState(false);
     const [isPicking, setIsPicking] = useState(false);
     const [pickedStudent, setPickedStudent] = useState<Student | null>(null);
+    const [animatingStudent, setAnimatingStudent] = useState<Student | null>(null);
     const [sessionPickedStudentIds, setSessionPickedStudentIds] = useState<Set<string>>(new Set());
     const [currentAnimationStyle, setCurrentAnimationStyle] = useState<React.CSSProperties>({});
     const { toast } = useToast();
 
     const audioCtxRef = useRef<AudioContext | null>(null);
-    const pickedStudentRef = useRef<Student | null>(null);
-
-    useEffect(() => {
-        pickedStudentRef.current = pickedStudent;
-    }, [pickedStudent]);
 
     const pickerSettings = useMemo(() => ({
         ...defaultPickerSettings,
@@ -238,14 +234,8 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
     };
 
     const handlePickStudent = async () => {
-        if (studentsToPickFrom.length === 0 || isPicking) {
-            if (studentsToPickFrom.length === 0 && !isPicking) {
-                toast({ title: "Ingen elever å trekke", description: "Alle elever i gruppen er trukket. Nullstill historikken for å starte på nytt.", variant: "destructive" });
-            }
-            return;
-        }
+        if (studentsToPickFrom.length === 0 || isPicking) return;
 
-        // Initialize AudioContext on user gesture
         if (!audioCtxRef.current) {
             try {
                 audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -267,25 +257,24 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
             });
         }
 
+        const randomIndex = Math.floor(Math.random() * weightedList.length);
+        const finalPick = weightedList[randomIndex];
+        
         const rainbowColors = [
             'hsl(0, 70%, 60%)', 'hsl(30, 70%, 60%)', 'hsl(60, 70%, 60%)', 
             'hsl(120, 70%, 60%)', 'hsl(200, 70%, 60%)', 'hsl(270, 70%, 60%)'
         ];
         let colorIndex = 0;
+        let lastAnimatingStudentId: string | null = null;
 
-        const pickRandomStudent = () => {
-            if (weightedList.length === 0) return;
+        const pickRandomStudentForAnimation = () => {
+            const availableForAnimation = weightedList.filter(s => s.id !== lastAnimatingStudentId);
+            if (availableForAnimation.length === 0) return; // Should not happen if weightedList is not empty
 
-            let student;
-            let attempts = 0;
-            // Prevent picking the same student twice in a row during animation
-            do {
-                const randomIndex = Math.floor(Math.random() * weightedList.length);
-                student = weightedList[randomIndex];
-                attempts++;
-            } while (weightedList.length > 1 && student.id === pickedStudentRef.current?.id && attempts < 10);
-            
-            setPickedStudent(student);
+            const randomAnimationIndex = Math.floor(Math.random() * availableForAnimation.length);
+            const nextAnimatingStudent = availableForAnimation[randomAnimationIndex];
+            setAnimatingStudent(nextAnimatingStudent);
+            lastAnimatingStudentId = nextAnimatingStudent.id!;
 
             if (pickerSettings.animationColor === 'rainbow') {
                 const color = rainbowColors[colorIndex % rainbowColors.length];
@@ -294,18 +283,16 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
             }
         };
         
-        const finalPick = weightedList[Math.floor(Math.random() * weightedList.length)];
-        
         const totalDuration = pickerSettings.animationDuration * 1000;
         const initialInterval = 50;
         let currentTime = 0;
 
         const runAnimation = () => {
-            pickRandomStudent();
+            pickRandomStudentForAnimation();
             playSound('tick');
             
             const progress = currentTime / totalDuration;
-            const easing = 1 - Math.pow(1 - progress, 3); // Ease-out cubic
+            const easing = 1 - Math.pow(1 - progress, 3);
             const currentInterval = initialInterval + (500 - initialInterval) * easing;
             currentTime += currentInterval;
 
@@ -313,14 +300,15 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                 setTimeout(runAnimation, currentInterval);
             } else {
                 setIsPicking(false);
+                setAnimatingStudent(null);
                 setPickedStudent(finalPick);
                 setCurrentAnimationStyle({});
                 playSound('ding');
                 
                 if (selectedGroupId === 'all') {
-                    setSessionPickedStudentIds(prev => new Set(prev).add(finalPick.id!));
+                    setSessionPickedStudentIds(prev => new Set([...prev, finalPick.id!]));
                 } else {
-                     db.pickerLogs.add({
+                    db.pickerLogs.add({
                         groupId: selectedGroupId,
                         studentId: finalPick.id!,
                         date: new Date(),
@@ -382,22 +370,32 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
         }
     };
     
-    const Desk = ({ studentName, isPicked, isPicking, isOutOfPlay }: { studentName: string | null; isPicked: boolean, isPicking: boolean, isOutOfPlay: boolean }) => {
-        const animationStyle = colorConfig[pickerSettings.animationColor];
-        const isRainbowPicking = isPicking && pickerSettings.animationColor === 'rainbow';
-        const isFinalPick = isPicked && !isPicking;
+    const Desk = ({ studentName, isPicked, isAnimating, isOutOfPlay }: { studentName: string | null; isPicked: boolean, isAnimating: boolean, isOutOfPlay: boolean }) => {
+        const animationStyleConfig = colorConfig[pickerSettings.animationColor];
+        const isRainbow = pickerSettings.animationColor === 'rainbow';
+        
+        let style = {};
+        if (isAnimating) {
+             style = isRainbow ? currentAnimationStyle : {};
+        } else if (isPicked) {
+             style = isRainbow ? { backgroundColor: 'hsl(120, 70%, 60%, 0.2)', borderColor: 'hsl(120, 70%, 60%)' } : {};
+        }
+
+        const bgClass = (isAnimating || isPicked) && !isRainbow ? animationStyleConfig.bgClass : 'bg-secondary';
+        const borderClass = (isPicked || isAnimating) && !isRainbow ? animationStyleConfig.borderClass : '';
 
         return (
             <div
                 className={cn(
-                    "relative flex items-center justify-center border rounded-lg transition-all duration-300 w-full h-16",
-                    isFinalPick && animationStyle.class && `${animationStyle.class} shadow-lg scale-105`,
-                    !isPicked && "bg-secondary",
-                    isPicking && !isRainbowPicking && "bg-muted",
-                    isPicked && isRainbowPicking && 'shadow-lg scale-105',
-                    isOutOfPlay && 'opacity-40'
+                    "relative flex items-center justify-center border rounded-lg transition-all duration-100 w-full h-16",
+                    (isPicked || isAnimating) && 'shadow-lg scale-105',
+                    (isPicked || isAnimating) && isRainbow && 'bg-background animate-rainbow-border',
+                    !isPicked && !isAnimating && "bg-secondary",
+                    isOutOfPlay && 'opacity-40',
+                    bgClass,
+                    borderClass
                 )}
-                style={(isPicked && isRainbowPicking) ? currentAnimationStyle : {}}
+                style={style}
             >
                 {studentName && <p className="text-xs font-medium text-center">{studentName}</p>}
             </div>
@@ -423,16 +421,16 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                                         }
                                         const studentName = seatingChart[r]?.[c]?.[0] || null;
                                         const student = studentName ? students.find(s => s.name === studentName) : null;
-                                        const isPicked = student?.name === pickedStudent?.name;
-                                        const isPickingStudent = isPicking && isPicked;
-                                        const isOutOfPlay = student ? alreadyPickedIds.has(student.id!) && !isPicked : false;
+                                        const isPicked = student ? student.id === pickedStudent?.id : false;
+                                        const isAnimating = student ? student.id === animatingStudent?.id : false;
+                                        const isOutOfPlay = student ? (alreadyPickedIds.has(student.id!) && !isPicked) : false;
 
                                         return (
                                             <Desk
                                                 key={`${r}-${c}`}
                                                 studentName={studentName}
                                                 isPicked={isPicked}
-                                                isPicking={isPickingStudent}
+                                                isAnimating={isAnimating}
                                                 isOutOfPlay={isOutOfPlay}
                                             />
                                         );
@@ -455,7 +453,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                     <CardContent className="space-y-4">
                         <Button onClick={handlePickStudent} disabled={isPicking || studentsToPickFrom.length === 0} size="lg" className="w-full">
                             <Sparkles className="mr-2" />
-                            {isPicking ? 'Trekker...' : 'Trekk elev'}
+                            {isPicking ? 'Trekker...' : 'Trekk'}
                         </Button>
                          <p className="text-xs text-center text-muted-foreground">
                             {studentsToPickFrom.length} av {availableStudents.length} elever igjen å trekke.
@@ -543,7 +541,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                                                         {Object.entries(colorConfig).map(([key, value]) => (
                                                             <button 
                                                                 key={key} 
-                                                                className={cn("w-6 h-6 rounded-full border-2", value.class, key === 'rainbow' ? 'animate-rainbow-border' : '', key === pickerSettings.animationColor ? 'ring-2 ring-ring ring-offset-2' : '')}
+                                                                className={cn("w-6 h-6 rounded-full border-2", value.bgClass, value.borderClass, key === 'rainbow' ? 'animate-rainbow-border' : '', key === pickerSettings.animationColor ? 'ring-2 ring-ring ring-offset-2' : '')}
                                                                 onClick={() => handlePickerSettingChange({ animationColor: key as PickerColor })}
                                                             />
                                                         ))}
@@ -578,5 +576,10 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
 }
 
     
+
+    
+
+
+
 
     
