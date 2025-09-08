@@ -62,8 +62,10 @@ body {
 
 @layer utilities {
     .animate-rainbow-border {
-      animation: rainbow-border 2s linear infinite;
-      border-image: linear-gradient(to right, #ef4444, #f59e0b, #eab308, #84cc16, #22c55e, #14b8a6, #06b6d4, #3b82f6, #8b5cf6, #d946ef) 1;
+      --gradient-angle: 0deg;
+      animation: rainbow-border 4s linear infinite, rainbow-bg 2s linear infinite;
+      border: 2px solid;
+      border-image: conic-gradient(from var(--gradient-angle), #ef4444, #f59e0b, #eab308, #84cc16, #22c55e, #14b8a6, #06b6d4, #3b82f6, #8b5cf6, #d946ef, #ef4444) 1;
       background-image: linear-gradient(to right, 
         rgba(239, 68, 68, 0.2), 
         rgba(245, 158, 11, 0.2), 
@@ -76,8 +78,12 @@ body {
         rgba(139, 92, 246, 0.2), 
         rgba(217, 70, 239, 0.2)
       );
-      animation: rainbow-bg 4s linear infinite;
       background-size: 200% 200%;
+    }
+
+    @keyframes rainbow-border {
+      0% { --gradient-angle: 0deg; }
+      100% { --gradient-angle: 360deg; }
     }
 
     @keyframes rainbow-bg {
