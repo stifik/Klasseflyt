@@ -135,6 +135,11 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
     const { toast } = useToast();
 
     const audioCtxRef = useRef<AudioContext | null>(null);
+    const pickedStudentRef = useRef<Student | null>(null);
+
+    useEffect(() => {
+        pickedStudentRef.current = pickedStudent;
+    }, [pickedStudent]);
 
     const pickerSettings = useMemo(() => ({
         ...defaultPickerSettings,
@@ -195,8 +200,11 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
     
     const alreadyPickedIds = useMemo(() => {
         if (withReplacement) return new Set<string>();
+        if (selectedGroupId === 'all') {
+            return sessionPickedStudentIds;
+        }
         return new Set(historyForGroup.map(log => log.studentId));
-    }, [withReplacement, historyForGroup]);
+    }, [withReplacement, historyForGroup, selectedGroupId, sessionPickedStudentIds]);
     
     const studentsToPickFrom = useMemo(() => {
         if (withReplacement) {
@@ -267,8 +275,16 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
 
         const pickRandomStudent = () => {
             if (weightedList.length === 0) return;
-            const randomIndex = Math.floor(Math.random() * weightedList.length);
-            const student = weightedList[randomIndex];
+
+            let student;
+            let attempts = 0;
+            // Prevent picking the same student twice in a row during animation
+            do {
+                const randomIndex = Math.floor(Math.random() * weightedList.length);
+                student = weightedList[randomIndex];
+                attempts++;
+            } while (weightedList.length > 1 && student.id === pickedStudentRef.current?.id && attempts < 10);
+            
             setPickedStudent(student);
 
             if (pickerSettings.animationColor === 'rainbow') {
@@ -374,7 +390,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
             <div
                 className={cn(
                     "relative flex items-center justify-center border rounded-lg transition-all duration-300 w-full h-16",
-                    isPicked && !isRainbowPicking && animationStyle.class && `${animationStyle.class} shadow-lg scale-105`,
+                    isPicked && !isRainbowPicking && animationStyle?.class && `${animationStyle.class} shadow-lg scale-105`,
                     !isPicked && "bg-secondary",
                     isPicking && !isRainbowPicking && "bg-muted",
                     isPicked && isRainbowPicking && 'shadow-lg scale-105',
@@ -558,5 +574,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
         </div>
     );
 }
+
+    
 
     
