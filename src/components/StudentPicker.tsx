@@ -130,6 +130,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
     const [withReplacement, setWithReplacement] = useState(false);
     const [isPicking, setIsPicking] = useState(false);
     const [pickedStudent, setPickedStudent] = useState<Student | null>(null);
+    const [sessionPickedStudentIds, setSessionPickedStudentIds] = useState<Set<string>>(new Set());
     const [currentAnimationStyle, setCurrentAnimationStyle] = useState<React.CSSProperties>({});
     const { toast } = useToast();
 
@@ -178,12 +179,18 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
     }, [historyForGroup]);
     
     const studentsToPickFrom = useMemo(() => {
-        if (withReplacement || selectedGroupId === 'all') {
+        if (withReplacement) {
             return availableStudents;
         }
+
+        if (selectedGroupId === 'all') {
+            return availableStudents.filter(student => !sessionPickedStudentIds.has(student.id!));
+        }
+
         const pickedStudentIds = new Set(historyForGroup.map(log => log.studentId));
         return availableStudents.filter(student => !pickedStudentIds.has(student.id!));
-    }, [withReplacement, selectedGroupId, availableStudents, historyForGroup]);
+    }, [withReplacement, selectedGroupId, availableStudents, historyForGroup, sessionPickedStudentIds]);
+
 
     const playSound = (type: 'tick' | 'ding') => {
         if (!pickerSettings.soundEnabled || !audioCtxRef.current) return;
@@ -276,8 +283,11 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                 setPickedStudent(finalPick);
                 setCurrentAnimationStyle({});
                 playSound('ding');
-                if (selectedGroupId !== 'all') {
-                    db.pickerLogs.add({
+                
+                if (selectedGroupId === 'all') {
+                    setSessionPickedStudentIds(prev => new Set(prev).add(finalPick.id!));
+                } else {
+                     db.pickerLogs.add({
                         groupId: selectedGroupId,
                         studentId: finalPick.id!,
                         date: new Date(),
@@ -324,7 +334,9 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
 
     const handleResetHistory = async () => {
         if (selectedGroupId === 'all') {
-            toast({ title: "Kan ikke nullstille", description: "Historikk kan kun nullstilles for egendefinerte grupper."});
+            setSessionPickedStudentIds(new Set());
+            setPickedStudent(null);
+            toast({ title: "Historikk nullstilt", description: "Du kan nå starte en ny trekning for hele klassen."});
             return;
         };
         try {
@@ -494,11 +506,9 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                                     <History className="w-4 h-4 text-muted-foreground" />
                                     Nylig trukket
                                 </h4>
-                                {selectedGroupId !== 'all' && (
-                                    <Button variant="ghost" size="sm" onClick={handleResetHistory}>
-                                        <RefreshCw className="mr-2 h-3 w-3" /> Nullstill
-                                    </Button>
-                                )}
+                                <Button variant="ghost" size="sm" onClick={handleResetHistory}>
+                                    <RefreshCw className="mr-2 h-3 w-3" /> Nullstill
+                                </Button>
                             </div>
                             <ScrollArea className="h-32">
                                 <ul className="text-sm text-muted-foreground space-y-1 pr-2">
