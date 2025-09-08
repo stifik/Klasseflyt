@@ -122,7 +122,7 @@ const colorConfig: Record<PickerColor, { class: string, style?: React.CSSPropert
     green: { class: 'bg-green-500/20 border-green-500' },
     yellow: { class: 'bg-yellow-500/20 border-yellow-500' },
     red: { class: 'bg-red-500/20 border-red-500' },
-    rainbow: { class: 'animate-rainbow-border' }
+    rainbow: { class: '' } // Removed static class, will be handled dynamically
 };
 
 export default function StudentPicker({ students, seatingChart, activeLayout, appSettings, onAppSettingsChange }: StudentPickerProps) {
@@ -130,6 +130,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
     const [withReplacement, setWithReplacement] = useState(false);
     const [isPicking, setIsPicking] = useState(false);
     const [pickedStudent, setPickedStudent] = useState<Student | null>(null);
+    const [currentAnimationStyle, setCurrentAnimationStyle] = useState<React.CSSProperties>({});
     const { toast } = useToast();
 
     const audioCtxRef = useRef<AudioContext | null>(null);
@@ -234,9 +235,22 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
             });
         }
 
+        const rainbowColors = [
+            'hsl(0, 70%, 60%)', 'hsl(30, 70%, 60%)', 'hsl(60, 70%, 60%)', 
+            'hsl(120, 70%, 60%)', 'hsl(200, 70%, 60%)', 'hsl(270, 70%, 60%)'
+        ];
+        let colorIndex = 0;
+
         const pickRandomStudent = () => {
             const randomIndex = Math.floor(Math.random() * weightedList.length);
-            setPickedStudent(weightedList[randomIndex]);
+            const student = weightedList[randomIndex];
+            setPickedStudent(student);
+
+            if (pickerSettings.animationColor === 'rainbow') {
+                const color = rainbowColors[colorIndex % rainbowColors.length];
+                setCurrentAnimationStyle({ backgroundColor: `${color}33`, borderColor: color });
+                colorIndex++;
+            }
         };
         
         const finalPick = weightedList[Math.floor(Math.random() * weightedList.length)];
@@ -260,6 +274,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
             } else {
                 setIsPicking(false);
                 setPickedStudent(finalPick);
+                setCurrentAnimationStyle({});
                 playSound('ding');
                 if (selectedGroupId !== 'all') {
                     db.pickerLogs.add({
@@ -324,16 +339,17 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
     
     const Desk = ({ studentName, isPicked, isPicking }: { studentName: string | null; isPicked: boolean, isPicking: boolean }) => {
         const animationStyle = colorConfig[pickerSettings.animationColor];
+        const isRainbowPicking = isPicking && pickerSettings.animationColor === 'rainbow';
         
         return (
             <div
                 className={cn(
                     "relative flex items-center justify-center border rounded-lg transition-all duration-300 w-full h-16",
-                    isPicked ? `${animationStyle.class} shadow-lg scale-105` : "bg-secondary",
-                    isPicking && "bg-muted",
-                    isPicking && pickerSettings.animationColor === 'rainbow' && animationStyle.class
+                    isPicked && !isRainbowPicking ? `${animationStyle.class} shadow-lg scale-105` : "bg-secondary",
+                    isPicking && !isRainbowPicking && "bg-muted",
+                    isPicked && isRainbowPicking && 'shadow-lg scale-105'
                 )}
-                style={isPicking && pickerSettings.animationColor === 'rainbow' ? animationStyle.style : {}}
+                 style={(isPicked && isRainbowPicking) ? currentAnimationStyle : {}}
             >
                 {studentName && <p className="text-xs font-medium text-center">{studentName}</p>}
             </div>
