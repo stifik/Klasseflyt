@@ -1,12 +1,13 @@
 
+
 "use client";
 
-import { useState } from "react";
-import type { Student, DailyCheck, SeatingChartData, SeatingLayout } from "@/lib/types";
+import { useState, useMemo } from "react";
+import type { Student, DailyCheck, SeatingChartData, SeatingLayout, Absence } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, BatteryWarning, TabletSmartphone } from "lucide-react";
+import { Calendar as CalendarIcon, BatteryWarning, TabletSmartphone, UserX } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -23,15 +24,23 @@ interface DailyChecklistProps {
   students: Student[];
   seatingChart: SeatingChartData | null;
   activeLayout: SeatingLayout | null;
+  absences: Absence[];
 }
 
-export default function DailyChecklist({ students, seatingChart, activeLayout }: DailyChecklistProps) {
+export default function DailyChecklist({ students, seatingChart, activeLayout, absences }: DailyChecklistProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [isFlipped, setIsFlipped] = useState(false);
   const { toast } = useToast();
   
-  // Use useLiveQuery directly inside the component to ensure it always has fresh data.
   const allChecks = useLiveQuery(() => db.dailyChecks.toArray(), [], []);
+  const allAbsences = useLiveQuery(() => db.absences.toArray(), [], []);
+
+  const getAbsenceForDate = (studentId: string, checkDate: Date) => {
+    const dateString = checkDate.toISOString().split("T")[0];
+    return allAbsences.find(
+      (a) => a.studentId === studentId && new Date(a.date).toISOString().split("T")[0] === dateString
+    );
+  };
 
   const getCheckForDate = (studentId: string, checkDate: Date) => {
     const dateString = checkDate.toISOString().split("T")[0];
@@ -65,10 +74,18 @@ export default function DailyChecklist({ students, seatingChart, activeLayout }:
                 if (existingCheck) await db.dailyChecks.delete(existingCheck.id!);
                 break;
         }
-        // No need to call onUpdate() anymore, useLiveQuery handles updates.
     } catch (error) {
         console.error(error);
         toast({title: "Feil", description: `Kunne ikke lagre endring for ${studentName}.`, variant: "destructive"});
+    }
+  };
+
+  const handleAbsenceToggle = async (studentId: string) => {
+    const existingAbsence = getAbsenceForDate(studentId, date);
+    if (existingAbsence) {
+      await db.absences.delete(existingAbsence.id!);
+    } else {
+      await db.absences.add({ studentId, date });
     }
   };
   
@@ -81,22 +98,51 @@ export default function DailyChecklist({ students, seatingChart, activeLayout }:
   const StudentButton = ({ student }: { student: Student }) => {
     const status = getStatus(student.id);
     const config = statusConfig[status];
+    const isAbsent = !!getAbsenceForDate(student.id, date);
+
+    if (isAbsent) {
+        return (
+             <Button
+                variant="secondary"
+                onClick={() => handleAbsenceToggle(student.id)}
+                className="justify-center h-auto py-2 flex-col w-28 h-20 text-muted-foreground"
+            >
+                <span className="font-semibold text-xs">{student.name}</span>
+                 <div className="flex items-center text-xs">
+                   <UserX className="mr-2" />
+                   <span>Fravær</span>
+                </div>
+            </Button>
+        );
+    }
+    
     return (
-        <Button
-            key={student.id}
-            variant={config.variant}
-            onClick={() => handleStatusChange(student.id)}
-            className={cn("justify-center h-auto py-2 flex-col w-28 h-20", {
-               "bg-green-600 hover:bg-green-700 text-white": status === "OK",
-               "bg-yellow-400 hover:bg-yellow-500 text-yellow-900 border-yellow-500": status === "NotCharged",
-            })}
-        >
-            <span className="font-semibold text-xs">{student.name}</span>
-            <div className="flex items-center text-xs opacity-80">
-               {config.icon}
-               <span>{config.label}</span>
-            </div>
-        </Button>
+        <div className="relative w-28 h-20">
+            <Button
+                key={student.id}
+                variant={config.variant}
+                onClick={() => handleStatusChange(student.id)}
+                className={cn("justify-center h-auto py-2 flex-col w-full h-full", {
+                   "bg-green-600 hover:bg-green-700 text-white": status === "OK",
+                   "bg-yellow-400 hover:bg-yellow-500 text-yellow-900 border-yellow-500": status === "NotCharged",
+                })}
+            >
+                <span className="font-semibold text-xs">{student.name}</span>
+                <div className="flex items-center text-xs opacity-80">
+                   {config.icon}
+                   <span>{config.label}</span>
+                </div>
+            </Button>
+             <Button
+                size="icon"
+                variant="ghost"
+                className="absolute top-0 right-0 w-6 h-6"
+                onClick={() => handleAbsenceToggle(student.id)}
+            >
+                <UserX className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                <span className="sr-only">Meld fravær</span>
+            </Button>
+        </div>
     );
   };
 
@@ -107,15 +153,21 @@ export default function DailyChecklist({ students, seatingChart, activeLayout }:
   const displayedChart = isFlipped 
     ? seatingChart?.map(row => [...row].reverse()).reverse() 
     : seatingChart;
+  
+  const todaysAbsences = useMemo(() => {
+    if (!allAbsences) return new Set();
+    const dateString = date.toISOString().split("T")[0];
+    return new Set(allAbsences.filter(a => new Date(a.date).toISOString().split("T")[0] === dateString).map(a => a.studentId));
+  }, [allAbsences, date]);
 
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <CardTitle>Daglig iPad-sjekk</CardTitle>
+            <CardTitle>Daglig sjekk & Fravær</CardTitle>
             <CardDescription>
-              {seatingChart ? "Visningen matcher klassekartet." : "Registrer status for hver elevs iPad."}
+              Registrer status for iPad og fravær. Klikk på ikonet øverst til høyre på en elev for å melde fravær.
             </CardDescription>
              {seatingChart && (
                 <div className="flex items-center space-x-2 mt-4">

@@ -1,8 +1,9 @@
 
+
 "use client";
 
 import { useState, useMemo, FC, useRef, useEffect } from "react";
-import type { Student, PickerGroup, PickerLog, SeatingChartData, SeatingLayout, AppSettings, PickerSettings, PickerColor } from "@/lib/types";
+import type { Student, PickerGroup, PickerLog, SeatingChartData, SeatingLayout, AppSettings, PickerSettings, PickerColor, Absence } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Sparkles, History, Plus, Trash2, Users, Edit, RefreshCw, Volume2, VolumeX, Palette, Settings } from "lucide-react";
@@ -32,6 +33,7 @@ interface StudentPickerProps {
   activeLayout: SeatingLayout | null | undefined;
   appSettings: AppSettings;
   onAppSettingsChange: (newSettings: AppSettings) => void;
+  absences?: Absence[];
 }
 
 const EditGroupDialog: FC<{
@@ -125,7 +127,7 @@ const colorConfig: Record<PickerColor, { bgClass: string, borderClass: string }>
     rainbow: { bgClass: 'animate-rainbow-border bg-background', borderClass: 'animate-rainbow-border' }
 };
 
-export default function StudentPicker({ students, seatingChart, activeLayout, appSettings, onAppSettingsChange }: StudentPickerProps) {
+export default function StudentPicker({ students, seatingChart, activeLayout, appSettings, onAppSettingsChange, absences = [] }: StudentPickerProps) {
     const [selectedGroupId, setSelectedGroupId] = useState<string>("all");
     const [withReplacement, setWithReplacement] = useState(false);
     const [isPicking, setIsPicking] = useState(false);
@@ -136,6 +138,15 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
     const { toast } = useToast();
 
     const audioCtxRef = useRef<AudioContext | null>(null);
+
+    const todaysAbsentStudentIds = useMemo(() => {
+        const today = new Date().toISOString().split('T')[0];
+        return new Set(absences.filter(a => new Date(a.date).toISOString().split('T')[0] === today).map(a => a.studentId));
+    }, [absences]);
+
+    const presentStudents = useMemo(() => {
+        return students.filter(s => !todaysAbsentStudentIds.has(s.id!));
+    }, [students, todaysAbsentStudentIds]);
 
     const pickerSettings = useMemo(() => ({
         ...defaultPickerSettings,
@@ -153,14 +164,14 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
     const studentMap = useMemo(() => new Map(students.map(s => [s.id!, s])), [students]);
 
     const availableStudents = useMemo(() => {
-        if (!pickerGroups) return students;
-        if (selectedGroupId === 'all') return students;
+        if (!pickerGroups) return presentStudents;
+        if (selectedGroupId === 'all') return presentStudents;
         
         const group = pickerGroups.find(g => g.id === selectedGroupId);
         if (!group) return [];
         
-        return group.studentIds.map(id => studentMap.get(id)).filter(Boolean) as Student[];
-    }, [selectedGroupId, pickerGroups, students, studentMap]);
+        return group.studentIds.map(id => studentMap.get(id)).filter((s): s is Student => !!s && !todaysAbsentStudentIds.has(s.id!));
+    }, [selectedGroupId, pickerGroups, presentStudents, studentMap, todaysAbsentStudentIds]);
 
     const historyForGroup = useMemo(() => {
         if (!pickerLogs) return [];
@@ -377,7 +388,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
         }
     };
     
-    const Desk = ({ studentName, isPicked, isAnimating, isOutOfPlay }: { studentName: string | null; isPicked: boolean, isAnimating: boolean, isOutOfPlay: boolean }) => {
+    const Desk = ({ studentName, isPicked, isAnimating, isOutOfPlay, isAbsent }: { studentName: string | null; isPicked: boolean, isAnimating: boolean, isOutOfPlay: boolean, isAbsent: boolean }) => {
         const isRainbow = pickerSettings.animationColor === 'rainbow';
         const animationStyleConfig = !isRainbow ? colorConfig[pickerSettings.animationColor] : undefined;
 
@@ -386,7 +397,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
             style = currentAnimationStyle;
         }
         
-        const baseBgClass = isOutOfPlay ? 'bg-secondary/50' : 'bg-secondary';
+        const baseBgClass = (isOutOfPlay || isAbsent) ? 'bg-secondary/50' : 'bg-secondary';
         const animatingBgClass = animationStyleConfig?.bgClass;
         const finalBgClass = isAnimating ? animatingBgClass : baseBgClass;
 
@@ -397,12 +408,13 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                     (isPicked || isAnimating) && 'shadow-lg scale-105',
                     !isRainbow && finalBgClass,
                     isRainbow && (isPicked || isAnimating) && 'bg-background',
-                    isOutOfPlay && 'opacity-40',
+                    (isOutOfPlay || isAbsent) && 'opacity-40',
                     isPicked && isRainbow ? colorConfig.rainbow.borderClass : (animationStyleConfig && (isPicked || isAnimating) ? animationStyleConfig.borderClass : 'border-border')
                 )}
                 style={style}
             >
                 {studentName && <p className="text-xs font-medium text-center">{studentName}</p>}
+                {isAbsent && <div className="absolute inset-0 bg-slate-500/30 flex items-center justify-center text-white font-bold text-xs">Fravær</div>}
             </div>
         );
     };
@@ -413,7 +425,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                 <Card className="min-h-[400px]">
                     <CardHeader>
                         <CardTitle>Elev-trekker</CardTitle>
-                        <CardDescription>Trekk en tilfeldig elev ved hjelp av klassekartet.</CardDescription>
+                        <CardDescription>Trekk en tilfeldig elev ved hjelp av klassekartet. Fraværende elever er markert og vil ikke bli trukket.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {seatingChart && activeLayout ? (
@@ -427,6 +439,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                                         const student = studentName ? students.find(s => s.name === studentName) : null;
                                         const isPicked = student ? student.id === pickedStudent?.id : false;
                                         const isAnimating = student ? student.id === animatingStudent?.id : false;
+                                        const isAbsent = student ? todaysAbsentStudentIds.has(student.id!) : false;
                                         const isOutOfPlay = student ? (alreadyPickedIds.has(student.id!) && !isPicked) : false;
 
                                         return (
@@ -436,6 +449,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                                                 isPicked={isPicked}
                                                 isAnimating={isAnimating}
                                                 isOutOfPlay={isOutOfPlay}
+                                                isAbsent={isAbsent}
                                             />
                                         );
                                     })
@@ -472,20 +486,20 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                                 <SelectContent>
                                     <SelectItem value="all">
                                         <div className="flex items-center gap-2">
-                                            <Users className="w-4 h-4" /> Hele klassen ({students.length})
+                                            <Users className="w-4 h-4" /> Hele klassen ({presentStudents.length})
                                         </div>
                                     </SelectItem>
                                     {pickerGroups?.map(g => (
                                         <SelectItem key={g.id} value={g.id!}>
                                             <div className="flex items-center gap-2">
-                                                {g.name} ({g.studentIds.length})
+                                                {g.name} ({g.studentIds.filter(id => !todaysAbsentStudentIds.has(id)).length})
                                             </div>
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                             <EditGroupDialog 
-                                students={students} 
+                                students={presentStudents} 
                                 onSave={handleSaveGroup}
                                 trigger={
                                     <Button variant="outline" className="w-full">

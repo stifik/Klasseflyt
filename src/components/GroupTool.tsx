@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { Student, StationAssignmentLog, Workstation, AppSettings, GroupSet, GroupInSet } from "@/lib/types";
+import type { Student, StationAssignmentLog, Workstation, AppSettings, GroupSet, GroupInSet, Absence } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,7 @@ interface GroupToolProps {
   appSettings: AppSettings;
   stationAssignmentLogs?: StationAssignmentLog[];
   groupSets?: GroupSet[];
+  absences?: Absence[];
 }
 
 type GroupingStrategy = "numberOfGroups" | "studentsPerGroup";
@@ -110,7 +111,7 @@ const DroppableStation = ({ station, children, isOver, hint, assignments, studen
 };
 
 
-export default function GroupTool({ students, appSettings, stationAssignmentLogs = [], groupSets = [] }: GroupToolProps) {
+export default function GroupTool({ students, appSettings, stationAssignmentLogs = [], groupSets = [], absences = [] }: GroupToolProps) {
   const [strategy, setStrategy] = useState<GroupingStrategy>("numberOfGroups");
   const [groupValue, setGroupValue] = useState<number>(4);
   const [viewMode, setViewMode] = useState<ViewMode>('groups');
@@ -124,6 +125,15 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
   const workstations = appSettings.workstations || [];
   const studentMap = useMemo(() => new Map(students.map(s => [s.id!, s.name])), [students]);
   const studentIdMap = useMemo(() => new Map(students.map(s => [s.name, s.id!])), [students]);
+
+  const todaysAbsentStudentIds = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return new Set(absences.filter(a => new Date(a.date).toISOString().split('T')[0] === today).map(a => a.studentId));
+  }, [absences]);
+  
+  const presentStudents = useMemo(() => {
+    return students.filter(s => !todaysAbsentStudentIds.has(s.id!));
+  }, [students, todaysAbsentStudentIds]);
 
   const individualStudentHistory = useMemo(() => {
     const history: Record<string, Record<string, number>> = {};
@@ -191,12 +201,12 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
 
 
   const handleGenerateGroups = () => {
-    if (groupValue <= 0 || students.length === 0) {
+    if (groupValue <= 0 || presentStudents.length === 0) {
       setUnassignedGroups([]);
       return;
     }
 
-    const shuffledStudents = shuffleArray(students);
+    const shuffledStudents = shuffleArray(presentStudents);
     const groups: Student[][] = [];
 
     if (strategy === "numberOfGroups") {
@@ -464,7 +474,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
         <CardHeader>
           <CardTitle>Gruppegenerator</CardTitle>
           <CardDescription>
-            Lag tilfeldige grupper, last inn lagrede grupper for prosjekter, og fordel dem på arbeidsstasjoner.
+            Lag tilfeldige grupper, last inn lagrede grupper for prosjekter, og fordel dem på arbeidsstasjoner. Fraværende elever for dagen blir automatisk ekskludert.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -630,9 +640,3 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     </div>
   );
 }
-
-    
-
-    
-
-

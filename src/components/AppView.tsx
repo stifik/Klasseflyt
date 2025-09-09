@@ -12,7 +12,7 @@ import ClassroomTools from "@/components/ClassroomTools";
 import Observations from "@/components/Observations";
 import Assessments from "@/components/Assessments";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import type { AppSettings, SeatingLayout, Student, Subject, TabKey } from '@/lib/types';
+import type { AppSettings, SeatingLayout, Student, Subject, TabKey, Absence } from '@/lib/types';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { Loader2 } from 'lucide-react';
@@ -56,6 +56,7 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
     const homework = useLiveQuery(() => ['overview', 'reports'].includes(tabKey) ? db.homework.toArray() : undefined, [tabKey]);
     const submissions = useLiveQuery(() => ['overview', 'reports'].includes(tabKey) ? db.submissions.toArray() : undefined, [tabKey]);
     const dailyChecks = useLiveQuery(() => ['dailyCheck', 'reports'].includes(tabKey) ? db.dailyChecks.toArray() : undefined, [tabKey]);
+    const absences = useLiveQuery(() => ['dailyCheck', 'observations', 'classroomTools'].includes(tabKey) ? db.absences.toArray() : undefined, [tabKey]);
     const hourlyChecks = useLiveQuery(() => ['observations', 'reports'].includes(tabKey) ? db.hourlyChecks.toArray() : undefined, [tabKey]);
     const remarks = useLiveQuery(() => ['observations', 'reports'].includes(tabKey) ? db.remarks.toArray() : undefined, [tabKey]);
     const tests = useLiveQuery(() => ['assessments', 'reports'].includes(tabKey) ? db.tests.toArray() : undefined, [tabKey]);
@@ -91,11 +92,11 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
     // Define which data is required for each tab to be considered "ready"
     const requiredData: Record<TabKey, any[]> = {
         overview: [homework, submissions],
-        dailyCheck: [], // Seating chart can be null initially
-        observations: [hourlyChecks, remarks], // Seating chart can be null initially
+        dailyCheck: [absences], // Seating chart can be null initially
+        observations: [hourlyChecks, remarks, absences], // Seating chart can be null initially
         assessments: [tests, testResults, learningGoals, goalAchievements],
         reports: [homework, submissions, dailyChecks, remarks, hourlyChecks, tests, testResults, learningGoals, goalAchievements],
-        classroomTools: [layouts, stationAssignmentLogs, groupSets], // History and activeLayout can be null/empty initially
+        classroomTools: [layouts, stationAssignmentLogs, groupSets, absences], // History and activeLayout can be null/empty initially
         settings: [],
     };
     
@@ -105,6 +106,7 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
         homework: homework, 
         submissions: submissions,
         dailyChecks: dailyChecks,
+        absences: absences,
         initialHourlyChecks: hourlyChecks,
         hourlyChecks: hourlyChecks, // Pass hourlyChecks also for reports
         initialRemarks: remarks,

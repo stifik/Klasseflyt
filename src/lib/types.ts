@@ -38,6 +38,12 @@ export type DailyCheck = {
   ipadBrought: boolean;
 };
 
+export type Absence = {
+  id?: number;
+  studentId: string;
+  date: Date;
+};
+
 export type Remark = {
   id?: number;
   studentId: string;

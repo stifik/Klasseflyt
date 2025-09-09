@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -13,6 +13,7 @@ export class MySubClassedDexie extends Dexie {
     homework!: Table<Homework, number>;
     submissions!: Table<Submission, number>;
     dailyChecks!: Table<DailyCheck, number>;
+    absences!: Table<Absence, number>;
     remarks!: Table<Remark, number>;
     hourlyChecks!: Table<HourlyCheck, number>;
     seatingChartHistory!: Table<SeatingChartRecord, number>;
@@ -291,6 +292,10 @@ export class MySubClassedDexie extends Dexie {
             pickerLogs: '++id, groupId, studentId, date',
         });
 
+        this.version(20).stores({
+            absences: '++id, &[studentId+date], studentId, date',
+        });
+
 
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
@@ -340,7 +345,7 @@ const defaultDPIAAnalysis: DPIAAnalysis = {
     scope: "Denne analysen dekker Klasseflyt-applikasjonen i sin helhet, inkludert all datainnsamling, lagring i nettleserens IndexedDB, og den valgfrie synkroniseringen til den enkelte lærers Microsoft OneDrive-konto. Den dekker ikke skolens overordnede Microsoft 365-infrastruktur, som reguleres av skolens egen databehandleravtale med Microsoft.",
     values: "1. Elevdata: Navn, anmerkninger, lekseresultater, og annen klasseromsrelatert informasjon.\n2. Tjenestens integritet: Sikre at appen er stabil, pålitelig og tilgjengelig for læreren.\n3. Lærerens effektivitet: Appen skal være et verktøy som forenkler, ikke kompliserer, lærerens hverdag.",
     unwantedEvents: "- Teknisk feil: Datatap fra IndexedDB ved nettleserfeil. Synkroniseringsfeil mot OneDrive.\n- Menneskelig feil: Læreren logger inn på en usikret/offentlig datamaskin og glemmer å logge ut.\n- Ondsinnede handlinger: Uautorisert fysisk tilgang til lærerens enhet for å hente ut lokal data.\n- Datalekkasje: Kompromittering av lærerens Microsoft-konto gir tilgang til app-datafilen på OneDrive.",
-    probabilityAndConsequence: "- Sannsynligheten for datatap pga. teknisk feil er lav, men konsekvensen kan være middels (tapt arbeidsdata for læreren).\n- Sannsynligheten for uautorisert tilgang via kompromittert M365-konto er lav (krever målrettet angrep), men konsekvensen er høy (elevdata på avveie).\n- Sannsynligheten for feilbruk på offentlig maskin er lav, konsekvensen er høy.",
+    probabilityAndConsequence: "- Sannsynligheten for datatap pga. teknisk feil er lav, men konsekvensen kan være middels (tapt arbeidsdata for læreren).\n- Sannsynligheten for uautorisert tilgang via kompromittert M35-konto er lav (krever målrettet angrep), men konsekvensen er høy (elevdata på avveie).\n- Sannsynligheten for feilbruk på offentlig maskin er lav, konsekvensen er høy.",
     measures: "- Teknisk: All data lagres lokalt i nettleser, reduserer eksponering. Synkronisering skjer kun til appens egen sandboxed mappe på OneDrive (Files.ReadWrite.AppFolder). Ingen sentral server.\n- Organisatorisk: Oppfordre til bruk av tofaktorautentisering på Microsoft-konto. Tydeliggjøre i dokumentasjon at læreren er behandlingsansvarlig.\n- Juridiske tiltak: En klar personvernerklæring forklarer databehandlingen. Appen legger seg under skolens eksisterende databehandleravtale med Microsoft, og introduserer ingen nye tredjeparter.",
     dataProcessingDescription: "- Hvilke data: Elevnavn, anmerkninger (type, tidspunkt), lekse-status, iPad-status, timeinnsjekk-atferd. Ingen sensitive personopplysninger etter GDPR art. 9 samles inn.\n- Formål: Å gi læreren et effektivt verktøy for klasseromsadministrasjon, dokumentasjon og rapportering.\n- Livssyklus: Data legges inn av lærer, lagres i IndexedDB, og synkroniseres (valgfritt) til OneDrive. Data slettes når læreren sletter det i appen, eller sletter datafilen fra OneDrive.\n- Tilgang: Kun den innloggede læreren har tilgang til dataen på sin enhet og i sin OneDrive. Ingen andre (inkludert app-utvikler) har tilgang.",
     necessityAndProportionality: "Ja, de innsamlede dataene er begrenset til det som er strengt nødvendig for at en lærer skal kunne utføre sine pedagogiske og administrative oppgaver. Mengden data er proporsjonal med formålet om å ha en effektiv klasseromsoversikt.",
@@ -604,4 +609,5 @@ export async function importDatabase(data: { [key: string]: any[] }) {
 
 
     
+
 
