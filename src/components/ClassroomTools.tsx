@@ -1,9 +1,8 @@
 
-
 "use client";
 
 import { FC, useEffect } from "react";
-import type { SeatingChartData, SeatingLayout, Student, SeatingChartRecord, AppSettings, StationAssignmentLog, GroupSet } from "@/lib/types";
+import type { SeatingChartData, SeatingLayout, Student, SeatingChartRecord, AppSettings, StationAssignmentLog, GroupSet, Absence } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import GroupTool from "./GroupTool";
 import StudentPicker from "./StudentPicker";
@@ -25,10 +24,11 @@ interface ClassroomToolsProps {
   onSubTabChange: (subTab: string) => void;
   stationAssignmentLogs?: StationAssignmentLog[];
   groupSets?: GroupSet[];
+  absences?: Absence[];
 }
 
 const ClassroomTools: FC<ClassroomToolsProps> = (props) => {
-  const { students, activeSubTab, onSubTabChange, appSettings, stationAssignmentLogs, groupSets, seatingChart, activeLayout, onAppSettingsChange } = props;
+  const { students, activeSubTab, onSubTabChange, appSettings, stationAssignmentLogs, groupSets, seatingChart, activeLayout, onAppSettingsChange, absences } = props;
   
   const pickerGroups = useLiveQuery(() => db.pickerGroups.orderBy('createdAt').toArray());
 
@@ -57,10 +57,10 @@ const ClassroomTools: FC<ClassroomToolsProps> = (props) => {
         <SeatingChart {...props} />
       </TabsContent>
       <TabsContent value="group-tool">
-        <GroupTool students={students} appSettings={appSettings} stationAssignmentLogs={stationAssignmentLogs} groupSets={groupSets} />
+        <GroupTool students={students} appSettings={appSettings} stationAssignmentLogs={stationAssignmentLogs} groupSets={groupSets} absences={absences} />
       </TabsContent>
       <TabsContent value="student-picker">
-        <StudentPicker students={students} seatingChart={seatingChart} activeLayout={activeLayout} appSettings={appSettings} onAppSettingsChange={onAppSettingsChange} />
+        <StudentPicker students={students} seatingChart={seatingChart} activeLayout={activeLayout} appSettings={appSettings} onAppSettingsChange={onAppSettingsChange} absences={absences} />
       </TabsContent>
     </Tabs>
   );
