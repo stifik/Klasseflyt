@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -8,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
-import { Shuffle, Users, CheckSquare, GripVertical, Bot, Info, Library, Save, FolderOpen, Trash2 } from "lucide-react";
+import { Shuffle, Users, CheckSquare, GripVertical, Bot, Info, Library, Save, FolderOpen, Trash2, LayoutGrid, Columns } from "lucide-react";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, closestCorners } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
@@ -29,6 +30,7 @@ interface GroupToolProps {
 }
 
 type GroupingStrategy = "numberOfGroups" | "studentsPerGroup";
+type ViewMode = 'groups' | 'stations';
 
 type GroupWithId = {
     id: string;
@@ -73,7 +75,7 @@ const DroppableStation = ({ station, children, isOver, hint, assignments, studen
     const isFull = station.capacity && studentCount >= station.capacity;
 
     return (
-        <Card ref={setNodeRef} className={cn("transition-colors", isOver && "bg-primary/10", hint?.isBest && "bg-green-100 dark:bg-green-900/20", isFull && "bg-muted/50")}>
+        <Card ref={setNodeRef} className={cn("transition-colors h-full", isOver && "bg-primary/10", hint?.isBest && "bg-green-100 dark:bg-green-900/20", isFull && "bg-muted/50")}>
             <CardHeader>
                 <CardTitle className="flex items-center justify-between text-base">
                     {station.name}
@@ -109,6 +111,7 @@ const DroppableStation = ({ station, children, isOver, hint, assignments, studen
 export default function GroupTool({ students, appSettings, stationAssignmentLogs = [], groupSets = [] }: GroupToolProps) {
   const [strategy, setStrategy] = useState<GroupingStrategy>("numberOfGroups");
   const [groupValue, setGroupValue] = useState<number>(4);
+  const [viewMode, setViewMode] = useState<ViewMode>('groups');
   
   const [activeGroupSet, setActiveGroupSet] = useState<GroupSet | null>(null);
   const [unassignedGroups, setUnassignedGroups] = useState<GroupWithId[]>([]);
@@ -213,6 +216,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     const groupsWithIds: GroupWithId[] = groups.map((g, index) => ({ id: uuidv4(), studentIds: g.map(s => s.id!), groupNumber: index + 1 }));
     setUnassignedGroups(groupsWithIds);
     setActiveGroupSet(null); // Clear active project group
+    setViewMode('groups'); // Always default to group view on new generation
 
     const initialAssignments: Record<string, GroupWithId[]> = {};
     workstations.forEach(ws => { initialAssignments[ws.id] = [] });
@@ -227,6 +231,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
           groupNumber: index + 1
       }));
       setUnassignedGroups(groupsWithNumbers);
+      setViewMode('groups');
       
       const initialAssignments: Record<string, GroupWithId[]> = {};
       workstations.forEach(ws => { initialAssignments[ws.id] = [] });
@@ -272,6 +277,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     
     setStationAssignments(newAssignments);
     setUnassignedGroups(groupsToAssign);
+    setViewMode('stations');
     toast({ title: "Grupper fordelt!", description: "Gruppene er automatisk fordelt på stasjonene." });
   };
 
@@ -280,6 +286,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     const logs: Omit<StationAssignmentLog, 'id'>[] = [];
     const date = new Date();
     
+    // Log from stations if in station mode
     Object.entries(stationAssignments).forEach(([stationId, groups]) => {
         groups.forEach(group => {
             group.studentIds.forEach(studentId => {
@@ -329,7 +336,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     const { active, over } = event;
     setActiveDragGroup(null);
 
-    if (!over) {
+    if (!over || viewMode !== 'stations') {
         return;
     }
     
@@ -537,10 +544,12 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
       {showAssignmentView && (
         <DndContext onDragEnd={handleDragEnd} onDragStart={handleDragStart} collisionDetection={closestCorners}>
             <Card>
-                <CardHeader className="flex flex-row justify-between items-center">
+                <CardHeader className="flex flex-row justify-between items-start">
                     <div>
                         <CardTitle>{activeGroupSet ? `Fordel grupper for: ${activeGroupSet.name}` : "Fordel Grupper"}</CardTitle>
-                        <CardDescription>Dra gruppene til stasjonene, eller bruk automatisk fordeling.</CardDescription>
+                        <CardDescription>
+                            {viewMode === 'groups' ? 'Oversikt over genererte grupper.' : 'Dra gruppene til stasjonene, eller bruk automatisk fordeling.'}
+                        </CardDescription>
                     </div>
                     <div className="flex gap-2">
                         {!activeGroupSet && totalGeneratedGroups > 0 && (
@@ -565,33 +574,49 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                                 </DialogContent>
                             </Dialog>
                         )}
-                        <Button variant="outline" onClick={handleAutoAssign} disabled={unassignedGroups.length === 0 || workstations.length === 0}>
-                            <Bot className="mr-2" /> Fordel Stasjoner
-                        </Button>
-                        <Button onClick={handleLogSession}>
-                            <CheckSquare className="mr-2"/> Loggfør økt
-                        </Button>
+                         <Button variant="outline" onClick={() => setViewMode(viewMode === 'groups' ? 'stations' : 'groups')}>
+                            {viewMode === 'groups' ? <><Columns className="mr-2" /> Vis stasjoner</> : <><LayoutGrid className="mr-2" /> Vis kun grupper</>}
+                         </Button>
+                        
+                        {viewMode === 'stations' && (
+                            <>
+                                <Button variant="outline" onClick={handleAutoAssign} disabled={unassignedGroups.length === 0 || workstations.length === 0}>
+                                    <Bot className="mr-2" /> Auto-fordel
+                                </Button>
+                                <Button onClick={handleLogSession}>
+                                    <CheckSquare className="mr-2"/> Loggfør økt
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                        <div className="lg:col-span-1">
-                            <DroppableStation station={{id: 'unassigned', name: `Ufordelte Grupper (${unassignedGroups.length})`}} isOver={false} hint={null} assignments={unassignedGroups} studentMap={studentMap}>
-                                {unassignedGroups.map((group) => (
-                                   <DraggableGroup key={group.id} group={group} studentMap={studentMap} />
-                                ))}
-                            </DroppableStation>
-                        </div>
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:col-span-2">
-                            {workstations.map(station => (
-                                <DroppableStation key={station.id} station={station} isOver={false} hint={stationHints[station.id] || null} assignments={stationAssignments[station.id] || []} studentMap={studentMap}>
-                                    {(stationAssignments[station.id] || []).map((group) => (
-                                        <DraggableGroup key={group.id} group={group} studentMap={studentMap} />
-                                    ))}
-                                </DroppableStation>
+                    {viewMode === 'groups' ? (
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {unassignedGroups.map((group) => (
+                                <DraggableGroup key={group.id} group={group} studentMap={studentMap} />
                             ))}
                         </div>
-                      </div>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                            <div className="lg:col-span-1">
+                                <DroppableStation station={{id: 'unassigned', name: `Ufordelte Grupper (${unassignedGroups.length})`}} isOver={false} hint={null} assignments={unassignedGroups} studentMap={studentMap}>
+                                    {unassignedGroups.map((group) => (
+                                    <DraggableGroup key={group.id} group={group} studentMap={studentMap} />
+                                    ))}
+                                </DroppableStation>
+                            </div>
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:col-span-2">
+                                {workstations.map(station => (
+                                    <DroppableStation key={station.id} station={station} isOver={false} hint={stationHints[station.id] || null} assignments={stationAssignments[station.id] || []} studentMap={studentMap}>
+                                        {(stationAssignments[station.id] || []).map((group) => (
+                                            <DraggableGroup key={group.id} group={group} studentMap={studentMap} />
+                                        ))}
+                                    </DroppableStation>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
             <DragOverlay>
@@ -607,3 +632,4 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     
 
     
+
