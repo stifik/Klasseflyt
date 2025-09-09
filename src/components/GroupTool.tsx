@@ -53,8 +53,6 @@ const DraggableGroup = ({ group, studentMap }: { group: GroupWithId; studentMap:
     id: group.id,
     data: { group },
   });
-  
-  const studentNames = group.studentIds.map(id => studentMap.get(id) || 'Ukjent').join(', ');
 
   return (
     <Card ref={setNodeRef} {...listeners} {...attributes} className={cn("touch-none cursor-grab", isDragging && "opacity-50")}>
@@ -63,7 +61,11 @@ const DraggableGroup = ({ group, studentMap }: { group: GroupWithId; studentMap:
         <GripVertical className="w-4 h-4 text-muted-foreground" />
       </CardHeader>
       <CardContent className="p-2 pt-0 text-xs">
-          {studentNames}
+          <ul className="space-y-1">
+              {group.studentIds.map(id => (
+                  <li key={id}>{studentMap.get(id) || 'Ukjent'}</li>
+              ))}
+          </ul>
       </CardContent>
     </Card>
   );
@@ -632,4 +634,5 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     
 
     
+
 
