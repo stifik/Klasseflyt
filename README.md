@@ -39,21 +39,25 @@ Når du mottar disse to ID-ene:
 
 For å aktivere KI-funksjoner (f.eks. generering av ukesmeldinger), må appen kobles til skolens eksisterende Azure AI-tjeneste. Dette sikrer at databehandlingen skjer innenfor skolens databehandleravtale med Microsoft.
 
-**Viktig: Hvordan API-nøkler håndteres**
-API-nøkler er hemmeligheter og skal **aldri** legges i åpen kildekode. Appen er designet for å bli publisert (hostet) av hver enkelt skole/kommune. Hver organisasjon legger inn sin egen, unike API-nøkkel på sin server. Dette sikrer at kun deres ansatte bruker deres betalte KI-tjeneste.
+**Hvordan fungerer det?**
+Appen bruker en sikker metode kalt **delegert tilgang**. Dette betyr at når en lærer er logget inn, vil appen sende KI-forespørsler *på vegne av den påloggede læreren*. Azure vil da vite hvilken organisasjon læreren tilhører, og fakturering/databehandling vil skje korrekt under den organisasjonens avtale. Ingen hemmelige, felles API-nøkler er nødvendig, noe som er den eneste sikre metoden for en sentralt hostet applikasjon.
 
 **Hva skal IT-avdelingen bes om?**
 
+For at dette skal fungere, må den samme "App Registration" som ble opprettet for OneDrive gis én ekstra tillatelse:
+
 > Hei,
 >
-> Vi ønsker å aktivere en KI-funksjon i "Klasseflyt"-appen. For å sikre at dette skjer innenfor vår eksisterende databehandleravtale med Microsoft, trenger vi tilgang til vår Azure AI-tjeneste. Kan dere fremskaffe følgende to verdier?
-> *   **API-nøkkel** til en Azure AI/Cognitive Services-ressurs.
-> *   Den tilhørende **Endepunkt-URL-en**.
+> Vi ønsker å aktivere KI-funksjonalitet i "Klasseflyt"-appen. For å gjøre dette sikkert og i henhold til vår eksisterende databehandleravtale, må appen få delegert tilgang til vår Azure AI-tjeneste.
+>
+> Kan dere legge til følgende API-tillatelse i app-registreringen for "Klasseflyt"?
+> 1.  **Azure Cognitive Services:** `user_impersonation`
+>
+> Dere må også "Expose an API" for app-registreringen og gi meg den tilhørende **Application ID URI** (også kalt "scope"). Den ser typisk slik ut: `api://<CLIENT_ID>`.
+>
+> Når dette er på plass, kan jeg konfigurere appen slik at hver lærer bruker KI-tjenesten under sin egen, sikre pålogging.
 >
 > Takk!
 
-Når du mottar disse:
-1.  **For lokal utvikling:** Legg dem til i `.env`-filen din:
-    `AZURE_AI_API_KEY="din-hemmelige-nøkkel"`
-    `AZURE_AI_ENDPOINT="https://ditt-endepunkt.openai.azure.com/"`
-2.  **Ved publisering av appen:** IT-avdelingen legger disse verdiene inn som sikre "hemmeligheter" (Environment Variables) på serveren der appen skal kjøre for deres skole.
+Når du mottar denne URI-en, legg den til i din `.env`-fil:
+`NEXT_PUBLIC_AZURE_AD_SCOPE_URI="api://din-client-id/user_impersonation"`
