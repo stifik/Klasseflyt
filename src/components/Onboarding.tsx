@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, UserPlus, BookPlus, PartyPopper, User } from "lucide-react";
 import type { AppSettings, Student, Subject } from "@/lib/types";
+import { db } from "@/lib/db";
+
 
 interface OnboardingProps {
     onFinish: (settings: AppSettings, teacherName: string, students: Omit<Student, 'id'>[], subjects: Omit<Subject, 'id'>[]) => void;
@@ -67,7 +69,7 @@ export default function Onboarding({ onFinish, initialSettings }: OnboardingProp
     
     const prevStep = () => {
         if (step > 0) {
-            setStep(s => s - 1);
+            setStep(s => s + 1);
         }
     };
     
@@ -75,10 +77,22 @@ export default function Onboarding({ onFinish, initialSettings }: OnboardingProp
         onFinish(initialSettings, teacherName.trim(), students, subjects);
     };
 
+    const handleSkip = async () => {
+        const newSettings = {
+            ...initialSettings,
+            onboardingCompleted: true,
+        };
+        await db.settings.put({ id: 'userSettings', ...newSettings });
+        // We call onFinish with empty arrays because they are skipping the setup.
+        // The core settings object is still passed.
+        onFinish(initialSettings, teacherName, [], []);
+    }
+
+
     const currentStep = steps[step];
 
     return (
-        <Dialog open={true} onOpenChange={() => {}}>
+        <Dialog open={true} onOpenChange={(isOpen) => { if(!isOpen) handleSkip(); }}>
             <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
                 {currentStep === "welcome" && (
                     <>
