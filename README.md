@@ -30,5 +30,25 @@ Du kan sende følgende melding til IT-avdelingen:
 
 Når du mottar disse to ID-ene:
 1.  Omdøp `.env.example` til `.env` (hvis du kjører koden lokalt for utvikling).
-2.  Lim inn ID-ene i `.env`-filen.
+2.  Lim inn ID-ene i `.env`-filen under `NEXT_PUBLIC_AZURE_AD_CLIENT_ID` og `NEXT_PUBLIC_AZURE_AD_TENANT_ID`.
 3.  Start appen på nytt. "Logg inn med Microsoft"-knappen vil nå være funksjonell for alle ansatte med en skolekonto.
+
+### Valgfri KI-integrasjon (Copilot/Azure AI)
+
+For å aktivere KI-funksjoner (f.eks. generering av ukesmeldinger), må appen kobles til skolens eksisterende Azure AI-tjeneste. Dette sikrer at databehandlingen skjer innenfor skolens databehandleravtale med Microsoft.
+
+**Hva skal IT-avdelingen bes om?**
+
+> Hei,
+>
+> Vi ønsker å aktivere en KI-funksjon i "Klasseflyt"-appen. For å sikre at dette skjer innenfor vår eksisterende databehandleravtale med Microsoft, trenger vi tilgang til vår Azure AI-tjeneste. Kan dere fremskaffe følgende to verdier?
+> *   **API-nøkkel** til en Azure AI/Cognitive Services-ressurs.
+> *   Den tilhørende **Endepunkt-URL-en**.
+>
+> Takk!
+
+Når du mottar disse:
+1.  Legg dem til i `.env`-filen din for lokal utvikling, f.eks.:
+    `AZURE_AI_API_KEY="din-hemmelige-nøkkel"`
+    `AZURE_AI_ENDPOINT="https://ditt-endepunkt.openai.azure.com/"`
+2.  Ved publisering av appen, vil disse verdiene legges inn som sikre "hemmeligheter" på serveren.
