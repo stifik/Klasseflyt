@@ -29,13 +29,18 @@ Du kan sende følgende melding til IT-avdelingen:
 > Takk for hjelpen!
 
 Når du mottar disse to ID-ene:
-1.  Omdøp `.env.example` til `.env` (hvis du kjører koden lokalt for utvikling).
-2.  Lim inn ID-ene i `.env`-filen under `NEXT_PUBLIC_AZURE_AD_CLIENT_ID` og `NEXT_PUBLIC_AZURE_AD_TENANT_ID`.
+1.  Opprett en fil kalt `.env` i rotmappen av prosjektet.
+2.  Lim inn ID-ene i `.env`-filen slik:
+    `NEXT_PUBLIC_AZURE_AD_CLIENT_ID="din-client-id"`
+    `NEXT_PUBLIC_AZURE_AD_TENANT_ID="din-tenant-id"`
 3.  Start appen på nytt. "Logg inn med Microsoft"-knappen vil nå være funksjonell for alle ansatte med en skolekonto.
 
 ### Valgfri KI-integrasjon (Copilot/Azure AI)
 
 For å aktivere KI-funksjoner (f.eks. generering av ukesmeldinger), må appen kobles til skolens eksisterende Azure AI-tjeneste. Dette sikrer at databehandlingen skjer innenfor skolens databehandleravtale med Microsoft.
+
+**Viktig: Hvordan API-nøkler håndteres**
+API-nøkler er hemmeligheter og skal **aldri** legges i åpen kildekode. Appen er designet for å bli publisert (hostet) av hver enkelt skole/kommune. Hver organisasjon legger inn sin egen, unike API-nøkkel på sin server. Dette sikrer at kun deres ansatte bruker deres betalte KI-tjeneste.
 
 **Hva skal IT-avdelingen bes om?**
 
@@ -48,7 +53,7 @@ For å aktivere KI-funksjoner (f.eks. generering av ukesmeldinger), må appen ko
 > Takk!
 
 Når du mottar disse:
-1.  Legg dem til i `.env`-filen din for lokal utvikling, f.eks.:
+1.  **For lokal utvikling:** Legg dem til i `.env`-filen din:
     `AZURE_AI_API_KEY="din-hemmelige-nøkkel"`
     `AZURE_AI_ENDPOINT="https://ditt-endepunkt.openai.azure.com/"`
-2.  Ved publisering av appen, vil disse verdiene legges inn som sikre "hemmeligheter" på serveren.
+2.  **Ved publisering av appen:** IT-avdelingen legger disse verdiene inn som sikre "hemmeligheter" (Environment Variables) på serveren der appen skal kjøre for deres skole.
