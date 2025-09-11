@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
-import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp, MessageSquare, Award, Target, Check } from 'lucide-react';
+import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp, MessageSquare, Award, Target, Check, MessageSquarePlus } from 'lucide-react';
 import { getWeekNumber } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RemarkAnalysis from './RemarkAnalysis';
@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import * as LucideIcons from "lucide-react";
 import { format } from 'date-fns';
 import { nb } from 'date-fns/locale';
+import { Textarea } from './ui/textarea';
 
 interface ReportsProps {
   students: Student[];
@@ -55,6 +56,7 @@ const generateSummaryMessage = (
     remarksCount: number,
     weekTestResults: { subjectName: string, testTitle: string, score: number, maxScore: number }[],
     settings: ReportSettings,
+    additionalText?: string,
 ): string => {
     
     const homeworkIssues: string[] = [];
@@ -123,6 +125,10 @@ const generateSummaryMessage = (
         });
         message += '\n';
     }
+    
+    if (additionalText && additionalText.trim()) {
+        message += `${additionalText.trim()}\n\n`;
+    }
 
     message += `${settings.closing}\n${settings.teacherName}`;
     return message;
@@ -133,6 +139,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
     const [selectedWeek, setSelectedWeek] = useState<number>(() => getWeekNumber(new Date()));
     const [generatedMessages, setGeneratedMessages] = useState<Array<{ studentName: string; message: string }>>([]);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [additionalText, setAdditionalText] = useState("");
     
     const uniqueWeeks = useMemo(() => {
         const safeHomework = homework || [];
@@ -231,7 +238,8 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
                 studentWeekChecks.filter(c => !c.ipadBrought).length,
                 studentWeekRemarks.length,
                 formattedTestResults,
-                settings.reportSettings
+                settings.reportSettings,
+                additionalText
             );
             return { studentName: student.name, message };
         }).filter((item): item is { studentName: string; message: string } => item !== null && item.message !== "");
@@ -256,19 +264,37 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
             <CardDescription>Generer automatisk meldinger til foresatte for elever med anmerkninger for en valgt uke.</CardDescription>
             </CardHeader>
             <CardContent>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Select value={String(selectedWeek)} onValueChange={(v) => setSelectedWeek(parseInt(v))}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Velg uke" />
-                </SelectTrigger>
-                <SelectContent>
-                    {uniqueWeeks.map(w => <SelectItem key={w} value={String(w)}>Uke {w}</SelectItem>)}
-                </SelectContent>
-                </Select>
-                <Button onClick={handleGenerateSummaries} disabled={isGenerating} className="w-full sm:w-auto">
-                {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                Generer Oppsummering
-                </Button>
+            <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Select value={String(selectedWeek)} onValueChange={(v) => setSelectedWeek(parseInt(v))}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Velg uke" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {uniqueWeeks.map(w => <SelectItem key={w} value={String(w)}>Uke {w}</SelectItem>)}
+                    </SelectContent>
+                    </Select>
+                    <Button onClick={handleGenerateSummaries} disabled={isGenerating} className="w-full sm:w-auto">
+                    {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                    Generer Oppsummering
+                    </Button>
+                </div>
+                
+                <Collapsible>
+                    <CollapsibleTrigger asChild>
+                        <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                            <MessageSquarePlus className="mr-2 h-4 w-4" />
+                            Legg til felles fritekst
+                        </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-2">
+                        <Textarea 
+                            placeholder="Skriv inn tekst som skal inkluderes i alle meldinger her..."
+                            value={additionalText}
+                            onChange={(e) => setAdditionalText(e.target.value)}
+                        />
+                    </CollapsibleContent>
+                </Collapsible>
             </div>
 
             {generatedMessages.length > 0 && (
@@ -715,3 +741,4 @@ export default function Reports(props: ReportsProps) {
 }
 
     
+
