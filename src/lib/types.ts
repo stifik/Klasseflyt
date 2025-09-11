@@ -84,6 +84,7 @@ export type TestResult = {
   testId: number;
   score: number | null;
   comment?: string;
+  reportedInWeek?: number;
 };
 
 export type LearningGoal = {

@@ -296,6 +296,10 @@ export class MySubClassedDexie extends Dexie {
             absences: '++id, &[studentId+date], studentId, date',
         });
 
+        this.version(21).stores({
+            testResults: '++id, &[studentId+testId], studentId, testId, reportedInWeek',
+        });
+
 
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
@@ -609,5 +613,6 @@ export async function importDatabase(data: { [key: string]: any[] }) {
 
 
     
+
 
 

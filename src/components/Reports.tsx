@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
-import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp, MessageSquare, Award, Target, Check, MessageSquarePlus } from 'lucide-react';
+import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp, MessageSquare, Award, Target, Check, MessageSquarePlus, BadgeCheck } from 'lucide-react';
 import { getWeekNumber } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RemarkAnalysis from './RemarkAnalysis';
@@ -18,6 +18,7 @@ import * as LucideIcons from "lucide-react";
 import { format } from 'date-fns';
 import { nb } from 'date-fns/locale';
 import { Textarea } from './ui/textarea';
+import { db } from '@/lib/db';
 
 interface ReportsProps {
   students: Student[];
@@ -140,6 +141,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
     const [generatedMessages, setGeneratedMessages] = useState<Array<{ studentName: string; message: string }>>([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [additionalText, setAdditionalText] = useState("");
+    const [reportableTestResultIds, setReportableTestResultIds] = useState<number[]>([]);
     
     const uniqueWeeks = useMemo(() => {
         const safeHomework = homework || [];
@@ -157,6 +159,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
     const handleGenerateSummaries = () => {
         setIsGenerating(true);
         setGeneratedMessages([]);
+        setReportableTestResultIds([]);
 
         const safeHomework = homework || [];
         const safeSubmissions = submissions || [];
@@ -167,21 +170,31 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
 
         const weekHomeworkIds = new Set(safeHomework.filter(h => h.week === selectedWeek).map(h => h.id));
         
-        const relevantWeeks = [selectedWeek, selectedWeek - 1];
-        const weekTests = safeTests.filter(t => relevantWeeks.includes(getWeekNumber(new Date(t.date))));
+        // Include tests from current week, but also look for un-reported results from any time
+        const weekTests = safeTests.filter(t => getWeekNumber(new Date(t.date)) === selectedWeek);
+        const unreportedResults = safeTestResults.filter(r => r.reportedInWeek === undefined);
+
+        const allStudentTestResults = [...new Set([...weekTests.map(t => t.id!), ...unreportedResults.map(r => r.testId)])];
+        const relevantTests = safeTests.filter(t => allStudentTestResults.includes(t.id));
+        
+        const allIncludedTestResultIds: number[] = [];
 
         const studentsToReport = students.map(student => {
             const studentWeekSubmissions = safeSubmissions.filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
             const studentWeekChecks = safeDailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
             const studentWeekRemarks = safeRemarks.filter(r => r.studentId === student.id && getWeekNumber(new Date(r.date)) === selectedWeek);
-            const studentWeekTestResults = safeTestResults.filter(r => r.studentId === student.id && weekTests.some(t => t.id === r.testId));
+            
+            // Only include results for relevant tests that have not been reported yet
+            const studentUnreportedResults = unreportedResults.filter(r => r.studentId === student.id && relevantTests.some(t => t.id === r.testId));
+            
+            studentUnreportedResults.forEach(r => allIncludedTestResultIds.push(r.id!));
 
             const hasHomeworkIssues = settings.reportSettings.includeHomework && studentWeekSubmissions.some(s => 
                 s.status === 'Ikke levert' || s.status === 'Må rettes' || s.status === 'Glemt bok'
             );
             const hasIpadIssues = settings.reportSettings.includeIpad && studentWeekChecks.some(c => !c.ipadBrought || !c.ipadCharged);
             const hasRemarks = settings.reportSettings.includeRemarks && studentWeekRemarks.length > 0;
-            const hasTests = settings.reportSettings.includeTests && studentWeekTestResults.length > 0;
+            const hasTests = settings.reportSettings.includeTests && studentUnreportedResults.length > 0;
             
             const hasAnyIssues = hasHomeworkIssues || hasIpadIssues || hasRemarks;
             
@@ -189,7 +202,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
 
             if (onlyAbsence) return null;
             if (hasAnyIssues || hasTests || settings.reportSettings.includePositiveFeedback) {
-                return { student, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks, studentWeekTestResults };
+                return { student, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks, studentUnreportedResults };
             }
             return null;
         }).filter(Boolean);
@@ -200,9 +213,11 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
             return;
         }
 
+        setReportableTestResultIds([...new Set(allIncludedTestResultIds)]);
+
         const messages = studentsToReport.map(report => {
             if (!report) return null;
-            const { student, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks, studentWeekTestResults } = report;
+            const { student, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks, studentUnreportedResults } = report;
             
             const formatHomeworkWithSubject = (s: Submission) => {
                 const hw = safeHomework.find(h => h.id === s.homeworkId);
@@ -214,8 +229,8 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
                 return subject.name;
             };
             
-            const formattedTestResults = studentWeekTestResults.map(r => {
-                const test = weekTests.find(t => t.id === r.testId);
+            const formattedTestResults = studentUnreportedResults.map(r => {
+                const test = relevantTests.find(t => t.id === r.testId);
                 if (!test || r.score === null) return null;
                 const subject = subjects.find(s => s.id === test.subjectId);
                 return {
@@ -250,6 +265,24 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
 
         setGeneratedMessages(messages);
         setIsGenerating(false);
+    };
+
+    const handleMarkAsReported = async () => {
+        if (reportableTestResultIds.length === 0) return;
+        try {
+            await db.testResults.bulkUpdate(reportableTestResultIds.map(id => ({
+                key: id,
+                changes: { reportedInWeek: selectedWeek }
+            })));
+            toast({
+                title: "Resultater markert som rapportert",
+                description: `${reportableTestResultIds.length} prøveresultat(er) vil ikke bli inkludert i fremtidige ukesmeldinger.`,
+            });
+            setReportableTestResultIds([]); // Disable button after marking
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Feil", description: "Kunne ikke markere resultater som rapportert.", variant: "destructive" });
+        }
     };
 
     const handleCopyMessage = (message: string) => {
@@ -296,6 +329,20 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
                     </CollapsibleContent>
                 </Collapsible>
             </div>
+            
+             {reportableTestResultIds.length > 0 && (
+                <div className="mt-4 p-4 border rounded-lg bg-secondary">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <p className="text-sm font-medium">
+                            {reportableTestResultIds.length} nye prøveresultat(er) er inkludert i disse meldingene.
+                        </p>
+                        <Button onClick={handleMarkAsReported} size="sm">
+                            <BadgeCheck className="mr-2"/>
+                            Marker som rapportert for Uke {selectedWeek}
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             {generatedMessages.length > 0 && (
                 <div className="mt-4 space-y-4">
@@ -452,6 +499,7 @@ const ReportDetails = ({ stat, behaviorTypes, reportSettings }: { stat: ReturnTy
                                         <p className="font-medium">{result.test.title} <span className="text-xs text-muted-foreground">({result.subjectName})</span></p>
                                         <p className="text-xs text-muted-foreground">
                                             {format(new Date(result.test.date), "PPP", { locale: nb })}
+                                            {result.result.reportedInWeek && <span className="italic"> (Rapportert uke {result.result.reportedInWeek})</span>}
                                         </p>
                                     </div>
                                     <p className="font-bold text-lg">{result.result.score}<span className="font-normal text-sm text-muted-foreground">/{result.test.maxScore}</span></p>
@@ -741,4 +789,5 @@ export default function Reports(props: ReportsProps) {
 }
 
     
+
 
