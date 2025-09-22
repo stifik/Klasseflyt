@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { Student, StationAssignmentLog, Workstation, AppSettings, GroupSet, GroupInSet, Absence } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -29,6 +29,7 @@ interface GroupToolProps {
   absences?: Absence[];
 }
 
+type CreationMode = "manual" | "random";
 type GroupingStrategy = "numberOfGroups" | "studentsPerGroup";
 type ViewMode = 'groups' | 'stations';
 
@@ -154,8 +155,8 @@ const DroppableStation = ({ station, children, isOver, hint, assignments, studen
 
 
 export default function GroupTool({ students, appSettings, stationAssignmentLogs = [], groupSets = [], absences = [] }: GroupToolProps) {
-  const [strategy, setStrategy] = useState<GroupingStrategy>("numberOfGroups");
-  const [groupValue, setGroupValue] = useState<number>(4);
+  const [creationMode, setCreationMode] = useState<CreationMode>("random");
+  const [numberOfGroups, setNumberOfGroups] = useState<number>(4);
   const [viewMode, setViewMode] = useState<ViewMode>('groups');
   
   const [activeGroupSet, setActiveGroupSet] = useState<GroupSet | null>(null);
@@ -244,29 +245,21 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
 
 
   const handleGenerateGroups = () => {
-    if (groupValue <= 0 || presentStudents.length === 0) {
+    if (numberOfGroups <= 0 || presentStudents.length === 0) {
       setUnassignedGroups([]);
       return;
     }
 
     const shuffledStudents = shuffleArray(presentStudents);
     const groups: Student[][] = [];
-
-    if (strategy === "numberOfGroups") {
-      const numGroups = Math.min(groupValue, shuffledStudents.length);
-      for (let i = 0; i < numGroups; i++) {
+    const numGroups = Math.min(numberOfGroups, shuffledStudents.length);
+    
+    for (let i = 0; i < numGroups; i++) {
         groups.push([]);
-      }
-      shuffledStudents.forEach((student, index) => {
-        groups[index % numGroups].push(student);
-      });
-    } else { // studentsPerGroup
-      let remainingStudents = [...shuffledStudents];
-      const numStudentsPerGroup = groupValue;
-      while(remainingStudents.length > 0) {
-        groups.push(remainingStudents.splice(0, numStudentsPerGroup));
-      }
     }
+    shuffledStudents.forEach((student, index) => {
+        groups[index % numGroups].push(student);
+    });
     
     const groupsWithIds: GroupWithId[] = groups.map((g, index) => ({ id: uuidv4(), studentIds: g.map(s => s.id!), groupNumber: index + 1 }));
     setUnassignedGroups(groupsWithIds);
@@ -400,6 +393,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
         const studentId = active.data.current?.studentId;
         const targetGroupId = over.data.current?.groupId;
         
+        // Find which group the student currently belongs to
         let sourceGroupId: string | null = null;
         for (const group of unassignedGroups) {
             if (group.studentIds.includes(studentId)) {
@@ -414,8 +408,12 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                 const sourceGroup = newGroups.find((g: GroupWithId) => g.id === sourceGroupId)!;
                 const targetGroup = newGroups.find((g: GroupWithId) => g.id === targetGroupId)!;
 
+                // Remove from source
                 sourceGroup.studentIds = sourceGroup.studentIds.filter((id: string) => id !== studentId);
-                targetGroup.studentIds.push(studentId);
+                // Add to target if not already there
+                if (!targetGroup.studentIds.includes(studentId)) {
+                    targetGroup.studentIds.push(studentId);
+                }
                 
                 return newGroups;
             });
@@ -529,6 +527,16 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
 
   const showAssignmentView = unassignedGroups.length > 0 || Object.values(stationAssignments).some(v => v.length > 0);
   const totalGeneratedGroups = unassignedGroups.length + Object.values(stationAssignments).flat().length;
+  
+  const studentsPerGroupText = useMemo(() => {
+    if (presentStudents.length === 0 || numberOfGroups === 0) return "";
+    const minPerGroup = Math.floor(presentStudents.length / numberOfGroups);
+    const remainder = presentStudents.length % numberOfGroups;
+    if (remainder === 0) {
+        return `${minPerGroup} elever per gruppe.`;
+    }
+    return `De fleste gruppene vil ha ${minPerGroup} eller ${minPerGroup + 1} elever.`;
+  }, [presentStudents, numberOfGroups]);
 
 
   return (
@@ -540,78 +548,62 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
             Lag tilfeldige grupper, juster dem manuelt, og fordel dem på arbeidsstasjoner. Fraværende elever for dagen blir automatisk ekskludert.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-4 p-4 border rounded-lg">
-                    <Label>Lag nye, tilfeldige grupper</Label>
-                    <RadioGroup value={strategy} onValueChange={(value) => setStrategy(value as GroupingStrategy)}>
+        <CardContent>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <RadioGroup value={creationMode} onValueChange={(v) => setCreationMode(v as CreationMode)}>
+                    <div className={cn("p-4 border rounded-lg", creationMode === 'random' && 'ring-2 ring-primary')}>
                         <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="numberOfGroups" id="r1" />
-                        <Label htmlFor="r1">Antall grupper</Label>
+                            <RadioGroupItem value="random" id="r1" />
+                            <Label htmlFor="r1" className="text-base font-semibold">Grupper elever tilfeldig</Label>
                         </div>
-                        <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="studentsPerGroup" id="r2" />
-                        <Label htmlFor="r2">Elever per gruppe</Label>
-                        </div>
-                    </RadioGroup>
-                    <div>
-                        <Label htmlFor="group-value">
-                        {strategy === "numberOfGroups" ? "Hvor mange grupper?" : "Hvor mange elever per gruppe?"}
-                        </Label>
-                        <Input
-                        id="group-value"
-                        type="number"
-                        min="1"
-                        value={groupValue}
-                        onChange={(e) => setGroupValue(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                        />
-                    </div>
-                    <Button onClick={handleGenerateGroups} className="w-full">
-                        <Shuffle className="mr-2" />
-                        Generer Nye Grupper
-                    </Button>
-                </div>
-                 <div className="space-y-2 p-4 border rounded-lg flex flex-col">
-                    <Label>Eller last inn et lagret gruppesett</Label>
-                    <ScrollArea className="flex-grow">
-                        <div className="space-y-2">
-                            {groupSets.map(gs => (
-                                <div key={gs.id} className="flex justify-between items-center p-2 rounded-md bg-secondary">
-                                    <div>
-                                        <p className="font-medium text-sm">{gs.name}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {gs.groups.length} grupper, laget {formatDistanceToNow(gs.createdAt, { addSuffix: true, locale: nb })}
-                                        </p>
-                                    </div>
-                                    <div className="flex gap-1">
-                                         <Button size="sm" variant="outline" onClick={() => handleLoadGroupSet(gs)}>
-                                            <FolderOpen className="mr-2" /> Last inn
-                                         </Button>
-                                         <AlertDialog>
-                                             <AlertDialogTrigger asChild>
-                                                <Button size="icon" variant="ghost">
-                                                    <Trash2 className="w-4 h-4 text-destructive" />
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Slette gruppesett?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        Er du sikker på at du vil slette "{gs.name}"? Dette kan ikke angres.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDeleteGroupSet(gs.id!)}>Slett</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                         </AlertDialog>
-                                    </div>
+                        {creationMode === 'random' && (
+                            <div className="mt-4 space-y-3 pl-6">
+                                <div>
+                                    <Label htmlFor="group-value">Antall grupper</Label>
+                                    <Input
+                                        id="group-value"
+                                        type="number"
+                                        min="1"
+                                        value={numberOfGroups}
+                                        onChange={(e) => setNumberOfGroups(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                    />
+                                    {studentsPerGroupText && <p className="text-xs text-muted-foreground mt-1">{studentsPerGroupText}</p>}
                                 </div>
-                            ))}
+                                <Button onClick={handleGenerateGroups} className="w-full">
+                                    <Shuffle className="mr-2" />
+                                    Generer Grupper
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                     <div className={cn("p-4 border rounded-lg", creationMode === 'manual' && 'ring-2 ring-primary')}>
+                         <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="manual" id="r2" />
+                            <Label htmlFor="r2" className="text-base font-semibold">Grupper elever manuelt</Label>
                         </div>
-                    </ScrollArea>
-                 </div>
+                        {creationMode === 'manual' && (
+                            <div className="mt-4 space-y-3 pl-6">
+                                <p className="text-sm text-muted-foreground">Last inn et lagret gruppesett eller lag et nytt.</p>
+                                <ScrollArea className="h-40">
+                                    <div className="space-y-2 pr-2">
+                                        {groupSets.map(gs => (
+                                            <div key={gs.id} className="flex justify-between items-center p-2 rounded-md bg-secondary">
+                                                <div>
+                                                    <p className="font-medium text-sm">{gs.name}</p>
+                                                </div>
+                                                <div className="flex gap-1">
+                                                    <Button size="sm" variant="outline" onClick={() => handleLoadGroupSet(gs)}>
+                                                        <FolderOpen className="mr-2" /> Last inn
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </div>
+                        )}
+                    </div>
+                </RadioGroup>
             </div>
         </CardContent>
       </Card>
@@ -716,3 +708,4 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     </div>
   );
 }
+
