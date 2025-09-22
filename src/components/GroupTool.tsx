@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -10,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { Shuffle, Users, CheckSquare, GripVertical, Bot, Info, Library, Save, FolderOpen, Trash2, LayoutGrid, Columns } from "lucide-react";
-import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, closestCorners } from "@dnd-kit/core";
+import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { useToast } from "@/hooks/use-toast";
@@ -49,10 +48,53 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return newArray;
 };
 
+
+const DraggableStudentItem = ({ studentId, studentName }: { studentId: string, studentName: string }) => {
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+        id: `student-${studentId}`,
+        data: { type: 'student', studentId, studentName },
+    });
+
+    return (
+        <li
+            ref={setNodeRef}
+            {...listeners}
+            {...attributes}
+            className={cn(
+                "p-1.5 bg-background border rounded-md text-xs touch-none cursor-grab",
+                isDragging && "opacity-50"
+            )}
+        >
+            {studentName}
+        </li>
+    );
+};
+
+const DroppableGroupCard = ({ group, studentMap, children }: { group: GroupWithId, studentMap: Map<string, string>, children: React.ReactNode }) => {
+    const { setNodeRef, isOver } = useDroppable({
+        id: `group-${group.id}`,
+        data: { type: 'group', groupId: group.id },
+    });
+    
+    return (
+        <Card ref={setNodeRef} className={cn("touch-none", isOver && "bg-primary/10")}>
+            <CardHeader className="flex flex-row items-center justify-between p-2">
+                <CardTitle className="text-sm font-medium">Gruppe {group.groupNumber}</CardTitle>
+            </CardHeader>
+            <CardContent className="p-2 pt-0 text-xs">
+                <ul className="space-y-1 min-h-[20px]">
+                    {children}
+                </ul>
+            </CardContent>
+        </Card>
+    );
+};
+
+
 const DraggableGroup = ({ group, studentMap }: { group: GroupWithId; studentMap: Map<string, string> }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: group.id,
-    data: { group },
+    data: { type: 'group', group },
   });
 
   return (
@@ -73,7 +115,7 @@ const DraggableGroup = ({ group, studentMap }: { group: GroupWithId; studentMap:
 };
 
 const DroppableStation = ({ station, children, isOver, hint, assignments, studentMap }: { station: Workstation, children: React.ReactNode, isOver: boolean, hint: { text: string, isBest: boolean } | null, assignments: GroupWithId[], studentMap: Map<string, string> }) => {
-    const { setNodeRef } = useDroppable({ id: station.id });
+    const { setNodeRef } = useDroppable({ id: station.id, data: { type: 'station' } });
     const studentCount = assignments.reduce((sum, group) => sum + group.studentIds.length, 0);
     const isFull = station.capacity && studentCount >= station.capacity;
 
@@ -119,12 +161,11 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
   const [activeGroupSet, setActiveGroupSet] = useState<GroupSet | null>(null);
   const [unassignedGroups, setUnassignedGroups] = useState<GroupWithId[]>([]);
   const [stationAssignments, setStationAssignments] = useState<Record<string, GroupWithId[]>>({});
-  const [activeDragGroup, setActiveDragGroup] = useState<GroupWithId | null>(null);
+  const [activeDragItem, setActiveDragItem] = useState<any | null>(null);
 
   const { toast } = useToast();
   const workstations = appSettings.workstations || [];
   const studentMap = useMemo(() => new Map(students.map(s => [s.id!, s.name])), [students]);
-  const studentIdMap = useMemo(() => new Map(students.map(s => [s.name, s.id!])), [students]);
 
   const todaysAbsentStudentIds = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -176,6 +217,8 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
   };
   
   const stationHints = useMemo(() => {
+    if (activeDragItem?.type !== 'group') return {};
+    const activeDragGroup = activeDragItem.group;
     if (!activeDragGroup) return {};
 
     const costs = workstations.map(station => ({
@@ -197,7 +240,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     });
     return hints;
 
-  }, [activeDragGroup, workstations, individualStudentHistory, groupHistory, activeGroupSet]);
+  }, [activeDragItem, workstations, individualStudentHistory, groupHistory, activeGroupSet]);
 
 
   const handleGenerateGroups = () => {
@@ -346,81 +389,99 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
 
  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    setActiveDragGroup(null);
+    setActiveDragItem(null);
+    if (!over) return;
 
-    if (!over || viewMode !== 'stations') {
+    const activeType = active.data.current?.type;
+    const overType = over.data.current?.type;
+
+    // --- Logic for dragging STUDENTS between groups ---
+    if (activeType === 'student' && overType === 'group') {
+        const studentId = active.data.current?.studentId;
+        const targetGroupId = over.data.current?.groupId;
+        
+        // Find source group
+        let sourceGroupId: string | null = null;
+        for (const group of unassignedGroups) {
+            if (group.studentIds.includes(studentId)) {
+                sourceGroupId = group.id;
+                break;
+            }
+        }
+        
+        if (sourceGroupId && sourceGroupId !== targetGroupId) {
+            setUnassignedGroups(prevGroups => {
+                const newGroups = [...prevGroups];
+                const sourceGroup = newGroups.find(g => g.id === sourceGroupId)!;
+                const targetGroup = newGroups.find(g => g.id === targetGroupId)!;
+
+                // Remove from source
+                sourceGroup.studentIds = sourceGroup.studentIds.filter(id => id !== studentId);
+                // Add to target
+                targetGroup.studentIds.push(studentId);
+                
+                return newGroups;
+            });
+        }
         return;
     }
-    
-    const activeId = active.id.toString();
-    const overId = over.id.toString();
 
-    const [activeGroup, sourceContainerId] = findGroupAndContainer(activeId);
-    if (!activeGroup || !sourceContainerId) return;
-
-    // Find the container for what's being dragged over.
-    // It can be a group or a container. We need the container ID.
-    const [overGroup, overContainerId] = findGroupAndContainer(overId);
-    const destinationContainerId = overContainerId || overId;
-
-    if (sourceContainerId === destinationContainerId) {
-        return; // Dropped in the same container
-    }
-
-    // Check capacity before moving
-    const destStation = workstations.find(ws => ws.id === destinationContainerId);
-    if (destStation?.capacity) {
-        const studentCountInDest = (stationAssignments[destinationContainerId] || []).reduce((sum, group) => sum + group.studentIds.length, 0);
-        if (studentCountInDest + activeGroup.studentIds.length > destStation.capacity) {
-            toast({ title: "Stasjonen er full", description: `"${destStation.name}" har ikke plass til denne gruppen.`, variant: "destructive" });
-            return;
-        }
-    }
-
-    setStationAssignments(currentAssignments => {
-        const newAssignments = JSON.parse(JSON.stringify(currentAssignments));
+    // --- Logic for dragging GROUPS between stations ---
+    if (activeType === 'group' && viewMode === 'stations') {
+        const activeId = active.id.toString();
+        const overId = over.id.toString();
+        const [activeGroup, sourceContainerId] = findGroupAndContainer(activeId);
         
-        // Remove from source
-        let groupToMove: GroupWithId | null = null;
-        if (sourceContainerId === 'unassigned') {
-            const index = unassignedGroups.findIndex(g => g.id === activeId);
-            if (index > -1) {
-                groupToMove = unassignedGroups[index];
-                setUnassignedGroups(prev => prev.filter(g => g.id !== activeId));
-            }
-        } else {
-             const index = newAssignments[sourceContainerId]?.findIndex((g: GroupWithId) => g.id === activeId);
-             if (index > -1) {
-                groupToMove = newAssignments[sourceContainerId][index];
-                newAssignments[sourceContainerId].splice(index, 1);
+        if (!activeGroup || !sourceContainerId) return;
+
+        const overIsStation = over.data.current?.type === 'station';
+        const destinationContainerId = overIsStation ? over.id.toString() : 'unassigned';
+        
+        if (sourceContainerId === destinationContainerId) return; // Dropped in the same container
+
+        const destStation = workstations.find(ws => ws.id === destinationContainerId);
+        if (destStation?.capacity) {
+            const studentCountInDest = (stationAssignments[destinationContainerId] || []).reduce((sum, group) => sum + group.studentIds.length, 0);
+            if (studentCountInDest + activeGroup.studentIds.length > destStation.capacity) {
+                toast({ title: "Stasjonen er full", description: `"${destStation.name}" har ikke plass til denne gruppen.`, variant: "destructive" });
+                return;
             }
         }
 
-        if (!groupToMove) return currentAssignments;
-
-        // Add to destination
-        if (destinationContainerId === 'unassigned') {
-            setUnassignedGroups(prev => [...prev, groupToMove!]);
-        } else if (workstations.some(ws => ws.id === destinationContainerId)) {
-            if (!newAssignments[destinationContainerId]) {
-                newAssignments[destinationContainerId] = [];
-            }
-            newAssignments[destinationContainerId].push(groupToMove);
-        } else {
-            // Something went wrong, put it back
+        setStationAssignments(currentAssignments => {
+            const newAssignments = JSON.parse(JSON.stringify(currentAssignments));
+            
+            let groupToMove: GroupWithId | null = null;
             if (sourceContainerId === 'unassigned') {
-                setUnassignedGroups(prev => [...prev, groupToMove!]);
+                const index = unassignedGroups.findIndex(g => g.id === activeId);
+                if (index > -1) {
+                    groupToMove = unassignedGroups[index];
+                    setUnassignedGroups(prev => prev.filter(g => g.id !== activeId));
+                }
             } else {
-                 newAssignments[sourceContainerId].push(groupToMove);
+                 const index = newAssignments[sourceContainerId]?.findIndex((g: GroupWithId) => g.id === activeId);
+                 if (index > -1) {
+                    groupToMove = newAssignments[sourceContainerId][index];
+                    newAssignments[sourceContainerId].splice(index, 1);
+                }
             }
-        }
-        return newAssignments;
-    });
+
+            if (!groupToMove) return currentAssignments;
+
+            if (destinationContainerId === 'unassigned') {
+                setUnassignedGroups(prev => [...prev, groupToMove!]);
+            } else if (workstations.some(ws => ws.id === destinationContainerId)) {
+                if (!newAssignments[destinationContainerId]) newAssignments[destinationContainerId] = [];
+                newAssignments[destinationContainerId].push(groupToMove);
+            }
+            return newAssignments;
+        });
+    }
 };
 
 
   const handleDragStart = (event: any) => {
-      setActiveDragGroup(event.active.data.current.group);
+      setActiveDragItem(event.active.data.current);
   };
 
   const handleSaveGroupSet = async (name: string) => {
@@ -463,6 +524,11 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
       }
   };
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor)
+  );
+
 
   const showAssignmentView = unassignedGroups.length > 0 || Object.values(stationAssignments).some(v => v.length > 0);
   const totalGeneratedGroups = unassignedGroups.length + Object.values(stationAssignments).flat().length;
@@ -474,7 +540,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
         <CardHeader>
           <CardTitle>Gruppegenerator</CardTitle>
           <CardDescription>
-            Lag tilfeldige grupper, last inn lagrede grupper for prosjekter, og fordel dem på arbeidsstasjoner. Fraværende elever for dagen blir automatisk ekskludert.
+            Lag tilfeldige grupper, juster dem manuelt, og fordel dem på arbeidsstasjoner. Fraværende elever for dagen blir automatisk ekskludert.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -554,13 +620,13 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
       </Card>
       
       {showAssignmentView && (
-        <DndContext onDragEnd={handleDragEnd} onDragStart={handleDragStart} collisionDetection={closestCorners}>
+        <DndContext onDragEnd={handleDragEnd} onDragStart={handleDragStart} sensors={sensors} collisionDetection={closestCorners}>
             <Card>
                 <CardHeader className="flex flex-row justify-between items-start">
                     <div>
                         <CardTitle>{activeGroupSet ? `Fordel grupper for: ${activeGroupSet.name}` : "Fordel Grupper"}</CardTitle>
                         <CardDescription>
-                            {viewMode === 'groups' ? 'Oversikt over genererte grupper.' : 'Dra gruppene til stasjonene, eller bruk automatisk fordeling.'}
+                            {viewMode === 'groups' ? 'Dra elever for å bytte gruppe, eller bytt til stasjonsvisning.' : 'Dra gruppene til stasjonene, eller bruk automatisk fordeling.'}
                         </CardDescription>
                     </div>
                     <div className="flex gap-2">
@@ -605,8 +671,13 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                 <CardContent>
                     {viewMode === 'groups' ? (
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {unassignedGroups.map((group) => (
-                                <DraggableGroup key={group.id} group={group} studentMap={studentMap} />
+                           {unassignedGroups.map((group) => (
+                                <DroppableGroupCard key={group.id} group={group} studentMap={studentMap}>
+                                    {group.studentIds.map(studentId => {
+                                        const studentName = studentMap.get(studentId);
+                                        return studentName ? <DraggableStudentItem key={studentId} studentId={studentId} studentName={studentName} /> : null;
+                                    })}
+                                </DroppableGroupCard>
                             ))}
                         </div>
                     ) : (
@@ -632,7 +703,13 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                 </CardContent>
             </Card>
             <DragOverlay>
-                {activeDragGroup ? <DraggableGroup group={activeDragGroup} studentMap={studentMap} /> : null}
+                {activeDragItem ? (
+                    activeDragItem.type === 'group' ? 
+                        <DraggableGroup group={activeDragItem.group} studentMap={studentMap} /> :
+                    activeDragItem.type === 'student' ?
+                        <div className="p-1.5 bg-background border rounded-md text-xs shadow-lg">{activeDragItem.studentName}</div> : 
+                    null
+                ) : null}
             </DragOverlay>
         </DndContext>
       )}
