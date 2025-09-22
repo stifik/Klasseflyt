@@ -166,10 +166,12 @@ const EditGroupDialog: FC<{
 }> = ({ group, students, onSave, trigger }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+    const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
         if (isOpen) {
             setSelectedStudentIds(group?.studentIds || []);
+            setSearchQuery("");
         }
     }, [isOpen, group]);
 
@@ -179,7 +181,12 @@ const EditGroupDialog: FC<{
     };
 
     const studentMap = useMemo(() => new Map(students.map(s => [s.id!, s.name])), [students]);
-    const unselectedStudents = useMemo(() => students.filter(s => !selectedStudentIds.includes(s.id!)), [students, selectedStudentIds]);
+    
+    const filteredUnselectedStudents = useMemo(() => {
+        return students
+            .filter(s => !selectedStudentIds.includes(s.id!))
+            .filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    }, [students, selectedStudentIds, searchQuery]);
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -190,11 +197,18 @@ const EditGroupDialog: FC<{
                 </DialogHeader>
                 <div className="grid grid-cols-2 gap-4">
                     <Card>
-                        <CardHeader><CardTitle className="text-base">Tilgjengelige elever</CardTitle></CardHeader>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base">Tilgjengelige elever</CardTitle>
+                            <Input
+                                placeholder="Søk etter elev..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </CardHeader>
                         <CardContent>
                             <ScrollArea className="h-64">
                                 <ul className="space-y-1">
-                                    {unselectedStudents.map(student => (
+                                    {filteredUnselectedStudents.map(student => (
                                         <li key={student.id} className="flex items-center justify-between p-1 rounded hover:bg-muted">
                                             <span className="text-sm">{student.name}</span>
                                             <Button size="sm" variant="outline" onClick={() => setSelectedStudentIds(prev => [...prev, student.id!])}>Legg til</Button>
@@ -856,3 +870,4 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     </div>
   );
 }
+
