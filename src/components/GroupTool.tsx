@@ -676,11 +676,14 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <RadioGroup value={creationMode} onValueChange={(v) => setCreationMode(v as CreationMode)}>
-                        <div className={cn("p-4 border rounded-lg", creationMode === 'random' && 'ring-2 ring-primary')}>
+                    <RadioGroup value={creationMode} onValueChange={(v) => setCreationMode(v as CreationMode)} className="space-y-2">
+                        <Label htmlFor="r1" className={cn(
+                            "block p-4 border rounded-lg cursor-pointer bg-secondary/50 hover:bg-secondary", 
+                            creationMode === 'random' && 'ring-2 ring-primary bg-secondary'
+                        )}>
                             <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="random" id="r1" />
-                                <Label htmlFor="r1" className="text-base font-semibold">Grupper elever tilfeldig</Label>
+                                <span className="text-base font-semibold">Grupper elever tilfeldig</span>
                             </div>
                             {creationMode === 'random' && (
                                 <div className="mt-4 space-y-3 pl-6">
@@ -704,11 +707,14 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                                     </Button>
                                 </div>
                             )}
-                        </div>
-                         <div className={cn("p-4 border rounded-lg", creationMode === 'manual' && 'ring-2 ring-primary')}>
+                        </Label>
+                         <Label htmlFor="r2" className={cn(
+                            "block p-4 border rounded-lg cursor-pointer bg-secondary/50 hover:bg-secondary", 
+                            creationMode === 'manual' && 'ring-2 ring-primary bg-secondary'
+                         )}>
                              <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="manual" id="r2" />
-                                <Label htmlFor="r2" className="text-base font-semibold">Grupper elever manuelt</Label>
+                                <span className="text-base font-semibold">Grupper elever manuelt</span>
                             </div>
                              {creationMode === 'manual' && (
                                 <div className="mt-4 space-y-3 pl-6">
@@ -720,7 +726,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                                     />
                                 </div>
                             )}
-                        </div>
+                        </Label>
                     </RadioGroup>
                 </CardContent>
             </Card>
