@@ -136,6 +136,12 @@ export type SeatingChartRules = {
   avoidSameNeighbors: boolean;
 }
 
+export type GroupingRules = {
+  keepTogether: string[][];
+  keepApart: AvoidPair[];
+};
+
+
 export type TabKey = 'overview' | 'dailyCheck' | 'observations' | 'reports' | 'classroomTools' | 'settings' | 'assessments';
 
 export type DashboardToolKey = 
@@ -264,5 +270,6 @@ export type AppSettings = {
   dpiaAnalysis?: DPIAAnalysis;
   onboardingCompleted?: boolean;
   seatingChartRules?: SeatingChartRules;
+  groupingRules?: GroupingRules;
   pickerSettings?: PickerSettings;
 };

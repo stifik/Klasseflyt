@@ -4,7 +4,7 @@
 
 import * as React from "react";
 import { useState, useEffect, useRef } from "react";
-import type { Student, Subject, AppSettings, TabKey, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Workstation } from "@/lib/types";
+import type { Student, Subject, AppSettings, TabKey, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Workstation, GroupingRules, AvoidPair } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,7 @@ import * as LucideIcons from "lucide-react";
 import DPIA from "./DPIA";
 import { format } from "date-fns";
 import { Textarea } from "./ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 
 interface SettingsProps {
@@ -685,6 +686,22 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                 </AccordionContent>
             </Card>
         </AccordionItem>
+
+        <AccordionItem value="grouping-rules" className="border-b-0">
+             <Card>
+                <CardHeader>
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <CardTitle className="flex items-center"><Group className="mr-2" />Innstillinger for gruppeverktøy</CardTitle>
+                    </AccordionTrigger>
+                    <CardDescription>Sett opp faste regler for tilfeldig gruppeinndeling.</CardDescription>
+                </CardHeader>
+                <AccordionContent asChild>
+                    <CardContent className="pt-4">
+                        <GroupingRulesManager students={initialStudents} appSettings={localSettings} onAppSettingsChange={handleSettingChange} />
+                    </CardContent>
+                </AccordionContent>
+             </Card>
+        </AccordionItem>
         
         <AccordionItem value="schedule" className="border-b-0">
              <Card>
@@ -1011,3 +1028,125 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
     </Accordion>
   );
 }
+
+const GroupingRulesManager: React.FC<{students: Student[], appSettings: AppSettings, onAppSettingsChange: (settings: AppSettings) => void}> = ({ students, appSettings, onAppSettingsChange }) => {
+    const [keepTogetherSelection, setKeepTogetherSelection] = React.useState<string[]>([]);
+    const [keepApartStudent1, setKeepApartStudent1] = React.useState("");
+    const [keepApartStudent2, setKeepApartStudent2] = React.useState("");
+    
+    const rules = appSettings.groupingRules || { keepTogether: [], keepApart: [] };
+    const studentNameMap = React.useMemo(() => new Map(students.map(s => [s.id!, s.name])), [students]);
+    
+    const handleRuleChange = (newRules: Partial<GroupingRules>) => {
+        onAppSettingsChange({
+            ...appSettings,
+            groupingRules: {
+                ...rules,
+                ...newRules
+            }
+        });
+    }
+
+    const handleAddKeepTogether = () => {
+        if (keepTogetherSelection.length > 1) {
+            const newGroup = keepTogetherSelection.map(id => studentNameMap.get(id)!);
+            handleRuleChange({ keepTogether: [...rules.keepTogether, newGroup] });
+            setKeepTogetherSelection([]);
+        }
+    };
+
+    const handleRemoveKeepTogether = (index: number) => {
+        const newKeepTogether = [...rules.keepTogether];
+        newKeepTogether.splice(index, 1);
+        handleRuleChange({ keepTogether: newKeepTogether });
+    };
+
+    const handleAddKeepApart = () => {
+        if (keepApartStudent1 && keepApartStudent2 && keepApartStudent1 !== keepApartStudent2) {
+            const student1Name = studentNameMap.get(keepApartStudent1)!;
+            const student2Name = studentNameMap.get(keepApartStudent2)!;
+            const newPair: AvoidPair = [student1Name, student2Name].sort() as AvoidPair;
+            if (!rules.keepApart.some(p => p[0] === newPair[0] && p[1] === newPair[1])) {
+                handleRuleChange({ keepApart: [...rules.keepApart, newPair] });
+            }
+            setKeepApartStudent1("");
+            setKeepApartStudent2("");
+        }
+    };
+
+    const handleRemoveKeepApart = (pairToRemove: AvoidPair) => {
+        const newKeepApart = rules.keepApart.filter(p => p[0] !== pairToRemove[0] || p[1] !== pairToRemove[1]);
+        handleRuleChange({ keepApart: newKeepApart });
+    };
+
+    const availableStudentsForTogether = students.filter(s => !rules.keepTogether.flat().includes(s.name));
+
+    return (
+        <div className="space-y-4 text-sm">
+            <div>
+                <Label>Hold elever sammen</Label>
+                <div className="flex gap-2 mt-1">
+                    <Select onValueChange={(id) => setKeepTogetherSelection(prev => [...prev, id])} value="">
+                        <SelectTrigger><SelectValue placeholder="Legg til elev..." /></SelectTrigger>
+                        <SelectContent>
+                            {availableStudentsForTogether
+                                .filter(s => !keepTogetherSelection.includes(s.id!))
+                                .map(s => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Button onClick={handleAddKeepTogether} size="icon"><Plus /></Button>
+                </div>
+                 {keepTogetherSelection.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2 text-xs">
+                        {keepTogetherSelection.map(id => (
+                            <div key={id} className="flex items-center gap-1 bg-muted p-1 rounded">
+                                {studentNameMap.get(id)}
+                                <button onClick={() => setKeepTogetherSelection(prev => prev.filter(sId => sId !== id))}>
+                                    <Trash2 className="w-3 h-3 text-destructive" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                 {rules.keepTogether.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                        {rules.keepTogether.map((group, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 text-xs rounded-md bg-secondary">
+                                <span>{group.join(', ')}</span>
+                                <Button size="icon" variant="ghost" onClick={() => handleRemoveKeepTogether(index)}>
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+            <div>
+                <Label>Hold elever adskilt</Label>
+                <div className="flex gap-2 mt-1">
+                    <Select value={keepApartStudent1} onValueChange={setKeepApartStudent1}>
+                        <SelectTrigger><SelectValue placeholder="Elev 1" /></SelectTrigger>
+                        <SelectContent>{students.filter(s => s.id !== keepApartStudent2).map(s => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Select value={keepApartStudent2} onValueChange={setKeepApartStudent2}>
+                        <SelectTrigger><SelectValue placeholder="Elev 2" /></SelectTrigger>
+                        <SelectContent>{students.filter(s => s.id !== keepApartStudent1).map(s => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Button onClick={handleAddKeepApart} size="icon"><Plus /></Button>
+                </div>
+                 {rules.keepApart.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                        {rules.keepApart.map((pair, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 text-xs rounded-md bg-secondary">
+                                <span>{pair.join(' og ')}</span>
+                                <Button size="icon" variant="ghost" onClick={() => handleRemoveKeepApart(pair)}>
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
