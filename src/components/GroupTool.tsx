@@ -648,7 +648,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
   const totalGeneratedGroups = unassignedGroups.length + Object.values(stationAssignments).flat().length;
   
   const studentsPerGroupText = useMemo(() => {
-    if (presentStudents.length === 0 || groupValue <= 0) return "";
+    if (presentStudents.length === 0 || groupValue <= 0 || isNaN(groupValue)) return "";
     let text = "";
     const numGroups = Math.min(groupValue, presentStudents.length);
     if (numGroups === 0) return "";
@@ -689,16 +689,14 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                                 <div className="mt-4 space-y-3 pl-6">
                                     <div>
                                         <Label htmlFor="group-value">Hvor mange grupper?</Label>
-                                        <Select value={String(groupValue)} onValueChange={(v) => setGroupValue(parseInt(v, 10))}>
-                                            <SelectTrigger id="group-value">
-                                                <SelectValue placeholder="Antall grupper..." />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {Array.from({ length: 9 }, (_, i) => i + 2).map(num => (
-                                                    <SelectItem key={num} value={String(num)}>{num} grupper</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <Input
+                                            id="group-value"
+                                            type="number"
+                                            value={groupValue}
+                                            onChange={(e) => setGroupValue(parseInt(e.target.value, 10))}
+                                            min="1"
+                                            max={presentStudents.length || 1}
+                                        />
                                         {studentsPerGroupText && <p className="text-xs text-muted-foreground mt-1">{studentsPerGroupText}</p>}
                                     </div>
                                     <Button onClick={handleGenerateGroups} className="w-full">
