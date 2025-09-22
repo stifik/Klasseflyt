@@ -256,7 +256,6 @@ const EditGroupDialog: FC<{
 
 export default function GroupTool({ students, appSettings, stationAssignmentLogs = [], groupSets = [], absences = [] }: GroupToolProps) {
   const [creationMode, setCreationMode] = useState<CreationMode>("random");
-  const [groupingStrategy, setGroupingStrategy] = useState<GroupingStrategy>("numberOfGroups");
   const [groupValue, setGroupValue] = useState<number>(4);
   
   const [viewMode, setViewMode] = useState<ViewMode>('groups');
@@ -358,12 +357,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     const shuffledStudents = shuffleArray(presentStudents);
     const groups: Student[][] = [];
     
-    let numGroups = 0;
-    if (groupingStrategy === 'numberOfGroups') {
-        numGroups = Math.min(groupValue, shuffledStudents.length);
-    } else { // studentsPerGroup
-        numGroups = Math.ceil(shuffledStudents.length / groupValue);
-    }
+    const numGroups = Math.min(groupValue, shuffledStudents.length);
     
     for (let i = 0; i < numGroups; i++) {
         groups.push([]);
@@ -653,22 +647,21 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
   const totalGeneratedGroups = unassignedGroups.length + Object.values(stationAssignments).flat().length;
   
   const studentsPerGroupText = useMemo(() => {
-    if (presentStudents.length === 0 || groupValue === 0) return "";
+    if (presentStudents.length === 0 || groupValue <= 0) return "";
     let text = "";
-    if (groupingStrategy === 'numberOfGroups') {
-        const minPerGroup = Math.floor(presentStudents.length / groupValue);
-        const remainder = presentStudents.length % groupValue;
-        if (remainder === 0) {
-            text = `${minPerGroup} elever per gruppe.`;
-        } else {
-            text = `De fleste gruppene vil ha ${minPerGroup} eller ${minPerGroup + 1} elever.`;
-        }
+    const numGroups = Math.min(groupValue, presentStudents.length);
+    if (numGroups === 0) return "";
+    
+    const minPerGroup = Math.floor(presentStudents.length / numGroups);
+    const remainder = presentStudents.length % numGroups;
+    
+    if (remainder === 0) {
+        text = `${minPerGroup} elever per gruppe.`;
     } else {
-        const numGroups = Math.ceil(presentStudents.length / groupValue);
-        text = `Dette vil lage ca. ${numGroups} grupper.`;
+        text = `De fleste gruppene vil ha ${minPerGroup} eller ${minPerGroup + 1} elever.`;
     }
     return text;
-  }, [presentStudents, groupValue, groupingStrategy]);
+  }, [presentStudents, groupValue]);
 
 
   return (
@@ -690,18 +683,8 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                             </div>
                             {creationMode === 'random' && (
                                 <div className="mt-4 space-y-3 pl-6">
-                                    <RadioGroup defaultValue="numberOfGroups" value={groupingStrategy} onValueChange={(v) => setGroupingStrategy(v as GroupingStrategy)}>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="numberOfGroups" id="rg1" />
-                                            <Label htmlFor="rg1">Antall grupper</Label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="studentsPerGroup" id="rg2" />
-                                            <Label htmlFor="rg2">Elever per gruppe</Label>
-                                        </div>
-                                    </RadioGroup>
                                     <div>
-                                        <Label htmlFor="group-value">{groupingStrategy === 'numberOfGroups' ? 'Hvor mange grupper?' : 'Hvor mange elever per gruppe?'}</Label>
+                                        <Label htmlFor="group-value">Hvor mange grupper?</Label>
                                         <Input
                                             id="group-value"
                                             type="number"
