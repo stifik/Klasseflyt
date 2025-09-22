@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect, FC } from "react";
+import { useState, useMemo, useEffect, FC, KeyboardEvent } from "react";
 import type { Student, StationAssignmentLog, Workstation, AppSettings, GroupSet, GroupInSet, Absence } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -187,6 +187,15 @@ const EditGroupDialog: FC<{
             .filter(s => !selectedStudentIds.includes(s.id!))
             .filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
     }, [students, selectedStudentIds, searchQuery]);
+    
+    const handleSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && filteredUnselectedStudents.length === 1) {
+            e.preventDefault();
+            const studentToAdd = filteredUnselectedStudents[0];
+            setSelectedStudentIds(prev => [...prev, studentToAdd.id!]);
+            setSearchQuery("");
+        }
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -203,6 +212,7 @@ const EditGroupDialog: FC<{
                                 placeholder="Søk etter elev..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={handleSearchKeyDown}
                             />
                         </CardHeader>
                         <CardContent>
@@ -870,4 +880,3 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     </div>
   );
 }
-
