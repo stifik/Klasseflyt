@@ -400,7 +400,6 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
         const studentId = active.data.current?.studentId;
         const targetGroupId = over.data.current?.groupId;
         
-        // Find source group
         let sourceGroupId: string | null = null;
         for (const group of unassignedGroups) {
             if (group.studentIds.includes(studentId)) {
@@ -411,13 +410,11 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
         
         if (sourceGroupId && sourceGroupId !== targetGroupId) {
             setUnassignedGroups(prevGroups => {
-                const newGroups = [...prevGroups];
-                const sourceGroup = newGroups.find(g => g.id === sourceGroupId)!;
-                const targetGroup = newGroups.find(g => g.id === targetGroupId)!;
+                const newGroups = JSON.parse(JSON.stringify(prevGroups));
+                const sourceGroup = newGroups.find((g: GroupWithId) => g.id === sourceGroupId)!;
+                const targetGroup = newGroups.find((g: GroupWithId) => g.id === targetGroupId)!;
 
-                // Remove from source
-                sourceGroup.studentIds = sourceGroup.studentIds.filter(id => id !== studentId);
-                // Add to target
+                sourceGroup.studentIds = sourceGroup.studentIds.filter((id: string) => id !== studentId);
                 targetGroup.studentIds.push(studentId);
                 
                 return newGroups;
