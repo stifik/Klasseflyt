@@ -21,6 +21,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { nb } from 'date-fns/locale';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Checkbox } from "./ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 interface GroupToolProps {
   students: Student[];
@@ -685,13 +686,16 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                                 <div className="mt-4 space-y-3 pl-6">
                                     <div>
                                         <Label htmlFor="group-value">Hvor mange grupper?</Label>
-                                        <Input
-                                            id="group-value"
-                                            type="number"
-                                            min="1"
-                                            value={groupValue}
-                                            onChange={(e) => setGroupValue(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                                        />
+                                        <Select value={String(groupValue)} onValueChange={(v) => setGroupValue(parseInt(v, 10))}>
+                                            <SelectTrigger id="group-value">
+                                                <SelectValue placeholder="Antall grupper..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {Array.from({ length: 9 }, (_, i) => i + 2).map(num => (
+                                                    <SelectItem key={num} value={String(num)}>{num} grupper</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                         {studentsPerGroupText && <p className="text-xs text-muted-foreground mt-1">{studentsPerGroupText}</p>}
                                     </div>
                                     <Button onClick={handleGenerateGroups} className="w-full">
