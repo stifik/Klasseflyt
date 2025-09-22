@@ -57,7 +57,7 @@ const ClassroomTools: FC<ClassroomToolsProps> = (props) => {
         <SeatingChart {...props} />
       </TabsContent>
       <TabsContent value="group-tool">
-        <GroupTool students={students} appSettings={appSettings} stationAssignmentLogs={stationAssignmentLogs} groupSets={groupSets} absences={absences} />
+        <GroupTool students={students} appSettings={appSettings} onAppSettingsChange={onAppSettingsChange} stationAssignmentLogs={stationAssignmentLogs} groupSets={groupSets} absences={absences} />
       </TabsContent>
       <TabsContent value="student-picker">
         <StudentPicker students={students} seatingChart={seatingChart} activeLayout={activeLayout} appSettings={appSettings} onAppSettingsChange={onAppSettingsChange} absences={absences} />
