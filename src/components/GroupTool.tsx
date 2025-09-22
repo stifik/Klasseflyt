@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, FC } from "react";
 import type { Student, StationAssignmentLog, Workstation, AppSettings, GroupSet, GroupInSet, Absence } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
-import { Shuffle, Users, CheckSquare, GripVertical, Bot, Info, Library, Save, FolderOpen, Trash2, LayoutGrid, Columns } from "lucide-react";
+import { Shuffle, Users, CheckSquare, GripVertical, Bot, Info, Library, Save, FolderOpen, Trash2, LayoutGrid, Columns, Plus, Edit } from "lucide-react";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
@@ -20,6 +20,7 @@ import { ScrollArea } from "./ui/scroll-area";
 import { formatDistanceToNow } from 'date-fns';
 import { nb } from 'date-fns/locale';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Checkbox } from "./ui/checkbox";
 
 interface GroupToolProps {
   students: Student[];
@@ -71,7 +72,7 @@ const DraggableStudentItem = ({ studentId, studentName }: { studentId: string, s
     );
 };
 
-const DroppableGroupCard = ({ group, studentMap, children }: { group: GroupWithId, studentMap: Map<string, string>, children: React.ReactNode }) => {
+const DroppableGroupCard = ({ group, studentMap, onEdit, onDelete, children }: { group: GroupWithId, studentMap: Map<string, string>, onEdit: () => void, onDelete: () => void, children: React.ReactNode }) => {
     const { setNodeRef, isOver } = useDroppable({
         id: `group-${group.id}`,
         data: { type: 'group', groupId: group.id },
@@ -81,6 +82,10 @@ const DroppableGroupCard = ({ group, studentMap, children }: { group: GroupWithI
         <Card ref={setNodeRef} className={cn("touch-none", isOver && "bg-primary/10")}>
             <CardHeader className="flex flex-row items-center justify-between p-2">
                 <CardTitle className="text-sm font-medium">Gruppe {group.groupNumber}</CardTitle>
+                 <div className="flex">
+                    <Button variant="ghost" size="icon" className="w-6 h-6" onClick={onEdit}><Edit className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" className="w-6 h-6" onClick={onDelete}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                </div>
             </CardHeader>
             <CardContent className="p-2 pt-0 text-xs">
                 <ul className="space-y-1 min-h-[20px]">
@@ -153,16 +158,92 @@ const DroppableStation = ({ station, children, isOver, hint, assignments, studen
     );
 };
 
+const EditGroupDialog: FC<{
+    group?: { id: string, studentIds: string[], groupNumber: number };
+    students: Student[];
+    onSave: (group: { id: string, studentIds: string[], groupNumber: number }) => void;
+    trigger: React.ReactNode;
+}> = ({ group, students, onSave, trigger }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (isOpen) {
+            setSelectedStudentIds(group?.studentIds || []);
+        }
+    }, [isOpen, group]);
+
+    const handleSave = () => {
+        onSave({ id: group?.id || uuidv4(), studentIds: selectedStudentIds, groupNumber: group?.groupNumber || 0 });
+        setIsOpen(false);
+    };
+
+    const studentMap = useMemo(() => new Map(students.map(s => [s.id!, s.name])), [students]);
+    const unselectedStudents = useMemo(() => students.filter(s => !selectedStudentIds.includes(s.id!)), [students, selectedStudentIds]);
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>{trigger}</DialogTrigger>
+            <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle>{group ? `Rediger Gruppe ${group.groupNumber}` : "Ny Gruppe"}</DialogTitle>
+                </DialogHeader>
+                <div className="grid grid-cols-2 gap-4">
+                    <Card>
+                        <CardHeader><CardTitle className="text-base">Tilgjengelige elever</CardTitle></CardHeader>
+                        <CardContent>
+                            <ScrollArea className="h-64">
+                                <ul className="space-y-1">
+                                    {unselectedStudents.map(student => (
+                                        <li key={student.id} className="flex items-center justify-between p-1 rounded hover:bg-muted">
+                                            <span className="text-sm">{student.name}</span>
+                                            <Button size="sm" variant="outline" onClick={() => setSelectedStudentIds(prev => [...prev, student.id!])}>Legg til</Button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader><CardTitle className="text-base">Valgte elever ({selectedStudentIds.length})</CardTitle></CardHeader>
+                        <CardContent>
+                             <ScrollArea className="h-64">
+                                <ul className="space-y-1">
+                                    {selectedStudentIds.map(id => (
+                                        <li key={id} className="flex items-center justify-between p-1 rounded hover:bg-muted">
+                                            <span className="text-sm">{studentMap.get(id)}</span>
+                                            <Button size="sm" variant="ghost" onClick={() => setSelectedStudentIds(prev => prev.filter(sid => sid !== id))}>Fjern</Button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild><Button variant="outline">Avbryt</Button></DialogClose>
+                    <Button onClick={handleSave}>Lagre</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
 
 export default function GroupTool({ students, appSettings, stationAssignmentLogs = [], groupSets = [], absences = [] }: GroupToolProps) {
   const [creationMode, setCreationMode] = useState<CreationMode>("random");
-  const [numberOfGroups, setNumberOfGroups] = useState<number>(4);
+  const [groupingStrategy, setGroupingStrategy] = useState<GroupingStrategy>("numberOfGroups");
+  const [groupValue, setGroupValue] = useState<number>(4);
+  
   const [viewMode, setViewMode] = useState<ViewMode>('groups');
   
   const [activeGroupSet, setActiveGroupSet] = useState<GroupSet | null>(null);
   const [unassignedGroups, setUnassignedGroups] = useState<GroupWithId[]>([]);
   const [stationAssignments, setStationAssignments] = useState<Record<string, GroupWithId[]>>({});
   const [activeDragItem, setActiveDragItem] = useState<any | null>(null);
+  
+  const [editingGroup, setEditingGroup] = useState<GroupWithId | null>(null);
+
 
   const { toast } = useToast();
   const workstations = appSettings.workstations || [];
@@ -245,14 +326,20 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
 
 
   const handleGenerateGroups = () => {
-    if (numberOfGroups <= 0 || presentStudents.length === 0) {
+    if (groupValue <= 0 || presentStudents.length === 0) {
       setUnassignedGroups([]);
       return;
     }
 
     const shuffledStudents = shuffleArray(presentStudents);
     const groups: Student[][] = [];
-    const numGroups = Math.min(numberOfGroups, shuffledStudents.length);
+    
+    let numGroups = 0;
+    if (groupingStrategy === 'numberOfGroups') {
+        numGroups = Math.min(groupValue, shuffledStudents.length);
+    } else { // studentsPerGroup
+        numGroups = Math.ceil(shuffledStudents.length / groupValue);
+    }
     
     for (let i = 0; i < numGroups; i++) {
         groups.push([]);
@@ -518,6 +605,19 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
           toast({ title: "Feil", description: "Kunne ikke slette gruppesett.", variant: "destructive" });
       }
   };
+  
+  const handleManualGroupSave = (group: { id: string, studentIds: string[], groupNumber: number }) => {
+    const existingIndex = unassignedGroups.findIndex(g => g.id === group.id);
+    if (existingIndex > -1) {
+        // Update existing group
+        setUnassignedGroups(prev => prev.map(g => g.id === group.id ? { ...g, studentIds: group.studentIds } : g));
+    } else {
+        // Add new group
+        const newGroupNumber = unassignedGroups.length > 0 ? Math.max(...unassignedGroups.map(g => g.groupNumber)) + 1 : 1;
+        const newGroup: GroupWithId = { ...group, groupNumber: newGroupNumber };
+        setUnassignedGroups(prev => [...prev, newGroup]);
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -529,84 +629,115 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
   const totalGeneratedGroups = unassignedGroups.length + Object.values(stationAssignments).flat().length;
   
   const studentsPerGroupText = useMemo(() => {
-    if (presentStudents.length === 0 || numberOfGroups === 0) return "";
-    const minPerGroup = Math.floor(presentStudents.length / numberOfGroups);
-    const remainder = presentStudents.length % numberOfGroups;
-    if (remainder === 0) {
-        return `${minPerGroup} elever per gruppe.`;
+    if (presentStudents.length === 0 || groupValue === 0) return "";
+    let text = "";
+    if (groupingStrategy === 'numberOfGroups') {
+        const minPerGroup = Math.floor(presentStudents.length / groupValue);
+        const remainder = presentStudents.length % groupValue;
+        if (remainder === 0) {
+            text = `${minPerGroup} elever per gruppe.`;
+        } else {
+            text = `De fleste gruppene vil ha ${minPerGroup} eller ${minPerGroup + 1} elever.`;
+        }
+    } else {
+        const numGroups = Math.ceil(presentStudents.length / groupValue);
+        text = `Dette vil lage ca. ${numGroups} grupper.`;
     }
-    return `De fleste gruppene vil ha ${minPerGroup} eller ${minPerGroup + 1} elever.`;
-  }, [presentStudents, numberOfGroups]);
+    return text;
+  }, [presentStudents, groupValue, groupingStrategy]);
 
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Gruppegenerator</CardTitle>
-          <CardDescription>
-            Lag tilfeldige grupper, juster dem manuelt, og fordel dem på arbeidsstasjoner. Fraværende elever for dagen blir automatisk ekskludert.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <RadioGroup value={creationMode} onValueChange={(v) => setCreationMode(v as CreationMode)}>
-                    <div className={cn("p-4 border rounded-lg", creationMode === 'random' && 'ring-2 ring-primary')}>
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="random" id="r1" />
-                            <Label htmlFor="r1" className="text-base font-semibold">Grupper elever tilfeldig</Label>
-                        </div>
-                        {creationMode === 'random' && (
-                            <div className="mt-4 space-y-3 pl-6">
-                                <div>
-                                    <Label htmlFor="group-value">Antall grupper</Label>
-                                    <Input
-                                        id="group-value"
-                                        type="number"
-                                        min="1"
-                                        value={numberOfGroups}
-                                        onChange={(e) => setNumberOfGroups(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                                    />
-                                    {studentsPerGroupText && <p className="text-xs text-muted-foreground mt-1">{studentsPerGroupText}</p>}
-                                </div>
-                                <Button onClick={handleGenerateGroups} className="w-full">
-                                    <Shuffle className="mr-2" />
-                                    Generer Grupper
-                                </Button>
+       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Gruppegenerator</CardTitle>
+                  <CardDescription>
+                    Lag tilfeldige grupper, juster dem manuelt, og fordel dem på arbeidsstasjoner. Fraværende elever for dagen blir automatisk ekskludert.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <RadioGroup value={creationMode} onValueChange={(v) => setCreationMode(v as CreationMode)}>
+                        <div className={cn("p-4 border rounded-lg", creationMode === 'random' && 'ring-2 ring-primary')}>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="random" id="r1" />
+                                <Label htmlFor="r1" className="text-base font-semibold">Grupper elever tilfeldig</Label>
                             </div>
-                        )}
-                    </div>
-                     <div className={cn("p-4 border rounded-lg", creationMode === 'manual' && 'ring-2 ring-primary')}>
-                         <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="manual" id="r2" />
-                            <Label htmlFor="r2" className="text-base font-semibold">Grupper elever manuelt</Label>
-                        </div>
-                        {creationMode === 'manual' && (
-                            <div className="mt-4 space-y-3 pl-6">
-                                <p className="text-sm text-muted-foreground">Last inn et lagret gruppesett eller lag et nytt.</p>
-                                <ScrollArea className="h-40">
-                                    <div className="space-y-2 pr-2">
-                                        {groupSets.map(gs => (
-                                            <div key={gs.id} className="flex justify-between items-center p-2 rounded-md bg-secondary">
-                                                <div>
-                                                    <p className="font-medium text-sm">{gs.name}</p>
-                                                </div>
-                                                <div className="flex gap-1">
-                                                    <Button size="sm" variant="outline" onClick={() => handleLoadGroupSet(gs)}>
-                                                        <FolderOpen className="mr-2" /> Last inn
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        ))}
+                            {creationMode === 'random' && (
+                                <div className="mt-4 space-y-3 pl-6">
+                                    <RadioGroup defaultValue="numberOfGroups" value={groupingStrategy} onValueChange={(v) => setGroupingStrategy(v as GroupingStrategy)}>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="numberOfGroups" id="rg1" />
+                                            <Label htmlFor="rg1">Antall grupper</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="studentsPerGroup" id="rg2" />
+                                            <Label htmlFor="rg2">Elever per gruppe</Label>
+                                        </div>
+                                    </RadioGroup>
+                                    <div>
+                                        <Label htmlFor="group-value">{groupingStrategy === 'numberOfGroups' ? 'Hvor mange grupper?' : 'Hvor mange elever per gruppe?'}</Label>
+                                        <Input
+                                            id="group-value"
+                                            type="number"
+                                            min="1"
+                                            value={groupValue}
+                                            onChange={(e) => setGroupValue(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                        />
+                                        {studentsPerGroupText && <p className="text-xs text-muted-foreground mt-1">{studentsPerGroupText}</p>}
                                     </div>
-                                </ScrollArea>
+                                    <Button onClick={handleGenerateGroups} className="w-full">
+                                        <Shuffle className="mr-2" />
+                                        Generer Nye Grupper
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                         <div className={cn("p-4 border rounded-lg", creationMode === 'manual' && 'ring-2 ring-primary')}>
+                             <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="manual" id="r2" />
+                                <Label htmlFor="r2" className="text-base font-semibold">Grupper elever manuelt</Label>
                             </div>
-                        )}
-                    </div>
-                </RadioGroup>
-            </div>
-        </CardContent>
-      </Card>
+                             {creationMode === 'manual' && (
+                                <div className="mt-4 space-y-3 pl-6">
+                                    <p className="text-sm text-muted-foreground">Lag grupper ved å velge elever selv.</p>
+                                    <EditGroupDialog
+                                        students={unassignedGroups.length > 0 ? presentStudents.filter(s => !unassignedGroups.flatMap(g => g.studentIds).includes(s.id!)) : presentStudents}
+                                        onSave={handleManualGroupSave}
+                                        trigger={<Button className="w-full"><Plus className="mr-2" /> Lag ny gruppe</Button>}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </RadioGroup>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Lagrede Gruppesett</CardTitle>
+                    <CardDescription>Last inn faste grupper for prosjekter eller stasjonsarbeid.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ScrollArea className="h-64">
+                        <div className="space-y-2 pr-2">
+                            {groupSets.map(gs => (
+                                <div key={gs.id} className="flex justify-between items-center p-2 rounded-md bg-secondary">
+                                    <div>
+                                        <p className="font-medium text-sm">{gs.name}</p>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        <Button size="sm" variant="outline" onClick={() => handleLoadGroupSet(gs)}>
+                                            <FolderOpen className="mr-2" /> Last inn
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                </CardContent>
+            </Card>
+        </div>
       
       {showAssignmentView && (
         <DndContext onDragEnd={handleDragEnd} onDragStart={handleDragStart} sensors={sensors} collisionDetection={closestCorners}>
@@ -661,13 +792,30 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                     {viewMode === 'groups' ? (
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                            {unassignedGroups.map((group) => (
-                                <DroppableGroupCard key={group.id} group={group} studentMap={studentMap}>
+                                <DroppableGroupCard
+                                    key={group.id}
+                                    group={group}
+                                    studentMap={studentMap}
+                                    onEdit={() => setEditingGroup(group)}
+                                    onDelete={() => setUnassignedGroups(prev => prev.filter(g => g.id !== group.id))}
+                                >
                                     {group.studentIds.map(studentId => {
                                         const studentName = studentMap.get(studentId);
                                         return studentName ? <DraggableStudentItem key={studentId} studentId={studentId} studentName={studentName} /> : null;
                                     })}
                                 </DroppableGroupCard>
                             ))}
+                             {editingGroup && (
+                                <EditGroupDialog
+                                    group={editingGroup}
+                                    students={presentStudents.filter(s => 
+                                        !unassignedGroups.flatMap(g => g.studentIds).includes(s.id!) || 
+                                        editingGroup.studentIds.includes(s.id!)
+                                    )}
+                                    onSave={handleManualGroupSave}
+                                    trigger={<div/>}
+                                />
+                            )}
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -708,4 +856,3 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
     </div>
   );
 }
-
