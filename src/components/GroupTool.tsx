@@ -23,6 +23,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Checkbox } from "./ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
+import { Settings as SettingsComponent } from "@/components/Settings";
 
 interface GroupToolProps {
   students: Student[];
@@ -30,6 +31,7 @@ interface GroupToolProps {
   stationAssignmentLogs?: StationAssignmentLog[];
   groupSets?: GroupSet[];
   absences?: Absence[];
+  onAppSettingsChange: (settings: AppSettings) => void;
 }
 
 type CreationMode = "manual" | "random";
@@ -256,7 +258,7 @@ const EditGroupDialog: FC<{
 };
 
 
-export default function GroupTool({ students, appSettings, stationAssignmentLogs = [], groupSets = [], absences = [] }: GroupToolProps) {
+export default function GroupTool({ students, appSettings, stationAssignmentLogs = [], groupSets = [], absences = [], onAppSettingsChange }: GroupToolProps) {
   const [creationMode, setCreationMode] = useState<CreationMode>("random");
   const [groupValue, setGroupValue] = useState<number>(4);
   
@@ -403,10 +405,10 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
             .sort((a, b) => a.group.length - b.group.length);
 
         for (const { group, index } of sortedGroups) {
-             const studentIdsInGroup = group.map(s => s.id!);
+             const studentNamesInGroup = group.map(s => s.name);
              const studentName = student.name;
              const isConflict = keepApart.some(pair => 
-                (pair.includes(studentName) && (studentIdsInGroup.some(id => studentMap.get(id) === pair.find(n => n !== studentName))))
+                (pair.includes(studentName) && (studentNamesInGroup.some(nameInGroup => pair.includes(nameInGroup))))
              );
 
             if (!isConflict) {
@@ -768,7 +770,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                                                 </div>
                                             </AccordionTrigger>
                                             <AccordionContent className="pt-2">
-                                                 <GroupingRulesManager students={students} appSettings={appSettings} />
+                                                 <GroupingRulesManager students={students} appSettings={appSettings} onAppSettingsChange={onAppSettingsChange} />
                                             </AccordionContent>
                                         </AccordionItem>
                                     </Accordion>
@@ -941,7 +943,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
   );
 }
 
-const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings}> = ({ students, appSettings }) => {
+const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings, onAppSettingsChange: (settings: AppSettings) => void}> = ({ students, appSettings, onAppSettingsChange }) => {
     const [keepTogetherSelection, setKeepTogetherSelection] = useState<string[]>([]);
     const [keepApartStudent1, setKeepApartStudent1] = useState("");
     const [keepApartStudent2, setKeepApartStudent2] = useState("");
@@ -950,9 +952,13 @@ const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings}> 
     const studentNameMap = useMemo(() => new Map(students.map(s => [s.id!, s.name])), [students]);
     
     const handleRuleChange = (newRules: Partial<GroupingRules>) => {
-        // This component doesn't have onAppSettingsChange, so we'll have to rely on parent state management
-        // In a real app, this would be passed down or handled via context
-        console.log("Rule change requested:", newRules);
+        onAppSettingsChange({
+            ...appSettings,
+            groupingRules: {
+                ...rules,
+                ...newRules
+            }
+        });
     }
 
     const handleAddKeepTogether = () => {
