@@ -17,8 +17,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { ScrollArea } from "./ui/scroll-area";
-import { formatDistanceToNow } from 'date-fns';
-import { nb } from 'date-fns/locale';
+import { formatDistanceToNow } from 'fns';
+import { nb } from 'fns/locale';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Checkbox } from "./ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
@@ -688,7 +688,7 @@ export default function GroupTool({ students, appSettings, stationAssignmentLogs
                             {creationMode === 'random' && (
                                 <div className="mt-4 space-y-3 pl-6">
                                     <div>
-                                        <Label htmlFor="group-value">Hvor mange grupper?</Label>
+                                        <Label htmlFor="group-value" className="mb-1 block">Hvor mange grupper?</Label>
                                         <Input
                                             id="group-value"
                                             type="number"
