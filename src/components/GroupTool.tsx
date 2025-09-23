@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect, FC, KeyboardEvent } from "react";
+import { useState, useMemo, useEffect, FC, KeyboardEvent, useRef } from "react";
 import type { Student, StationAssignmentLog, Workstation, AppSettings, GroupSet, GroupInSet, Absence, GroupingRules, AvoidPair } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -1003,66 +1003,80 @@ const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings, o
 
     const availableStudentsForTogether = students.filter(s => !rules.keepTogether.flat().includes(s.name));
 
-    const [openCombobox, setOpenCombobox] = useState(false);
+    const [open, setOpen] = useState(false);
+    const comboboxRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (comboboxRef.current && !comboboxRef.current.contains(event.target as Node)) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     return (
         <div className="space-y-4 text-sm">
             <div>
                 <Label>Hold elever sammen</Label>
                 <div className="p-2 border rounded-md mt-1 space-y-2">
-                    <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={openCombobox}
-                                className="w-full justify-between font-normal"
-                            >
-                                Legg til elev i ny gruppe...
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput placeholder="Søk etter elev..." />
-                                <CommandList>
-                                    <CommandEmpty>Ingen elever funnet.</CommandEmpty>
-                                    <CommandGroup>
-                                        {availableStudentsForTogether
-                                            .filter(s => !keepTogetherSelection.includes(s.id!))
-                                            .map(s => (
-                                                <CommandItem
-                                                    key={s.id}
-                                                    value={s.name}
-                                                    onSelect={() => {
-                                                        setKeepTogetherSelection(prev => [...prev, s.id!]);
-                                                        setOpenCombobox(false);
-                                                    }}
-                                                >
-                                                    {s.name}
-                                                </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
+                    <div ref={comboboxRef} className="relative">
+                        <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={open}
+                            className="w-full justify-between font-normal"
+                            onClick={() => setOpen(!open)}
+                        >
+                            Legg til elev i ny gruppe...
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                        {open && (
+                             <div className="absolute z-10 w-[--radix-popover-trigger-width] mt-1">
+                                <Command className="rounded-lg border shadow-md">
+                                    <CommandInput placeholder="Søk etter elev..." />
+                                    <CommandList>
+                                        <CommandEmpty>Ingen elever funnet.</CommandEmpty>
+                                        <CommandGroup>
+                                            {availableStudentsForTogether
+                                                .filter(s => !keepTogetherSelection.includes(s.id!))
+                                                .map(s => (
+                                                    <CommandItem
+                                                        key={s.id}
+                                                        value={s.name}
+                                                        onSelect={() => {
+                                                            setKeepTogetherSelection(prev => [...prev, s.id!]);
+                                                            setOpen(false);
+                                                        }}
+                                                    >
+                                                        {s.name}
+                                                    </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </div>
+                        )}
+                    </div>
                     
                      {keepTogetherSelection.length > 0 && (
-                        <div className="flex flex-wrap gap-1 text-xs">
-                            {keepTogetherSelection.map(id => (
-                                <div key={id} className="flex items-center gap-1 bg-muted p-1 rounded">
-                                    {studentMap.get(id)}
-                                    <button onClick={() => setKeepTogetherSelection(prev => prev.filter(sId => sId !== id))}>
-                                        <Trash2 className="w-3 h-3 text-destructive" />
-                                    </button>
-                                </div>
-                            ))}
+                        <div className="p-2 border rounded-md">
+                            <div className="flex flex-wrap gap-1 text-xs mb-2">
+                                {keepTogetherSelection.map(id => (
+                                    <div key={id} className="flex items-center gap-1 bg-muted p-1 rounded">
+                                        {studentMap.get(id)}
+                                        <button onClick={() => setKeepTogetherSelection(prev => prev.filter(sId => sId !== id))}>
+                                            <Trash2 className="w-3 h-3 text-destructive" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                            <Button onClick={handleAddKeepTogether} size="sm" className="w-full" disabled={keepTogetherSelection.length < 2}>
+                                <Plus className="mr-2" /> Lag gruppe
+                            </Button>
                         </div>
                     )}
-                    <Button onClick={handleAddKeepTogether} size="sm" className="w-full" disabled={keepTogetherSelection.length < 2}>
-                        <Plus className="mr-2" /> Lag gruppe
-                    </Button>
                 </div>
 
                  {rules.keepTogether.length > 0 && (
