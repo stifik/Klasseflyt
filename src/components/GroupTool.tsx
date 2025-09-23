@@ -189,9 +189,25 @@ const EditGroupDialog: FC<{
 
     const studentMap = useMemo(() => new Map(students.map(s => [s.id!, s.name])), [students]);
     
+    const availableStudents = useMemo(() => {
+        return students.filter(s => !selectedStudentIds.includes(s.id!));
+    }, [students, selectedStudentIds]);
+
     const filteredStudents = useMemo(() => {
-        return students.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
-    }, [students, search]);
+        if (!search) return availableStudents;
+        return availableStudents.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
+    }, [availableStudents, search]);
+    
+    const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (filteredStudents.length > 0) {
+                const topStudent = filteredStudents[0];
+                setSelectedStudentIds(prev => [...prev, topStudent.id!]);
+                setSearch("");
+            }
+        }
+    };
     
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -203,17 +219,19 @@ const EditGroupDialog: FC<{
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label>Tilgjengelige elever</Label>
-                        <Input placeholder="Søk..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                        <Input 
+                            placeholder="Søk..." 
+                            value={search} 
+                            onChange={(e) => setSearch(e.target.value)}
+                            onKeyDown={handleSearchKeyDown}
+                        />
                         <ScrollArea className="h-64 border rounded-md p-2">
-                            {filteredStudents.map(s => {
-                                if (selectedStudentIds.includes(s.id!)) return null;
-                                return (
-                                    <div key={s.id} className="flex items-center justify-between p-1">
-                                        <span className="text-sm">{s.name}</span>
-                                        <Button size="sm" variant="outline" onClick={() => setSelectedStudentIds(prev => [...prev, s.id!])}>Legg til</Button>
-                                    </div>
-                                )
-                            })}
+                            {filteredStudents.map(s => (
+                                <div key={s.id} className="flex items-center justify-between p-1">
+                                    <span className="text-sm">{s.name}</span>
+                                    <Button size="sm" variant="outline" onClick={() => setSelectedStudentIds(prev => [...prev, s.id!])}>Legg til</Button>
+                                </div>
+                            ))}
                         </ScrollArea>
                     </div>
                      <div className="space-y-2">
