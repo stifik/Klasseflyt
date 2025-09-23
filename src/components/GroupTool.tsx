@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
-import { Shuffle, Users, CheckSquare, GripVertical, Bot, Info, Library, Save, FolderOpen, Trash2, LayoutGrid, Columns, Plus, Edit, Settings, ChevronsUpDown, Check } from "lucide-react";
+import { Shuffle, Users, CheckSquare, GripVertical, Bot, Info, Library, Save, FolderOpen, Trash2, LayoutGrid, Columns, Plus, Edit, Settings, ChevronsUpDown, Check, UserPlus } from "lucide-react";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
@@ -173,13 +173,12 @@ const EditGroupDialog: FC<{
     trigger: React.ReactNode;
 }> = ({ group, students, onSave, trigger }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [isComboboxOpen, setIsComboboxOpen] = useState(false);
     const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
-    const [searchQuery, setSearchQuery] = useState("");
-
+    
     useEffect(() => {
         if (isOpen) {
             setSelectedStudentIds(group?.studentIds || []);
-            setSearchQuery("");
         }
     }, [isOpen, group]);
 
@@ -190,52 +189,55 @@ const EditGroupDialog: FC<{
 
     const studentMap = useMemo(() => new Map(students.map(s => [s.id!, s.name])), [students]);
     
-    const filteredUnselectedStudents = useMemo(() => {
-        return students
-            .filter(s => !selectedStudentIds.includes(s.id!))
-            .filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
-    }, [students, selectedStudentIds, searchQuery]);
+    const unselectedStudents = useMemo(() => {
+        return students.filter(s => !selectedStudentIds.includes(s.id!));
+    }, [students, selectedStudentIds]);
     
-    const handleSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && filteredUnselectedStudents.length === 1) {
-            e.preventDefault();
-            const studentToAdd = filteredUnselectedStudents[0];
-            setSelectedStudentIds(prev => [...prev, studentToAdd.id!]);
-            setSearchQuery("");
-        }
-    };
-
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
-            <DialogContent className="max-w-3xl">
+            <DialogContent className="max-w-md">
                 <DialogHeader>
                     <DialogTitle>{group ? `Rediger Gruppe ${group.groupNumber}` : "Ny Gruppe"}</DialogTitle>
                 </DialogHeader>
-                <div className="grid grid-cols-2 gap-4">
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-base">Tilgjengelige elever</CardTitle>
-                            <Input
-                                placeholder="Søk etter elev..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                onKeyDown={handleSearchKeyDown}
-                            />
-                        </CardHeader>
-                        <CardContent>
-                            <ScrollArea className="h-64">
-                                <ul className="space-y-1">
-                                    {filteredUnselectedStudents.map(student => (
-                                        <li key={student.id} className="flex items-center justify-between p-1 rounded hover:bg-muted">
-                                            <span className="text-sm">{student.name}</span>
-                                            <Button size="sm" variant="outline" onClick={() => setSelectedStudentIds(prev => [...prev, student.id!])}>Legg til</Button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </ScrollArea>
-                        </CardContent>
-                    </Card>
+                <div className="space-y-4">
+                    <Popover open={isComboboxOpen} onOpenChange={setIsComboboxOpen}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={isComboboxOpen}
+                                className="w-full justify-between font-normal"
+                            >
+                                <UserPlus className="mr-2" />
+                                Legg til elev...
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command>
+                                <CommandInput placeholder="Søk etter elev..." />
+                                <CommandList>
+                                    <CommandEmpty>Ingen elever funnet.</CommandEmpty>
+                                    <CommandGroup>
+                                        {unselectedStudents.map(s => (
+                                            <CommandItem
+                                                key={s.id}
+                                                value={s.name}
+                                                onSelect={() => {
+                                                    setSelectedStudentIds(prev => [...prev, s.id!]);
+                                                    setIsComboboxOpen(false);
+                                                }}
+                                            >
+                                                {s.name}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+
                     <Card>
                         <CardHeader><CardTitle className="text-base">Valgte elever ({selectedStudentIds.length})</CardTitle></CardHeader>
                         <CardContent>
@@ -244,7 +246,9 @@ const EditGroupDialog: FC<{
                                     {selectedStudentIds.map(id => (
                                         <li key={id} className="flex items-center justify-between p-1 rounded hover:bg-muted">
                                             <span className="text-sm">{studentMap.get(id)}</span>
-                                            <Button size="sm" variant="ghost" onClick={() => setSelectedStudentIds(prev => prev.filter(sid => sid !== id))}>Fjern</Button>
+                                            <Button size="icon" variant="ghost" className="w-6 h-6" onClick={() => setSelectedStudentIds(prev => prev.filter(sid => sid !== id))}>
+                                                <Trash2 className="w-4 h-4 text-destructive"/>
+                                            </Button>
                                         </li>
                                     ))}
                                 </ul>
@@ -959,7 +963,7 @@ const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings, o
         onAppSettingsChange({
             ...appSettings,
             groupingRules: {
-                ...rules,
+                ...(rules || { keepTogether: [], keepApart: [] }),
                 ...newRules
             }
         });
