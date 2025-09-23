@@ -49,7 +49,7 @@ import DPIA from "./DPIA";
 import { format } from "date-fns";
 import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
+import { ScrollArea } from "./ui/scroll-area";
 
 
 interface SettingsProps {
@@ -1034,6 +1034,7 @@ const GroupingRulesManager: React.FC<{students: Student[], appSettings: AppSetti
     const [keepTogetherSelection, setKeepTogetherSelection] = React.useState<string[]>([]);
     const [keepApartStudent1, setKeepApartStudent1] = React.useState("");
     const [keepApartStudent2, setKeepApartStudent2] = React.useState("");
+    const [search, setSearch] = React.useState("");
     
     const rules = appSettings.groupingRules || { keepTogether: [], keepApart: [] };
     const studentNameMap = React.useMemo(() => new Map(students.map(s => [s.id!, s.name])), [students]);
@@ -1080,81 +1081,49 @@ const GroupingRulesManager: React.FC<{students: Student[], appSettings: AppSetti
         handleRuleChange({ keepApart: newKeepApart });
     };
 
-    const availableStudentsForTogether = students.filter(s => !rules.keepTogether.flat().includes(s.name));
-    
-    const [open, setOpen] = React.useState(false);
-    const comboboxRef = React.useRef<HTMLDivElement>(null);
-
-     React.useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (comboboxRef.current && !comboboxRef.current.contains(event.target as Node)) {
-                setOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    const availableStudentsForTogether = students.filter(s => !rules.keepTogether.flat().includes(s.name) && !keepTogetherSelection.includes(s.id!));
+    const filteredAvailableStudents = availableStudentsForTogether.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
 
     return (
         <div className="space-y-4 text-sm">
             <div>
                 <Label>Hold elever sammen</Label>
                 <div className="p-2 border rounded-md mt-1 space-y-2">
-                     <div ref={comboboxRef} className="relative">
-                        <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={open}
-                            className="w-full justify-between font-normal"
-                            onClick={() => setOpen(!open)}
-                        >
-                            Legg til elev i ny gruppe...
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                        {open && (
-                             <div className="absolute z-10 w-[--radix-popover-trigger-width] mt-1">
-                                <Command className="rounded-lg border shadow-md">
-                                    <CommandInput placeholder="Søk etter elev..." />
-                                    <CommandList>
-                                        <CommandEmpty>Ingen elever funnet.</CommandEmpty>
-                                        <CommandGroup>
-                                            {availableStudentsForTogether
-                                                .filter(s => !keepTogetherSelection.includes(s.id!))
-                                                .map(s => (
-                                                    <CommandItem
-                                                        key={s.id}
-                                                        value={s.name}
-                                                        onSelect={() => {
-                                                            setKeepTogetherSelection(prev => [...prev, s.id!]);
-                                                            setOpen(false);
-                                                        }}
-                                                    >
-                                                        {s.name}
-                                                    </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </div>
-                        )}
-                    </div>
-                     {keepTogetherSelection.length > 0 && (
-                        <div className="p-2 border rounded-md">
-                            <div className="flex flex-wrap gap-1 text-xs mb-2">
-                                {keepTogetherSelection.map(id => (
-                                    <div key={id} className="flex items-center gap-1 bg-muted p-1 rounded">
-                                        {studentNameMap.get(id)}
-                                        <button onClick={() => setKeepTogetherSelection(prev => prev.filter(sId => sId !== id))}>
-                                            <Trash2 className="w-3 h-3 text-destructive" />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                            <Button onClick={handleAddKeepTogether} size="sm" className="w-full" disabled={keepTogetherSelection.length < 2}>
-                                <Plus className="mr-2" /> Lag gruppe
-                            </Button>
+                     <div className="p-2 border rounded-md">
+                        <div className="flex flex-wrap gap-1 text-xs mb-2 min-h-[20px]">
+                            {keepTogetherSelection.map(id => (
+                                <div key={id} className="flex items-center gap-1 bg-muted p-1 rounded">
+                                    {studentNameMap.get(id)}
+                                    <button onClick={() => setKeepTogetherSelection(prev => prev.filter(sId => sId !== id))}>
+                                        <Trash2 className="w-3 h-3 text-destructive" />
+                                    </button>
+                                </div>
+                            ))}
                         </div>
-                    )}
+                        <Button onClick={handleAddKeepTogether} size="sm" className="w-full" disabled={keepTogetherSelection.length < 2}>
+                            <Plus className="mr-2" /> Lag gruppe
+                        </Button>
+                    </div>
+
+                    <div>
+                        <Input 
+                            placeholder="Søk for å legge til elev..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                        <ScrollArea className="h-32 mt-2">
+                             <div className="space-y-1 pr-2">
+                            {filteredAvailableStudents.map(s => (
+                                <div key={s.id} className="flex items-center justify-between text-xs p-1">
+                                    <span>{s.name}</span>
+                                    <Button size="sm" variant="ghost" onClick={() => setKeepTogetherSelection(prev => [...prev, s.id!])}>
+                                        Legg til
+                                    </Button>
+                                </div>
+                            ))}
+                            </div>
+                        </ScrollArea>
+                    </div>
                 </div>
                  {rules.keepTogether.length > 0 && (
                     <div className="space-y-2 mt-2">

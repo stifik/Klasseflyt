@@ -173,12 +173,13 @@ const EditGroupDialog: FC<{
     trigger: React.ReactNode;
 }> = ({ group, students, onSave, trigger }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [isComboboxOpen, setIsComboboxOpen] = useState(false);
     const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+    const [search, setSearch] = useState("");
     
     useEffect(() => {
         if (isOpen) {
             setSelectedStudentIds(group?.studentIds || []);
+            setSearch("");
         }
     }, [isOpen, group]);
 
@@ -189,9 +190,9 @@ const EditGroupDialog: FC<{
 
     const studentMap = useMemo(() => new Map(students.map(s => [s.id!, s.name])), [students]);
     
-    const unselectedStudents = useMemo(() => {
-        return students.filter(s => !selectedStudentIds.includes(s.id!));
-    }, [students, selectedStudentIds]);
+    const filteredStudents = useMemo(() => {
+        return students.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
+    }, [students, search]);
     
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -200,61 +201,35 @@ const EditGroupDialog: FC<{
                 <DialogHeader>
                     <DialogTitle>{group ? `Rediger Gruppe ${group.groupNumber}` : "Ny Gruppe"}</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4">
-                    <Popover open={isComboboxOpen} onOpenChange={setIsComboboxOpen}>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={isComboboxOpen}
-                                className="w-full justify-between font-normal"
-                            >
-                                <UserPlus className="mr-2" />
-                                Legg til elev...
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput placeholder="Søk etter elev..." />
-                                <CommandList>
-                                    <CommandEmpty>Ingen elever funnet.</CommandEmpty>
-                                    <CommandGroup>
-                                        {unselectedStudents.map(s => (
-                                            <CommandItem
-                                                key={s.id}
-                                                value={s.name}
-                                                onSelect={() => {
-                                                    setSelectedStudentIds(prev => [...prev, s.id!]);
-                                                    setIsComboboxOpen(false);
-                                                }}
-                                            >
-                                                {s.name}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-
-                    <Card>
-                        <CardHeader><CardTitle className="text-base">Valgte elever ({selectedStudentIds.length})</CardTitle></CardHeader>
-                        <CardContent>
-                             <ScrollArea className="h-64">
-                                <ul className="space-y-1">
-                                    {selectedStudentIds.map(id => (
-                                        <li key={id} className="flex items-center justify-between p-1 rounded hover:bg-muted">
-                                            <span className="text-sm">{studentMap.get(id)}</span>
-                                            <Button size="icon" variant="ghost" className="w-6 h-6" onClick={() => setSelectedStudentIds(prev => prev.filter(sid => sid !== id))}>
-                                                <Trash2 className="w-4 h-4 text-destructive"/>
-                                            </Button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </ScrollArea>
-                        </CardContent>
-                    </Card>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label>Tilgjengelige elever</Label>
+                        <Input placeholder="Søk..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                        <ScrollArea className="h-64 border rounded-md p-2">
+                            {filteredStudents.map(s => {
+                                if (selectedStudentIds.includes(s.id!)) return null;
+                                return (
+                                    <div key={s.id} className="flex items-center justify-between p-1">
+                                        <span className="text-sm">{s.name}</span>
+                                        <Button size="sm" variant="outline" onClick={() => setSelectedStudentIds(prev => [...prev, s.id!])}>Legg til</Button>
+                                    </div>
+                                )
+                            })}
+                        </ScrollArea>
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Valgte elever ({selectedStudentIds.length})</Label>
+                         <ScrollArea className="h-[290px] border rounded-md p-2">
+                            {selectedStudentIds.map(id => (
+                                <div key={id} className="flex items-center justify-between p-1">
+                                    <span className="text-sm">{studentMap.get(id)}</span>
+                                    <Button size="icon" variant="ghost" className="w-6 h-6" onClick={() => setSelectedStudentIds(prev => prev.filter(sid => sid !== id))}>
+                                        <Trash2 className="w-4 h-4 text-destructive"/>
+                                    </Button>
+                                </div>
+                            ))}
+                        </ScrollArea>
+                    </div>
                 </div>
                 <DialogFooter>
                     <DialogClose asChild><Button variant="outline">Avbryt</Button></DialogClose>
@@ -955,6 +930,7 @@ const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings, o
     const [keepTogetherSelection, setKeepTogetherSelection] = useState<string[]>([]);
     const [keepApartStudent1, setKeepApartStudent1] = useState("");
     const [keepApartStudent2, setKeepApartStudent2] = useState("");
+    const [search, setSearch] = useState("");
     
     const rules = appSettings.groupingRules || { keepTogether: [], keepApart: [] };
     const studentMap = useMemo(() => new Map(students.map(s => [s.id!, s.name])), [students]);
@@ -1001,82 +977,49 @@ const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings, o
         handleRuleChange({ keepApart: newKeepApart });
     };
 
-    const availableStudentsForTogether = students.filter(s => !rules.keepTogether.flat().includes(s.name));
-
-    const [open, setOpen] = useState(false);
-    const comboboxRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (comboboxRef.current && !comboboxRef.current.contains(event.target as Node)) {
-                setOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    const availableStudentsForTogether = students.filter(s => !rules.keepTogether.flat().includes(s.name) && !keepTogetherSelection.includes(s.id!));
+    const filteredAvailableStudents = availableStudentsForTogether.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
 
     return (
         <div className="space-y-4 text-sm">
             <div>
                 <Label>Hold elever sammen</Label>
                 <div className="p-2 border rounded-md mt-1 space-y-2">
-                    <div ref={comboboxRef} className="relative">
-                        <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={open}
-                            className="w-full justify-between font-normal"
-                            onClick={() => setOpen(!open)}
-                        >
-                            Legg til elev i ny gruppe...
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                        {open && (
-                             <div className="absolute z-10 w-[--radix-popover-trigger-width] mt-1">
-                                <Command className="rounded-lg border shadow-md">
-                                    <CommandInput placeholder="Søk etter elev..." />
-                                    <CommandList>
-                                        <CommandEmpty>Ingen elever funnet.</CommandEmpty>
-                                        <CommandGroup>
-                                            {availableStudentsForTogether
-                                                .filter(s => !keepTogetherSelection.includes(s.id!))
-                                                .map(s => (
-                                                    <CommandItem
-                                                        key={s.id}
-                                                        value={s.name}
-                                                        onSelect={() => {
-                                                            setKeepTogetherSelection(prev => [...prev, s.id!]);
-                                                            setOpen(false);
-                                                        }}
-                                                    >
-                                                        {s.name}
-                                                    </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </div>
-                        )}
-                    </div>
-                    
-                     {keepTogetherSelection.length > 0 && (
-                        <div className="p-2 border rounded-md">
-                            <div className="flex flex-wrap gap-1 text-xs mb-2">
-                                {keepTogetherSelection.map(id => (
-                                    <div key={id} className="flex items-center gap-1 bg-muted p-1 rounded">
-                                        {studentMap.get(id)}
-                                        <button onClick={() => setKeepTogetherSelection(prev => prev.filter(sId => sId !== id))}>
-                                            <Trash2 className="w-3 h-3 text-destructive" />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                            <Button onClick={handleAddKeepTogether} size="sm" className="w-full" disabled={keepTogetherSelection.length < 2}>
-                                <Plus className="mr-2" /> Lag gruppe
-                            </Button>
+                    <div className="p-2 border rounded-md">
+                        <div className="flex flex-wrap gap-1 text-xs mb-2 min-h-[20px]">
+                            {keepTogetherSelection.map(id => (
+                                <div key={id} className="flex items-center gap-1 bg-muted p-1 rounded">
+                                    {studentMap.get(id)}
+                                    <button onClick={() => setKeepTogetherSelection(prev => prev.filter(sId => sId !== id))}>
+                                        <Trash2 className="w-3 h-3 text-destructive" />
+                                    </button>
+                                </div>
+                            ))}
                         </div>
-                    )}
+                        <Button onClick={handleAddKeepTogether} size="sm" className="w-full" disabled={keepTogetherSelection.length < 2}>
+                            <Plus className="mr-2" /> Lag gruppe
+                        </Button>
+                    </div>
+
+                    <div>
+                        <Input 
+                            placeholder="Søk for å legge til elev..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                        <ScrollArea className="h-32 mt-2">
+                            <div className="space-y-1 pr-2">
+                            {filteredAvailableStudents.map(s => (
+                                <div key={s.id} className="flex items-center justify-between text-xs p-1">
+                                    <span>{s.name}</span>
+                                    <Button size="sm" variant="ghost" onClick={() => setKeepTogetherSelection(prev => [...prev, s.id!])}>
+                                        Legg til
+                                    </Button>
+                                </div>
+                            ))}
+                            </div>
+                        </ScrollArea>
+                    </div>
                 </div>
 
                  {rules.keepTogether.length > 0 && (
