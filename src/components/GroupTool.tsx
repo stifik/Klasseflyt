@@ -31,10 +31,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 interface GroupToolProps {
   students: Student[];
   appSettings: AppSettings;
+  onAppSettingsChange: (settings: AppSettings) => void;
   stationAssignmentLogs?: StationAssignmentLog[];
   groupSets?: GroupSet[];
   absences?: Absence[];
-  onAppSettingsChange: (settings: AppSettings) => void;
 }
 
 type CreationMode = "manual" | "random";
@@ -258,7 +258,7 @@ const EditGroupDialog: FC<{
 };
 
 
-export default function GroupTool({ students, appSettings, stationAssignmentLogs = [], groupSets = [], absences = [], onAppSettingsChange }: GroupToolProps) {
+export default function GroupTool({ students, appSettings, onAppSettingsChange, stationAssignmentLogs = [], groupSets = [], absences = [] }: GroupToolProps) {
   const [creationMode, setCreationMode] = useState<CreationMode>("random");
   const [groupValue, setGroupValue] = useState<number>(4);
   
@@ -1013,30 +1013,30 @@ const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings, o
             <div>
                 <Label>Hold elever sammen</Label>
                 <div className="p-2 border rounded-md mt-1 space-y-2">
-                     <div className="p-2 border rounded-md">
-                        <div className="flex flex-wrap gap-1 text-xs mb-2 min-h-[20px]">
-                            {keepTogetherSelection.map(id => (
-                                <div key={id} className="flex items-center gap-1 bg-muted p-1 rounded">
+                     <div className="p-2 border rounded-md space-y-2">
+                        <div className="flex flex-wrap gap-1 text-xs mb-2 min-h-[20px] bg-secondary p-2 rounded-md">
+                            {keepTogetherSelection.length > 0 ? keepTogetherSelection.map(id => (
+                                <div key={id} className="flex items-center gap-1 bg-background p-1 rounded border">
                                     {studentMap.get(id)}
                                     <button onClick={() => setKeepTogetherSelection(prev => prev.filter(sId => sId !== id))}>
                                         <Trash2 className="w-3 h-3 text-destructive" />
                                     </button>
                                 </div>
-                            ))}
+                            )) : <span className="text-muted-foreground">Valgte elever vises her...</span>}
                         </div>
                         <Button onClick={handleAddKeepTogether} size="sm" className="w-full" disabled={keepTogetherSelection.length < 2}>
                             <Plus className="mr-2" /> Lag gruppe
                         </Button>
                     </div>
 
-                    <div>
+                    <div className="space-y-2">
                         <Input 
                             placeholder="Søk for å legge til elev..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             onKeyDown={handleSearchKeyDown}
                         />
-                        <ScrollArea className="h-32 mt-2">
+                        <ScrollArea className="h-32">
                              <div className="space-y-1 pr-2">
                             {filteredAvailableStudents.map(s => (
                                 <div key={s.id} className="flex items-center justify-between text-xs p-1">
