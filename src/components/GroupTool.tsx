@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useMemo, useEffect, FC, KeyboardEvent } from "react";
@@ -999,29 +1000,32 @@ const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings, o
         <div className="space-y-4 text-sm">
             <div>
                 <Label>Hold elever sammen</Label>
-                <div className="flex gap-2 mt-1">
+                <div className="p-2 border rounded-md mt-1 space-y-2">
                     <Select onValueChange={(id) => setKeepTogetherSelection(prev => [...prev, id])} value="">
-                        <SelectTrigger><SelectValue placeholder="Legg til elev..." /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Legg til elev i ny gruppe..." /></SelectTrigger>
                         <SelectContent>
                             {availableStudentsForTogether
                                 .filter(s => !keepTogetherSelection.includes(s.id!))
                                 .map(s => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
-                    <Button onClick={handleAddKeepTogether} size="icon"><Plus /></Button>
+                     {keepTogetherSelection.length > 0 && (
+                        <div className="flex flex-wrap gap-1 text-xs">
+                            {keepTogetherSelection.map(id => (
+                                <div key={id} className="flex items-center gap-1 bg-muted p-1 rounded">
+                                    {studentNameMap.get(id)}
+                                    <button onClick={() => setKeepTogetherSelection(prev => prev.filter(sId => sId !== id))}>
+                                        <Trash2 className="w-3 h-3 text-destructive" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    <Button onClick={handleAddKeepTogether} size="sm" className="w-full" disabled={keepTogetherSelection.length < 2}>
+                        <Plus className="mr-2" /> Lag gruppe
+                    </Button>
                 </div>
-                 {keepTogetherSelection.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2 text-xs">
-                        {keepTogetherSelection.map(id => (
-                            <div key={id} className="flex items-center gap-1 bg-muted p-1 rounded">
-                                {studentNameMap.get(id)}
-                                <button onClick={() => setKeepTogetherSelection(prev => prev.filter(sId => sId !== id))}>
-                                    <Trash2 className="w-3 h-3 text-destructive" />
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
+
                  {rules.keepTogether.length > 0 && (
                     <div className="space-y-2 mt-2">
                         {rules.keepTogether.map((group, index) => (
