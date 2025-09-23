@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { FC, useState, useEffect, Suspense, useMemo } from 'react';
@@ -65,7 +66,6 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
     
     // Data specific to ClassroomTools
     const history = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingChartHistory.orderBy('createdAt').reverse().toArray() : undefined, [tabKey]);
-    const layouts = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingLayouts.toArray() : undefined, [tabKey]);
     const stationAssignmentLogs = useLiveQuery(() => tabKey === 'classroomTools' ? db.stationAssignmentLogs.orderBy('date').reverse().toArray() : undefined, [tabKey]);
     const groupSets = useLiveQuery(() => tabKey === 'classroomTools' ? db.groupSets.orderBy('createdAt').reverse().toArray() : undefined, [tabKey]);
     
@@ -96,7 +96,7 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
         observations: [hourlyChecks, remarks, absences], // Seating chart can be null initially
         assessments: [tests, testResults, learningGoals, goalAchievements],
         reports: [homework, submissions, dailyChecks, remarks, hourlyChecks, tests, testResults, learningGoals, goalAchievements],
-        classroomTools: [layouts, stationAssignmentLogs, groupSets, absences], // History and activeLayout can be null/empty initially
+        classroomTools: [stationAssignmentLogs, groupSets, absences], // History and activeLayout can be null/empty initially
         settings: [],
     };
     
@@ -117,7 +117,6 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
         learningGoals,
         goalAchievements,
         history: history || [],
-        layouts: layouts || [],
         activeLayout,
         stationAssignmentLogs,
         groupSets,
@@ -189,14 +188,6 @@ const AppViewContent: FC<AppViewProps> = ({
     }
   };
 
-  const handleLayoutsChange = async (newLayouts: SeatingLayout[]) => {
-      const currentIds = new Set(newLayouts.map(l => l.id));
-      const dbLayouts = await db.seatingLayouts.toArray();
-      const toDelete = dbLayouts.filter(dbl => !currentIds.has(dbl.id)).map(l => l.id as string);
-      
-      if(toDelete.length > 0) await db.seatingLayouts.bulkDelete(toDelete);
-      if(newLayouts.length > 0) await db.seatingLayouts.bulkPut(newLayouts);
-  }
 
   const baseComponentProps: Record<string, any> = {
     overview: { students, subjects, onUpdate: () => {} },
@@ -204,7 +195,7 @@ const AppViewContent: FC<AppViewProps> = ({
     observations: { students, onUpdate: () => {}, settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
     assessments: { students, subjects, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
     reports: { students, subjects, settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
-    classroomTools: { students, onSeatingChartChange: handleSeatingChartChange, appSettings: settings, onAppSettingsChange: onSettingsChange, onLayoutsChange: handleLayoutsChange, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
+    classroomTools: { students, onSeatingChartChange: handleSeatingChartChange, appSettings: settings, onAppSettingsChange: onSettingsChange, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
     settings: { initialStudents: students, initialSubjects: subjects, settings, onSettingsChange },
     // Pass global settings to all tabs
     appSettings: settings,

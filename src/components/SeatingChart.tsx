@@ -18,6 +18,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Switch } from "./ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { db } from "@/lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
 
 
 type SeatingChartData = (string[] | null)[][];
@@ -26,13 +27,11 @@ type SeatingChartData = (string[] | null)[][];
 interface SeatingChartProps {
   students: Student[];
   seatingChart: SeatingChartData | null;
-  activeLayout: SeatingLayout | null | undefined;
   onSeatingChartChange: (chart: SeatingChartData | null, source: 'generation' | 'drag' | 'load') => void;
   history: SeatingChartRecord[];
   appSettings: AppSettings;
   onAppSettingsChange: (newSettings: AppSettings) => void;
-  layouts: SeatingLayout[];
-  onLayoutsChange: (layouts: SeatingLayout[]) => void;
+  // layouts and onLayoutsChange are no longer needed as props
 }
 
 
@@ -80,7 +79,9 @@ const DroppableDesk = ({ id, children, isOver, isLocked, onLockToggle }: { id: s
                     className="absolute top-0 left-0 w-6 h-6 opacity-0 group-hover/desk:opacity-100"
                     onClick={onLockToggle}
                 >
-                    {isLocked ? <Pin className="w-4 h-4 text-primary -rotate-45" /> : <PinOff className="w-4 h-4 text-muted-foreground" />}
+                    {isLocked 
+                      ? <Pin className="w-4 h-4 text-primary -rotate-45" /> 
+                      : <PinOff className="w-4 h-4 text-muted-foreground" />}
                 </Button>
             )}
         </div>
@@ -236,7 +237,7 @@ const CreateLayoutDialog = ({ onLayoutCreate }: { onLayoutCreate: (layout: Seati
 
 
 // Main Component
-export default function SeatingChart({ students, seatingChart, activeLayout, onSeatingChartChange, history, appSettings, onAppSettingsChange, layouts, onLayoutsChange }: SeatingChartProps) {
+export default function SeatingChart({ students, seatingChart, onSeatingChartChange, history, appSettings, onAppSettingsChange }: SeatingChartProps) {
   const [localSeatingChart, setLocalSeatingChart] = useState<SeatingChartData | null>(seatingChart);
   const [unplacedStudents, setUnplacedStudents] = useState<string[]>([]);
   
@@ -251,6 +252,13 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
   const [selectedPlacement, setSelectedPlacement] = useState<'front' | 'back'>('front');
 
   const { toast } = useToast();
+
+  const layouts = useLiveQuery(() => db.seatingLayouts.toArray(), []);
+  
+  const activeLayout = useMemo(() => {
+    if (!layouts || !appSettings.selectedSeatingLayoutId) return null;
+    return layouts.find(l => l.id === appSettings.selectedSeatingLayoutId);
+  }, [layouts, appSettings.selectedSeatingLayoutId]);
   
   const avoidPairs = appSettings.seatingChartRules?.avoidPairs || [];
   const placementRules = appSettings.seatingChartRules?.placementRules || [];
@@ -303,7 +311,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     handleRuleChange({ placementRules: newPlacementRules });
   };
   
-  const handleLockToggle = (rowIndex: number, colIndex: number) => {
+  const handleLockToggle = async (rowIndex: number, colIndex: number) => {
     if (!activeLayout || !localSeatingChart) return;
     const deskId = `${rowIndex}-${colIndex}`;
     const studentName = localSeatingChart[rowIndex]?.[colIndex]?.[0];
@@ -322,13 +330,13 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
         newLockedDesks = [...otherLocksRemoved, { deskId, studentName }];
     }
     
-    const updatedLayout = { ...activeLayout, lockedDesks: newLockedDesks };
-    
-    // Create a new layouts array with the updated layout
-    const newLayouts = layouts.map(l => l.id === updatedLayout.id ? updatedLayout : l);
-    
-    // Call the callback to update the state in the parent component
-    onLayoutsChange(newLayouts);
+    // Update the layout in the database directly
+    try {
+        await db.seatingLayouts.update(activeLayout.id!, { lockedDesks: newLockedDesks });
+    } catch (error) {
+        console.error("Failed to update locked desks:", error);
+        toast({ title: "Feil", description: "Kunne ikke oppdatere låst pult.", variant: "destructive" });
+    }
 };
 
   const getNeighbors = (r: number, c: number, chart: SeatingChartData): string[] => {
@@ -560,12 +568,11 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
 
   // Layout Management
   const handleCreateLayout = (newLayout: SeatingLayout) => {
-    onLayoutsChange([...layouts, newLayout]);
+    // This is optimistic UI. The parent component will receive the real update from the DB.
   };
 
-  const handleDeleteLayout = (id: string) => {
-    const newLayouts = layouts.filter(l => l.id !== id);
-    onLayoutsChange(newLayouts);
+  const handleDeleteLayout = async (id: string) => {
+    await db.seatingLayouts.delete(id);
     if (appSettings.selectedSeatingLayoutId === id) {
         onAppSettingsChange({ ...appSettings, selectedSeatingLayoutId: null });
     }
@@ -668,7 +675,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                         <SelectValue placeholder="Velg en layout..." />
                     </SelectTrigger>
                     <SelectContent>
-                        {layouts.map(l => <SelectItem key={l.id} value={l.id!}>{l.name} ({l.rows}x{l.cols})</SelectItem>)}
+                        {layouts?.map(l => <SelectItem key={l.id} value={l.id!}>{l.name} ({l.rows}x{l.cols})</SelectItem>)}
                     </SelectContent>
                 </Select>
                 {activeLayout && (
