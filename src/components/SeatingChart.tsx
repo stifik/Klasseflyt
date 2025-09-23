@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Loader2, Users, Shuffle, Plus, X, Trash2, Save, Info, Lock, Unlock } from "lucide-react";
+import { Loader2, Users, Shuffle, Plus, X, Trash2, Save, Info, Pin, PinOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -77,10 +77,10 @@ const DroppableDesk = ({ id, children, isOver, isLocked, onLockToggle }: { id: s
                 <Button
                     size="icon"
                     variant="ghost"
-                    className="absolute top-0 right-0 w-6 h-6 opacity-0 group-hover/desk:opacity-100"
+                    className="absolute top-0 left-0 w-6 h-6 opacity-0 group-hover/desk:opacity-100"
                     onClick={onLockToggle}
                 >
-                    {isLocked ? <Lock className="w-4 h-4 text-primary" /> : <Unlock className="w-4 h-4 text-muted-foreground" />}
+                    {isLocked ? <Pin className="w-4 h-4 text-primary -rotate-45" /> : <PinOff className="w-4 h-4 text-muted-foreground" />}
                 </Button>
             )}
         </div>
@@ -689,7 +689,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
                     <CardHeader>
                         <CardTitle>Klassekart</CardTitle>
                         <CardDescription>
-                            {seatingChart ? "Dra og slipp elever for å bytte plass. Klikk på lås-ikonet for å låse en elev til en pult." : "Resultatet av genereringen vil vises her."}
+                            {seatingChart ? "Dra og slipp elever for å bytte plass. Klikk på tegnestiften for å låse en elev til en pult." : "Resultatet av genereringen vil vises her."}
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -757,12 +757,4 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     </div>
   );
 }
-
-
-
-
-
-
-
-
 
