@@ -71,12 +71,13 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
     
     // activeLayout is needed by multiple tabs to render the chart correctly
     const activeLayoutId = props.appSettings?.selectedSeatingLayoutId;
-    const activeLayout = useLiveQuery(async () => {
-        if (activeLayoutId) {
-            return db.seatingLayouts.get(activeLayoutId);
+    const allLayouts = useLiveQuery(() => db.seatingLayouts.toArray(), []);
+    const activeLayout = useMemo(() => {
+        if (activeLayoutId && allLayouts) {
+            return allLayouts.find(l => l.id === activeLayoutId);
         }
         return null;
-    }, [activeLayoutId]);
+    }, [activeLayoutId, allLayouts]);
 
 
     // Seating chart is used by multiple tabs, so we fetch it conditionally

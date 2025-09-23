@@ -303,30 +303,33 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     handleRuleChange({ placementRules: newPlacementRules });
   };
   
-    const handleLockToggle = (rowIndex: number, colIndex: number) => {
-        if (!activeLayout || !localSeatingChart) return;
-        const deskId = `${rowIndex}-${colIndex}`;
-        const studentName = localSeatingChart[rowIndex]?.[colIndex]?.[0];
-        if (!studentName) return;
+  const handleLockToggle = (rowIndex: number, colIndex: number) => {
+    if (!activeLayout || !localSeatingChart) return;
+    const deskId = `${rowIndex}-${colIndex}`;
+    const studentName = localSeatingChart[rowIndex]?.[colIndex]?.[0];
+    if (!studentName) return;
 
-        const currentLockedDesks = activeLayout.lockedDesks || [];
-        const isCurrentlyLocked = currentLockedDesks.some(d => d.deskId === deskId);
+    const currentLockedDesks = activeLayout.lockedDesks || [];
+    const isCurrentlyLocked = currentLockedDesks.some(d => d.deskId === deskId);
 
-        let newLockedDesks: LockedDesk[];
-        if (isCurrentlyLocked) {
-            newLockedDesks = currentLockedDesks.filter(d => d.deskId !== deskId);
-        } else {
-            // Remove any other locks for this student and this desk
-            const otherLocksRemoved = currentLockedDesks
-                .filter(d => d.studentName !== studentName)
-                .filter(d => d.deskId !== deskId);
-            newLockedDesks = [...otherLocksRemoved, { deskId, studentName }];
-        }
-        
-        const updatedLayout = { ...activeLayout, lockedDesks: newLockedDesks };
-        // This is an async operation but we can update UI optimistically
-        onLayoutsChange(layouts.map(l => l.id === updatedLayout.id ? updatedLayout : l));
-    };
+    let newLockedDesks: LockedDesk[];
+    if (isCurrentlyLocked) {
+        newLockedDesks = currentLockedDesks.filter(d => d.deskId !== deskId);
+    } else {
+        const otherLocksRemoved = currentLockedDesks
+            .filter(d => d.studentName !== studentName)
+            .filter(d => d.deskId !== deskId);
+        newLockedDesks = [...otherLocksRemoved, { deskId, studentName }];
+    }
+    
+    const updatedLayout = { ...activeLayout, lockedDesks: newLockedDesks };
+    
+    // Create a new layouts array with the updated layout
+    const newLayouts = layouts.map(l => l.id === updatedLayout.id ? updatedLayout : l);
+    
+    // Call the callback to update the state in the parent component
+    onLayoutsChange(newLayouts);
+};
 
   const getNeighbors = (r: number, c: number, chart: SeatingChartData): string[] => {
     const neighbors: string[] = [];
@@ -754,6 +757,7 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
     </div>
   );
 }
+
 
 
 
