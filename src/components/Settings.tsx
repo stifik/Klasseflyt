@@ -1084,6 +1084,17 @@ const GroupingRulesManager: React.FC<{students: Student[], appSettings: AppSetti
     const availableStudentsForTogether = students.filter(s => !rules.keepTogether.flat().includes(s.name) && !keepTogetherSelection.includes(s.id!));
     const filteredAvailableStudents = availableStudentsForTogether.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
 
+    const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (filteredAvailableStudents.length > 0) {
+                const topStudent = filteredAvailableStudents[0];
+                setKeepTogetherSelection(prev => [...prev, topStudent.id!]);
+                setSearch("");
+            }
+        }
+    };
+
     return (
         <div className="space-y-4 text-sm">
             <div>
@@ -1110,6 +1121,7 @@ const GroupingRulesManager: React.FC<{students: Student[], appSettings: AppSetti
                             placeholder="Søk for å legge til elev..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
+                            onKeyDown={handleSearchKeyDown}
                         />
                         <ScrollArea className="h-32 mt-2">
                              <div className="space-y-1 pr-2">

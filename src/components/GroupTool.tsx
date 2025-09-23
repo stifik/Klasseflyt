@@ -26,7 +26,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import { Settings as SettingsComponent } from "@/components/Settings";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 
 
 interface GroupToolProps {
@@ -980,12 +979,23 @@ const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings, o
     const availableStudentsForTogether = students.filter(s => !rules.keepTogether.flat().includes(s.name) && !keepTogetherSelection.includes(s.id!));
     const filteredAvailableStudents = availableStudentsForTogether.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
 
+    const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (filteredAvailableStudents.length > 0) {
+                const topStudent = filteredAvailableStudents[0];
+                setKeepTogetherSelection(prev => [...prev, topStudent.id!]);
+                setSearch("");
+            }
+        }
+    };
+
     return (
         <div className="space-y-4 text-sm">
             <div>
                 <Label>Hold elever sammen</Label>
                 <div className="p-2 border rounded-md mt-1 space-y-2">
-                    <div className="p-2 border rounded-md">
+                     <div className="p-2 border rounded-md">
                         <div className="flex flex-wrap gap-1 text-xs mb-2 min-h-[20px]">
                             {keepTogetherSelection.map(id => (
                                 <div key={id} className="flex items-center gap-1 bg-muted p-1 rounded">
@@ -1006,9 +1016,10 @@ const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings, o
                             placeholder="Søk for å legge til elev..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
+                            onKeyDown={handleSearchKeyDown}
                         />
                         <ScrollArea className="h-32 mt-2">
-                            <div className="space-y-1 pr-2">
+                             <div className="space-y-1 pr-2">
                             {filteredAvailableStudents.map(s => (
                                 <div key={s.id} className="flex items-center justify-between text-xs p-1">
                                     <span>{s.name}</span>
@@ -1021,7 +1032,6 @@ const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings, o
                         </ScrollArea>
                     </div>
                 </div>
-
                  {rules.keepTogether.length > 0 && (
                     <div className="space-y-2 mt-2">
                         {rules.keepTogether.map((group, index) => (
