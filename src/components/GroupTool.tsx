@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
-import { Shuffle, Users, CheckSquare, GripVertical, Bot, Info, Library, Save, FolderOpen, Trash2, LayoutGrid, Columns, Plus, Edit, Settings } from "lucide-react";
+import { Shuffle, Users, CheckSquare, GripVertical, Bot, Info, Library, Save, FolderOpen, Trash2, LayoutGrid, Columns, Plus, Edit, Settings, ChevronsUpDown, Check } from "lucide-react";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
@@ -25,6 +25,9 @@ import { Checkbox } from "./ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import { Settings as SettingsComponent } from "@/components/Settings";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
+
 
 interface GroupToolProps {
   students: Student[];
@@ -950,7 +953,7 @@ const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings, o
     const [keepApartStudent2, setKeepApartStudent2] = useState("");
     
     const rules = appSettings.groupingRules || { keepTogether: [], keepApart: [] };
-    const studentNameMap = useMemo(() => new Map(students.map(s => [s.id!, s.name])), [students]);
+    const studentMap = useMemo(() => new Map(students.map(s => [s.id!, s.name])), [students]);
     
     const handleRuleChange = (newRules: Partial<GroupingRules>) => {
         onAppSettingsChange({
@@ -964,7 +967,7 @@ const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings, o
 
     const handleAddKeepTogether = () => {
         if (keepTogetherSelection.length > 1) {
-            const newGroup = keepTogetherSelection.map(id => studentNameMap.get(id)!);
+            const newGroup = keepTogetherSelection.map(id => studentMap.get(id)!);
             handleRuleChange({ keepTogether: [...rules.keepTogether, newGroup] });
             setKeepTogetherSelection([]);
         }
@@ -978,8 +981,8 @@ const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings, o
 
     const handleAddKeepApart = () => {
         if (keepApartStudent1 && keepApartStudent2 && keepApartStudent1 !== keepApartStudent2) {
-            const student1Name = studentNameMap.get(keepApartStudent1)!;
-            const student2Name = studentNameMap.get(keepApartStudent2)!;
+            const student1Name = studentMap.get(keepApartStudent1)!;
+            const student2Name = studentMap.get(keepApartStudent2)!;
             const newPair: AvoidPair = [student1Name, student2Name].sort() as AvoidPair;
             if (!rules.keepApart.some(p => p[0] === newPair[0] && p[1] === newPair[1])) {
                 handleRuleChange({ keepApart: [...rules.keepApart, newPair] });
@@ -996,24 +999,56 @@ const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings, o
 
     const availableStudentsForTogether = students.filter(s => !rules.keepTogether.flat().includes(s.name));
 
+    const [openCombobox, setOpenCombobox] = useState(false);
+
     return (
         <div className="space-y-4 text-sm">
             <div>
                 <Label>Hold elever sammen</Label>
                 <div className="p-2 border rounded-md mt-1 space-y-2">
-                    <Select onValueChange={(id) => setKeepTogetherSelection(prev => [...prev, id])} value="">
-                        <SelectTrigger><SelectValue placeholder="Legg til elev i ny gruppe..." /></SelectTrigger>
-                        <SelectContent>
-                            {availableStudentsForTogether
-                                .filter(s => !keepTogetherSelection.includes(s.id!))
-                                .map(s => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
+                    <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={openCombobox}
+                                className="w-full justify-between font-normal"
+                            >
+                                Legg til elev i ny gruppe...
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command>
+                                <CommandInput placeholder="Søk etter elev..." />
+                                <CommandList>
+                                    <CommandEmpty>Ingen elever funnet.</CommandEmpty>
+                                    <CommandGroup>
+                                        {availableStudentsForTogether
+                                            .filter(s => !keepTogetherSelection.includes(s.id!))
+                                            .map(s => (
+                                                <CommandItem
+                                                    key={s.id}
+                                                    value={s.name}
+                                                    onSelect={() => {
+                                                        setKeepTogetherSelection(prev => [...prev, s.id!]);
+                                                        setOpenCombobox(false);
+                                                    }}
+                                                >
+                                                    {s.name}
+                                                </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                    
                      {keepTogetherSelection.length > 0 && (
                         <div className="flex flex-wrap gap-1 text-xs">
                             {keepTogetherSelection.map(id => (
                                 <div key={id} className="flex items-center gap-1 bg-muted p-1 rounded">
-                                    {studentNameMap.get(id)}
+                                    {studentMap.get(id)}
                                     <button onClick={() => setKeepTogetherSelection(prev => prev.filter(sId => sId !== id))}>
                                         <Trash2 className="w-3 h-3 text-destructive" />
                                     </button>
