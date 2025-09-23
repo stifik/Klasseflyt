@@ -761,3 +761,4 @@ export default function SeatingChart({ students, seatingChart, activeLayout, onS
 
 
 
+
