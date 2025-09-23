@@ -116,6 +116,11 @@ export type SeatingChartRecord = {
   createdAt: Date;
 };
 
+export type LockedDesk = {
+    deskId: string; // "rowIndex-colIndex"
+    studentName: string;
+};
+
 export type SeatingLayout = {
   id?: string;
   name: string;
@@ -124,7 +129,7 @@ export type SeatingLayout = {
   layout: boolean[][]; 
   seatCount: number;
   createdAt: Date;
-  lockedDesks?: string[]; // "rowIndex-colIndex"
+  lockedDesks?: LockedDesk[];
 };
 
 export type AvoidPair = [string, string];
