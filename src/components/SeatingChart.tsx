@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
@@ -31,7 +30,7 @@ interface SeatingChartProps {
   history: SeatingChartRecord[];
   appSettings: AppSettings;
   onAppSettingsChange: (newSettings: AppSettings) => void;
-  // layouts and onLayoutsChange are no longer needed as props
+  activeLayout: SeatingLayout | null | undefined;
 }
 
 
@@ -237,7 +236,7 @@ const CreateLayoutDialog = ({ onLayoutCreate }: { onLayoutCreate: (layout: Seati
 
 
 // Main Component
-export default function SeatingChart({ students, seatingChart, onSeatingChartChange, history, appSettings, onAppSettingsChange }: SeatingChartProps) {
+export default function SeatingChart({ students, seatingChart, onSeatingChartChange, history, appSettings, onAppSettingsChange, activeLayout: activeLayoutFromProps }: SeatingChartProps) {
   const [localSeatingChart, setLocalSeatingChart] = useState<SeatingChartData | null>(seatingChart);
   const [unplacedStudents, setUnplacedStudents] = useState<string[]>([]);
   
@@ -250,16 +249,21 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
   const [selectedStudent2, setSelectedStudent2] = useState<string>("");
   const [selectedStudentForRule, setSelectedStudentForRule] = useState<string>("");
   const [selectedPlacement, setSelectedPlacement] = useState<'front' | 'back'>('front');
+  
+  // Use local state for activeLayout to ensure immediate updates
+  const [localActiveLayout, setLocalActiveLayout] = useState<SeatingLayout | null | undefined>(activeLayoutFromProps);
 
   const { toast } = useToast();
 
   const layouts = useLiveQuery(() => db.seatingLayouts.toArray(), []);
   
-  const activeLayout = useMemo(() => {
-    if (!layouts || !appSettings.selectedSeatingLayoutId) return null;
-    return layouts.find(l => l.id === appSettings.selectedSeatingLayoutId);
-  }, [layouts, appSettings.selectedSeatingLayoutId]);
+  // Keep local layout in sync with props
+  useEffect(() => {
+    setLocalActiveLayout(activeLayoutFromProps);
+  }, [activeLayoutFromProps]);
   
+  const activeLayout = localActiveLayout;
+
   const avoidPairs = appSettings.seatingChartRules?.avoidPairs || [];
   const placementRules = appSettings.seatingChartRules?.placementRules || [];
 
@@ -330,12 +334,18 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
         newLockedDesks = [...otherLocksRemoved, { deskId, studentName }];
     }
     
-    // Update the layout in the database directly
+    // Optimistic UI update
+    const updatedLayout = { ...activeLayout, lockedDesks: newLockedDesks };
+    setLocalActiveLayout(updatedLayout);
+    
+    // Update the database in the background
     try {
         await db.seatingLayouts.update(activeLayout.id!, { lockedDesks: newLockedDesks });
     } catch (error) {
         console.error("Failed to update locked desks:", error);
         toast({ title: "Feil", description: "Kunne ikke oppdatere låst pult.", variant: "destructive" });
+        // Revert on failure
+        setLocalActiveLayout(activeLayout);
     }
 };
 
@@ -764,4 +774,3 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     </div>
   );
 }
-
