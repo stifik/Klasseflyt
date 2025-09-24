@@ -323,7 +323,6 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     if (isCurrentlyLocked) {
         newLockedDesks = currentLockedDesks.filter(d => d.deskId !== deskId);
     } else {
-        // A student can only be locked to one desk. Remove other locks for this student.
         const otherLocksForStudentRemoved = currentLockedDesks.filter(d => d.studentName !== studentName);
         newLockedDesks = [...otherLocksForStudentRemoved, { deskId, studentName }];
     }
@@ -770,4 +769,5 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 }
 
     
+
 
