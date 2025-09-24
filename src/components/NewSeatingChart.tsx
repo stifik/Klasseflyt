@@ -91,8 +91,8 @@ const UnplacedStudentsBox = ({ children }: { children: React.ReactNode }) => {
                     Uplasserte elever
                 </CardTitle>
             </CardHeader>
-            <CardContent className={cn("p-2 pt-0 min-h-[60px] rounded-lg", isOver && "bg-primary/10")}>
-                <div className="flex flex-wrap gap-2">
+            <CardContent className={cn("p-2 pt-0 rounded-lg", isOver && "bg-primary/10")}>
+                <div className="flex flex-wrap gap-2 min-h-[60px]">
                     {children}
                 </div>
             </CardContent>
