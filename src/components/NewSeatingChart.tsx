@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo } from "react";
@@ -100,10 +99,9 @@ const UnplacedStudentsBox = ({ children }: { children: React.ReactNode }) => {
     );
 }
 
-export default function NewSeatingChart({ students, appSettings, onSeatingChartChange }: NewSeatingChartProps) {
+export default function NewSeatingChart({ students, appSettings, onAppSettingsChange, onSeatingChartChange }: NewSeatingChartProps) {
   const { toast } = useToast();
   const [activeDragItem, setActiveDragItem] = useState<{ name: string, isUnplaced: boolean } | null>(null);
-  const [isDropped, setIsDropped] = useState(false);
   
   const activeLayout = useLiveQuery(() => {
     if (appSettings.selectedSeatingLayoutId) {
@@ -145,7 +143,6 @@ export default function NewSeatingChart({ students, appSettings, onSeatingChartC
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
-      setIsDropped(true);
       setActiveDragItem(null);
       const { active, over } = event;
   
@@ -214,11 +211,11 @@ export default function NewSeatingChart({ students, appSettings, onSeatingChartC
   return (
     <DndContext 
         onDragStart={(event) => {
-            setIsDropped(false);
             setActiveDragItem({ name: event.active.data.current?.studentName, isUnplaced: event.active.data.current?.isUnplaced });
         }}
         onDragEnd={handleDragEnd}
         collisionDetection={closestCenter}
+        dropAnimation={null}
     >
         <Card className="min-h-[600px]">
             <CardHeader>
@@ -282,7 +279,7 @@ export default function NewSeatingChart({ students, appSettings, onSeatingChartC
         </Card>
         <DragOverlay>
             {activeDragItem ? (
-                 <div style={{ opacity: isDropped ? 0 : 1 }} className={cn(
+                 <div className={cn(
                     "flex items-center justify-center text-center touch-none rounded-lg p-1 shadow-lg",
                      activeDragItem.isUnplaced
                         ? "bg-background border h-auto py-1.5 px-2"
