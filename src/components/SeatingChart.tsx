@@ -65,7 +65,7 @@ const DroppableDesk = ({ id, children, isOver, isLocked, onLockToggle }: { id: s
         <div
             ref={setNodeRef}
             className={cn(
-                "relative flex items-center justify-center border rounded-lg transition-colors w-full h-16 group/desk",
+                "relative flex items-center justify-center border rounded-lg transition-colors w-full h-16",
                 isOver ? "bg-primary/10" : "bg-transparent",
                 !hasChild ? "border-dashed border-slate-300 dark:border-slate-700" : "border-border"
             )}
@@ -75,7 +75,7 @@ const DroppableDesk = ({ id, children, isOver, isLocked, onLockToggle }: { id: s
                 <Button
                     size="icon"
                     variant="ghost"
-                    className="absolute top-0 left-0 w-6 h-6 opacity-0 group-hover/desk:opacity-100"
+                    className="absolute top-0 left-0 w-6 h-6"
                     onClick={onLockToggle}
                 >
                     {isLocked 
@@ -250,14 +250,12 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
   const [selectedStudentForRule, setSelectedStudentForRule] = useState<string>("");
   const [selectedPlacement, setSelectedPlacement] = useState<'front' | 'back'>('front');
   
-  // Use local state for activeLayout to ensure immediate updates
   const [localActiveLayout, setLocalActiveLayout] = useState<SeatingLayout | null | undefined>(activeLayoutFromProps);
 
   const { toast } = useToast();
 
   const layouts = useLiveQuery(() => db.seatingLayouts.toArray(), []);
   
-  // Keep local layout in sync with props
   useEffect(() => {
     setLocalActiveLayout(activeLayoutFromProps);
   }, [activeLayoutFromProps]);
@@ -370,10 +368,16 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     const avoidSameNeighbors = appSettings.seatingChartRules?.avoidSameNeighbors ?? true;
     const shuffle = <T,>(arr: T[]): T[] => [...arr].sort(() => Math.random() - 0.5);
     const lockedDesks = activeLayout.lockedDesks || [];
+    const newChart: SeatingChartData = Array(activeLayout.rows).fill(null).map(() => Array(activeLayout.cols).fill(null).map(() => []));
 
     while (attempts < maxAttempts) {
         let isValid = true;
-        const newChart: SeatingChartData = Array(activeLayout.rows).fill(null).map(() => Array(activeLayout.cols).fill(null).map(() => []));
+        // Reset chart for each attempt, but keep locked students
+        for(let r=0; r < activeLayout.rows; r++) {
+            for(let c=0; c < activeLayout.cols; c++) {
+                newChart[r][c] = [];
+            }
+        }
         
         // 1. Place locked students first
         const lockedStudentNames = new Set<string>();
