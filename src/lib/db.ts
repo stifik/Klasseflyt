@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -12,6 +12,7 @@ export class MySubClassedDexie extends Dexie {
     subjects!: Table<Subject, string>;
     homework!: Table<Homework, number>;
     submissions!: Table<Submission, number>;
+    submissionAttempts!: Table<SubmissionAttempt, number>;
     dailyChecks!: Table<DailyCheck, number>;
     absences!: Table<Absence, number>;
     remarks!: Table<Remark, number>;
@@ -299,6 +300,54 @@ export class MySubClassedDexie extends Dexie {
         this.version(21).stores({
             testResults: '++id, &[studentId+testId], studentId, testId, reportedInWeek',
         });
+        
+        // Version 22: Submission History
+        this.version(22).stores({
+            submissionAttempts: '++id, submissionId, date',
+            submissions: '++id, &[studentId+homeworkId], studentId, homeworkId', // removed status and comment
+        }).upgrade(async (tx) => {
+            const oldSubmissions = await tx.table('submissions').toArray();
+            if (oldSubmissions.length === 0) return;
+
+            const newSubmissionsMap = new Map<string, { studentId: string, homeworkId: number, id?: number }>();
+            
+            // Create unique submission "folders"
+            for (const oldSub of oldSubmissions) {
+                const key = `${oldSub.studentId}-${oldSub.homeworkId}`;
+                if (!newSubmissionsMap.has(key)) {
+                    newSubmissionsMap.set(key, { studentId: oldSub.studentId, homeworkId: oldSub.homeworkId });
+                }
+            }
+
+            const newSubmissions = Array.from(newSubmissionsMap.values());
+            await tx.table('submissions').clear();
+            const newSubmissionIds = await tx.table('submissions').bulkAdd(newSubmissions, { allKeys: true });
+
+            const newAttempts: Omit<SubmissionAttempt, 'id'>[] = [];
+            
+            const newSubmissionsWithIds = newSubmissions.map((sub, index) => ({...sub, id: newSubmissionIds[index] as number}));
+            const submissionIdMap = new Map(newSubmissionsWithIds.map(sub => [`${sub.studentId}-${sub.homeworkId}`, sub.id]));
+            
+            // Find corresponding homework to get the date
+            const homeworks = await tx.table('homework').toArray();
+            const homeworkDateMap = new Map(homeworks.map(h => [h.id, h.date]));
+
+            for (const oldSub of oldSubmissions) {
+                if (oldSub.status) { // Only migrate if there was a status
+                    const submissionId = submissionIdMap.get(`${oldSub.studentId}-${oldSub.homeworkId}`);
+                    if (submissionId) {
+                         newAttempts.push({
+                            submissionId: submissionId,
+                            status: oldSub.status,
+                            comment: oldSub.comment,
+                            date: homeworkDateMap.get(oldSub.homeworkId) || new Date() // Fallback to now
+                        });
+                    }
+                }
+            }
+            
+            await tx.table('submissionAttempts').bulkAdd(newAttempts);
+        });
 
 
         this.on('populate', async () => {
@@ -464,25 +513,29 @@ export async function resetDatabase() {
 
         // --- Create Mock Submissions ---
         const submissionsToAdd: Omit<Submission, 'id'>[] = [];
-        allStudents.forEach(student => {
-            homeworkIds.forEach(homeworkId => {
+        const submissionAttemptsToAdd: Omit<SubmissionAttempt, 'id'>[] = [];
+
+        for (const student of allStudents) {
+            for (const hw of addedHomework) {
                 const chance = Math.random();
-                if (chance > 0.1) { // 90% chance of a submission
+                if (chance > 0.1) { // 90% chance of submission
+                    const submissionId = await db.submissions.add({ studentId: student.id!, homeworkId: hw.id! });
+                    
                     let status: HomeworkStatus = "Godkjent";
-                    let isDelayed = false;
-                    if (chance < 0.2) { status = "Ikke levert"; isDelayed = true; }
-                    else if (chance < 0.25) { status = "Må rettes"; isDelayed = true; }
-                    submissionsToAdd.push({
-                        studentId: student.id!,
-                        homeworkId,
-                        status,
+                    if (chance < 0.2) status = "Ikke levert";
+                    else if (chance < 0.25) status = "Må rettes";
+                    
+                    submissionAttemptsToAdd.push({
+                        submissionId: submissionId!,
+                        status: status,
                         comment: status === "Må rettes" ? "Gjør oppgavene på nytt." : undefined,
-                        isDelayed,
+                        date: hw.date,
                     });
                 }
-            });
-        });
-        await db.submissions.bulkAdd(submissionsToAdd);
+            }
+        }
+        await db.submissionAttempts.bulkAdd(submissionAttemptsToAdd);
+
 
         // --- Create Mock Daily Checks ---
         const dailyChecksToAdd: Omit<DailyCheck, 'id'>[] = [];
@@ -613,6 +666,7 @@ export async function importDatabase(data: { [key: string]: any[] }) {
 
 
     
+
 
 
 

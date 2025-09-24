@@ -1,8 +1,9 @@
 
+
 "use client";
 
 import { useState, useMemo, type FC, useEffect } from "react";
-import type { Student, Subject, Homework, Submission, HomeworkStatus } from "@/lib/types";
+import type { Student, Subject, Homework, Submission, HomeworkStatus, SubmissionAttempt } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX, Plus, Trash2, Calendar as CalendarIcon } from "lucide-react";
+import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX, Plus, Trash2, Calendar as CalendarIcon, History } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -22,6 +23,7 @@ import { db } from "@/lib/db";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { Calendar } from "./ui/calendar";
+import { useLiveQuery } from "dexie-react-hooks";
 
 interface HomeworkOverviewProps {
   students: Student[];
@@ -39,47 +41,122 @@ const statusIcons: Record<HomeworkStatus, React.ReactElement> = {
   "Glemt bok": <BookX className="text-orange-500" />,
 };
 
-const StatusPopover: FC<{ submission?: Submission; onStatusChange: (status: HomeworkStatus) => void; onComment: () => void; hasComment: boolean; }> = ({ submission, onStatusChange, onComment, hasComment }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  
-  return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-          <button className="flex items-center justify-center w-full h-full p-2 relative min-h-[58px]">
-            {submission ? statusIcons[submission.status] : <span className="text-muted-foreground">-</span>}
-            {hasComment && <FileText className="absolute w-3 h-3 text-blue-600 bottom-1 right-1" />}
-          </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-1">
-        <div className="flex flex-col gap-1">
-          {Object.keys(statusIcons).map((status) => (
-            <Button 
-              key={status} 
-              variant="ghost" 
-              className="justify-start gap-2 px-2" 
-              onClick={() => {
-                onStatusChange(status as HomeworkStatus);
-                setIsOpen(false);
-              }}>
-              {statusIcons[status as HomeworkStatus]}
-              <span>{status}</span>
-            </Button>
-          ))}
-          <Button 
-            variant="ghost" 
-            className="justify-start gap-2 px-2" 
-            onClick={() => {
-                onComment();
-                setIsOpen(false);
-            }}>
-            <Edit2 className="w-4 h-4" />
-            <span>{hasComment ? "Rediger" : "Legg til"} kommentar</span>
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
+const HomeworkCell: FC<{ studentId: string; homework: Homework; allSubmissions: Submission[]; allAttempts: SubmissionAttempt[] }> = ({ studentId, homework, allSubmissions, allAttempts }) => {
+    const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
+    const submission = useMemo(() => {
+        return allSubmissions.find(s => s.studentId === studentId && s.homeworkId === homework.id);
+    }, [allSubmissions, studentId, homework.id]);
+
+    const attempts = useMemo(() => {
+        if (!submission) return [];
+        return allAttempts
+            .filter(a => a.submissionId === submission.id)
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [allAttempts, submission]);
+
+    const latestAttempt = useMemo(() => attempts[0] || null, [attempts]);
+    const hasComment = useMemo(() => attempts.some(a => a.comment), [attempts]);
+
+    const handleNewAttempt = async (status: HomeworkStatus, comment?: string) => {
+        let currentSubmissionId = submission?.id;
+
+        // If no submission "folder" exists, create one
+        if (!currentSubmissionId) {
+            const newSubmissionId = await db.submissions.add({ studentId, homeworkId: homework.id! });
+            currentSubmissionId = newSubmissionId;
+        }
+
+        await db.submissionAttempts.add({
+            submissionId: currentSubmissionId!,
+            status,
+            comment,
+            date: new Date(),
+        });
+    };
+
+    return (
+        <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+            <DialogTrigger asChild>
+                <button className="flex items-center justify-center w-full h-full p-2 relative min-h-[58px]">
+                    {latestAttempt ? statusIcons[latestAttempt.status] : <span className="text-muted-foreground">-</span>}
+                    {hasComment && <FileText className="absolute w-3 h-3 text-blue-600 bottom-1 right-1" />}
+                </button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Vurderingshistorikk</DialogTitle>
+                    <DialogDescription>
+                        {homework.title || 'Lekse'} for uke {homework.week}
+                    </DialogDescription>
+                </DialogHeader>
+                <SubmissionHistory attempts={attempts} />
+                <NewAttemptForm onSubmit={handleNewAttempt} />
+            </DialogContent>
+        </Dialog>
+    );
 };
+
+const SubmissionHistory: FC<{ attempts: SubmissionAttempt[] }> = ({ attempts }) => {
+    if (attempts.length === 0) {
+        return <p className="text-sm text-muted-foreground text-center py-4">Ingen tidligere vurderinger.</p>;
+    }
+
+    return (
+        <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
+            {attempts.map(attempt => (
+                <div key={attempt.id} className="flex gap-4 items-start">
+                    <div className="mt-1">{statusIcons[attempt.status]}</div>
+                    <div>
+                        <p className="font-semibold">{attempt.status}</p>
+                        <p className="text-xs text-muted-foreground">{format(new Date(attempt.date), "PPP p", { locale: nb })}</p>
+                        {attempt.comment && <p className="text-sm italic mt-1 bg-muted p-2 rounded-md">"{attempt.comment}"</p>}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
+const NewAttemptForm: FC<{ onSubmit: (status: HomeworkStatus, comment?: string) => void }> = ({ onSubmit }) => {
+    const [status, setStatus] = useState<HomeworkStatus>("Godkjent");
+    const [comment, setComment] = useState("");
+    const { toast } = useToast();
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSubmit(status, comment);
+        toast({ title: "Ny vurdering lagret" });
+        // Closing is handled by the parent Dialog
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4 pt-4 border-t">
+            <h4 className="font-medium">Legg til ny vurdering</h4>
+            <Select onValueChange={(v: HomeworkStatus) => setStatus(v)} defaultValue={status}>
+                <SelectTrigger>
+                    <SelectValue placeholder="Velg status" />
+                </SelectTrigger>
+                <SelectContent>
+                    {Object.keys(statusIcons).map(s => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+            <Textarea
+                placeholder="Legg til en kommentar (valgfritt)..."
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+            />
+            <DialogFooter>
+                 <DialogClose asChild>
+                    <Button type="submit">Lagre vurdering</Button>
+                </DialogClose>
+            </DialogFooter>
+        </form>
+    );
+};
+
 
 const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string, subjectId: string, date: Date, defaultStatus: HomeworkStatus | "none") => void; }> = ({ subjects, onAddHomework }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -158,11 +235,11 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
             </PopoverContent>
           </Popover>
            <div>
-            <Label className="mb-2 block">Standardstatus for alle elever</Label>
+            <Label className="mb-2 block">Standard første vurdering for alle elever</Label>
              <RadioGroup value={defaultStatus} onValueChange={(v) => setDefaultStatus(v as HomeworkStatus | "none")}>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="none" id="status-none" />
-                <Label htmlFor="status-none">Ikke sett status (standard)</Label>
+                <Label htmlFor="status-none">Ingen (standard)</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="Godkjent" id="status-godkjent" />
@@ -185,72 +262,11 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
 };
 
 export default function HomeworkOverview({ students, subjects, homework: homeworkList, submissions, onUpdate }: HomeworkOverviewProps) {
-  const [commentModal, setCommentModal] = useState<{ open: boolean; studentId?: string; homeworkId?: string; }>({ open: false });
-  const [currentComment, setCurrentComment] = useState("");
   const [filters, setFilters] = useState<{ subject: string; week: string; showProblems: boolean }>({ subject: "all", week: "all", showProblems: false });
   const { toast } = useToast();
   
-  const getSubmission = (studentId: string, homeworkId: string) => submissions.find(s => s.studentId === studentId && s.homeworkId === parseInt(homeworkId, 10));
-
-  const handleStatusChange = async (studentId: string, homeworkId: string, status: HomeworkStatus) => {
-    const existingSubmission = getSubmission(studentId, homeworkId);
-    const problemStatuses: HomeworkStatus[] = ["Ikke levert", "Må rettes", "Glemt bok"];
-    const isNowDelayed = problemStatuses.includes(status);
-
-    try {
-        if (existingSubmission) {
-            const updateData: Partial<Submission> = { status };
-            // Only set isDelayed if it's not already set and the new status is a delay status.
-            if (isNowDelayed && !existingSubmission.isDelayed) {
-                updateData.isDelayed = true;
-            }
-            await db.submissions.update(existingSubmission.id!, updateData);
-        } else {
-            await db.submissions.add({ 
-                studentId, 
-                homeworkId: parseInt(homeworkId, 10), 
-                status, 
-                comment: "",
-                isDelayed: isNowDelayed 
-            });
-        }
-    } catch (error) {
-        toast({ title: "Feil", description: "Kunne ikke lagre status.", variant: "destructive" });
-    }
-  };
-  
-  const handleCommentSave = async () => {
-    if (!commentModal.studentId || !commentModal.homeworkId) return;
-    const { studentId, homeworkId } = commentModal;
-    const homeworkIdNum = parseInt(homeworkId, 10);
-
-    const existingSubmission = getSubmission(studentId, homeworkId);
-    
-    try {
-        if (existingSubmission) {
-            await db.submissions.update(existingSubmission.id!, { comment: currentComment });
-        } else {
-            await db.submissions.add({ 
-                studentId, 
-                homeworkId: homeworkIdNum, 
-                status: 'Godkjent', 
-                comment: currentComment,
-                isDelayed: false
-            });
-        }
-        setCommentModal({ open: false });
-        setCurrentComment("");
-        toast({ title: "Kommentar lagret" });
-    } catch(error) {
-        toast({ title: "Feil", description: "Kunne ikke lagre kommentar.", variant: "destructive" });
-    }
-  };
-  
-  const openCommentModal = (studentId: string, homeworkId: string) => {
-    const submission = getSubmission(studentId, homeworkId);
-    setCurrentComment(submission?.comment || "");
-    setCommentModal({ open: true, studentId, homeworkId });
-  };
+  const allSubmissions = useLiveQuery(() => db.submissions.toArray(), [], []);
+  const allAttempts = useLiveQuery(() => db.submissionAttempts.toArray(), [], []);
 
   const handleAddHomework = async (title: string, subjectId: string, date: Date, defaultStatus: HomeworkStatus | "none") => {
     try {
@@ -263,16 +279,18 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
         toast({ title: "Lekse lagt til", description: `"${title || subjects.find(s => s.id === subjectId)?.name}" er lagt til i oversikten.` });
 
         if (defaultStatus !== "none") {
-            const problemStatuses: HomeworkStatus[] = ["Ikke levert", "Må rettes", "Glemt bok"];
-            const isDelayed = problemStatuses.includes(defaultStatus);
-            const newSubmissions = students.map(student => ({
+            const newSubmissions: Omit<Submission, 'id'>[] = students.map(student => ({
                 studentId: student.id!,
                 homeworkId: newHomeworkId as number,
-                status: defaultStatus,
-                comment: "",
-                isDelayed: isDelayed
             }));
-            await db.submissions.bulkAdd(newSubmissions as Submission[]);
+            const newSubmissionIds = await db.submissions.bulkAdd(newSubmissions as Submission[], { allKeys: true });
+
+            const newAttempts = newSubmissionIds.map(subId => ({
+                submissionId: subId as number,
+                status: defaultStatus,
+                date: new Date(),
+            }));
+            await db.submissionAttempts.bulkAdd(newAttempts);
             toast({ title: "Standardstatus satt", description: `Alle elever er satt til "${defaultStatus}".` });
         }
     } catch(error) {
@@ -298,20 +316,18 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
 
   const handleDeleteHomework = async (homeworkId: number) => {
     try {
-        await db.transaction('rw', db.homework, db.submissions, async () => {
-            // Find all submissions for this homework
+        await db.transaction('rw', db.homework, db.submissions, db.submissionAttempts, async () => {
             const subsToDelete = await db.submissions.where('homeworkId').equals(homeworkId).toArray();
             const subIds = subsToDelete.map(s => s.id!);
             
-            // Delete submissions
             if (subIds.length > 0) {
+                await db.submissionAttempts.where('submissionId').anyOf(subIds).delete();
                 await db.submissions.bulkDelete(subIds);
             }
             
-            // Delete homework
             await db.homework.delete(homeworkId);
         });
-        toast({ title: "Lekse slettet", description: "Leksen og alle tilhørende innleveringer er slettet.", variant: "destructive" });
+        toast({ title: "Lekse slettet", description: "Leksen og alle tilhørende data er slettet.", variant: "destructive" });
     } catch (error) {
         console.error("Failed to delete homework:", error);
         toast({ title: "Feil", description: "Kunne ikke slette leksen.", variant: "destructive" });
@@ -337,22 +353,37 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
   }, [students]);
 
   const filteredStudents = useMemo(() => {
-    if (!filters.showProblems) {
+    if (!filters.showProblems || !allSubmissions || !allAttempts) {
       return sortedStudents;
     }
     
     const visibleHomeworkIds = new Set(filteredHomework.map(hw => hw.id));
     if (visibleHomeworkIds.size === 0) {
-      return sortedStudents; // If no homework is visible, don't filter students
+      return sortedStudents;
+    }
+
+    const studentSubmissionMap = allSubmissions.reduce((map, sub) => {
+        const key = `${sub.studentId}-${sub.homeworkId}`;
+        map.set(key, sub.id!);
+        return map;
+    }, new Map<string, number>());
+
+    const latestAttempts = new Map<number, SubmissionAttempt>();
+    for (const attempt of allAttempts) {
+        if (!latestAttempts.has(attempt.submissionId) || new Date(attempt.date) > new Date(latestAttempts.get(attempt.submissionId)!.date)) {
+            latestAttempts.set(attempt.submissionId, attempt);
+        }
     }
 
     return sortedStudents.filter(student => {
       return filteredHomework.some(hw => {
-        const submission = getSubmission(student.id!, String(hw.id));
-        return !submission || problemStatuses.includes(submission.status);
+        const submissionId = studentSubmissionMap.get(`${student.id}-${hw.id}`);
+        if (!submissionId) return true; // No submission is a "problem"
+        const latestAttempt = latestAttempts.get(submissionId);
+        return !latestAttempt || problemStatuses.includes(latestAttempt.status);
       });
     });
-  }, [sortedStudents, filters.showProblems, filteredHomework, submissions]);
+  }, [sortedStudents, filters.showProblems, filteredHomework, allSubmissions, allAttempts]);
   
   const uniqueWeeks = [...new Set((homeworkList || []).filter(h => h && h.week).map(h => h.week))].sort((a,b) => b-a);
   
@@ -445,14 +476,13 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
               <TableRow key={student.id}>
                 <TableCell className="sticky left-0 z-10 font-medium bg-background">{student.name}</TableCell>
                 {filteredHomework.map(hw => {
-                  const submission = getSubmission(student.id!, String(hw.id));
                   return (
                     <TableCell key={hw.id} className="p-0 text-center">
-                      <StatusPopover 
-                        submission={submission}
-                        hasComment={!!submission?.comment}
-                        onStatusChange={(status) => handleStatusChange(student.id!, String(hw.id), status)}
-                        onComment={() => openCommentModal(student.id!, String(hw.id))}
+                      <HomeworkCell 
+                        studentId={student.id!} 
+                        homework={hw}
+                        allSubmissions={allSubmissions || []}
+                        allAttempts={allAttempts || []}
                       />
                     </TableCell>
                   )
@@ -462,18 +492,6 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
           </TableBody>
         </Table>
       </div>
-
-      <Dialog open={commentModal.open} onOpenChange={(open) => setCommentModal({ ...commentModal, open })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Kommentar</DialogTitle>
-          </DialogHeader>
-          <Textarea value={currentComment} onChange={e => setCurrentComment(e.target.value)} placeholder="Skriv en kommentar..." />
-          <DialogFooter>
-            <Button onClick={handleCommentSave}>Lagre</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

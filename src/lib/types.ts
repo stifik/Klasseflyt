@@ -21,13 +21,20 @@ export type Homework = {
   date: Date;
 };
 
+// Represents a "folder" for a student's submissions for a specific homework
 export type Submission = {
   id?: number;
   studentId: string;
   homeworkId: number;
+};
+
+// Represents a single attempt/grading for a submission
+export type SubmissionAttempt = {
+  id?: number;
+  submissionId: number;
   status: HomeworkStatus;
   comment?: string;
-  isDelayed?: boolean; // New field to track if it was ever late/incomplete
+  date: Date;
 };
 
 export type DailyCheck = {

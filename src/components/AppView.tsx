@@ -55,6 +55,7 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
     // Use live queries for data needed by specific tabs
     const homework = useLiveQuery(() => ['overview', 'reports'].includes(tabKey) ? db.homework.toArray() : undefined, [tabKey]);
     const submissions = useLiveQuery(() => ['overview', 'reports'].includes(tabKey) ? db.submissions.toArray() : undefined, [tabKey]);
+    const submissionAttempts = useLiveQuery(() => ['overview', 'reports'].includes(tabKey) ? db.submissionAttempts.toArray() : undefined, [tabKey]);
     const dailyChecks = useLiveQuery(() => ['dailyCheck', 'reports'].includes(tabKey) ? db.dailyChecks.toArray() : undefined, [tabKey]);
     const absences = useLiveQuery(() => ['dailyCheck', 'observations', 'classroomTools'].includes(tabKey) ? db.absences.toArray() : undefined, [tabKey]);
     const hourlyChecks = useLiveQuery(() => ['observations', 'reports'].includes(tabKey) ? db.hourlyChecks.toArray() : undefined, [tabKey]);
@@ -91,11 +92,11 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
 
     // Define which data is required for each tab to be considered "ready"
     const requiredData: Record<TabKey, any[]> = {
-        overview: [homework, submissions],
+        overview: [homework, submissions, submissionAttempts],
         dailyCheck: [absences], // Seating chart can be null initially
         observations: [hourlyChecks, remarks, absences], // Seating chart can be null initially
         assessments: [tests, testResults, learningGoals, goalAchievements],
-        reports: [homework, submissions, dailyChecks, remarks, hourlyChecks, tests, testResults, learningGoals, goalAchievements],
+        reports: [homework, submissions, submissionAttempts, dailyChecks, remarks, hourlyChecks, tests, testResults, learningGoals, goalAchievements],
         classroomTools: [stationAssignmentLogs, groupSets, absences], // History and activeLayout can be null/empty initially
         settings: [],
     };
@@ -105,6 +106,7 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
         ...props,
         homework: homework, 
         submissions: submissions,
+        submissionAttempts: submissionAttempts,
         dailyChecks: dailyChecks,
         absences: absences,
         initialHourlyChecks: hourlyChecks,
