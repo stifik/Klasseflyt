@@ -84,15 +84,15 @@ const DroppableDesk = ({ id, children, isLocked, onLockToggle }: { id: string, c
 const UnplacedStudentsBox = ({ children }: { children: React.ReactNode }) => {
     const { setNodeRef, isOver } = useDroppable({ id: 'unplaced-area' });
     return (
-        <Card className="mt-4" ref={setNodeRef}>
+        <Card ref={setNodeRef} className={cn("mt-4", isOver && "bg-primary/10")}>
             <CardHeader>
                 <CardTitle className="text-base flex items-center">
                     <Users className="mr-2" />
                     Uplasserte elever
                 </CardTitle>
             </CardHeader>
-            <CardContent className={cn("p-2 pt-0 rounded-lg", isOver && "bg-primary/10")}>
-                <div className="flex flex-wrap gap-2 min-h-[60px]">
+            <CardContent className="p-2 pt-0 rounded-lg min-h-[60px]">
+                <div className="flex flex-wrap gap-2">
                     {children}
                 </div>
             </CardContent>
