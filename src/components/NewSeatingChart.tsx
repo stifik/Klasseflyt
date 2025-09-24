@@ -46,7 +46,7 @@ const DraggableStudent = ({ studentName, deskId, isLocked, isUnplaced = false }:
                 isLocked ? 'cursor-not-allowed' : 'cursor-grab'
             )}
         >
-            <p className="text-xs font-medium whitespace-normal">{studentName}</p>
+           <p className="text-xs font-medium whitespace-normal">{studentName}</p>
         </div>
     );
 };
@@ -87,7 +87,7 @@ const UnplacedStudentsBox = ({ children }: { children: React.ReactNode }) => {
         <div 
             ref={setNodeRef} 
             className={cn(
-                "mt-4 p-2 rounded-lg border bg-card text-card-foreground shadow-sm space-y-2", 
+                "mt-4 rounded-lg border bg-card text-card-foreground shadow-sm space-y-2 p-2", 
                 isOver && "bg-primary/10"
             )}
         >
@@ -218,6 +218,7 @@ export default function NewSeatingChart({ students, appSettings, onAppSettingsCh
         }}
         onDragEnd={handleDragEnd}
         collisionDetection={closestCenter}
+        autoScroll={false}
     >
         <Card className="min-h-[600px]">
             <CardHeader>
