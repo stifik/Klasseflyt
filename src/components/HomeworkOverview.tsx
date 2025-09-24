@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -64,7 +64,7 @@ const HomeworkCell: FC<{ studentId: string; homework: Homework; allSubmissions: 
         // If no submission "folder" exists, create one
         if (!currentSubmissionId) {
             const newSubmissionId = await db.submissions.add({ studentId, homeworkId: homework.id! });
-            currentSubmissionId = newSubmissionId;
+            currentSubmissionId = newSubmissionId as number;
         }
 
         await db.submissionAttempts.add({
@@ -91,7 +91,7 @@ const HomeworkCell: FC<{ studentId: string; homework: Homework; allSubmissions: 
                     </DialogDescription>
                 </DialogHeader>
                 <SubmissionHistory attempts={attempts} />
-                <NewAttemptForm onSubmit={handleNewAttempt} />
+                <NewAttemptForm onSubmit={handleNewAttempt} onFinish={() => setIsHistoryOpen(false)} />
             </DialogContent>
         </Dialog>
     );
@@ -118,16 +118,21 @@ const SubmissionHistory: FC<{ attempts: SubmissionAttempt[] }> = ({ attempts }) 
     );
 };
 
-const NewAttemptForm: FC<{ onSubmit: (status: HomeworkStatus, comment?: string) => void }> = ({ onSubmit }) => {
+const NewAttemptForm: FC<{ onSubmit: (status: HomeworkStatus, comment?: string) => Promise<void>, onFinish: () => void }> = ({ onSubmit, onFinish }) => {
     const [status, setStatus] = useState<HomeworkStatus>("Godkjent");
     const [comment, setComment] = useState("");
     const { toast } = useToast();
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSubmit(status, comment);
-        toast({ title: "Ny vurdering lagret" });
-        // Closing is handled by the parent Dialog
+        try {
+            await onSubmit(status, comment);
+            toast({ title: "Ny vurdering lagret" });
+            onFinish(); // Close the dialog after submission
+        } catch (error) {
+            console.error("Failed to save new attempt:", error);
+            toast({ title: "Feil", description: "Kunne ikke lagre vurdering.", variant: "destructive" });
+        }
     };
 
     return (
@@ -149,9 +154,7 @@ const NewAttemptForm: FC<{ onSubmit: (status: HomeworkStatus, comment?: string) 
                 onChange={(e) => setComment(e.target.value)}
             />
             <DialogFooter>
-                 <DialogClose asChild>
-                    <Button type="submit">Lagre vurdering</Button>
-                </DialogClose>
+                <Button type="submit">Lagre vurdering</Button>
             </DialogFooter>
         </form>
     );
@@ -290,7 +293,7 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
                 status: defaultStatus,
                 date: new Date(),
             }));
-            await db.submissionAttempts.bulkAdd(newAttempts);
+            await db.submissionAttempts.bulkAdd(newAttempts as SubmissionAttempt[]);
             toast({ title: "Standardstatus satt", description: `Alle elever er satt til "${defaultStatus}".` });
         }
     } catch(error) {
@@ -495,3 +498,4 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
     </div>
   );
 }
+
