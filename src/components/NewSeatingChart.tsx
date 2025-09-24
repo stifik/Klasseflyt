@@ -195,6 +195,19 @@ export default function NewSeatingChart({ students, appSettings, onSeatingChartC
       const placedStudentNames = new Set(seatingChart.flat().filter(Boolean).map((s: string[]) => s[0]));
       return students.filter(student => !placedStudentNames.has(student.name));
   }, [students, seatingChart]);
+  
+  const dropAnimationConfig: DropAnimation = {
+    duration: 0,
+    easing: '',
+    sideEffects: defaultDropAnimationSideEffects({
+      styles: {
+        active: {
+          opacity: '0.5',
+        },
+      },
+    }),
+  };
+
 
   if (!activeLayout) {
       return (
@@ -214,7 +227,7 @@ export default function NewSeatingChart({ students, appSettings, onSeatingChartC
         onDragStart={(event) => setActiveDragItem({ name: event.active.data.current?.studentName, isUnplaced: event.active.data.current?.isUnplaced })}
         onDragEnd={handleDragEnd}
         collisionDetection={closestCenter}
-        dropAnimation={null}
+        dropAnimation={dropAnimationConfig}
     >
         <Card className="min-h-[600px]">
             <CardHeader>
