@@ -215,7 +215,6 @@ export default function NewSeatingChart({ students, appSettings, onAppSettingsCh
         }}
         onDragEnd={handleDragEnd}
         collisionDetection={closestCenter}
-        dropAnimation={null}
     >
         <Card className="min-h-[600px]">
             <CardHeader>
@@ -277,7 +276,7 @@ export default function NewSeatingChart({ students, appSettings, onAppSettingsCh
                 </UnplacedStudentsBox>
             </CardContent>
         </Card>
-        <DragOverlay>
+        <DragOverlay dropAnimation={null}>
             {activeDragItem ? (
                  <div className={cn(
                     "flex items-center justify-center text-center touch-none rounded-lg p-1 shadow-lg",
