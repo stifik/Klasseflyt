@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Loader2, Users, Shuffle, Plus, X, Trash2, Save, Info, Pin, PinOff } from "lucide-react";
+import { Loader2, Users, Shuffle, Plus, X, Trash2, Save, Info, Lock, Unlock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -79,8 +79,8 @@ const DroppableDesk = ({ id, children, isOver, isLocked, onLockToggle }: { id: s
                     onClick={onLockToggle}
                 >
                     {isLocked 
-                      ? <Pin className="w-4 h-4 text-primary -rotate-45" /> 
-                      : <PinOff className="w-4 h-4 text-muted-foreground" />}
+                      ? <Lock className="w-4 h-4 text-primary" /> 
+                      : <Unlock className="w-4 h-4 text-muted-foreground" />}
                 </Button>
             )}
         </div>
@@ -344,7 +344,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     } catch (error) {
         console.error("Failed to update locked desks:", error);
         toast({ title: "Feil", description: "Kunne ikke oppdatere låst pult.", variant: "destructive" });
-        // Revert on failure
+        // Revert on failure by restoring the previous layout state
         setLocalActiveLayout(activeLayout);
     }
 };
@@ -468,7 +468,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     }
 
     toast({ title: "Kunne ikke oppfylle alle regler", description: "Genererer et kart uten alle regler.", variant: "destructive" });
-    const finalShuffled = students.map(s => s.name).filter(name => !lockedStudentNames.has(name)).sort(() => Math.random() - 0.5);
+    const finalShuffled = students.map(s => s.name).filter(name => !new Set(lockedDesks.map(d => d.studentName)).has(name)).sort(() => Math.random() - 0.5);
     const finalChart: SeatingChartData = JSON.parse(JSON.stringify(newChart)); // Start with locked students
     let finalIndex = 0;
     for (let r = 0; r < activeLayout.rows; r++) {
@@ -706,7 +706,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
                     <CardHeader>
                         <CardTitle>Klassekart</CardTitle>
                         <CardDescription>
-                            {seatingChart ? "Dra og slipp elever for å bytte plass. Klikk på tegnestiften for å låse en elev til en pult." : "Resultatet av genereringen vil vises her."}
+                            {seatingChart ? "Dra og slipp elever for å bytte plass. Klikk på låsen for å låse en elev til en pult." : "Resultatet av genereringen vil vises her."}
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
