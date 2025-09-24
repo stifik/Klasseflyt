@@ -85,14 +85,12 @@ const UnplacedStudentsBox = ({ children }: { children: React.ReactNode }) => {
     const { setNodeRef, isOver } = useDroppable({ id: 'unplaced-area' });
     return (
         <Card ref={setNodeRef} className={cn("mt-4", isOver && "bg-primary/10")}>
-            <CardHeader>
-                <CardTitle className="text-base flex items-center">
+            <CardContent className="p-4 rounded-lg min-h-[60px] space-y-2">
+                 <h3 className="text-base font-semibold leading-none tracking-tight flex items-center">
                     <Users className="mr-2" />
                     Uplasserte elever
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="p-2 pt-0 rounded-lg min-h-[60px]">
-                <div className="flex flex-wrap gap-2">
+                </h3>
+                <div className="flex flex-wrap gap-2 pt-2">
                     {children}
                 </div>
             </CardContent>
