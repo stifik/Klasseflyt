@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
@@ -18,6 +17,7 @@ import { Switch } from "./ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
+import StudentLockStatus from "./StudentLockStatus";
 
 
 type SeatingChartData = (string[] | null)[][];
@@ -329,7 +329,6 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     
     try {
         await db.seatingLayouts.update(activeLayout.id!, { lockedDesks: newLockedDesks });
-        // The useLiveQuery hook will automatically cause a re-render with the updated data.
     } catch (error) {
         console.error("Failed to update locked desks:", error);
         toast({ title: "Feil", description: "Kunne ikke oppdatere låst pult.", variant: "destructive" });
@@ -585,6 +584,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="lg:col-span-1 space-y-4">
+        <StudentLockStatus appSettings={appSettings} />
         <Card>
             <CardHeader>
                 <CardTitle>Generer Klassekart</CardTitle>
@@ -769,5 +769,6 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 }
 
     
+
 
 
