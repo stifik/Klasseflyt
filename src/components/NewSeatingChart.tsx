@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
-import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, closestCenter } from "@dnd-kit/core";
+import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, closestCenter, DropAnimation, defaultDropAnimationSideEffects } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 
 interface NewSeatingChartProps {
@@ -99,6 +99,17 @@ const UnplacedStudentsBox = ({ children }: { children: React.ReactNode }) => {
         </Card>
     );
 }
+
+const dropAnimation: DropAnimation = {
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: {
+      active: {
+        opacity: '0.5',
+      },
+    },
+  }),
+};
+
 
 export default function NewSeatingChart({ students, appSettings, onSeatingChartChange }: NewSeatingChartProps) {
   const { toast } = useToast();
@@ -214,6 +225,7 @@ export default function NewSeatingChart({ students, appSettings, onSeatingChartC
         onDragStart={(event) => setActiveDragItem({ name: event.active.data.current?.studentName, isUnplaced: event.active.data.current?.isUnplaced })}
         onDragEnd={handleDragEnd}
         collisionDetection={closestCenter}
+        dropAnimation={null}
     >
         <Card className="min-h-[600px]">
             <CardHeader>
@@ -290,3 +302,4 @@ export default function NewSeatingChart({ students, appSettings, onSeatingChartC
     </DndContext>
   );
 }
+
