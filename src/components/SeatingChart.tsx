@@ -313,7 +313,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     handleRuleChange({ placementRules: newPlacementRules });
   };
   
-  const handleLockToggle = async (rowIndex: number, colIndex: number) => {
+  const handleLockToggle = (rowIndex: number, colIndex: number) => {
     if (!activeLayout || !localSeatingChart) return;
     const deskId = `${rowIndex}-${colIndex}`;
     const studentName = localSeatingChart[rowIndex]?.[colIndex]?.[0];
@@ -326,7 +326,6 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     if (isCurrentlyLocked) {
         newLockedDesks = currentLockedDesks.filter(d => d.deskId !== deskId);
     } else {
-        // A student can only be locked to one desk. Remove other locks for this student.
         const otherLocksForStudentRemoved = currentLockedDesks.filter(d => d.studentName !== studentName);
         newLockedDesks = [...otherLocksForStudentRemoved, { deskId, studentName }];
     }
@@ -335,16 +334,14 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     const updatedLayout = { ...activeLayout, lockedDesks: newLockedDesks };
     setLocalActiveLayout(updatedLayout);
     
-    // Update the database in the background
-    try {
-        await db.seatingLayouts.update(activeLayout.id!, { lockedDesks: newLockedDesks });
-    } catch (error) {
+    // Update DB in the background
+    db.seatingLayouts.update(activeLayout.id!, { lockedDesks: newLockedDesks }).catch(error => {
         console.error("Failed to update locked desks:", error);
         toast({ title: "Feil", description: "Kunne ikke oppdatere låst pult.", variant: "destructive" });
-        // Revert on failure by restoring the previous layout state
+        // Revert on failure
         setLocalActiveLayout(activeLayout);
-    }
-};
+    });
+  };
 
   const getNeighbors = (r: number, c: number, chart: SeatingChartData): string[] => {
     const neighbors: string[] = [];
