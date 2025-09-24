@@ -1,16 +1,16 @@
 
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
-import type { Student, SeatingChartRecord, SeatingLayout, AppSettings, LockedDesk, SeatingChartData as SeatingChartDataType } from "@/lib/types";
+import React, { useState, useMemo } from "react";
+import type { Student, SeatingLayout, AppSettings, SeatingChartDataType } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Lock, Unlock } from "lucide-react";
+import { Lock, Unlock, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
-import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay } from "@dnd-kit/core";
+import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, closestCenter } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 
 interface NewSeatingChartProps {
@@ -20,13 +20,18 @@ interface NewSeatingChartProps {
   onSeatingChartChange: (chart: SeatingChartDataType | null, source: 'generation' | 'drag' | 'load') => void;
 }
 
-const DraggableStudent = ({ studentName, deskId, isLocked }: { studentName: string, deskId: string, isLocked: boolean }) => {
+const DraggableStudent = ({ studentName, deskId, isLocked, isUnplaced = false }: { studentName: string; deskId?: string; isLocked?: boolean, isUnplaced?: boolean }) => {
+    const id = isUnplaced ? `unplaced-${studentName}` : `student-${deskId}`;
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-        id: `student-${deskId}`,
-        data: { studentName, fromDeskId: deskId },
+        id: id,
+        data: { studentName, fromDeskId: deskId, isUnplaced },
         disabled: isLocked,
     });
     const style = { transform: CSS.Translate.toString(transform) };
+    
+    const baseClasses = "flex items-center justify-center h-full w-full text-center touch-none rounded-lg p-1";
+    const placedClasses = "bg-secondary";
+    const unplacedClasses = "bg-background border h-auto py-1.5";
 
     return (
         <div 
@@ -35,8 +40,9 @@ const DraggableStudent = ({ studentName, deskId, isLocked }: { studentName: stri
             {...listeners} 
             {...attributes} 
             className={cn(
-                "flex items-center justify-center h-full w-full text-center bg-secondary touch-none rounded-lg p-1",
-                isDragging && 'opacity-50',
+                baseClasses,
+                isUnplaced ? unplacedClasses : placedClasses,
+                isDragging && 'opacity-50 z-50',
                 isLocked ? 'cursor-not-allowed' : 'cursor-grab'
             )}
         >
@@ -45,8 +51,8 @@ const DraggableStudent = ({ studentName, deskId, isLocked }: { studentName: stri
     );
 };
 
-const DroppableDesk = ({ id, children, isLocked, onLockToggle, isOver }: { id: string, children: React.ReactNode, isLocked: boolean, onLockToggle: () => void, isOver: boolean }) => {
-    const { setNodeRef } = useDroppable({ id });
+const DroppableDesk = ({ id, children, isLocked, onLockToggle }: { id: string, children: React.ReactNode, isLocked: boolean, onLockToggle: () => void }) => {
+    const { setNodeRef, isOver } = useDroppable({ id });
     const hasChild = React.Children.count(children) > 0 && React.Children.toArray(children).some(child => child !== null);
     
     return (
@@ -54,7 +60,7 @@ const DroppableDesk = ({ id, children, isLocked, onLockToggle, isOver }: { id: s
             ref={setNodeRef}
             className={cn(
                 "relative flex items-center justify-center border rounded-lg transition-colors w-full h-16",
-                isOver ? "bg-primary/10" : "bg-transparent",
+                isOver ? "bg-primary/10 ring-2 ring-primary" : "bg-transparent",
                 !hasChild ? "border-dashed border-slate-300 dark:border-slate-700" : "border-border"
             )}
         >
@@ -75,10 +81,28 @@ const DroppableDesk = ({ id, children, isLocked, onLockToggle, isOver }: { id: s
     );
 };
 
+const UnplacedStudentsBox = ({ children }: { children: React.ReactNode }) => {
+    const { setNodeRef, isOver } = useDroppable({ id: 'unplaced-area' });
+    return (
+        <Card className="mt-4" ref={setNodeRef}>
+            <CardHeader>
+                <CardTitle className="text-base flex items-center">
+                    <Users className="mr-2" />
+                    Uplasserte elever
+                </CardTitle>
+            </CardHeader>
+            <CardContent className={cn("p-2 pt-0 min-h-[60px] rounded-lg", isOver && "bg-primary/10")}>
+                <div className="flex flex-wrap gap-2">
+                    {children}
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
 
 export default function NewSeatingChart({ students, appSettings, onSeatingChartChange }: NewSeatingChartProps) {
   const { toast } = useToast();
-  const [activeDragStudentName, setActiveDragStudentName] = useState<string | null>(null);
+  const [activeDragItem, setActiveDragItem] = useState<{ name: string, isUnplaced: boolean } | null>(null);
   
   const activeLayout = useLiveQuery(() => {
     if (appSettings.selectedSeatingLayoutId) {
@@ -101,7 +125,7 @@ export default function NewSeatingChart({ students, appSettings, onSeatingChartC
     const currentLockedDesks = activeLayout.lockedDesks || [];
     const isCurrentlyLocked = currentLockedDesks.some(d => d.deskId === deskId);
 
-    let newLockedDesks: LockedDesk[];
+    let newLockedDesks;
     if (isCurrentlyLocked) {
         newLockedDesks = currentLockedDesks.filter(d => d.deskId !== deskId);
         toast({ title: `${studentName} er låst opp.`});
@@ -118,30 +142,59 @@ export default function NewSeatingChart({ students, appSettings, onSeatingChartC
         toast({ title: "Feil", description: "Kunne ikke oppdatere låst pult.", variant: "destructive" });
     }
   };
-  
+
   const handleDragEnd = (event: DragEndEvent) => {
-      setActiveDragStudentName(null);
+      setActiveDragItem(null);
       const { active, over } = event;
-
+  
       if (!over || !seatingChart || !activeLayout) return;
-      if (active.id === over.id) return;
       
-      const [fromR, fromC] = (active.data.current?.fromDeskId as string).split('-').map(Number);
-      const [toR, toC] = (over.id as string).split('-').map(Number);
-      
-      // Check if destination is a valid desk
-      if (!activeLayout.layout[toR]?.[toC]) return;
-
       const newChart = JSON.parse(JSON.stringify(seatingChart));
-      const studentToMove = newChart[fromR][fromC];
-      const studentAtDestination = newChart[toR][toC];
+      const studentName = active.data.current?.studentName;
 
-      // Swap students
-      newChart[toR][toC] = studentToMove;
-      newChart[fromR][fromC] = studentAtDestination;
+      // Case 1: Dragging from a desk
+      if (!active.data.current?.isUnplaced) {
+          const [fromR, fromC] = (active.data.current?.fromDeskId as string).split('-').map(Number);
+
+          // Case 1a: Dragging from desk to another desk
+          if (over.id !== 'unplaced-area') {
+              const [toR, toC] = (over.id as string).split('-').map(Number);
+              if (!activeLayout.layout[toR]?.[toC]) return;
+
+              const studentAtDestination = newChart[toR][toC];
+              newChart[toR][toC] = newChart[fromR][fromC];
+              newChart[fromR][fromC] = studentAtDestination;
+          } 
+          // Case 1b: Dragging from desk to unplaced area
+          else {
+              newChart[fromR][fromC] = [];
+          }
+      } 
+      // Case 2: Dragging from unplaced area
+      else {
+          // Case 2a: Dragging from unplaced to desk
+          if (over.id !== 'unplaced-area') {
+              const [toR, toC] = (over.id as string).split('-').map(Number);
+              if (!activeLayout.layout[toR]?.[toC] && newChart[toR][toC]?.[0]) {
+                   toast({ title: "Pult er opptatt", variant: "destructive" });
+                   return;
+              }
+              newChart[toR][toC] = [studentName];
+          }
+          // Case 2b: Dragging from unplaced to unplaced (do nothing)
+          else {
+              return;
+          }
+      }
 
       onSeatingChartChange(newChart, 'drag');
   };
+
+  const unplacedStudents = useMemo(() => {
+      if (!students || !seatingChart) return [];
+      const placedStudentNames = new Set(seatingChart.flat().filter(Boolean).map((s: string[]) => s[0]));
+      return students.filter(student => !placedStudentNames.has(student.name));
+  }, [students, seatingChart]);
 
   if (!activeLayout) {
       return (
@@ -158,8 +211,9 @@ export default function NewSeatingChart({ students, appSettings, onSeatingChartC
   
   return (
     <DndContext 
-        onDragStart={(event) => setActiveDragStudentName(event.active.data.current?.studentName)}
+        onDragStart={(event) => setActiveDragItem({ name: event.active.data.current?.studentName, isUnplaced: event.active.data.current?.isUnplaced })}
         onDragEnd={handleDragEnd}
+        collisionDetection={closestCenter}
     >
         <Card className="min-h-[600px]">
             <CardHeader>
@@ -182,7 +236,7 @@ export default function NewSeatingChart({ students, appSettings, onSeatingChartC
                                         }
                                         const deskId = `${rowIndex}-${colIndex}`;
                                         const studentName = seatingChart[rowIndex]?.[colIndex]?.[0] || null;
-                                        const isLocked = activeLayout.lockedDesks?.some(d => d.deskId === deskId) ?? false;
+                                        const isLocked = activeLayout.lockedDesks?.some(d => d.deskId === deskId && d.studentName === studentName) ?? false;
 
                                         return (
                                             <DroppableDesk 
@@ -190,7 +244,6 @@ export default function NewSeatingChart({ students, appSettings, onSeatingChartC
                                                 id={deskId} 
                                                 isLocked={isLocked}
                                                 onLockToggle={() => handleLockToggle(rowIndex, colIndex)}
-                                                isOver={false} // Visual feedback can be added here
                                             >
                                                 {studentName && (
                                                     <DraggableStudent 
@@ -211,16 +264,27 @@ export default function NewSeatingChart({ students, appSettings, onSeatingChartC
                         <p>Klassekartet er tomt. Klikk på "Generer nytt" for å lage et.</p>
                     </div>
                 )}
+                 <UnplacedStudentsBox>
+                    {unplacedStudents.map(student => (
+                        <DraggableStudent
+                            key={student.id}
+                            studentName={student.name}
+                            isUnplaced={true}
+                        />
+                    ))}
+                </UnplacedStudentsBox>
             </CardContent>
         </Card>
         <DragOverlay>
-            {activeDragStudentName ? (
-                 <div className="flex items-center justify-center h-16 w-full max-w-[80px] text-center bg-secondary touch-none rounded-lg p-1 shadow-lg">
-                    <p className="text-xs font-medium whitespace-normal">{activeDragStudentName}</p>
+            {activeDragItem ? (
+                 <div className={cn(
+                    "flex items-center justify-center h-16 w-[80px] text-center touch-none rounded-lg p-1 shadow-lg",
+                    activeDragItem.isUnplaced ? "bg-background border" : "bg-secondary"
+                 )}>
+                    <p className="text-xs font-medium whitespace-normal">{activeDragItem.name}</p>
                 </div>
             ) : null}
         </DragOverlay>
     </DndContext>
   );
 }
-
