@@ -100,17 +100,6 @@ const UnplacedStudentsBox = ({ children }: { children: React.ReactNode }) => {
     );
 }
 
-const dropAnimation: DropAnimation = {
-  sideEffects: defaultDropAnimationSideEffects({
-    styles: {
-      active: {
-        opacity: '0.5',
-      },
-    },
-  }),
-};
-
-
 export default function NewSeatingChart({ students, appSettings, onSeatingChartChange }: NewSeatingChartProps) {
   const { toast } = useToast();
   const [activeDragItem, setActiveDragItem] = useState<{ name: string, isUnplaced: boolean } | null>(null);
@@ -302,4 +291,3 @@ export default function NewSeatingChart({ students, appSettings, onSeatingChartC
     </DndContext>
   );
 }
-
