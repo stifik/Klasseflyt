@@ -33,11 +33,11 @@ const DraggableStudent = ({ studentName, deskId, isLocked, isUnplaced = false }:
     const unplacedClasses = "bg-background border h-auto py-1.5 px-2";
 
     return (
-        <div 
-            ref={setNodeRef} 
-            style={style} 
-            {...listeners} 
-            {...attributes} 
+        <div
+            ref={setNodeRef}
+            style={style}
+            {...listeners}
+            {...attributes}
             className={cn(
                 baseClasses,
                 isUnplaced ? unplacedClasses : placedClasses,
