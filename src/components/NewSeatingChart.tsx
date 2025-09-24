@@ -41,7 +41,7 @@ const DraggableStudent = ({ studentName, deskId, isLocked, isUnplaced = false }:
             className={cn(
                 baseClasses,
                 isUnplaced ? unplacedClasses : placedClasses,
-                isDragging && 'invisible',
+                isDragging ? 'opacity-0' : 'opacity-100',
                 isLocked ? 'cursor-not-allowed' : 'cursor-grab'
             )}
         >
