@@ -8,12 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX, Plus, Trash2, Calendar as CalendarIcon, History } from "lucide-react";
+import { FileText, Edit2, Copy, Filter, RotateCcw, ChevronDown, CheckCircle, XCircle, AlertTriangle, Thermometer, BookX, Plus, Trash2, Calendar as CalendarIcon, History, MessageSquarePlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -42,7 +42,9 @@ const statusIcons: Record<HomeworkStatus, React.ReactElement> = {
 };
 
 const HomeworkCell: FC<{ studentId: string; homework: Homework; allSubmissions: Submission[]; allAttempts: SubmissionAttempt[] }> = ({ studentId, homework, allSubmissions, allAttempts }) => {
-    const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+    const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+    const { toast } = useToast();
 
     const submission = useMemo(() => {
         return allSubmissions.find(s => s.studentId === studentId && s.homeworkId === homework.id);
@@ -74,28 +76,56 @@ const HomeworkCell: FC<{ studentId: string; homework: Homework; allSubmissions: 
             date: new Date(),
         });
     };
-
+    
+    const handleQuickAttempt = async (status: HomeworkStatus) => {
+        setIsPopoverOpen(false);
+        try {
+            await handleNewAttempt(status);
+            toast({ title: "Vurdering lagret" });
+        } catch (error) {
+            console.error("Failed to save quick attempt:", error);
+            toast({ title: "Feil", description: "Kunne ikke lagre vurdering.", variant: "destructive" });
+        }
+    };
+    
     return (
-        <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
-            <DialogTrigger asChild>
-                <button className="flex items-center justify-center w-full h-full p-2 relative min-h-[58px]">
-                    {latestAttempt ? statusIcons[latestAttempt.status] : <span className="text-muted-foreground">-</span>}
-                    {hasComment && <FileText className="absolute w-3 h-3 text-blue-600 bottom-1 right-1" />}
-                </button>
-            </DialogTrigger>
+        <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
+            <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                <PopoverTrigger asChild>
+                    <button className="flex items-center justify-center w-full h-full p-2 relative min-h-[58px]">
+                        {latestAttempt ? statusIcons[latestAttempt.status] : <span className="text-muted-foreground">-</span>}
+                        {hasComment && <FileText className="absolute w-3 h-3 text-blue-600 bottom-1 right-1" />}
+                    </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-1">
+                    <div className="flex flex-col">
+                        {Object.entries(statusIcons).map(([status, icon]) => (
+                            <Button key={status} variant="ghost" className="justify-start" onClick={() => handleQuickAttempt(status as HomeworkStatus)}>
+                                {icon}
+                                <span className="ml-2">{status}</span>
+                            </Button>
+                        ))}
+                         <Button variant="ghost" className="justify-start" onClick={() => { setIsPopoverOpen(false); setIsHistoryDialogOpen(true); }}>
+                            <MessageSquarePlus />
+                            <span className="ml-2">Legg til kommentar</span>
+                        </Button>
+                    </div>
+                </PopoverContent>
+            </Popover>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Vurderingshistorikk</DialogTitle>
+                    <DialogTitle>Vurderingshistorikk & Kommentar</DialogTitle>
                     <DialogDescription>
                         {homework.title || 'Lekse'} for uke {homework.week}
                     </DialogDescription>
                 </DialogHeader>
                 <SubmissionHistory attempts={attempts} />
-                <NewAttemptForm onSubmit={handleNewAttempt} onFinish={() => setIsHistoryOpen(false)} />
+                <NewAttemptForm onSubmit={handleNewAttempt} onFinish={() => setIsHistoryDialogOpen(false)} />
             </DialogContent>
         </Dialog>
     );
 };
+
 
 const SubmissionHistory: FC<{ attempts: SubmissionAttempt[] }> = ({ attempts }) => {
     if (attempts.length === 0) {
@@ -498,4 +528,5 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
     </div>
   );
 }
+
 
