@@ -29,9 +29,9 @@ const DraggableStudent = ({ studentName, deskId, isLocked, isUnplaced = false }:
     });
     const style = { transform: CSS.Translate.toString(transform) };
     
-    const baseClasses = "flex items-center justify-center h-full w-full text-center touch-none rounded-lg p-1";
-    const placedClasses = "bg-secondary";
-    const unplacedClasses = "bg-background border h-auto py-1.5";
+    const baseClasses = "flex items-center justify-center text-center touch-none rounded-lg p-1";
+    const placedClasses = "bg-secondary h-full w-full";
+    const unplacedClasses = "bg-background border h-auto py-1.5 px-2";
 
     return (
         <div 
@@ -175,7 +175,7 @@ export default function NewSeatingChart({ students, appSettings, onSeatingChartC
           // Case 2a: Dragging from unplaced to desk
           if (over.id !== 'unplaced-area') {
               const [toR, toC] = (over.id as string).split('-').map(Number);
-              if (!activeLayout.layout[toR]?.[toC] && newChart[toR][toC]?.[0]) {
+              if (!activeLayout.layout[toR]?.[toC] || (newChart[toR][toC] && newChart[toR][toC].length > 0)) {
                    toast({ title: "Pult er opptatt", variant: "destructive" });
                    return;
               }
@@ -278,8 +278,10 @@ export default function NewSeatingChart({ students, appSettings, onSeatingChartC
         <DragOverlay>
             {activeDragItem ? (
                  <div className={cn(
-                    "flex items-center justify-center h-16 w-[80px] text-center touch-none rounded-lg p-1 shadow-lg",
-                    activeDragItem.isUnplaced ? "bg-background border" : "bg-secondary"
+                    "flex items-center justify-center text-center touch-none rounded-lg p-1 shadow-lg",
+                     activeDragItem.isUnplaced
+                        ? "bg-background border h-auto py-1.5 px-2"
+                        : "bg-secondary h-16 w-[80px]"
                  )}>
                     <p className="text-xs font-medium whitespace-normal">{activeDragItem.name}</p>
                 </div>
