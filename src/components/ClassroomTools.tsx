@@ -228,6 +228,32 @@ const SeatingChartTabContent: FC<{
         }, 50);
     };
 
+    const handleClearChart = () => {
+        if (!activeLayout || !lastChart) {
+            toast({ title: "Ingen kart å tømme", variant: "destructive" });
+            return;
+        }
+
+        const lockedDesks = activeLayout.lockedDesks || [];
+        const lockedStudentMap = new Map(lockedDesks.map(l => [l.deskId, l.studentName]));
+
+        const newChart: SeatingChartDataType = Array(activeLayout.rows).fill(null).map(() => Array(activeLayout.cols).fill(null).map(() => []));
+
+        for (let r = 0; r < activeLayout.rows; r++) {
+            for (let c = 0; c < activeLayout.cols; c++) {
+                const deskId = `${r}-${c}`;
+                if (lockedStudentMap.has(deskId)) {
+                    newChart[r][c] = [lockedStudentMap.get(deskId)!];
+                } else {
+                    newChart[r][c] = [];
+                }
+            }
+        }
+
+        onSeatingChartChange(newChart, 'generation');
+        toast({ title: "Kart tømt", description: "Låste elever er beholdt." });
+    };
+
     const seatingChart = useLiveQuery(async () => {
         const latest = await db.seatingChartHistory.orderBy('createdAt').last();
         return latest ? JSON.parse(latest.chartJson) : null;
@@ -247,10 +273,15 @@ const SeatingChartTabContent: FC<{
                 <Card>
                     <CardHeader><CardTitle>Generer Klassekart</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
-                        <Button onClick={handleGenerateClick} disabled={isGenerating || !activeLayout} className="w-full">
-                            {isGenerating ? <Loader2 className="mr-2 animate-spin" /> : <Shuffle className="mr-2" />}
-                            {seatingChart ? 'Generer nytt' : 'Generer'}
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button onClick={handleGenerateClick} disabled={isGenerating || !activeLayout} className="w-full">
+                                {isGenerating ? <Loader2 className="mr-2 animate-spin" /> : <Shuffle className="mr-2" />}
+                                {seatingChart ? 'Generer nytt' : 'Generer'}
+                            </Button>
+                            <Button onClick={handleClearChart} disabled={!seatingChart || !activeLayout} variant="outline" className="w-full">
+                                <Trash2 className="mr-2" /> Tøm kart
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
                 <Card>
@@ -535,4 +566,5 @@ const ClassroomTools: FC<ClassroomToolsProps> = (props) => {
 
 export default ClassroomTools;
 
+    
     
