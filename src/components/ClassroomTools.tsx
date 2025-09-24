@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import GroupTool from "./GroupTool";
 import StudentPicker from "./StudentPicker";
 import SeatingChart from "./SeatingChart";
+import NewSeatingChart from "./NewSeatingChart"; // Importer den nye komponenten
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 

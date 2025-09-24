@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import type { Student, SeatingChartRecord, SeatingLayout, AppSettings, PlacementRule, AvoidPair, LockedDesk } from "@/lib/types";
+import type { Student, SeatingChartRecord, SeatingLayout, AppSettings, PlacementRule, AvoidPair, LockedDesk, SeatingChartData as SeatingChartDataType } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import StudentLockStatus from "./StudentLockStatus";
+import NewSeatingChart from "./NewSeatingChart";
 
 
 type SeatingChartData = (string[] | null)[][];
@@ -311,30 +312,6 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     handleRuleChange({ placementRules: newPlacementRules });
   };
   
-  const handleLockToggle = async (rowIndex: number, colIndex: number) => {
-    if (!activeLayout || !localSeatingChart) return;
-    const deskId = `${rowIndex}-${colIndex}`;
-    const studentName = localSeatingChart[rowIndex]?.[colIndex]?.[0];
-    if (!studentName) return;
-
-    const currentLockedDesks = activeLayout.lockedDesks || [];
-    const isCurrentlyLocked = currentLockedDesks.some(d => d.deskId === deskId);
-
-    let newLockedDesks: LockedDesk[];
-    if (isCurrentlyLocked) {
-        newLockedDesks = currentLockedDesks.filter(d => d.deskId !== deskId);
-    } else {
-        const otherLocksForStudentRemoved = currentLockedDesks.filter(d => d.studentName !== studentName);
-        newLockedDesks = [...otherLocksForStudentRemoved, { deskId, studentName }];
-    }
-    
-    try {
-        await db.seatingLayouts.update(activeLayout.id!, { lockedDesks: newLockedDesks });
-    } catch (error) {
-        console.error("Failed to update locked desks:", error);
-        toast({ title: "Feil", description: "Kunne ikke oppdatere låst pult.", variant: "destructive" });
-    }
-  };
 
   const getNeighbors = (r: number, c: number, chart: SeatingChartData): string[] => {
     const neighbors: string[] = [];
@@ -585,7 +562,6 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="lg:col-span-1 space-y-4">
-        <StudentLockStatus appSettings={appSettings} />
         <Card>
             <CardHeader>
                 <CardTitle>Generer Klassekart</CardTitle>
@@ -695,78 +671,8 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
       </div>
 
         <div className="lg:col-span-2">
-             <DndContext onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-                <Card className="min-h-[600px]">
-                    <CardHeader>
-                        <CardTitle>Klassekart</CardTitle>
-                        <CardDescription>
-                            {seatingChart ? "Dra og slipp elever for å bytte plass. Klikk på låsen for å låse en elev til en pult." : "Resultatet av genereringen vil vises her."}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {isGenerating && <div className="flex items-center justify-center h-96"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>}
-                        
-                        {!isGenerating && localSeatingChart && activeLayout && (
-                            <div className="w-full overflow-x-auto">
-                                <div className="p-1 inline-block" style={{ minWidth: '100%' }}>
-                                    <div className="grid gap-1 w-full" style={{ 
-                                        gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))`,
-                                    }}>
-                                        {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
-                                            Array.from({ length: activeLayout.cols }).map((_, colIndex) => {
-                                                if (!activeLayout.layout[rowIndex]?.[colIndex]) {
-                                                    return <div key={`${rowIndex}-${colIndex}`} className="w-full h-16" />;
-                                                }
-                                                const id = `desk-${rowIndex}-${colIndex}`;
-                                                const studentName = localSeatingChart[rowIndex]?.[colIndex]?.[0] || null;
-                                                const isLocked = activeLayout.lockedDesks?.some(d => d.deskId === id) ?? false;
-                                                return (
-                                                    <DroppableDesk 
-                                                        key={id} 
-                                                        id={id} 
-                                                        isOver={overId === id}
-                                                        isLocked={isLocked}
-                                                        onLockToggle={() => handleLockToggle(rowIndex, colIndex)}
-                                                    >
-                                                        {studentName && activeDragId !== id && <DraggableStudent id={id} studentName={studentName} />}
-                                                    </DroppableDesk>
-                                                );
-                                            })
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        <div className="mt-4">
-                              <UnplacedArea id="unplaced-area" isOver={overId === 'unplaced-area'}>
-                                <h4 className="font-semibold mb-4 text-sm text-center">
-                                    Uplasserte elever ({unplacedStudents.length})
-                                </h4>
-                                <div className="grid grid-cols-4 gap-2">
-                                    {unplacedStudents.map(studentName => {
-                                        const unplacedId = `unplaced-${studentName}`;
-                                        return (
-                                            <div key={unplacedId} className="w-full h-12">
-                                                {activeDragId !== unplacedId && <DraggableStudent id={unplacedId} studentName={studentName} />}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </UnplacedArea>
-                        </div>
-                    </CardContent>
-                </Card>
-                <DragOverlay>
-                    {activeDragId && draggedStudentName ? (
-                        <div className="flex items-center justify-center h-16 text-center bg-secondary cursor-grabbing rounded-lg shadow-lg p-1 w-24">
-                            <p className="text-xs font-medium whitespace-normal">{draggedStudentName}</p>
-                        </div>
-                    ) : null}
-                </DragOverlay>
-            </DndContext>
+            <NewSeatingChart students={students} appSettings={appSettings} onAppSettingsChange={onAppSettingsChange} />
         </div>
     </div>
   );
 }
-
-    
