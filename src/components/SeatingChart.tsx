@@ -30,7 +30,6 @@ interface SeatingChartProps {
   history: SeatingChartRecord[];
   appSettings: AppSettings;
   onAppSettingsChange: (newSettings: AppSettings) => void;
-  activeLayout: SeatingLayout | null | undefined;
 }
 
 
@@ -72,7 +71,7 @@ const DroppableDesk = ({ id, children, isOver, isLocked, onLockToggle }: { id: s
         >
             {children}
             {hasChild && (
-                <Button
+                 <Button
                     size="icon"
                     variant="ghost"
                     className="absolute top-0 left-0 w-6 h-6"
@@ -236,7 +235,7 @@ const CreateLayoutDialog = ({ onLayoutCreate }: { onLayoutCreate: (layout: Seati
 
 
 // Main Component
-export default function SeatingChart({ students, seatingChart, onSeatingChartChange, history, appSettings, onAppSettingsChange, activeLayout: activeLayoutFromProps }: SeatingChartProps) {
+export default function SeatingChart({ students, seatingChart, onSeatingChartChange, history, appSettings, onAppSettingsChange }: SeatingChartProps) {
   const [localSeatingChart, setLocalSeatingChart] = useState<SeatingChartData | null>(seatingChart);
   const [unplacedStudents, setUnplacedStudents] = useState<string[]>([]);
   
@@ -250,17 +249,15 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
   const [selectedStudentForRule, setSelectedStudentForRule] = useState<string>("");
   const [selectedPlacement, setSelectedPlacement] = useState<'front' | 'back'>('front');
   
-  const [localActiveLayout, setLocalActiveLayout] = useState<SeatingLayout | null | undefined>(activeLayoutFromProps);
-
   const { toast } = useToast();
 
-  const layouts = useLiveQuery(() => db.seatingLayouts.toArray(), []);
-  
-  useEffect(() => {
-    setLocalActiveLayout(activeLayoutFromProps);
-  }, [activeLayoutFromProps]);
-  
-  const activeLayout = localActiveLayout;
+  const layouts = useLiveQuery(() => db.seatingLayouts.toArray());
+  const activeLayout = useLiveQuery(() => {
+    if (appSettings.selectedSeatingLayoutId) {
+      return db.seatingLayouts.get(appSettings.selectedSeatingLayoutId);
+    }
+    return Promise.resolve(undefined);
+  }, [appSettings.selectedSeatingLayoutId]);
 
   const avoidPairs = appSettings.seatingChartRules?.avoidPairs || [];
   const placementRules = appSettings.seatingChartRules?.placementRules || [];
@@ -313,7 +310,7 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     handleRuleChange({ placementRules: newPlacementRules });
   };
   
-  const handleLockToggle = (rowIndex: number, colIndex: number) => {
+  const handleLockToggle = async (rowIndex: number, colIndex: number) => {
     if (!activeLayout || !localSeatingChart) return;
     const deskId = `${rowIndex}-${colIndex}`;
     const studentName = localSeatingChart[rowIndex]?.[colIndex]?.[0];
@@ -326,21 +323,18 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
     if (isCurrentlyLocked) {
         newLockedDesks = currentLockedDesks.filter(d => d.deskId !== deskId);
     } else {
+        // A student can only be locked to one desk. Remove other locks for this student.
         const otherLocksForStudentRemoved = currentLockedDesks.filter(d => d.studentName !== studentName);
         newLockedDesks = [...otherLocksForStudentRemoved, { deskId, studentName }];
     }
     
-    // Optimistic UI update
-    const updatedLayout = { ...activeLayout, lockedDesks: newLockedDesks };
-    setLocalActiveLayout(updatedLayout);
-    
-    // Update DB in the background
-    db.seatingLayouts.update(activeLayout.id!, { lockedDesks: newLockedDesks }).catch(error => {
+    try {
+        await db.seatingLayouts.update(activeLayout.id!, { lockedDesks: newLockedDesks });
+        // The useLiveQuery hook will automatically cause a re-render with the updated data.
+    } catch (error) {
         console.error("Failed to update locked desks:", error);
         toast({ title: "Feil", description: "Kunne ikke oppdatere låst pult.", variant: "destructive" });
-        // Revert on failure
-        setLocalActiveLayout(activeLayout);
-    });
+    }
   };
 
   const getNeighbors = (r: number, c: number, chart: SeatingChartData): string[] => {
@@ -776,3 +770,4 @@ export default function SeatingChart({ students, seatingChart, onSeatingChartCha
 }
 
     
+
