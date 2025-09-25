@@ -152,15 +152,17 @@ const WeeklySummary = ({ students, subjects, homework, submissions, submissionAt
         const safeDailyChecks = dailyChecks || [];
         const safeRemarks = remarks || [];
         const safeTests = tests || [];
+        const safeSubmissionAttempts = submissionAttempts || [];
 
         const homeworkWeeks = safeHomework.map(h => h.week);
         const checkWeeks = safeDailyChecks.map(c => getWeekNumber(new Date(c.date)));
         const remarkWeeks = safeRemarks.map(r => getWeekNumber(new Date(r.date)));
         const testWeeks = safeTests.map(t => getWeekNumber(new Date(t.date)));
+        const attemptWeeks = safeSubmissionAttempts.map(a => getWeekNumber(new Date(a.date)));
         
-        const allWeeks = new Set([currentWeek, ...homeworkWeeks, ...checkWeeks, ...remarkWeeks, ...testWeeks]);
+        const allWeeks = new Set([currentWeek, ...homeworkWeeks, ...checkWeeks, ...remarkWeeks, ...testWeeks, ...attemptWeeks]);
         return Array.from(allWeeks).sort((a,b) => b-a);
-    }, [homework, dailyChecks, remarks, tests]);
+    }, [homework, dailyChecks, remarks, tests, submissionAttempts]);
   
     const handleGenerateSummaries = () => {
         setIsGenerating(true);
@@ -192,7 +194,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, submissionAt
         const unreportedResults = safeTestResults.filter(r => r.reportedInWeek === undefined);
 
         const allStudentTestResults = [...new Set([...weekTests.map(t => t.id!), ...unreportedResults.map(r => r.testId)])];
-        const relevantTests = safeTests.filter(t => allStudentTestResults.includes(t.id));
+        const relevantTests = safeTests.filter(t => allStudentTestResults.includes(t.id!));
         
         const allIncludedTestResultIds: number[] = [];
 
@@ -811,6 +813,7 @@ export default function Reports(props: ReportsProps) {
 }
 
     
+
 
 
 
