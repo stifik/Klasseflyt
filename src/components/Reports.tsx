@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useMemo, FC } from 'react';
@@ -177,17 +176,10 @@ const WeeklySummary = ({ students, subjects, homework, submissions, submissionAt
         const safeTests = tests || [];
         const safeTestResults = testResults || [];
 
-        const weekSubmissions = safeSubmissions.filter(s => {
-            const hw = safeHomework.find(h => h.id === s.homeworkId);
-            return hw && hw.week === selectedWeek;
-        });
-
         const weekSubmissionAttempts = safeSubmissionAttempts.filter(att => 
             new Date(att.date).getFullYear() === new Date().getFullYear() && 
             getWeekNumber(new Date(att.date)) === selectedWeek
         );
-        
-        const weekHomeworkIds = new Set(safeHomework.filter(h => h.week === selectedWeek).map(h => h.id));
         
         // Include tests from current week, but also look for un-reported results from any time
         const weekTests = safeTests.filter(t => getWeekNumber(new Date(t.date)) === selectedWeek);
@@ -199,9 +191,11 @@ const WeeklySummary = ({ students, subjects, homework, submissions, submissionAt
         const allIncludedTestResultIds: number[] = [];
 
         const studentsToReport = students.map(student => {
-            const studentWeekSubmissionIds = new Set(weekSubmissions.filter(s => s.studentId === student.id).map(s => s.id));
-            const studentWeekAttempts = weekSubmissionAttempts.filter(att => studentWeekSubmissionIds.has(att.submissionId));
-            
+            // Find all submission attempts for this student that occurred in the selected week.
+            const studentSubmissions = safeSubmissions.filter(s => s.studentId === student.id);
+            const studentSubmissionIds = new Set(studentSubmissions.map(s => s.id));
+            const studentWeekAttempts = weekSubmissionAttempts.filter(att => studentSubmissionIds.has(att.submissionId));
+
             const studentWeekChecks = safeDailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
             const studentWeekRemarks = safeRemarks.filter(r => r.studentId === student.id && getWeekNumber(new Date(r.date)) === selectedWeek);
             
@@ -813,7 +807,3 @@ export default function Reports(props: ReportsProps) {
 }
 
     
-
-
-
-
