@@ -106,8 +106,8 @@ const HomeworkCell: FC<{ studentId: string; homework: Homework; allSubmissions: 
                             </Button>
                         ))}
                          <Button variant="ghost" className="justify-start" onClick={() => { setIsPopoverOpen(false); setIsHistoryDialogOpen(true); }}>
-                            <MessageSquarePlus />
-                            <span className="ml-2">Legg til kommentar</span>
+                            <History />
+                            <span className="ml-2">Historikk / Kommentar</span>
                         </Button>
                     </div>
                 </PopoverContent>
@@ -184,7 +184,7 @@ const NewAttemptForm: FC<{ onSubmit: (status: HomeworkStatus, comment?: string) 
                 onChange={(e) => setComment(e.target.value)}
             />
             <DialogFooter>
-                <Button type="submit">Lagre vurdering</Button>
+                 <Button type="submit">Lagre vurdering</Button>
             </DialogFooter>
         </form>
     );
@@ -528,5 +528,6 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
     </div>
   );
 }
+
 
 
