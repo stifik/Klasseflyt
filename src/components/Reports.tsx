@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useMemo, FC } from 'react';
-import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings, HourlyCheck, BehaviorType, AppSettings, Test, TestResult, LearningGoal, GoalAchievement } from '@/lib/types';
+import type { Student, Subject, Homework, Submission, DailyCheck, HomeworkStatus, Remark, ReportSettings, HourlyCheck, BehaviorType, AppSettings, Test, TestResult, LearningGoal, GoalAchievement, SubmissionAttempt } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -25,6 +25,7 @@ interface ReportsProps {
   subjects: Subject[];
   homework: Homework[];
   submissions: Submission[];
+  submissionAttempts: SubmissionAttempt[];
   tests: Test[];
   testResults: TestResult[];
   learningGoals: LearningGoal[];
@@ -33,6 +34,8 @@ interface ReportsProps {
   remarks: Remark[];
   hourlyChecks: HourlyCheck[];
   settings: AppSettings;
+  activeSubTab?: string | null;
+  onSubTabChange: (subTab: string) => void;
 }
 
 const statusColors: Record<HomeworkStatus, string> = {
@@ -135,7 +138,7 @@ const generateSummaryMessage = (
     return message;
 };
 
-const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks, remarks, settings, tests, testResults }: ReportsProps) => {
+const WeeklySummary = ({ students, subjects, homework, submissions, submissionAttempts, dailyChecks, remarks, settings, tests, testResults }: Omit<ReportsProps, 'activeSubTab' | 'onSubTabChange' | 'learningGoals' | 'goalAchievements' | 'hourlyChecks'>) => {
     const { toast } = useToast();
     const [selectedWeek, setSelectedWeek] = useState<number>(() => getWeekNumber(new Date()));
     const [generatedMessages, setGeneratedMessages] = useState<Array<{ studentName: string; message: string }>>([]);
@@ -144,6 +147,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
     const [reportableTestResultIds, setReportableTestResultIds] = useState<number[]>([]);
     
     const uniqueWeeks = useMemo(() => {
+        const currentWeek = getWeekNumber(new Date());
         const safeHomework = homework || [];
         const safeDailyChecks = dailyChecks || [];
         const safeRemarks = remarks || [];
@@ -153,7 +157,9 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
         const checkWeeks = safeDailyChecks.map(c => getWeekNumber(new Date(c.date)));
         const remarkWeeks = safeRemarks.map(r => getWeekNumber(new Date(r.date)));
         const testWeeks = safeTests.map(t => getWeekNumber(new Date(t.date)));
-        return [...new Set([...homeworkWeeks, ...checkWeeks, ...remarkWeeks, ...testWeeks])].sort((a,b) => b-a);
+        
+        const allWeeks = new Set([currentWeek, ...homeworkWeeks, ...checkWeeks, ...remarkWeeks, ...testWeeks]);
+        return Array.from(allWeeks).sort((a,b) => b-a);
     }, [homework, dailyChecks, remarks, tests]);
   
     const handleGenerateSummaries = () => {
@@ -163,11 +169,22 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
 
         const safeHomework = homework || [];
         const safeSubmissions = submissions || [];
+        const safeSubmissionAttempts = submissionAttempts || [];
         const safeDailyChecks = dailyChecks || [];
         const safeRemarks = remarks || [];
         const safeTests = tests || [];
         const safeTestResults = testResults || [];
 
+        const weekSubmissions = safeSubmissions.filter(s => {
+            const hw = safeHomework.find(h => h.id === s.homeworkId);
+            return hw && hw.week === selectedWeek;
+        });
+
+        const weekSubmissionAttempts = safeSubmissionAttempts.filter(att => 
+            new Date(att.date).getFullYear() === new Date().getFullYear() && 
+            getWeekNumber(new Date(att.date)) === selectedWeek
+        );
+        
         const weekHomeworkIds = new Set(safeHomework.filter(h => h.week === selectedWeek).map(h => h.id));
         
         // Include tests from current week, but also look for un-reported results from any time
@@ -180,17 +197,18 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
         const allIncludedTestResultIds: number[] = [];
 
         const studentsToReport = students.map(student => {
-            const studentWeekSubmissions = safeSubmissions.filter(s => s.studentId === student.id && weekHomeworkIds.has(s.homeworkId));
+            const studentWeekSubmissionIds = new Set(weekSubmissions.filter(s => s.studentId === student.id).map(s => s.id));
+            const studentWeekAttempts = weekSubmissionAttempts.filter(att => studentWeekSubmissionIds.has(att.submissionId));
+            
             const studentWeekChecks = safeDailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
             const studentWeekRemarks = safeRemarks.filter(r => r.studentId === student.id && getWeekNumber(new Date(r.date)) === selectedWeek);
             
-            // Only include results for relevant tests that have not been reported yet
             const studentUnreportedResults = unreportedResults.filter(r => r.studentId === student.id && relevantTests.some(t => t.id === r.testId));
             
             studentUnreportedResults.forEach(r => allIncludedTestResultIds.push(r.id!));
 
-            const hasHomeworkIssues = settings.reportSettings.includeHomework && studentWeekSubmissions.some(s => 
-                s.status === 'Ikke levert' || s.status === 'Må rettes' || s.status === 'Glemt bok'
+            const hasHomeworkIssues = settings.reportSettings.includeHomework && studentWeekAttempts.some(att => 
+                att.status === 'Ikke levert' || att.status === 'Må rettes' || att.status === 'Glemt bok'
             );
             const hasIpadIssues = settings.reportSettings.includeIpad && studentWeekChecks.some(c => !c.ipadBrought || !c.ipadCharged);
             const hasRemarks = settings.reportSettings.includeRemarks && studentWeekRemarks.length > 0;
@@ -198,11 +216,11 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
             
             const hasAnyIssues = hasHomeworkIssues || hasIpadIssues || hasRemarks;
             
-            const onlyAbsence = !hasIpadIssues && !hasRemarks && studentWeekSubmissions.length > 0 && studentWeekSubmissions.every(s => s.status === 'Syk/Fravær');
+            const onlyAbsence = !hasIpadIssues && !hasRemarks && studentWeekAttempts.length > 0 && studentWeekAttempts.every(att => att.status === 'Syk/Fravær');
 
             if (onlyAbsence) return null;
             if (hasAnyIssues || hasTests || settings.reportSettings.includePositiveFeedback) {
-                return { student, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks, studentUnreportedResults };
+                return { student, studentWeekAttempts, studentWeekChecks, studentWeekRemarks, studentUnreportedResults };
             }
             return null;
         }).filter(Boolean);
@@ -217,10 +235,12 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
 
         const messages = studentsToReport.map(report => {
             if (!report) return null;
-            const { student, studentWeekSubmissions, studentWeekChecks, studentWeekRemarks, studentUnreportedResults } = report;
+            const { student, studentWeekAttempts, studentWeekChecks, studentWeekRemarks, studentUnreportedResults } = report;
             
-            const formatHomeworkWithSubject = (s: Submission) => {
-                const hw = safeHomework.find(h => h.id === s.homeworkId);
+            const formatHomeworkWithSubject = (attempt: SubmissionAttempt) => {
+                const submission = safeSubmissions.find(s => s.id === attempt.submissionId);
+                if (!submission) return 'Ukjent';
+                const hw = safeHomework.find(h => h.id === submission.homeworkId);
                 const subject = subjects.find(sub => sub.id === hw?.subjectId);
                 if (!subject) return 'Ukjent';
                 if (hw?.title) {
@@ -245,10 +265,10 @@ const WeeklySummary = ({ students, subjects, homework, submissions, dailyChecks,
             const message = generateSummaryMessage(
                 student.name,
                 selectedWeek,
-                studentWeekSubmissions.filter(s => s.status === 'Godkjent').map(formatHomeworkWithSubject),
-                studentWeekSubmissions.filter(s => s.status === 'Ikke levert').map(formatHomeworkWithSubject),
-                studentWeekSubmissions.filter(s => s.status === 'Må rettes').map(formatHomeworkWithSubject),
-                studentWeekSubmissions.filter(s => s.status === 'Glemt bok').map(formatHomeworkWithSubject),
+                studentWeekAttempts.filter(s => s.status === 'Godkjent').map(formatHomeworkWithSubject),
+                studentWeekAttempts.filter(s => s.status === 'Ikke levert').map(formatHomeworkWithSubject),
+                studentWeekAttempts.filter(s => s.status === 'Må rettes').map(formatHomeworkWithSubject),
+                studentWeekAttempts.filter(s => s.status === 'Glemt bok').map(formatHomeworkWithSubject),
                 studentWeekChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
                 studentWeekChecks.filter(c => !c.ipadBrought).length,
                 studentWeekRemarks.length,
@@ -438,8 +458,7 @@ const ReportDetails = ({ stat, behaviorTypes, reportSettings }: { stat: ReturnTy
                     </CardHeader>
                     <CardContent className="space-y-3">
                         <StatusBar stats={subStat.statusCounts} total={subStat.totalSubmissions} />
-                        {subStat.delays > 0 && <p className="text-xs text-muted-foreground flex items-center"><Clock className="mr-2 h-3 w-3" />{subStat.delays} forsinkelser</p>}
-                    
+                        
                         {subStat.problemSubmissions.length > 0 && (
                             <div className="pt-2 border-t">
                                 <ul className="pl-1 mt-1 text-sm space-y-1">
@@ -564,7 +583,6 @@ const FullReportCard = ({ stat, isOpen, isPrintVersion = false, behaviorTypes, r
         <CardContent className="space-y-4">
             {reportSettings.includeHomeworkInReport && <StatusBar stats={stat.totalStatusCounts} total={stat.totalHomework} />}
             <div className="flex text-sm text-muted-foreground gap-4">
-                {reportSettings.includeHomeworkInReport && stat.totalDelays > 0 && <p className="flex items-center"><Clock className="mr-2 h-4 w-4" />{stat.totalDelays} forsinkelser totalt</p>}
                 {reportSettings.includeRemarksInReport && stat.totalRemarks > 0 && <p className="flex items-center"><MessageSquare className="mr-2 h-4 w-4" />{stat.totalRemarks} anmerkninger/loggføringer</p>}
             </div>
             
@@ -583,7 +601,8 @@ const useStudentStats = (
     students: Student[], 
     subjects: Subject[], 
     homework: Homework[], 
-    submissions: Submission[], 
+    submissions: Submission[],
+    submissionAttempts: SubmissionAttempt[],
     tests: Test[], 
     testResults: TestResult[], 
     dailyChecks: DailyCheck[], 
@@ -598,6 +617,7 @@ const useStudentStats = (
         const safeSubjects = subjects || [];
         const safeHomework = homework || [];
         const safeSubmissions = submissions || [];
+        const safeSubmissionAttempts = submissionAttempts || [];
         const safeTests = tests || [];
         const safeTestResults = testResults || [];
         const safeDailyChecks = dailyChecks || [];
@@ -608,7 +628,9 @@ const useStudentStats = (
         const safeBehaviorTypes = behaviorTypes || [];
 
         return safeStudents.map(student => {
-            const studentSubmissions = safeSubmissions.filter(s => s.studentId === student.id);
+            const studentSubmissionIds = new Set(safeSubmissions.filter(s => s.studentId === student.id).map(s => s.id));
+            const studentAttempts = safeSubmissionAttempts.filter(att => studentSubmissionIds.has(att.submissionId));
+
             const studentTestResults = safeTestResults.filter(r => r.studentId === student.id && r.score !== null);
             const studentDailyChecks = safeDailyChecks.filter(c => c.studentId === student.id);
             const studentHourlyChecks = safeHourlyChecks.filter(c => c.studentId === student.id);
@@ -617,41 +639,41 @@ const useStudentStats = (
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             const studentGoalAchievements = safeGoalAchievements.filter(ga => ga.studentId === student.id);
 
-            const totalStatusCounts = studentSubmissions.reduce((acc, sub) => {
-                acc[sub.status] = (acc[sub.status] || 0) + 1;
+            const totalStatusCounts = studentAttempts.reduce((acc, attempt) => {
+                acc[attempt.status] = (acc[attempt.status] || 0) + 1;
                 return acc;
             }, {} as Record<HomeworkStatus, number>);
-            const totalHomework = studentSubmissions.length;
-            
-            const totalDelays = studentSubmissions.filter(s => s.isDelayed).length;
+            const totalHomework = studentAttempts.length;
 
             const statsBySubject = safeSubjects.map(subject => {
                 const subjectHomeworkIds = new Set(safeHomework.filter(h => h.subjectId === subject.id).map(h => h.id));
-                const subjectSubmissions = studentSubmissions.filter(s => subjectHomeworkIds.has(s.homeworkId));
+                const subjectSubmissionIds = new Set(safeSubmissions.filter(s => subjectHomeworkIds.has(s.homeworkId) && s.studentId === student.id).map(s => s.id));
+                const subjectAttempts = safeSubmissionAttempts.filter(att => subjectSubmissionIds.has(att.submissionId));
                 
-                const statusCounts = subjectSubmissions.reduce((acc, sub) => {
-                    acc[sub.status] = (acc[sub.status] || 0) + 1;
+                const statusCounts = subjectAttempts.reduce((acc, attempt) => {
+                    acc[attempt.status] = (acc[attempt.status] || 0) + 1;
                     return acc;
                 }, {} as Record<HomeworkStatus, number>);
                 
-                const problemSubmissions = subjectSubmissions
+                const problemSubmissions = subjectAttempts
                     .filter(s => s.status === "Må rettes" || s.status === "Glemt bok")
-                    .map(s => ({
-                        week: safeHomework.find(h => h.id === s.homeworkId)?.week,
-                        title: safeHomework.find(h => h.id === s.homeworkId)?.title,
-                        comment: s.comment,
-                        status: s.status,
-                    }))
-                    .filter(s => s.title);
+                    .map(s => {
+                        const submission = safeSubmissions.find(sub => sub.id === s.submissionId);
+                        const hw = submission ? safeHomework.find(h => h.id === submission.homeworkId) : undefined;
+                        return {
+                            week: hw?.week,
+                            title: hw?.title,
+                            comment: s.comment,
+                            status: s.status,
+                        };
+                    })
+                    .filter(s => s.week !== undefined);
                 
-                const subjectDelays = subjectSubmissions.filter(s => s.isDelayed).length;
-
                 return {
                     subjectId: subject.id,
                     subjectName: subject.name,
                     statusCounts,
-                    totalSubmissions: subjectSubmissions.length,
-                    delays: subjectDelays,
+                    totalSubmissions: subjectAttempts.length,
                     problemSubmissions,
                 };
             }).filter(s => s.totalSubmissions > 0);
@@ -684,7 +706,6 @@ const useStudentStats = (
                 statsBySubject,
                 totalHomework,
                 totalStatusCounts,
-                totalDelays,
                 testResults: formattedTestResults as { result: TestResult; test: Test; subjectName: string; }[],
                 ipadNotCharged: studentDailyChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
                 ipadNotBrought: studentDailyChecks.filter(c => !c.ipadBrought).length,
@@ -694,11 +715,11 @@ const useStudentStats = (
                 learningGoals: studentGoals as { goal: LearningGoal, achievement?: GoalAchievement, subjectName: string }[],
             };
         }).sort((a,b) => a.studentName.localeCompare(b.studentName));
-    }, [students, subjects, homework, submissions, tests, testResults, dailyChecks, remarks, hourlyChecks, learningGoals, goalAchievements, behaviorTypes]);
+    }, [students, subjects, homework, submissions, submissionAttempts, tests, testResults, dailyChecks, remarks, hourlyChecks, learningGoals, goalAchievements, behaviorTypes]);
 };
 
 
-const StudentReport = (props: ReportsProps) => {
+const StudentReport = (props: Omit<ReportsProps, 'activeSubTab' | 'onSubTabChange'>) => {
     const [openStudents, setOpenStudents] = useState<Record<string, boolean>>({});
     const behaviorTypes = props.settings.behaviorTypes || [];
     const studentStats = useStudentStats(
@@ -706,6 +727,7 @@ const StudentReport = (props: ReportsProps) => {
         props.subjects, 
         props.homework, 
         props.submissions, 
+        props.submissionAttempts,
         props.tests, 
         props.testResults, 
         props.dailyChecks, 
@@ -733,8 +755,8 @@ const StudentReport = (props: ReportsProps) => {
             </CardHeader>
             <CardContent className="space-y-4 screen-only">
                 {studentStats.map(stat => (
-                    <Collapsible key={stat.studentId} open={openStudents[stat.studentId] || false} onOpenChange={() => toggleStudent(stat.studentId)}>
-                        <FullReportCard stat={stat} isOpen={openStudents[stat.studentId] || false} behaviorTypes={behaviorTypes} reportSettings={props.settings.reportSettings} />
+                    <Collapsible key={stat.studentId} open={openStudents[stat.studentId] || false} onOpenChange={() => toggleStudent(stat.studentId!)}>
+                        <FullReportCard stat={stat} isOpen={openStudents[stat.studentId!] || false} behaviorTypes={behaviorTypes} reportSettings={props.settings.reportSettings} />
                     </Collapsible>
                 ))}
             </CardContent>
@@ -752,10 +774,10 @@ const StudentReport = (props: ReportsProps) => {
 
 
 export default function Reports(props: ReportsProps) {
-    const { activeSubTab, onSubTabChange, hourlyChecks, remarks, ...rest } = props;
+    const { activeSubTab, onSubTabChange, ...rest } = props;
     const defaultSubTab = "summary";
 
-    if (!props.learningGoals || !props.goalAchievements) {
+    if (!props.learningGoals || !props.goalAchievements || !props.submissionAttempts) {
         return (
             <div className="flex items-center justify-center p-8">
                 <Loader2 className="w-8 h-8 animate-spin" />
@@ -782,12 +804,13 @@ export default function Reports(props: ReportsProps) {
                 <StudentReport {...props} />
             </TabsContent>
             <TabsContent value="analysis">
-                <RemarkAnalysis students={props.students} initialRemarks={remarks || []} />
+                <RemarkAnalysis students={props.students} initialRemarks={props.remarks || []} />
             </TabsContent>
         </Tabs>
     )
 }
 
     
+
 
 
