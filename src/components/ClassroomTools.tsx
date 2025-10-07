@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import GroupTool from "./GroupTool";
 import StudentPicker from "./StudentPicker";
 import NewSeatingChart from "./NewSeatingChart";
+import SeatingChartArchive from "./SeatingChartArchive";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -185,9 +186,28 @@ const SeatingChartTabContent: FC<{
                     const neighbors = getNeighbors(r, c, newChart);
 
                     if (avoidSameNeighbors && lastChart) {
-                        const lastNeighbors = getNeighbors(r, c, lastChart);
-                        if (lastNeighbors.includes(student)) {
-                            isValid = false; break;
+                        // Find where this student was in the last chart
+                        let lastStudentPosition: { r: number, c: number } | null = null;
+                        for (let lr = 0; lr < lastChart.length; lr++) {
+                            for (let lc = 0; lc < lastChart[lr].length; lc++) {
+                                if (lastChart[lr][lc]?.[0] === student) {
+                                    lastStudentPosition = { r: lr, c: lc };
+                                    break;
+                                }
+                            }
+                            if (lastStudentPosition) break;
+                        }
+                        
+                        // If we found where the student was, check if any current neighbors were neighbors before
+                        if (lastStudentPosition) {
+                            const lastNeighbors = getNeighbors(lastStudentPosition.r, lastStudentPosition.c, lastChart);
+                            for (const currentNeighbor of neighbors) {
+                                if (lastNeighbors.includes(currentNeighbor)) {
+                                    isValid = false; 
+                                    break;
+                                }
+                            }
+                            if (!isValid) break;
                         }
                     }
 
@@ -374,7 +394,25 @@ const SeatingChartTabContent: FC<{
                 </Card>
             </div>
             <div className="lg:col-span-2">
-                <NewSeatingChart students={students} appSettings={appSettings} onAppSettingsChange={onAppSettingsChange} onSeatingChartChange={onSeatingChartChange} />
+                <Tabs defaultValue="current">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="current">Nytt klassekart</TabsTrigger>
+                        <TabsTrigger value="archive">Arkiv</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="current">
+                        <NewSeatingChart 
+                            students={students} 
+                            appSettings={appSettings} 
+                            onAppSettingsChange={onAppSettingsChange} 
+                            onSeatingChartChange={onSeatingChartChange} 
+                        />
+                    </TabsContent>
+                    <TabsContent value="archive">
+                        <SeatingChartArchive 
+                            onLoadChart={(chart) => onSeatingChartChange(chart, 'load')}
+                        />
+                    </TabsContent>
+                </Tabs>
             </div>
         </div>
     );

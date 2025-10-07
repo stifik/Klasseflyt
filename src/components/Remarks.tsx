@@ -267,7 +267,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
           </div>
         ) : (
              <div className="flex items-center justify-center h-48 text-muted-foreground">
-                <p>Klassekartet er tomt. Gå til "Klasseverktøy > Klassekart" for å generere et.</p>
+                <p>Klassekartet er tomt. Gå til "Klasseverktøy &gt; Klassekart" for å generere et.</p>
             </div>
         )}
       </CardContent>
