@@ -98,27 +98,27 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
   };
 
   const handleAddRemark = async (studentId: string) => {
-  if (!activeRemarkType) return;
-  const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
-  const dateStartOfDay = new Date(date);
-  dateStartOfDay.setHours(0, 0, 0, 0);
+    if (!activeRemarkType) return;
+    const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
+    const dateStartOfDay = new Date(date);
+    dateStartOfDay.setHours(0, 0, 0, 0);
     
-  const newRemark: Omit<Remark, 'id'> = { studentId, date: dateStartOfDay, period: currentPeriod, type: activeRemarkType };
-  const tempId = -1 * Date.now();
-  setLocalRemarks(prev => [...prev, { ...newRemark, id: tempId }]);
-  try {
-    const newId = await db.remarks.add(newRemark as Remark);
-    setLocalRemarks(prev => prev.map(r => r.id === tempId ? { ...newRemark, id: newId } : r));
-    // Gi poeng hvis pointsValue > 0
-    if (pointsValue > 0) {
-      givePoints(studentId, pointsValue, activeRemarkType);
-      setPointsValue(0);
+    const newRemark: Omit<Remark, 'id'> = { studentId, date: dateStartOfDay, period: currentPeriod, type: activeRemarkType };
+    const tempId = -1 * Date.now();
+    setLocalRemarks(prev => [...prev, { ...newRemark, id: tempId }]);
+    try {
+        const newId = await db.remarks.add(newRemark as Remark);
+        setLocalRemarks(prev => prev.map(r => r.id === tempId ? { ...newRemark, id: newId } : r));
+        // Gi poeng hvis pointsValue > 0
+        if (pointsValue > 0) {
+          givePoints(studentId, pointsValue, activeRemarkType);
+          setPointsValue(0);
+        }
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Feil", description: "Kunne ikke lagre anmerkning for " + studentName + ".", variant: "destructive" });
+        setLocalRemarks(prev => prev.filter(r => r.id !== tempId));
     }
-  } catch (error) {
-    console.error(error);
-    toast({ title: "Feil", description: `Kunne ikke lagre anmerkning for ${studentName}.", variant: "destructive" });
-    setLocalRemarks(prev => prev.filter(r => r.id !== tempId));
-  }
   };
 
   const handleRemoveRemark = async (studentId: string) => {
@@ -134,13 +134,13 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
     const remarkToRemove = remarksForStudent.sort((a,b) => (b.id ?? 0) - (a.id ?? 0))[0];
 
     setLocalRemarks(prev => prev.filter(r => r.id !== remarkToRemove.id));
-  try {
-    await db.remarks.delete(remarkToRemove.id!);
-  } catch (error) {
-    console.error(error);
-    toast({ title: "Feil", description: "Kunne ikke fjerne anmerkning for " + studentName + ".", variant: "destructive" });
-    setLocalRemarks(prev => [...prev, remarkToRemove]); // Revert on failure
-  }
+    try {
+        await db.remarks.delete(remarkToRemove.id!);
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Feil", description: "Kunne ikke fjerne anmerkning for " + studentName + ".", variant: "destructive" });
+        setLocalRemarks(prev => [...prev, remarkToRemove]); // Revert on failure
+    }
   };
 
 
@@ -149,46 +149,46 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
     const count = remarks.length;
 
     return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => handleAddRemark(student.id)}
-      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleAddRemark(student.id)}
-      className={cn(
-        "relative flex flex-col items-center justify-center p-2 text-center border rounded-lg w-28 h-20 transition-all cursor-pointer",
-        count > 0 ? "bg-yellow-100 border-yellow-300" : "bg-secondary hover:bg-muted"
-      )}
-    >
-       <span className="text-xs font-semibold">{student.name}</span>
-       {count > 0 && (
-        <div className="flex items-center justify-center text-yellow-800">
-          <span className="text-xl font-bold">{count}</span>
-        </div>
-       )}
-       {count > 0 && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation(); // Prevent adding another remark
-            handleRemoveRemark(student.id);
-          }}
-          className="absolute top-1 right-1 flex items-center justify-center w-5 h-5 rounded-full bg-yellow-200 hover:bg-yellow-300"
-          aria-label="Fjern en anmerkning"
+        <div
+            role="button"
+            tabIndex={0}
+            onClick={() => handleAddRemark(student.id)}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleAddRemark(student.id)}
+            className={cn(
+                "relative flex flex-col items-center justify-center p-2 text-center border rounded-lg w-28 h-20 transition-all cursor-pointer",
+                count > 0 ? "bg-yellow-100 border-yellow-300" : "bg-secondary hover:bg-muted"
+            )}
         >
-          <MinusCircle className="w-4 h-4 text-yellow-700" />
-        </button>
-       )}
-       {/* Input for poeng */}
-       <input
-        type="number"
-        min={0}
-        value={pointsValue}
-        onChange={e => setPointsValue(Number(e.target.value))}
-        className="mt-1 w-16 text-xs border rounded p-0.5 text-center"
-        placeholder="Poeng"
-        onClick={e => e.stopPropagation()}
-        style={{ position: 'absolute', bottom: 2, left: 2 }}
-       />
-    </div>
+             <span className="text-xs font-semibold">{student.name}</span>
+             {count > 0 && (
+                <div className="flex items-center justify-center text-yellow-800">
+                    <span className="text-xl font-bold">{count}</span>
+                </div>
+             )}
+             {count > 0 && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation(); // Prevent adding another remark
+                        handleRemoveRemark(student.id);
+                    }}
+                    className="absolute top-1 right-1 flex items-center justify-center w-5 h-5 rounded-full bg-yellow-200 hover:bg-yellow-300"
+                    aria-label="Fjern en anmerkning"
+                >
+                    <MinusCircle className="w-4 h-4 text-yellow-700" />
+                </button>
+             )}
+             {/* Input for poeng */}
+             <input
+                type="number"
+                min={0}
+                value={pointsValue}
+                onChange={e => setPointsValue(Number(e.target.value))}
+                className="mt-1 w-16 text-xs border rounded p-0.5 text-center"
+                placeholder="Poeng"
+                onClick={e => e.stopPropagation()}
+                style={{ position: 'absolute', bottom: 2, left: 2 }}
+             />
+        </div>
     );
   };
 
@@ -267,13 +267,13 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
                                 const colIndex = isFlipped ? activeLayout.cols - 1 - c : c;
                                 
                                 if (!activeLayout.layout[rowIndex]?.[colIndex]) {
-                                    return <EmptyDesk key={`empty-${rowIndex}-${colIndex}`} />;
+                                    return <EmptyDesk key={'empty-' + rowIndex + '-' + colIndex} />;
                                 }
                                 
                                 const studentName = seatingChart[rowIndex]?.[colIndex]?.[0];
                                 const student = studentName ? students.find(s => s.name === studentName) : null;
                                 
-                                return student ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={`desk-${rowIndex}-${colIndex}`} />;
+                                return student ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={'desk-' + rowIndex + '-' + colIndex} />;
                             })}
                         </div>
                     );
@@ -285,7 +285,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
           </div>
         ) : (
              <div className="flex items-center justify-center h-48 text-muted-foreground">
-                <p>Klassekartet er tomt. Gå til "Klasseverktøy &gt; Klassekart" for å generere et.</p>
+                <p>Klassekartet er tomt. Gå til "Klasseverktøy" og "Klassekart" for å generere et.</p>
             </div>
         )}
       </CardContent>
