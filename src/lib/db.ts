@@ -360,13 +360,13 @@ export const db = new MySubClassedDexie();
 
 // --- Mock Data and Seeding ---
 const mockStudents = [
-  { name: 'Ola Nordmann' }, { name: 'Kari Normann' }, { name: 'Aisha Khan' },
-  { name: 'Lucas Moen' }, { name: 'Emilie Kristiansen' }, { name: 'Jakob Olsen' },
-  { name: 'Nora Pedersen' }, { name: 'Filip Larsen' }, { name: 'Ingrid Andersen' },
-  { name: 'Mathias Nilsen' }, { name: 'Leah Halvorsen' }, { name: 'William Jensen' },
-  { name: 'Sofia Hagen' }, { name: 'Oskar Johansen' }, { name: 'Maja Eriksen' },
-  { name: 'Isak Dahl' }, { name: 'Hedda Berg' }, { name: 'Tobias Aas' },
-  { name: 'Thea Kaasa' }, { name: 'Sander Lien' }
+    { name: 'Ola Nordmann', points: 0 }, { name: 'Kari Normann', points: 0 }, { name: 'Aisha Khan', points: 0 },
+    { name: 'Lucas Moen', points: 0 }, { name: 'Emilie Kristiansen', points: 0 }, { name: 'Jakob Olsen', points: 0 },
+    { name: 'Nora Pedersen', points: 0 }, { name: 'Filip Larsen', points: 0 }, { name: 'Ingrid Andersen', points: 0 },
+    { name: 'Mathias Nilsen', points: 0 }, { name: 'Leah Halvorsen', points: 0 }, { name: 'William Jensen', points: 0 },
+    { name: 'Sofia Hagen', points: 0 }, { name: 'Oskar Johansen', points: 0 }, { name: 'Maja Eriksen', points: 0 },
+    { name: 'Isak Dahl', points: 0 }, { name: 'Hedda Berg', points: 0 }, { name: 'Tobias Aas', points: 0 },
+    { name: 'Thea Kaasa', points: 0 }, { name: 'Sander Lien', points: 0 }
 ];
 
 const mockSubjects = [ { name: 'Norsk' }, { name: 'Matematikk' }, { name: 'Engelsk' }, { name: 'Samfunnsfag' }, { name: 'Naturfag' }];

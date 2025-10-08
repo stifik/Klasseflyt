@@ -3,6 +3,7 @@
 export type Student = {
   id?: string;
   name: string;
+  points?: number; // Antall poeng, default 0 hvis ikke satt
 };
 
 export type Subject = {

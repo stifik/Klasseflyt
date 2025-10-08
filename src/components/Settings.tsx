@@ -161,15 +161,15 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
 
 
   const handleAddStudent = async () => {
-    if (newStudent.trim()) {
-      try {
-        await db.students.add({ name: newStudent.trim() });
-        setNewStudent("");
-        toast({ title: "Elev lagt til", description: `${newStudent.trim()} er lagt til i klasselisten.` });
-      } catch (error) {
-        toast({ title: "Feil", description: "Kunne ikke legge til elev.", variant: "destructive" });
-      }
-    }
+        if (newStudent.trim()) {
+            try {
+                await db.students.add({ name: newStudent.trim(), points: 0 });
+                setNewStudent("");
+                toast({ title: "Elev lagt til", description: `${newStudent.trim()} er lagt til i klasselisten.` });
+            } catch (error) {
+                toast({ title: "Feil", description: "Kunne ikke legge til elev.", variant: "destructive" });
+            }
+        }
   };
 
   const handleAddSubject = async () => {

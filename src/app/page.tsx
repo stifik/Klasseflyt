@@ -113,8 +113,8 @@ function Home() {
   
   const handleOnboardingComplete = async (finalSettings: AppSettings, teacherName: string, students: Omit<Student, 'id'>[], subjects: Omit<Subject, 'id'>[]) => {
       await db.transaction('rw', db.students, db.subjects, db.settings, async () => {
-        await db.students.bulkAdd(students.map(s => ({name: s.name})));
-        await db.subjects.bulkAdd(subjects.map(s => ({name: s.name})));
+        await db.students.bulkAdd(students.map(s => ({ name: s.name, points: 0 })));
+        await db.subjects.bulkAdd(subjects.map(s => ({ name: s.name })));
         
         const newSettings = {
             ...finalSettings,
