@@ -6,6 +6,14 @@ export type Student = {
   points?: number; // Antall poeng, default 0 hvis ikke satt
 };
 
+export type Transaction = {
+  id?: number;
+  studentId: string;
+  date: Date;
+  pointsChange: number;
+  description: string;
+};
+
 export type Subject = {
   id?: string;
 

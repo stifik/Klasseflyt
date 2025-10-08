@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/db";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
-import { useLiveQuery } from "dexie-react-hooks";
+import { givePoints } from "@/lib/rewardService";
 
 type IpadStatus = "OK" | "NotCharged" | "NotBrought";
 
@@ -137,7 +137,6 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   const config = statusConfig[status];
   const isAbsent = !!getAbsenceForDate(student.id);
   const [showGivePoints, setShowGivePoints] = useState(false);
-  const { givePoints } = require("@/lib/rewardService");
 
   if (isAbsent) {
     return (
@@ -178,10 +177,12 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
         variant="ghost"
         className="absolute bottom-0 right-0 w-6 h-6"
         title="Gi poeng for iPad ladet og klar"
-        onClick={() => {
-          givePoints(student.id!, 5, "iPad ladet og klar");
-          setShowGivePoints(true);
-          setTimeout(() => setShowGivePoints(false), 1200);
+        onClick={async () => {
+          const success = await givePoints(student.id!, 5, "iPad ladet og klar");
+          if (success) {
+            setShowGivePoints(true);
+            setTimeout(() => setShowGivePoints(false), 1200);
+          }
         }}
       >
         <span className="text-green-600 font-bold text-lg">+</span>

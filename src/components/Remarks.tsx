@@ -111,7 +111,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
         setLocalRemarks(prev => prev.map(r => r.id === tempId ? { ...newRemark, id: newId } : r));
         // Gi poeng hvis pointsValue > 0
         if (pointsValue > 0) {
-          givePoints(studentId, pointsValue, activeRemarkType);
+          await givePoints(studentId, pointsValue, activeRemarkType);
           setPointsValue(0);
         }
     } catch (error) {

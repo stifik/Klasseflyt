@@ -15,20 +15,24 @@ export default function RewardDashboard() {
   const [pointsDesc, setPointsDesc] = useState("");
   const [selectedRewardId, setSelectedRewardId] = useState<number | null>(null);
 
-  const handleGivePoints = (studentId: string) => {
+  const handleGivePoints = async (studentId: string) => {
     if (pointsAmount > 0 && pointsDesc) {
-      givePoints(studentId, pointsAmount, pointsDesc);
-      setShowGiveDialog(null);
-      setPointsAmount(0);
-      setPointsDesc("");
+      const success = await givePoints(studentId, pointsAmount, pointsDesc);
+      if (success) {
+        setShowGiveDialog(null);
+        setPointsAmount(0);
+        setPointsDesc("");
+      }
     }
   };
 
-  const handleBuyReward = (studentId: string) => {
+  const handleBuyReward = async (studentId: string) => {
     if (selectedRewardId) {
-      buyReward(studentId, selectedRewardId);
-      setShowBuyDialog(null);
-      setSelectedRewardId(null);
+      const success = await buyReward(studentId, selectedRewardId);
+      if (success) {
+        setShowBuyDialog(null);
+        setSelectedRewardId(null);
+      }
     }
   };
 

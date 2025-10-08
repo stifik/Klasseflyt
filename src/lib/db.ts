@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -28,6 +28,7 @@ export class MySubClassedDexie extends Dexie {
     groupSets!: Table<GroupSet, string>;
     pickerGroups!: Table<PickerGroup, string>;
     pickerLogs!: Table<PickerLog, number>;
+    transactions!: Table<Transaction, number>;
 
 
     constructor() {
@@ -347,6 +348,11 @@ export class MySubClassedDexie extends Dexie {
             }
             
             await tx.table('submissionAttempts').bulkAdd(newAttempts);
+        });
+
+        // Version 23: Add transactions table for reward system
+        this.version(23).stores({
+            transactions: '++id, studentId, date',
         });
 
 
