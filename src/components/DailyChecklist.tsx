@@ -17,6 +17,7 @@ import { db } from "@/lib/db";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
 import { givePoints } from "@/lib/rewardService";
+import { useLiveQuery } from "dexie-react-hooks";
 
 type IpadStatus = "OK" | "NotCharged" | "NotBrought";
 
