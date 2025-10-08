@@ -130,57 +130,77 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   };
 
   const StudentButton = ({ student }: { student: Student }) => {
-    // Guard against undefined id
-    if (!student.id) return null;
+  // Guard against undefined id
+  if (!student.id) return null;
     
-    const status = getStatus(student.id);
-    const config = statusConfig[status];
-    const isAbsent = !!getAbsenceForDate(student.id);
+  const status = getStatus(student.id);
+  const config = statusConfig[status];
+  const isAbsent = !!getAbsenceForDate(student.id);
+  const [showGivePoints, setShowGivePoints] = useState(false);
+  const { givePoints } = require("@/lib/rewardService");
 
-    if (isAbsent) {
-        return (
-             <Button
-                variant="secondary"
-                onClick={() => handleAbsenceToggle(student.id!)}
-                className="justify-center h-auto py-2 flex-col w-28 h-20 text-muted-foreground"
-            >
-                <span className="font-semibold text-xs">{student.name}</span>
-                 <div className="flex items-center text-xs">
-                   <UserX className="mr-2" />
-                   <span>Fravær</span>
-                </div>
-            </Button>
-        );
-    }
-    
+  if (isAbsent) {
     return (
-        <div className="relative w-28 h-20">
-            <Button
-                key={student.id}
-                variant={config.variant}
-                onClick={() => handleStatusChange(student.id!)}
-                className={cn("justify-center h-auto py-2 flex-col w-full h-full", {
-                   "bg-green-600 hover:bg-green-700 text-white": status === "OK",
-                   "bg-yellow-400 hover:bg-yellow-500 text-yellow-900 border-yellow-500": status === "NotCharged",
-                })}
-            >
-                <span className="font-semibold text-xs">{student.name}</span>
-                <div className="flex items-center text-xs opacity-80">
-                   {config.icon}
-                   <span>{config.label}</span>
-                </div>
-            </Button>
-             <Button
-                size="icon"
-                variant="ghost"
-                className="absolute top-0 right-0 w-6 h-6"
-                onClick={() => handleAbsenceToggle(student.id!)}
-            >
-                <UserX className="w-4 h-4 text-muted-foreground hover:text-destructive" />
-                <span className="sr-only">Meld fravær</span>
-            </Button>
+       <Button
+        variant="secondary"
+        onClick={() => handleAbsenceToggle(student.id!)}
+        className="justify-center h-auto py-2 flex-col w-28 h-20 text-muted-foreground"
+      >
+        <span className="font-semibold text-xs">{student.name}</span>
+         <div className="flex items-center text-xs">
+           <UserX className="mr-2" />
+           <span>Fravær</span>
         </div>
+      </Button>
     );
+  }
+    
+  return (
+    <div className="relative w-28 h-20">
+      <Button
+        key={student.id}
+        variant={config.variant}
+        onClick={() => handleStatusChange(student.id!)}
+        className={cn("justify-center h-auto py-2 flex-col w-full h-full", {
+           "bg-green-600 hover:bg-green-700 text-white": status === "OK",
+           "bg-yellow-400 hover:bg-yellow-500 text-yellow-900 border-yellow-500": status === "NotCharged",
+        })}
+      >
+        <span className="font-semibold text-xs">{student.name}</span>
+        <div className="flex items-center text-xs opacity-80">
+           {config.icon}
+           <span>{config.label}</span>
+        </div>
+      </Button>
+      {/* Gi poeng for iPad ladet og klar */}
+      <Button
+        size="icon"
+        variant="ghost"
+        className="absolute bottom-0 right-0 w-6 h-6"
+        title="Gi poeng for iPad ladet og klar"
+        onClick={() => {
+          givePoints(student.id!, 5, "iPad ladet og klar");
+          setShowGivePoints(true);
+          setTimeout(() => setShowGivePoints(false), 1200);
+        }}
+      >
+        <span className="text-green-600 font-bold text-lg">+</span>
+        <span className="sr-only">Gi poeng for iPad ladet og klar</span>
+      </Button>
+      {showGivePoints && (
+        <div className="absolute bottom-7 right-0 bg-green-100 text-green-800 px-2 py-1 rounded text-xs shadow">+5 poeng!</div>
+      )}
+      <Button
+        size="icon"
+        variant="ghost"
+        className="absolute top-0 right-0 w-6 h-6"
+        onClick={() => handleAbsenceToggle(student.id!)}
+      >
+        <UserX className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+        <span className="sr-only">Meld fravær</span>
+      </Button>
+    </div>
+  );
   };
 
   const EmptyDesk = () => (
