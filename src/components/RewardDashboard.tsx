@@ -1,11 +1,14 @@
+"use client";
+
 import React, { useState } from "react";
 import type { Student } from "@/lib/types";
 import { rewards } from "@/lib/rewards";
 import { givePoints, buyReward } from "@/lib/rewardService";
-// TODO: Bytt ut med faktisk student-henting fra DB eller context
-declare const students: Student[];
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db';
 
 export default function RewardDashboard() {
+  const students = useLiveQuery(() => db.students.toArray()) || [];
   const [showGiveDialog, setShowGiveDialog] = useState<string | null>(null);
   const [showBuyDialog, setShowBuyDialog] = useState<string | null>(null);
   const [pointsAmount, setPointsAmount] = useState(0);

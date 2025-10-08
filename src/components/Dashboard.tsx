@@ -7,7 +7,8 @@ import type {AppSettings, TabKey, DashboardToolKey} from '@/lib/types';
 import {Card, CardHeader, CardTitle, CardDescription} from '@/components/ui/card';
 import {
     BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed, 
-    Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2, Award
+    Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2, Award,
+    Trophy, Store, Presentation
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
 
@@ -115,6 +116,27 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     icon: BarChart2,
     color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
   },
+  {
+    key: 'rewardDashboard',
+    label: 'Belønningsoversikt',
+    description: 'Se klassens totale poengstand og statistikk.',
+    icon: Trophy,
+    color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
+  },
+  {
+    key: 'rewardStore',
+    label: 'Belønningsbutikk',
+    description: 'La elevene bruke poengene sine.',
+    icon: Store,
+    color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
+  },
+  {
+    key: 'projectorLeaderboard',
+    label: 'Tavle-toppliste',
+    description: 'Vis poeng-topplisten på tavla.',
+    icon: Presentation,
+    color: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
+  },
 ];
 
 
@@ -128,6 +150,16 @@ const Dashboard: FC<DashboardProps> = ({settings, onNavigate}) => {
         if (!toolData) return null;
 
         const [tab, subTab] = toolData.key.split('.') as [TabKey, string | undefined];
+        
+        // Handle special reward tools that link to separate pages
+        if (toolData.key === 'rewardDashboard' || toolData.key === 'rewardStore' || toolData.key === 'projectorLeaderboard') {
+            return {
+                ...toolData,
+                tab: null,
+                subTab: null,
+                externalLink: `/${toolData.key.toLowerCase()}`,
+            };
+        }
         
         return {
             ...toolData,
@@ -150,7 +182,13 @@ const Dashboard: FC<DashboardProps> = ({settings, onNavigate}) => {
           return (
             <Card
               key={tool.key}
-              onClick={() => onNavigate(tool.tab, tool.subTab)}
+              onClick={() => {
+                if (tool.externalLink) {
+                  window.open(tool.externalLink, '_blank');
+                } else {
+                  onNavigate(tool.tab, tool.subTab);
+                }
+              }}
               className="cursor-pointer hover:border-primary/50 hover:shadow-lg transition-all"
             >
               <CardHeader className="flex flex-row items-center gap-4">

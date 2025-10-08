@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { BookOpenCheck, Loader2, LogOut, Settings as SettingsIcon, GitCommit } from "lucide-react";
+import { BookOpenCheck, Loader2, LogOut, Settings as SettingsIcon, GitCommit, Trophy, Store, Presentation } from "lucide-react";
 import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark, TabKey, AppSettings, SeatingLayout } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -30,6 +30,9 @@ const defaultSettings: AppSettings = {
     { key: 'observations', visible: true },
     { key: 'classroomTools', visible: true },
     { key: 'reports', visible: true },
+    { key: 'rewardDashboard', visible: true },
+    { key: 'rewardStore', visible: true },
+    { key: 'projectorLeaderboard', visible: true },
     { key: 'observations.hourly', visible: false },
     { key: 'observations.remarks', visible: false },
     { key: 'classroomTools.seatingChart', visible: false },
@@ -85,7 +88,7 @@ function Home() {
         let wasUpdated = false;
         const updatedTools = [...settings.dashboardTools];
         
-        const toolsToCheck = ['classroomTools'];
+        const toolsToCheck = ['classroomTools', 'rewardDashboard', 'rewardStore', 'projectorLeaderboard'];
 
         toolsToCheck.forEach(toolKey => {
             if (!updatedTools.some(t => t.key === toolKey)) {
@@ -93,6 +96,9 @@ function Home() {
                 if (toolKey === 'classroomTools') {
                     const observationsIndex = updatedTools.findIndex(t => t.key === 'observations');
                     if (observationsIndex !== -1) insertIndex = observationsIndex + 1;
+                } else if (toolKey === 'rewardDashboard' || toolKey === 'rewardStore' || toolKey === 'projectorLeaderboard') {
+                    const reportsIndex = updatedTools.findIndex(t => t.key === 'reports');
+                    if (reportsIndex !== -1) insertIndex = reportsIndex + 1;
                 }
                 
                 updatedTools.splice(insertIndex, 0, { key: toolKey as any, visible: true });
@@ -165,6 +171,24 @@ function Home() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/rewarddashboard" target="_blank">
+              <Trophy className="h-4 w-4" />
+              <span className="sr-only">Belønningsoversikt</span>
+            </Link>
+          </Button>
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/rewardstore" target="_blank">
+              <Store className="h-4 w-4" />
+              <span className="sr-only">Belønningsbutikk</span>
+            </Link>
+          </Button>
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/projectorleaderboard" target="_blank">
+              <Presentation className="h-4 w-4" />
+              <span className="sr-only">Tavle-toppliste</span>
+            </Link>
+          </Button>
           <Button variant="ghost" size="icon" onClick={navigateToSettings}>
               <SettingsIcon />
               <span className="sr-only">Innstillinger</span>

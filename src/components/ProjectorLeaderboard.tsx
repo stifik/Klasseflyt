@@ -1,12 +1,12 @@
+"use client";
+
 import React from "react";
 import type { Student } from "@/lib/types";
-
-// TODO: Bytt ut med faktisk student-henting fra DB eller context
-// og sørg for at poeng er oppdatert
-
-declare const students: Student[];
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db';
 
 export default function ProjectorLeaderboard() {
+  const students = useLiveQuery(() => db.students.toArray()) || [];
   const sorted = [...students].sort((a, b) => (b.points ?? 0) - (a.points ?? 0));
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-white">
