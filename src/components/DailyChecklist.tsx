@@ -30,37 +30,54 @@ interface DailyChecklistProps {
 export default function DailyChecklist({ students, seatingChart, activeLayout, absences }: DailyChecklistProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [isFlipped, setIsFlipped] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState(0); // Add force update trigger
   const { toast } = useToast();
   
-  const allChecks = useLiveQuery(() => db.dailyChecks.toArray(), [], []);
-  const allAbsences = useLiveQuery(() => db.absences.toArray(), [], []);
-
-  const getAbsenceForDate = (studentId: string, checkDate: Date) => {
-    const dateString = checkDate.toISOString().split("T")[0];
-    return allAbsences.find(
-      (a) => a.studentId === studentId && new Date(a.date).toISOString().split("T")[0] === dateString
-    );
-  };
-
-  const getCheckForDate = (studentId: string, checkDate: Date) => {
-    const dateString = checkDate.toISOString().split("T")[0];
-    return allChecks.find(
-      (c) => c.studentId === studentId && new Date(c.date).toISOString().split("T")[0] === dateString
-    );
-  };
+  // Get all data and filter in useMemo to ensure proper reactivity
+  const allChecks = useLiveQuery(() => db.dailyChecks.toArray(), [forceUpdate]);
+  const allAbsences = useLiveQuery(() => db.absences.toArray(), [forceUpdate]);
   
-  const getStatus = (studentId: string): IpadStatus => {
-    const check = getCheckForDate(studentId, date);
-    if (!check) return "OK";
-    if (!check.ipadBrought) return "NotBrought";
-    if (!check.ipadCharged) return "NotCharged";
-    return "OK";
-  };
+  // Get date string for filtering
+  const dateString = useMemo(() => date.toISOString().split("T")[0], [date]);
+  
+  // Filter data for today using useMemo with proper dependencies
+  const todaysChecks = useMemo(() => {
+    if (!allChecks) return [];
+    return allChecks.filter(c => new Date(c.date).toISOString().split("T")[0] === dateString);
+  }, [allChecks, dateString]);
+  
+  const todaysAbsences = useMemo(() => {
+    if (!allAbsences) return [];
+    return allAbsences.filter(a => new Date(a.date).toISOString().split("T")[0] === dateString);
+  }, [allAbsences, dateString]);
+
+  // Memoize these functions with proper dependencies
+  const getAbsenceForDate = useMemo(() => {
+    return (studentId: string) => {
+      return todaysAbsences.find(a => a.studentId === studentId);
+    };
+  }, [todaysAbsences]);
+
+  const getCheckForDate = useMemo(() => {
+    return (studentId: string) => {
+      return todaysChecks.find(c => c.studentId === studentId);
+    };
+  }, [todaysChecks]);
+  
+  const getStatus = useMemo(() => {
+    return (studentId: string): IpadStatus => {
+      const check = getCheckForDate(studentId);
+      if (!check) return "OK";
+      if (!check.ipadBrought) return "NotBrought";
+      if (!check.ipadCharged) return "NotCharged";
+      return "OK";
+    };
+  }, [getCheckForDate]);
   
   const handleStatusChange = async (studentId: string) => {
     const currentStatus = getStatus(studentId);
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
-    const existingCheck = getCheckForDate(studentId, date);
+    const existingCheck = getCheckForDate(studentId);
 
     try {
         switch (currentStatus) {
@@ -68,12 +85,20 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
                 await db.dailyChecks.add({ studentId, date, ipadCharged: false, ipadBrought: true });
                 break;
             case "NotCharged":
-                 if (existingCheck) await db.dailyChecks.update(existingCheck.id!, { ipadBrought: false });
+                 if (existingCheck) {
+                   await db.dailyChecks.update(existingCheck.id!, { ipadBrought: false });
+                 }
                 break;
             case "NotBrought":
-                if (existingCheck) await db.dailyChecks.delete(existingCheck.id!);
+                if (existingCheck) {
+                  await db.dailyChecks.delete(existingCheck.id!);
+                }
                 break;
         }
+        
+        // Force a refresh of the data
+        setForceUpdate(prev => prev + 1);
+        
     } catch (error) {
         console.error(error);
         toast({title: "Feil", description: `Kunne ikke lagre endring for ${studentName}.`, variant: "destructive"});
@@ -81,11 +106,20 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   };
 
   const handleAbsenceToggle = async (studentId: string) => {
-    const existingAbsence = getAbsenceForDate(studentId, date);
-    if (existingAbsence) {
-      await db.absences.delete(existingAbsence.id!);
-    } else {
-      await db.absences.add({ studentId, date });
+    const existingAbsence = getAbsenceForDate(studentId);
+    try {
+      if (existingAbsence) {
+        await db.absences.delete(existingAbsence.id!);
+      } else {
+        await db.absences.add({ studentId, date });
+      }
+      
+      // Force a refresh of the data
+      setForceUpdate(prev => prev + 1);
+      
+    } catch (error) {
+      console.error(error);
+      toast({title: "Feil", description: "Kunne ikke oppdatere fravær.", variant: "destructive"});
     }
   };
   
@@ -96,15 +130,18 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   };
 
   const StudentButton = ({ student }: { student: Student }) => {
+    // Guard against undefined id
+    if (!student.id) return null;
+    
     const status = getStatus(student.id);
     const config = statusConfig[status];
-    const isAbsent = !!getAbsenceForDate(student.id, date);
+    const isAbsent = !!getAbsenceForDate(student.id);
 
     if (isAbsent) {
         return (
              <Button
                 variant="secondary"
-                onClick={() => handleAbsenceToggle(student.id)}
+                onClick={() => handleAbsenceToggle(student.id!)}
                 className="justify-center h-auto py-2 flex-col w-28 h-20 text-muted-foreground"
             >
                 <span className="font-semibold text-xs">{student.name}</span>
@@ -121,7 +158,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
             <Button
                 key={student.id}
                 variant={config.variant}
-                onClick={() => handleStatusChange(student.id)}
+                onClick={() => handleStatusChange(student.id!)}
                 className={cn("justify-center h-auto py-2 flex-col w-full h-full", {
                    "bg-green-600 hover:bg-green-700 text-white": status === "OK",
                    "bg-yellow-400 hover:bg-yellow-500 text-yellow-900 border-yellow-500": status === "NotCharged",
@@ -137,7 +174,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
                 size="icon"
                 variant="ghost"
                 className="absolute top-0 right-0 w-6 h-6"
-                onClick={() => handleAbsenceToggle(student.id)}
+                onClick={() => handleAbsenceToggle(student.id!)}
             >
                 <UserX className="w-4 h-4 text-muted-foreground hover:text-destructive" />
                 <span className="sr-only">Meld fravær</span>
@@ -153,12 +190,6 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   const displayedChart = isFlipped 
     ? seatingChart?.map(row => [...row].reverse()).reverse() 
     : seatingChart;
-  
-  const todaysAbsences = useMemo(() => {
-    if (!allAbsences) return new Set();
-    const dateString = date.toISOString().split("T")[0];
-    return new Set(allAbsences.filter(a => new Date(a.date).toISOString().split("T")[0] === dateString).map(a => a.studentId));
-  }, [allAbsences, date]);
 
   return (
     <Card>
@@ -209,7 +240,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
                                 const studentName = seatingChart[rowIndex]?.[colIndex]?.[0];
                                 const student = studentName ? students.find(s => s.name === studentName) : null;
                                 
-                                return student ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={`desk-${rowIndex}-${colIndex}`} />;
+                                return student && student.id ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={`desk-${rowIndex}-${colIndex}`} />;
                             })}
                         </div>
                     );
@@ -217,7 +248,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
             </div>
         ) : !seatingChart ? (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {students.map((student) => <StudentButton key={student.id} student={student} />)}
+              {students.filter(s => s.id).map((student) => <StudentButton key={student.id} student={student} />)}
           </div>
         ) : (
              <div className="flex items-center justify-center h-48 text-muted-foreground">
