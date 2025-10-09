@@ -3,15 +3,19 @@ import type { Transaction, PurchasedReward } from "./types";
 import { db } from "./db";
 import { v4 as uuidv4 } from 'uuid';
 
-// Oppdaterte reaktive funksjoner som bruker database
+// Resultat-type for belønningsfunksjoner
+export type RewardResult = {
+  success: boolean;
+  message: string;
+};
 
 // Funksjon for å gi poeng til en elev
-export async function givePoints(studentId: string, amount: number, description: string) {
+export async function givePoints(studentId: string, amount: number, description: string): Promise<RewardResult> {
   try {
     // Hent student fra database
     const student = await db.students.get(studentId);
     if (!student) {
-      throw new Error(`Student med ID ${studentId} ikke funnet`);
+      return { success: false, message: `Student med ID ${studentId} ikke funnet` };
     }
 
     // Oppdater student med nye poeng (reaktiv oppdatering)
@@ -26,32 +30,36 @@ export async function givePoints(studentId: string, amount: number, description:
       description,
     });
 
-    return true;
+    return { success: true, message: 'Poeng gitt!' };
   } catch (error) {
     console.error('Feil ved å gi poeng:', error);
-    return false;
+    return { success: false, message: 'Teknisk feil ved giving av poeng' };
   }
 }
 
 // Funksjon for å bruke poeng på en belønning (kjøpe gavekort)
-export async function buyReward(studentId: string, rewardId: number): Promise<boolean> {
+export async function buyReward(studentId: string, rewardId: number): Promise<RewardResult> {
   try {
     // Finn belønning
     const reward = rewards.find(r => r.id === rewardId);
     if (!reward) {
-      throw new Error(`Belønning med ID ${rewardId} ikke funnet`);
+      return { success: false, message: `Belønning med ID ${rewardId} ikke funnet` };
     }
 
     // Hent student fra database
     const student = await db.students.get(studentId);
     if (!student) {
-      throw new Error(`Student med ID ${studentId} ikke funnet`);
+      return { success: false, message: `Student med ID ${studentId} ikke funnet` };
     }
 
     // Sjekk om student har nok poeng
     const currentPoints = student.points || 0;
     if (currentPoints < reward.cost) {
-      throw new Error(`Ikke nok poeng. Har ${currentPoints}, trenger ${reward.cost}`);
+      const missingPoints = reward.cost - currentPoints;
+      return { 
+        success: false, 
+        message: `Ikke nok poeng. Mangler ${missingPoints} poeng` 
+      };
     }
 
     // Oppdater student med reduserte poeng (reaktiv oppdatering)
@@ -78,15 +86,21 @@ export async function buyReward(studentId: string, rewardId: number): Promise<bo
       description: `Kjøpte gavekort: '${reward.name}'`,
     });
 
-    return true;
+    return { 
+      success: true, 
+      message: `Gavekort for "${reward.name}" er kjøpt og lagret i lommeboken din!` 
+    };
   } catch (error) {
     console.error('Feil ved kjøp av belønning:', error);
-    return false;
+    return { 
+      success: false, 
+      message: 'Teknisk feil ved kjøp av belønning. Prøv igjen senere.' 
+    };
   }
 }
 
 // Ny funksjon for å løse inn gavekort
-export async function redeemReward(purchaseId: string): Promise<boolean> {
+export async function redeemReward(purchaseId: string): Promise<RewardResult> {
   try {
     // Finn gavekortet
     const purchasedReward = await db.purchasedRewards
@@ -95,19 +109,25 @@ export async function redeemReward(purchaseId: string): Promise<boolean> {
       .first();
     
     if (!purchasedReward) {
-      throw new Error(`Gavekort med ID ${purchaseId} ikke funnet`);
+      return { success: false, message: `Gavekort med ID ${purchaseId} ikke funnet` };
     }
 
     if (purchasedReward.status === 'used') {
-      throw new Error('Dette gavekortet er allerede brukt');
+      return { success: false, message: 'Dette gavekortet er allerede brukt' };
     }
 
     // Oppdater status til 'used'
     await db.purchasedRewards.update(purchasedReward.id!, { status: 'used' });
 
-    return true;
+    return { 
+      success: true, 
+      message: `Gavekort "${purchasedReward.rewardName}" er innløst!` 
+    };
   } catch (error) {
     console.error('Feil ved innløsning av gavekort:', error);
-    return false;
+    return { 
+      success: false, 
+      message: 'Teknisk feil ved innløsning av gavekort. Prøv igjen senere.' 
+    };
   }
 }

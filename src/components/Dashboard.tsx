@@ -8,7 +8,7 @@ import {Card, CardHeader, CardTitle, CardDescription} from '@/components/ui/card
 import {
     BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed, 
     Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2, Award,
-    Trophy, Store, Presentation
+    Trophy, Store, Activity
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
 
@@ -131,10 +131,10 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
   },
   {
-    key: 'projectorLeaderboard',
-    label: 'Tavle-toppliste',
-    description: 'Vis poeng-topplisten på tavla.',
-    icon: Presentation,
+    key: 'activityFeed',
+    label: 'Aktivitetsfeed',
+    description: 'Vis de siste transaksjoner og aktivitet.',
+    icon: Activity,
     color: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
   },
 ];
@@ -152,7 +152,7 @@ const Dashboard: FC<DashboardProps> = ({settings, onNavigate}) => {
         const [tab, subTab] = toolData.key.split('.') as [TabKey, string | undefined];
         
         // Handle special reward tools that link to separate pages
-        if (toolData.key === 'rewardDashboard' || toolData.key === 'rewardStore' || toolData.key === 'projectorLeaderboard') {
+        if (toolData.key === 'rewardDashboard' || toolData.key === 'rewardStore' || toolData.key === 'activityFeed') {
             return {
                 ...toolData,
                 tab: null,

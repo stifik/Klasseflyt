@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { Student, PurchasedReward } from "@/lib/types";
 import { rewards } from "@/lib/rewards";
-import { givePoints, buyReward, redeemReward } from "@/lib/rewardService";
+import { givePoints, buyReward, redeemReward, type RewardResult } from "@/lib/rewardService";
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
-import { Gift } from 'lucide-react';
+import { Gift, Nfc, Zap } from 'lucide-react';
+import { useNfc } from '@/hooks/useNfc';
 
 export default function RewardDashboard() {
   const students = useLiveQuery(() => db.students.toArray()) || [];
@@ -17,38 +18,126 @@ export default function RewardDashboard() {
   const [pointsAmount, setPointsAmount] = useState(0);
   const [pointsDesc, setPointsDesc] = useState("");
   const [selectedRewardId, setSelectedRewardId] = useState<number | null>(null);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [highlightedStudentId, setHighlightedStudentId] = useState<string | null>(null);
+
+  // NFC hook
+  const { isSupported, isScanning, lastRead, error, startScanning, stopScanning } = useNfc();
+
+  // Håndter NFC-lesninger
+  useEffect(() => {
+    if (lastRead) {
+      // Prøv å finne elev basert på NFC-data
+      const matchingStudent = students.find(student => {
+        // Sjekk om NFC-data matcher elevens ID eller navn
+        return student.id === lastRead || 
+               student.name.toLowerCase().includes(lastRead.toLowerCase()) ||
+               lastRead.toLowerCase().includes(student.name.toLowerCase());
+      });
+
+      if (matchingStudent) {
+        setHighlightedStudentId(matchingStudent.id!);
+        showNotification(`Elev funnet: ${matchingStudent.name}`, 'success');
+        
+        // Fjern highlighting etter 5 sekunder
+        setTimeout(() => setHighlightedStudentId(null), 5000);
+      } else {
+        showNotification(`Ingen elev funnet for NFC-kort: ${lastRead}`, 'error');
+      }
+    }
+  }, [lastRead, students]);
+
+  // Håndter NFC-feil
+  useEffect(() => {
+    if (error) {
+      showNotification(error, 'error');
+    }
+  }, [error]);
+
+  // Vis notifikasjon i 3 sekunder
+  const showNotification = (message: string, type: 'success' | 'error') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   const handleGivePoints = async (studentId: string) => {
     if (pointsAmount > 0 && pointsDesc) {
-      const success = await givePoints(studentId, pointsAmount, pointsDesc);
-      if (success) {
+      const result = await givePoints(studentId, pointsAmount, pointsDesc);
+      if (result.success) {
         setShowGiveDialog(null);
         setPointsAmount(0);
         setPointsDesc("");
+        showNotification(result.message, 'success');
+      } else {
+        showNotification(result.message, 'error');
       }
     }
   };
 
   const handleBuyReward = async (studentId: string) => {
     if (selectedRewardId) {
-      const success = await buyReward(studentId, selectedRewardId);
-      if (success) {
+      const result = await buyReward(studentId, selectedRewardId);
+      if (result.success) {
         setShowBuyDialog(null);
         setSelectedRewardId(null);
+        showNotification(result.message, 'success');
+      } else {
+        showNotification(result.message, 'error');
       }
     }
   };
 
   const handleRedeemReward = async (purchaseId: string) => {
-    const success = await redeemReward(purchaseId);
-    if (success) {
-      // Wallet will update automatically due to reactive queries
+    const result = await redeemReward(purchaseId);
+    if (result.success) {
+      showNotification(result.message, 'success');
+    } else {
+      showNotification(result.message, 'error');
+    }
+  };
+
+  const handleNFCToggle = async () => {
+    if (isScanning) {
+      stopScanning();
+      showNotification('NFC-skanning stoppet', 'success');
+    } else {
+      const result = await startScanning();
+      showNotification(result.message, result.success ? 'success' : 'error');
     }
   };
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">Klassebank</h2>
+    <div className="relative">
+      {/* Notifikasjon */}
+      {notification && (
+        <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+          notification.type === 'success' 
+            ? 'bg-green-500 text-white' 
+            : 'bg-red-500 text-white'
+        }`}>
+          {notification.message}
+        </div>
+      )}
+      
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-bold">Klassebank</h2>
+        
+        {/* NFC-kontroller */}
+        {isSupported && (
+          <button
+            onClick={handleNFCToggle}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              isScanning 
+                ? 'bg-red-500 hover:bg-red-600 text-white' 
+                : 'bg-blue-500 hover:bg-blue-600 text-white'
+            }`}
+            disabled={!isSupported}
+          >
+            {isScanning ? <Zap className="w-4 h-4" /> : <Nfc className="w-4 h-4" />}
+            {isScanning ? 'Stopp NFC' : 'Start NFC'}
+          </button>
+        )}
+      </div>
       <table className="min-w-full border">
         <thead>
           <tr>
@@ -60,11 +149,22 @@ export default function RewardDashboard() {
         <tbody>
           {students.map(student => {
             const unusedRewards = purchasedRewards.filter(p => p.studentId === student.id && p.status === 'unused');
+            const isHighlighted = highlightedStudentId === student.id;
+            
             return (
-              <tr key={student.id}>
+              <tr 
+                key={student.id}
+                className={`transition-colors ${
+                  isHighlighted 
+                    ? 'bg-blue-100 border-blue-300 dark:bg-blue-900/30 dark:border-blue-700' 
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}
+              >
                 <td className="p-2 border">
                   <div className="flex items-center gap-2">
-                    <span>{student.name}</span>
+                    <span className={isHighlighted ? 'font-bold text-blue-700 dark:text-blue-300' : ''}>
+                      {student.name}
+                    </span>
                     {unusedRewards.length > 0 && (
                       <span 
                         onClick={() => setViewingWalletFor(student.id!)}

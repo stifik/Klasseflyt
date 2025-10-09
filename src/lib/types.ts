@@ -189,7 +189,10 @@ export type DashboardToolKey =
   | 'reports'
   | 'reports.summary' 
   | 'reports.studentReports' 
-  | 'reports.analysis';
+  | 'reports.analysis'
+  | 'rewardDashboard'
+  | 'rewardStore'
+  | 'activityFeed';
 
 export type DashboardConfig = {
     key: DashboardToolKey;

@@ -74,6 +74,9 @@ const allToolLabels: Record<DashboardToolKey, string> = {
     'reports.summary': "Ukesoppsummering",
     'reports.studentReports': "Elevrapporter",
     'reports.analysis': "Anmerkningsanalyse",
+    'rewardDashboard': "Klassebank",
+    'rewardStore': "Belønningsbutikk",
+    'activityFeed': "Aktivitetsfeed",
 };
 
 const allTabLabels: Record<TabKey, string> = {
