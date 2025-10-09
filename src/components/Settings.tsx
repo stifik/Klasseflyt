@@ -77,6 +77,7 @@ const allToolLabels: Record<DashboardToolKey, string> = {
     'rewardDashboard': "Klassebank",
     'rewardStore': "Belønningsbutikk",
     'activityFeed': "Aktivitetsfeed",
+    'terminal': "Terminal",
 };
 
 const allTabLabels: Record<TabKey, string> = {

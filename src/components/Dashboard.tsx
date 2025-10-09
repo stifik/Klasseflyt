@@ -8,7 +8,7 @@ import {Card, CardHeader, CardTitle, CardDescription} from '@/components/ui/card
 import {
     BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed, 
     Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2, Award,
-    Trophy, Store, Activity
+    Trophy, Store, Activity, Terminal
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
 
@@ -137,6 +137,13 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     icon: Activity,
     color: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
   },
+  {
+    key: 'terminal',
+    label: 'Terminal',
+    description: 'Rask arbeidsflyt for masse-transaksjoner.',
+    icon: Terminal,
+    color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
+  },
 ];
 
 
@@ -152,7 +159,7 @@ const Dashboard: FC<DashboardProps> = ({settings, onNavigate}) => {
         const [tab, subTab] = toolData.key.split('.') as [TabKey, string | undefined];
         
         // Handle special reward tools that link to separate pages
-        if (toolData.key === 'rewardDashboard' || toolData.key === 'rewardStore' || toolData.key === 'activityFeed') {
+        if (toolData.key === 'rewardDashboard' || toolData.key === 'rewardStore' || toolData.key === 'activityFeed' || toolData.key === 'terminal') {
             return {
                 ...toolData,
                 tab: null,

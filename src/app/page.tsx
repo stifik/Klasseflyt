@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { BookOpenCheck, Loader2, LogOut, Settings as SettingsIcon, GitCommit, Trophy, Store, Activity } from "lucide-react";
+import { BookOpenCheck, Loader2, LogOut, Settings as SettingsIcon, GitCommit, Trophy, Store, Activity, Terminal } from "lucide-react";
 import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark, TabKey, AppSettings, SeatingLayout } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -33,6 +33,7 @@ const defaultSettings: AppSettings = {
     { key: 'rewardDashboard', visible: true },
     { key: 'rewardStore', visible: true },
     { key: 'activityFeed', visible: true },
+    { key: 'terminal', visible: true },
     { key: 'observations.hourly', visible: false },
     { key: 'observations.remarks', visible: false },
     { key: 'classroomTools.seatingChart', visible: false },
@@ -88,7 +89,7 @@ function Home() {
         let wasUpdated = false;
         const updatedTools = [...settings.dashboardTools];
         
-        const toolsToCheck = ['classroomTools', 'rewardDashboard', 'rewardStore', 'activityFeed'];
+        const toolsToCheck = ['classroomTools', 'rewardDashboard', 'rewardStore', 'activityFeed', 'terminal'];
 
         toolsToCheck.forEach(toolKey => {
             if (!updatedTools.some(t => t.key === toolKey)) {
@@ -96,7 +97,7 @@ function Home() {
                 if (toolKey === 'classroomTools') {
                     const observationsIndex = updatedTools.findIndex(t => t.key === 'observations');
                     if (observationsIndex !== -1) insertIndex = observationsIndex + 1;
-                } else if (toolKey === 'rewardDashboard' || toolKey === 'rewardStore' || toolKey === 'activityFeed') {
+                } else if (toolKey === 'rewardDashboard' || toolKey === 'rewardStore' || toolKey === 'activityFeed' || toolKey === 'terminal') {
                     const reportsIndex = updatedTools.findIndex(t => t.key === 'reports');
                     if (reportsIndex !== -1) insertIndex = reportsIndex + 1;
                 }
@@ -187,6 +188,12 @@ function Home() {
             <Link href="/activityfeed" target="_blank">
               <Activity className="h-4 w-4" />
               <span className="sr-only">Aktivitetsfeed</span>
+            </Link>
+          </Button>
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/terminal" target="_blank">
+              <Terminal className="h-4 w-4" />
+              <span className="sr-only">Terminal</span>
             </Link>
           </Button>
           <Button variant="ghost" size="icon" onClick={navigateToSettings}>
