@@ -1,20 +1,7 @@
 "use client";
 
 import React from 'react';
-
-// Forhåndsdefinerte positive handlinger
-const positiveActions = [
-  { id: 1, name: 'Hjelpsom mot medelev', points: 5, icon: '🤝', description: 'Hjalp en medelev med skolearbeid' },
-  { id: 2, name: 'Aktiv deltakelse', points: 3, icon: '🙋', description: 'Deltok aktivt i undervisningen' },
-  { id: 3, name: 'Ryddet klassrom', points: 4, icon: '🧹', description: 'Ryddet frivillig i klasserommet' },
-  { id: 4, name: 'Kreativ løsning', points: 6, icon: '💡', description: 'Kom med kreativ løsning på problem' },
-  { id: 5, name: 'Respektfull oppførsel', points: 3, icon: '🤍', description: 'Viste respekt for andre' },
-  { id: 6, name: 'Levert til tiden', points: 2, icon: '⏰', description: 'Leverte arbeid til rett tid' },
-  { id: 7, name: 'Delt kunnskap', points: 5, icon: '📚', description: 'Delte kunnskap med andre elever' },
-  { id: 8, name: 'Lederskap', points: 7, icon: '👑', description: 'Viste godt lederskap i gruppe' },
-  { id: 9, name: 'Miljøvennlig handling', points: 4, icon: '🌱', description: 'Gjorde noe godt for miljøet' },
-  { id: 10, name: 'Inkluderende oppførsel', points: 6, icon: '🤗', description: 'Inkluderte andre i aktiviteter' },
-];
+import { positiveActions } from '@/lib/positiveActions';
 
 interface PodViewProps {
   onSelectAction: (actionId: number, actionName: string, points: number, description: string) => void;
@@ -36,12 +23,12 @@ const PodView: React.FC<PodViewProps> = ({ onSelectAction }) => {
         {positiveActions.map(action => (
           <button 
             key={action.id} 
-            onClick={() => onSelectAction(action.id, action.name, action.points, action.description)}
+            onClick={() => onSelectAction(action.id, action.name, action.points, action.name)}
             className="group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 hover:border-green-300 hover:shadow-lg transform hover:scale-105 transition-all duration-200 text-center min-h-[140px] flex flex-col justify-center"
           >
-            {/* Ikon for handlingen */}
+            {/* Standardikon for handlingen */}
             <div className="text-3xl mb-3">
-              {action.icon}
+              ⭐
             </div>
             
             {/* Handling navn */}
@@ -54,10 +41,10 @@ const PodView: React.FC<PodViewProps> = ({ onSelectAction }) => {
               +{action.points} poeng
             </div>
 
-            {/* Beskrivelse på hover */}
+            {/* Klikk-indikator på hover */}
             <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                {action.description}
+                Klikk for å velge
               </span>
             </div>
           </button>

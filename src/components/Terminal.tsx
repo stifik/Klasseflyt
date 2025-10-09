@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { rewards } from '@/lib/rewards';
+import { positiveActions } from '@/lib/positiveActions';
 import { buyReward, givePoints, type RewardResult } from '@/lib/rewardService';
 import PosView from './PosView';
 import PodView from './PodView';
@@ -61,7 +62,7 @@ const Terminal: React.FC = () => {
       setActiveTransaction({ 
         type: 'points', 
         amount: points, 
-        description: `${actionName}: ${description}` 
+        description: actionName // Bruk bare handlingsnavnet som beskrivelse
       });
     }
   };
@@ -69,9 +70,14 @@ const Terminal: React.FC = () => {
   const handleManualStudentSelect = async (studentId: string) => {
     if (!studentId || !activeTransaction) return;
 
+    // FEILSØKING: Sjekk hva vi faktisk mottar
+    console.log('Valgt student-ID fra select:', studentId, typeof studentId);
+    console.log('ActiveTransaction:', activeTransaction);
+
     let result: RewardResult;
 
     if (activeTransaction.type === 'reward') {
+      // Sørg for at vi sender riktig type til buyReward
       result = await buyReward(studentId, activeTransaction.id);
     } else if (activeTransaction.type === 'points') {
       result = await givePoints(studentId, activeTransaction.amount, activeTransaction.description);
