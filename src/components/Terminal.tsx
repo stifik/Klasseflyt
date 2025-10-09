@@ -73,6 +73,10 @@ const Terminal: React.FC = () => {
     // FEILSØKING: Sjekk hva vi faktisk mottar
     console.log('Valgt student-ID fra select:', studentId, typeof studentId);
     console.log('ActiveTransaction:', activeTransaction);
+    // Hvis ID ser numerisk ut, vis også numeric parse
+    if (/^\d+$/.test(studentId)) {
+      console.log('Numeric parse of studentId:', Number(studentId));
+    }
 
     let result: RewardResult;
 

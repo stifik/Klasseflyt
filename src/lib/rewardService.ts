@@ -1,5 +1,4 @@
 import { rewards } from "./rewards";
-import type { Transaction } from "./types";
 import { db } from "./db";
 
 // Resultat-type for belønningsfunksjoner
@@ -9,21 +8,44 @@ export type RewardResult = {
 };
 
 // Funksjon for å gi poeng til en elev
-export async function givePoints(studentId: string, amount: number, description: string): Promise<RewardResult> {
+// Hjelpefunksjon: Forsøk å hente elev med både streng- og tall-ID (Dexie PK er typesensitiv)
+async function getStudentByFlexibleId(studentId: string | number) {
+  // 1) Prøv som mottatt
+  let student = await db.students.get(studentId as any);
+  if (student) return { student, key: studentId };
+
+  // 2) Hvis mottatt ID er string som kun består av siffer, prøv tall
+  if (typeof studentId === 'string' && /^\d+$/.test(studentId)) {
+    const numericId = Number(studentId);
+    student = await db.students.get(numericId as any);
+    if (student) return { student, key: numericId };
+  }
+
+  // 3) Hvis mottatt ID er number, prøv string-varianten
+  if (typeof studentId === 'number') {
+    const stringId = String(studentId);
+    student = await db.students.get(stringId as any);
+    if (student) return { student, key: stringId };
+  }
+
+  return { student: undefined, key: studentId } as const;
+}
+
+export async function givePoints(studentId: string | number, amount: number, description: string): Promise<RewardResult> {
   try {
-    // Hent student fra database
-    const student = await db.students.get(studentId);
+    // Hent student fra database med fleksibel ID-håndtering
+    const { student, key } = await getStudentByFlexibleId(studentId);
     if (!student) {
       return { success: false, message: `Student med ID ${studentId} ikke funnet` };
     }
 
     // Oppdater student med nye poeng (reaktiv oppdatering)
     const newPoints = (student.points || 0) + amount;
-    await db.students.update(studentId, { points: newPoints });
+    await db.students.update(key as any, { points: newPoints });
 
     // Legg til transaksjon i database
     await db.transactions.add({
-      studentId,
+      studentId: String(key),
       date: new Date(),
       pointsChange: amount,
       description,
@@ -37,7 +59,7 @@ export async function givePoints(studentId: string, amount: number, description:
 }
 
 // Funksjon for å bruke poeng på en belønning (direkte kjøp, ikke gavekort)
-export async function buyReward(studentId: string, rewardId: number): Promise<RewardResult> {
+export async function buyReward(studentId: string | number, rewardId: number): Promise<RewardResult> {
   try {
     // Finn belønning
     const reward = rewards.find(r => r.id === rewardId);
@@ -45,8 +67,8 @@ export async function buyReward(studentId: string, rewardId: number): Promise<Re
       return { success: false, message: `Belønning med ID ${rewardId} ikke funnet` };
     }
 
-    // Hent student fra database
-    const student = await db.students.get(studentId);
+    // Hent student fra database med fleksibel ID-håndtering
+    const { student, key } = await getStudentByFlexibleId(studentId);
     if (!student) {
       return { success: false, message: `Student med ID ${studentId} ikke funnet` };
     }
@@ -63,11 +85,11 @@ export async function buyReward(studentId: string, rewardId: number): Promise<Re
 
     // 1. Trekk poeng fra studenten
     const newPoints = currentPoints - reward.cost;
-    await db.students.update(studentId, { points: newPoints });
+    await db.students.update(key as any, { points: newPoints });
 
     // 2. Logg transaksjonen
     await db.transactions.add({
-      studentId,
+      studentId: String(key),
       date: new Date(),
       pointsChange: -reward.cost,
       description: reward.name, // Beskrivelsen er nå navnet på belønningen
