@@ -14,6 +14,16 @@ export type Transaction = {
   description: string;
 };
 
+export type PurchasedReward = {
+  id?: number;
+  purchaseId: string;
+  studentId: string;
+  rewardId: number;
+  rewardName: string;
+  purchaseDate: Date;
+  status: 'unused' | 'used';
+};
+
 export type Subject = {
   id?: string;
 

@@ -1,6 +1,7 @@
 import { rewards } from "./rewards";
-import type { Transaction } from "./types";
+import type { Transaction, PurchasedReward } from "./types";
 import { db } from "./db";
+import { v4 as uuidv4 } from 'uuid';
 
 // Oppdaterte reaktive funksjoner som bruker database
 
@@ -32,7 +33,7 @@ export async function givePoints(studentId: string, amount: number, description:
   }
 }
 
-// Funksjon for å bruke poeng på en belønning
+// Funksjon for å bruke poeng på en belønning (kjøpe gavekort)
 export async function buyReward(studentId: string, rewardId: number): Promise<boolean> {
   try {
     // Finn belønning
@@ -57,17 +58,56 @@ export async function buyReward(studentId: string, rewardId: number): Promise<bo
     const newPoints = currentPoints - reward.cost;
     await db.students.update(studentId, { points: newPoints });
 
+    // Lag et nytt gavekort i lommeboken
+    const purchaseId = uuidv4();
+    const newPurchase: Omit<PurchasedReward, 'id'> = {
+      purchaseId,
+      studentId,
+      rewardId,
+      rewardName: reward.name,
+      purchaseDate: new Date(),
+      status: 'unused',
+    };
+    await db.purchasedRewards.add(newPurchase);
+
     // Legg til transaksjon i database
     await db.transactions.add({
       studentId,
       date: new Date(),
       pointsChange: -reward.cost,
-      description: `Kjøpte '${reward.name}'`,
+      description: `Kjøpte gavekort: '${reward.name}'`,
     });
 
     return true;
   } catch (error) {
     console.error('Feil ved kjøp av belønning:', error);
+    return false;
+  }
+}
+
+// Ny funksjon for å løse inn gavekort
+export async function redeemReward(purchaseId: string): Promise<boolean> {
+  try {
+    // Finn gavekortet
+    const purchasedReward = await db.purchasedRewards
+      .where('purchaseId')
+      .equals(purchaseId)
+      .first();
+    
+    if (!purchasedReward) {
+      throw new Error(`Gavekort med ID ${purchaseId} ikke funnet`);
+    }
+
+    if (purchasedReward.status === 'used') {
+      throw new Error('Dette gavekortet er allerede brukt');
+    }
+
+    // Oppdater status til 'used'
+    await db.purchasedRewards.update(purchasedReward.id!, { status: 'used' });
+
+    return true;
+  } catch (error) {
+    console.error('Feil ved innløsning av gavekort:', error);
     return false;
   }
 }
