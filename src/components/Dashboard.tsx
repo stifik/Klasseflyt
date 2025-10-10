@@ -8,7 +8,7 @@ import {Card, CardHeader, CardTitle, CardDescription} from '@/components/ui/card
 import {
     BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed, 
     Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2, Award,
-    Trophy, Store, Activity, Terminal
+    Terminal
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
 
@@ -117,30 +117,9 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
   },
   {
-    key: 'rewardDashboard',
-    label: 'Belønningsoversikt',
-    description: 'Se klassens totale poengstand og statistikk.',
-    icon: Trophy,
-    color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
-  },
-  {
-    key: 'rewardStore',
-    label: 'Belønningsbutikk',
-    description: 'La elevene bruke poengene sine.',
-    icon: Store,
-    color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
-  },
-  {
-    key: 'activityFeed',
-    label: 'Aktivitetsfeed',
-    description: 'Vis de siste transaksjoner og aktivitet.',
-    icon: Activity,
-    color: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
-  },
-  {
     key: 'terminal',
-    label: 'Terminal',
-    description: 'Rask arbeidsflyt for masse-transaksjoner.',
+    label: 'Belønningssystem',
+    description: 'Komplett kontrollsenter for poeng og belønninger.',
     icon: Terminal,
     color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
   },
@@ -158,13 +137,13 @@ const Dashboard: FC<DashboardProps> = ({settings, onNavigate}) => {
 
         const [tab, subTab] = toolData.key.split('.') as [TabKey, string | undefined];
         
-        // Handle special reward tools that link to separate pages
-        if (toolData.key === 'rewardDashboard' || toolData.key === 'rewardStore' || toolData.key === 'activityFeed' || toolData.key === 'terminal') {
+        // Handle terminal tool that links to separate page
+        if (toolData.key === 'terminal') {
             return {
                 ...toolData,
                 tab: null,
                 subTab: null,
-                externalLink: `/${toolData.key.toLowerCase()}`,
+                externalLink: `/terminal`,
             };
         }
         
