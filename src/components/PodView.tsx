@@ -8,6 +8,9 @@ interface PodViewProps {
 }
 
 const PodView: React.FC<PodViewProps> = ({ onSelectAction }) => {
+  // Filtrer kun manuelle handlinger for POD-visningen
+  const manualActions = positiveActions.filter(action => action.type === 'manual');
+
   return (
     <div className="space-y-4">
       <div className="text-center">
@@ -20,7 +23,7 @@ const PodView: React.FC<PodViewProps> = ({ onSelectAction }) => {
       </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {positiveActions.map(action => (
+        {manualActions.map(action => (
           <button 
             key={action.id} 
             onClick={() => onSelectAction(action.id, action.name, action.points, action.name)}

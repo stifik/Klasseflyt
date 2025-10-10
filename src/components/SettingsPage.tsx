@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Trash2, Plus, Settings, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface SettingsPageProps {
   onBack?: () => void;
@@ -101,6 +102,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
       id: Math.max(...localActions.map(a => a.id), 0) + 1,
       name: newActionName.trim(),
       points,
+      type: 'manual', // Nye handlinger er alltid manuelle
     };
 
     setLocalActions([...localActions, newAction]);
@@ -115,6 +117,17 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
 
   const handleDeleteAction = (id: number) => {
     const action = localActions.find(a => a.id === id);
+    
+    // Ikke tillat sletting av system-handlinger
+    if (action?.type === 'system') {
+      toast({
+        title: "Kan ikke slette",
+        description: "System-handlinger kan ikke slettes, kun redigeres.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLocalActions(localActions.filter(a => a.id !== id));
     
     toast({
@@ -224,21 +237,103 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
               <div className="space-y-2">
                 <h3 className="font-medium text-gray-900 dark:text-white">Nåværende handlinger:</h3>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {localActions.map((action) => (
-                    <div key={action.id} className="flex items-center justify-between p-2 border rounded bg-white dark:bg-gray-800">
-                      <div>
-                        <span className="font-medium">{action.name}</span>
-                        <span className="text-sm text-gray-500 ml-2">(+{action.points} poeng)</span>
-                      </div>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteAction(action.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
+                  {/* System-handlinger først */}
+                  {localActions.filter(action => action.type === 'system').length > 0 && (
+                    <>
+                      <h4 className="text-sm font-medium text-blue-600 dark:text-blue-400 mt-4">System-handlinger (kan kun justere poeng):</h4>
+                      {localActions.filter(action => action.type === 'system').map((action) => (
+                        <div key={action.id} className="flex items-center justify-between p-2 border rounded bg-white dark:bg-gray-800">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={action.name}
+                                readOnly={true}
+                                className="font-medium bg-transparent border-none p-0 text-sm text-gray-500 cursor-not-allowed"
+                              />
+                              <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">System</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <input
+                                type="number"
+                                value={action.points}
+                                min="1"
+                                className="w-16 text-sm border rounded px-2 py-1"
+                                onChange={(e) => {
+                                  const points = parseInt(e.target.value);
+                                  if (!isNaN(points) && points > 0) {
+                                    setLocalActions(actions => 
+                                      actions.map(a => a.id === action.id ? { ...a, points } : a)
+                                    );
+                                  }
+                                }}
+                              />
+                              <span className="text-sm text-gray-500">poeng</span>
+                            </div>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteAction(action.id)}
+                            disabled={true}
+                            className="opacity-50 cursor-not-allowed"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  
+                  {/* Manuelle handlinger */}
+                  {localActions.filter(action => action.type === 'manual').length > 0 && (
+                    <>
+                      <h4 className="text-sm font-medium text-green-600 dark:text-green-400 mt-4">Manuelle handlinger (kan redigeres fritt):</h4>
+                      {localActions.filter(action => action.type === 'manual').map((action) => (
+                        <div key={action.id} className="flex items-center justify-between p-2 border rounded bg-white dark:bg-gray-800">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={action.name}
+                                className="font-medium bg-transparent border-none p-0 text-sm text-gray-900 dark:text-white"
+                                onChange={(e) => {
+                                  setLocalActions(actions => 
+                                    actions.map(a => a.id === action.id ? { ...a, name: e.target.value } : a)
+                                  );
+                                }}
+                              />
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <input
+                                type="number"
+                                value={action.points}
+                                min="1"
+                                className="w-16 text-sm border rounded px-2 py-1"
+                                onChange={(e) => {
+                                  const points = parseInt(e.target.value);
+                                  if (!isNaN(points) && points > 0) {
+                                    setLocalActions(actions => 
+                                      actions.map(a => a.id === action.id ? { ...a, points } : a)
+                                    );
+                                  }
+                                }}
+                              />
+                              <span className="text-sm text-gray-500">poeng</span>
+                            </div>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteAction(action.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  
                   {localActions.length === 0 && (
                     <p className="text-gray-500 text-center py-4">Ingen handlinger ennå</p>
                   )}

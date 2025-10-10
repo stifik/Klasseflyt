@@ -4,6 +4,7 @@
 
 import { useState, useMemo } from "react";
 import type { Student, DailyCheck, SeatingChartData, SeatingLayout, Absence } from "@/lib/types";
+import type { PositiveAction } from "@/lib/positiveActions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -26,9 +27,10 @@ interface DailyChecklistProps {
   seatingChart: SeatingChartData | null;
   activeLayout: SeatingLayout | null;
   absences: Absence[];
+  positiveActions: PositiveAction[];
 }
 
-export default function DailyChecklist({ students, seatingChart, activeLayout, absences }: DailyChecklistProps) {
+export default function DailyChecklist({ students, seatingChart, activeLayout, absences, positiveActions }: DailyChecklistProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [isFlipped, setIsFlipped] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0); // Add force update trigger
@@ -179,10 +181,13 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
         className="absolute bottom-0 right-0 w-6 h-6"
         title="Gi poeng for iPad ladet og klar"
         onClick={async () => {
-          const success = await givePoints(student.id!, 5, "iPad ladet og klar");
-          if (success) {
-            setShowGivePoints(true);
-            setTimeout(() => setShowGivePoints(false), 1200);
+          const ipadAction = positiveActions.find(a => a.actionKey === 'IPAD_CHARGED');
+          if (ipadAction) {
+            const success = await givePoints(student.id!, ipadAction.points, ipadAction.name);
+            if (success) {
+              setShowGivePoints(true);
+              setTimeout(() => setShowGivePoints(false), 1200);
+            }
           }
         }}
       >
@@ -190,7 +195,9 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
         <span className="sr-only">Gi poeng for iPad ladet og klar</span>
       </Button>
       {showGivePoints && (
-        <div className="absolute bottom-7 right-0 bg-green-100 text-green-800 px-2 py-1 rounded text-xs shadow">+5 poeng!</div>
+        <div className="absolute bottom-7 right-0 bg-green-100 text-green-800 px-2 py-1 rounded text-xs shadow">
+          +{positiveActions.find(a => a.actionKey === 'IPAD_CHARGED')?.points || 5} poeng!
+        </div>
       )}
       <Button
         size="icon"
@@ -212,6 +219,55 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   const displayedChart = isFlipped 
     ? seatingChart?.map(row => [...row].reverse()).reverse() 
     : seatingChart;
+
+  // Bulk reward handler
+  const handleBulkReward = async () => {
+    const ipadAction = positiveActions.find(a => a.actionKey === 'IPAD_CHARGED');
+
+    if (!ipadAction) {
+      toast({
+        title: "Feil",
+        description: "Konfigurasjon for 'iPad ladet' ble ikke funnet i innstillingene.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const qualifiedStudents = students.filter(student => {
+      if (!student.id) return false;
+      const isAbsent = todaysAbsences.some(a => a.studentId === student.id);
+      if (isAbsent) return false;
+      return getStatus(student.id) === 'OK';
+    });
+
+    if (qualifiedStudents.length === 0) {
+      toast({
+        title: "Ingen kvalifiserte elever",
+        description: "Ingen elever var markert med 'OK' status. Ingen poeng ble gitt.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      let successCount = 0;
+      for (const student of qualifiedStudents) {
+        const success = await givePoints(student.id!, ipadAction.points, ipadAction.name);
+        if (success) successCount++;
+      }
+      
+      toast({
+        title: "Bulk-belønning fullført!",
+        description: `${successCount} elever har mottatt ${ipadAction.points} poeng hver for ${ipadAction.name}.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Feil",
+        description: "Det oppstod en feil under bulk-belønningen.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <Card>
@@ -278,6 +334,27 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
             </div>
         )}
       </CardContent>
+      
+      {/* Bulk reward section */}
+      <div className="px-6 pb-6">
+        <div className="border-t pt-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div>
+              <h4 className="font-medium text-gray-900 dark:text-white">Bulk-belønning</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Gi poeng til alle elever som har OK status på iPad
+              </p>
+            </div>
+            <Button 
+              onClick={handleBulkReward}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+            >
+              <span className="text-lg">⚡</span>
+              Registrer og gi poeng til resten
+            </Button>
+          </div>
+        </div>
+      </div>
     </Card>
   );
 }

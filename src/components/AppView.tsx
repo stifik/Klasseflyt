@@ -13,6 +13,7 @@ import Observations from "@/components/Observations";
 import Assessments from "@/components/Assessments";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import type { AppSettings, SeatingLayout, Student, Subject, TabKey, Absence } from '@/lib/types';
+import { positiveActions } from '@/lib/positiveActions';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { Loader2 } from 'lucide-react';
@@ -193,7 +194,7 @@ const AppViewContent: FC<AppViewProps> = ({
 
   const baseComponentProps: Record<string, any> = {
     overview: { students, subjects, onUpdate: () => {} },
-    dailyCheck: { students },
+    dailyCheck: { students, positiveActions },
     observations: { students, onUpdate: () => {}, settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
     assessments: { students, subjects, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
     reports: { students, subjects, settings, activeSubTab: internalActiveSubTab, onSubTabChange: setInternalActiveSubTab },
