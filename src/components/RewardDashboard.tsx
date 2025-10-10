@@ -20,10 +20,33 @@ export default function RewardDashboard() {
   // Hent transaksjonshistorikk for valgt elev
   const studentTransactions = useLiveQuery(async () => {
     if (!showHistoryDialog) return [];
-    const transactions = await db.transactions
+    
+    // Prøv både string og number versjoner av studentId
+    let transactions = await db.transactions
       .where('studentId')
       .equals(showHistoryDialog)
       .toArray();
+    
+    // Hvis ingen funnet som string, prøv som number (hvis studentId er numerisk)
+    if (transactions.length === 0 && /^\d+$/.test(showHistoryDialog)) {
+      const numericId = Number(showHistoryDialog);
+      transactions = await db.transactions
+        .where('studentId')
+        .equals(numericId as any)
+        .toArray();
+    }
+    
+    // Hvis ingen funnet som number, prøv som string (hvis studentId er number)
+    if (transactions.length === 0) {
+      const stringId = String(showHistoryDialog);
+      transactions = await db.transactions
+        .where('studentId')
+        .equals(stringId)
+        .toArray();
+    }
+    
+    console.log(`Found ${transactions.length} transactions for student ${showHistoryDialog}:`, transactions);
+    
     // Sorter i minnet (nyeste først)
     return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [showHistoryDialog]) || [];
@@ -250,9 +273,13 @@ export default function RewardDashboard() {
               {studentTransactions.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                   <p>Ingen transaksjoner funnet for denne eleven.</p>
+                  <p className="text-sm mt-2">Student ID: {showHistoryDialog}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Viser {studentTransactions.length} transaksjoner (inkludert positive og negative)
+                  </div>
                   {studentTransactions.map((transaction, index) => (
                     <div 
                       key={transaction.id || index}
