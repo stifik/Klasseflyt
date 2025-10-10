@@ -458,6 +458,11 @@ const defaultSettings: AppSettings = {
   ],
   dpiaAnalysis: defaultDPIAAnalysis,
   onboardingCompleted: false,
+    classGoal: {
+        target: 200,
+        lastAchieved: undefined,
+    },
+    communityGoalTitle: 'Felles belønning',
 };
 
 // Function to clear all data from the database

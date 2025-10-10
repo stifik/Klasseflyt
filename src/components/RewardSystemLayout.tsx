@@ -30,9 +30,9 @@ const RewardSystemLayout: React.FC<RewardSystemLayoutProps> = ({
                 </Link>
               </Button>
             )}
-            <h1 className="text-xl font-semibold text-foreground">
+            <Link href="/terminal" className="text-xl font-semibold text-foreground hover:text-primary transition-colors cursor-pointer">
               Belønningssystem
-            </h1>
+            </Link>
           </div>
           
           {/* Settings button - always visible */}

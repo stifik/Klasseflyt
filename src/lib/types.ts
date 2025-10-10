@@ -292,6 +292,11 @@ export type PickerSettings = {
 };
 
 
+export type ClassGoal = {
+  target: number; // Målsum for felles belønning
+  lastAchieved?: string; // ISO-dato for sist oppnådd
+};
+
 export type AppSettings = {
   tabs: Record<TabKey, boolean>;
   tabOrder: TabKey[];
@@ -307,4 +312,6 @@ export type AppSettings = {
   seatingChartRules?: SeatingChartRules;
   groupingRules?: GroupingRules;
   pickerSettings?: PickerSettings;
+  classGoal?: ClassGoal;
+  communityGoalTitle?: string;
 };

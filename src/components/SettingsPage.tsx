@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { rewards, type Reward } from '@/lib/rewards';
 import { positiveActions, type PositiveAction } from '@/lib/positiveActions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,12 +10,51 @@ import { Label } from '@/components/ui/label';
 import { Trash2, Plus, Settings, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { db } from '@/lib/db';
 
 interface SettingsPageProps {
   // onBack prop er ikke lenger nødvendig siden layout håndterer navigasjon
 }
 
 export default function SettingsPage({}: SettingsPageProps) {
+  const { toast } = useToast();
+  
+  // Felles belønning (classGoal)
+  const [goalTarget, setGoalTarget] = useState<number>(200);
+  const [goalTitle, setGoalTitle] = useState<string>('Felles belønning');
+  const [goalLoading, setGoalLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchGoal() {
+      setGoalLoading(true);
+      const settings = await db.settings.get('userSettings');
+      if (mounted) {
+        if (settings?.classGoal?.target) setGoalTarget(settings.classGoal.target);
+        if (settings?.communityGoalTitle) setGoalTitle(settings.communityGoalTitle);
+      }
+      setGoalLoading(false);
+    }
+    fetchGoal();
+    return () => { mounted = false; };
+  }, []);
+
+  const handleGoalChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const val = Number(goalTarget);
+    if (isNaN(val) || val < 1) {
+      toast({ title: 'Feil', description: 'Målsum må være et positivt tall', variant: 'destructive' });
+      return;
+    }
+    const settings = await db.settings.get('userSettings');
+    if (settings) {
+      settings.classGoal = { ...settings.classGoal, target: val };
+      settings.communityGoalTitle = goalTitle;
+      await db.settings.put(settings);
+      toast({ title: 'Lagret', description: 'Innstillinger for felles belønning er oppdatert!' });
+    }
+  };
+  
   // Local state for rewards and actions (in a real app, this would be managed globally)
   const [localRewards, setLocalRewards] = useState<Reward[]>(rewards);
   const [localActions, setLocalActions] = useState<PositiveAction[]>(positiveActions);
@@ -25,8 +64,6 @@ export default function SettingsPage({}: SettingsPageProps) {
   const [newRewardCost, setNewRewardCost] = useState('');
   const [newActionName, setNewActionName] = useState('');
   const [newActionPoints, setNewActionPoints] = useState('');
-
-  const { toast } = useToast();
 
   // Handlers for rewards
   const handleAddReward = (e: React.FormEvent) => {
@@ -147,6 +184,46 @@ export default function SettingsPage({}: SettingsPageProps) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Felles belønning - målsum */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                🎯 Felles belønning (klassens mål)
+              </CardTitle>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Sett hvor mange poeng klassen må samle for å få felles belønning, f.eks. klassefest.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleGoalChange} className="flex flex-col gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="goal-title">Tittel på belønning</Label>
+                  <Input
+                    id="goal-title"
+                    type="text"
+                    value={goalLoading ? '' : goalTitle}
+                    onChange={e => setGoalTitle(e.target.value)}
+                    placeholder="Felles belønning"
+                    className="max-w-xs"
+                    disabled={goalLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="goal-target">Målsum (poeng)</Label>
+                  <Input
+                    id="goal-target"
+                    type="number"
+                    min="1"
+                    value={goalLoading ? '' : goalTarget}
+                    onChange={e => setGoalTarget(Number(e.target.value))}
+                    className="max-w-xs"
+                    disabled={goalLoading}
+                  />
+                </div>
+                <Button type="submit" className="w-fit">Lagre innstillinger</Button>
+              </form>
+            </CardContent>
+          </Card>
           {/* Administrer Butikk (POS) */}
           <Card>
             <CardHeader>

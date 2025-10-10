@@ -142,7 +142,7 @@ export default function RewardDashboard() {
       )}
       
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold">Klassebank</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Klassebank</h2>
         
         {/* NFC-kontroller */}
         {isSupported && (
@@ -160,55 +160,52 @@ export default function RewardDashboard() {
           </button>
         )}
       </div>
-      <table className="min-w-full border">
-        <thead>
-          <tr>
-            <th className="p-2 border">Navn</th>
-            <th className="p-2 border">Poeng</th>
-            <th className="p-2 border">Handlinger</th>
-          </tr>
-        </thead>
-        <tbody>
-          {students.map(student => {
-            const isHighlighted = highlightedStudentId === student.id;
-            
-            return (
-              <tr 
-                key={student.id}
-                className={`transition-colors ${
-                  isHighlighted 
-                    ? 'bg-blue-100 border-blue-300 dark:bg-blue-900/30 dark:border-blue-700' 
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-800'
-                }`}
-              >
-                <td className="p-2 border">
-                  <span className={isHighlighted ? 'font-bold text-blue-700 dark:text-blue-300' : ''}>
-                    {student.name}
-                  </span>
-                </td>
-                <td className="p-2 border">{student.points ?? 0}</td>
-                <td className="p-2 border flex gap-2">
+      
+      {/* Kort-basert liste */}
+      <div className="space-y-3">
+        {students.map(student => {
+          const isHighlighted = highlightedStudentId === student.id;
+          
+          return (
+            <div 
+              key={student.id}
+              className={`flex items-center justify-between p-4 rounded-lg shadow-sm border transition-all ${
+                isHighlighted 
+                  ? 'bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-700 scale-105' 
+                  : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md'
+              }`}
+            >
+              <div className="flex-1">
+                <span className={`font-medium ${isHighlighted ? 'font-bold text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
+                  {student.name}
+                </span>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-lg font-semibold text-gray-900 dark:text-white min-w-[60px] text-right">
+                  {student.points ?? 0} pt
+                </span>
+                <div className="flex gap-2">
                   <button 
-                    className="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600" 
+                    className="bg-green-500 text-white px-3 py-1.5 rounded hover:bg-green-600 transition-colors" 
                     onClick={() => setShowGiveDialog(student.id!)}
                     title="Gi poeng"
                   >
                     +
                   </button>
                   <button 
-                    className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 flex items-center gap-1" 
+                    className="bg-blue-500 text-white px-3 py-1.5 rounded hover:bg-blue-600 flex items-center gap-1 transition-colors" 
                     onClick={() => viewTransactionHistory(student.id!)}
                     title="Vis transaksjonshistorikk"
                   >
                     <BarChart3 className="w-4 h-4" />
-                    Historie
+                    <span className="hidden sm:inline">Historie</span>
                   </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       {/* Gi poeng dialog */}
       {showGiveDialog && (
