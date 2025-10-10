@@ -11,10 +11,22 @@ import { useNfc } from '@/hooks/useNfc';
 export default function RewardDashboard() {
   const students = useLiveQuery(() => db.students.toArray()) || [];
   const [showGiveDialog, setShowGiveDialog] = useState<string | null>(null);
+  const [showHistoryDialog, setShowHistoryDialog] = useState<string | null>(null);
   const [pointsAmount, setPointsAmount] = useState(0);
   const [pointsDesc, setPointsDesc] = useState("");
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [highlightedStudentId, setHighlightedStudentId] = useState<string | null>(null);
+
+  // Hent transaksjonshistorikk for valgt elev
+  const studentTransactions = useLiveQuery(async () => {
+    if (!showHistoryDialog) return [];
+    const transactions = await db.transactions
+      .where('studentId')
+      .equals(showHistoryDialog)
+      .toArray();
+    // Sorter i minnet (nyeste først)
+    return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [showHistoryDialog]) || [];
 
   // NFC hook
   const { isSupported, isScanning, lastRead, error, startScanning, stopScanning } = useNfc();
@@ -70,10 +82,17 @@ export default function RewardDashboard() {
   };
 
   const viewTransactionHistory = (studentId: string) => {
-    // TODO: Navigate to transaction history for this student
-    // This could open a modal or navigate to a detailed view
-    console.log('View transaction history for student:', studentId);
-    showNotification('Transaksjonshistorikk åpnet (TODO: implementer)', 'success');
+    setShowHistoryDialog(studentId);
+  };
+
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('nb-NO', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(new Date(date));
   };
 
   const handleNFCToggle = async () => {
@@ -204,6 +223,88 @@ export default function RewardDashboard() {
               >
                 Avbryt
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transaksjonshistorikk dialog */}
+      {showHistoryDialog && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Transaksjonshistorikk - {students.find(s => s.id === showHistoryDialog)?.name}
+                </h3>
+                <button 
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" 
+                  onClick={() => setShowHistoryDialog(null)}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              {studentTransactions.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <p>Ingen transaksjoner funnet for denne eleven.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {studentTransactions.map((transaction, index) => (
+                    <div 
+                      key={transaction.id || index}
+                      className={`flex items-center justify-between p-4 rounded-lg border ${
+                        transaction.pointsChange >= 0 
+                          ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800' 
+                          : 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
+                      }`}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-medium ${
+                            transaction.pointsChange >= 0 
+                              ? 'text-green-700 dark:text-green-400' 
+                              : 'text-red-700 dark:text-red-400'
+                          }`}>
+                            {transaction.pointsChange >= 0 ? '+' : ''}{transaction.pointsChange} poeng
+                          </span>
+                          <span className="text-gray-600 dark:text-gray-400">•</span>
+                          <span className="text-gray-700 dark:text-gray-300">
+                            {transaction.description}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          {formatDate(transaction.date)}
+                        </div>
+                      </div>
+                      <div className={`text-lg font-bold ${
+                        transaction.pointsChange >= 0 
+                          ? 'text-green-600 dark:text-green-400' 
+                          : 'text-red-600 dark:text-red-400'
+                      }`}>
+                        {transaction.pointsChange >= 0 ? '⬆️' : '⬇️'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Totalt {studentTransactions.length} transaksjoner
+                </div>
+                <button 
+                  className="bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-white px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-700 transition-colors" 
+                  onClick={() => setShowHistoryDialog(null)}
+                >
+                  Lukk
+                </button>
+              </div>
             </div>
           </div>
         </div>
