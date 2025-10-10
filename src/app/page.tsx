@@ -173,27 +173,9 @@ function Home() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <Button variant="ghost" size="icon" asChild>
-            <Link href="/rewarddashboard" target="_blank">
-              <Trophy className="h-4 w-4" />
-              <span className="sr-only">Belønningsoversikt</span>
-            </Link>
-          </Button>
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/rewardstore" target="_blank">
-              <Store className="h-4 w-4" />
-              <span className="sr-only">Belønningsbutikk</span>
-            </Link>
-          </Button>
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/activityfeed" target="_blank">
-              <Activity className="h-4 w-4" />
-              <span className="sr-only">Aktivitetsfeed</span>
-            </Link>
-          </Button>
-          <Button variant="ghost" size="icon" asChild>
             <Link href="/terminal" target="_blank">
               <Terminal className="h-4 w-4" />
-              <span className="sr-only">Terminal</span>
+              <span className="sr-only">Belønningssystem</span>
             </Link>
           </Button>
           <Button variant="ghost" size="icon" onClick={navigateToSettings}>

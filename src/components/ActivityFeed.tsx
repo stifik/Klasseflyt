@@ -6,7 +6,7 @@ import { db } from '@/lib/db';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Activity, Plus, Minus } from 'lucide-react';
 
-export default function ActivityFeed() {
+function ActivityFeed() {
   // Hent de 5 siste transaksjonene, sortert på dato (nyeste først)
   const recentTransactions = useLiveQuery(async () => {
     const transactions = await db.transactions
@@ -18,7 +18,19 @@ export default function ActivityFeed() {
     // Få studentnavn for hver transaksjon
     const transactionsWithStudentNames = await Promise.all(
       transactions.map(async (transaction) => {
-        const student = await db.students.get(transaction.studentId);
+        // Bruk samme fleksible ID-søk som i rewardService
+        let student = await db.students.get(transaction.studentId);
+        
+        // Hvis ikke funnet som string, prøv som number
+        if (!student && /^\d+$/.test(transaction.studentId)) {
+          student = await db.students.get(Number(transaction.studentId) as any);
+        }
+        
+        // Hvis ikke funnet som number, prøv som string
+        if (!student && typeof transaction.studentId === 'number') {
+          student = await db.students.get(String(transaction.studentId));
+        }
+        
         return {
           ...transaction,
           studentName: student?.name || 'Ukjent elev'
@@ -106,3 +118,5 @@ export default function ActivityFeed() {
     </Card>
   );
 }
+
+export default React.memo(ActivityFeed);

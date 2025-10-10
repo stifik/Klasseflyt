@@ -73,4 +73,4 @@ const PodView: React.FC<PodViewProps> = ({ onSelectAction }) => {
   );
 };
 
-export default PodView;
+export default React.memo(PodView);

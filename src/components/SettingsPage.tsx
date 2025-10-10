@@ -12,10 +12,10 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 interface SettingsPageProps {
-  onBack?: () => void;
+  // onBack prop er ikke lenger nødvendig siden layout håndterer navigasjon
 }
 
-export default function SettingsPage({ onBack }: SettingsPageProps) {
+export default function SettingsPage({}: SettingsPageProps) {
   // Local state for rewards and actions (in a real app, this would be managed globally)
   const [localRewards, setLocalRewards] = useState<Reward[]>(rewards);
   const [localActions, setLocalActions] = useState<PositiveAction[]>(positiveActions);
@@ -137,21 +137,13 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
   };
 
   return (
-    <div className="p-6 min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div>
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
-          {onBack && (
-            <Button variant="outline" onClick={onBack} className="flex items-center gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              Tilbake
-            </Button>
-          )}
-          <div className="flex items-center gap-2">
-            <Settings className="w-6 h-6" />
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Innstillinger for Belønningssystem
-            </h1>
-          </div>
+        <div className="flex items-center gap-2 mb-6">
+          <Settings className="w-6 h-6" />
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Innstillinger for Belønningssystem
+          </h1>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

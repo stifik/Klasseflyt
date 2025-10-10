@@ -8,6 +8,7 @@ import { positiveActions } from '@/lib/positiveActions';
 import { buyReward, givePoints, type RewardResult } from '@/lib/rewardService';
 import PosView from './PosView';
 import PodView from './PodView';
+import ActivityFeed from './ActivityFeed';
 
 type TerminalMode = 'idle' | 'pos' | 'pod';
 type ActiveTransaction = { 
@@ -352,6 +353,11 @@ const Terminal: React.FC = () => {
           <p className="text-gray-500 dark:text-gray-400">
             💡 Tip: NFC-støtte kommer som en snarvei senere
           </p>
+        </div>
+        
+        {/* ActivityFeed nederst */}
+        <div className="mt-12">
+          <ActivityFeed />
         </div>
       </div>
     </div>

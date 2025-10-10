@@ -67,4 +67,4 @@ const PosView: React.FC<PosViewProps> = ({ rewards, onSelectReward }) => {
   );
 };
 
-export default PosView;
+export default React.memo(PosView);

@@ -1,5 +1,10 @@
 import Terminal from "@/components/Terminal";
+import RewardSystemLayout from "@/components/RewardSystemLayout";
 
 export default function TerminalPage() {
-  return <Terminal />;
+  return (
+    <RewardSystemLayout showBackButton={true}>
+      <Terminal />
+    </RewardSystemLayout>
+  );
 }
