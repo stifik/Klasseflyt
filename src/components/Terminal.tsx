@@ -349,6 +349,21 @@ const Terminal: React.FC = () => {
           </button>
         </div>
 
+        {/* Oversikt-knapp */}
+        <div className="max-w-md mx-auto mt-6">
+          <button 
+            onClick={() => window.open('/rewarddashboard', '_blank')}
+            className="group bg-purple-500 hover:bg-purple-600 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 w-full"
+          >
+            <div className="text-4xl mb-3">📊</div>
+            <h2 className="text-xl font-bold mb-2">Oversikt</h2>
+            <p className="text-purple-100 mb-2">Poengstander og historikk</p>
+            <p className="text-sm text-purple-200">
+              Se elevenes poeng og transaksjonshistorikk
+            </p>
+          </button>
+        </div>
+
         <div className="text-center mt-8">
           <p className="text-gray-500 dark:text-gray-400">
             💡 Tip: NFC-støtte kommer som en snarvei senere
