@@ -196,6 +196,25 @@ const WeeklySummary = ({ students, subjects, homework, submissions, submissionAt
             const studentSubmissionIds = new Set(studentSubmissions.map(s => s.id));
             const studentWeekAttempts = weekSubmissionAttempts.filter(att => studentSubmissionIds.has(att.submissionId));
 
+            // Reduce to the latest attempt per submission (homework) for this week
+            const latestBySubmission = (attempts: SubmissionAttempt[]) => {
+                const map = new Map<number, SubmissionAttempt>();
+                attempts.forEach(att => {
+                    const existing = map.get(att.submissionId);
+                    if (!existing) {
+                        map.set(att.submissionId, att);
+                        return;
+                    }
+                    const attTime = new Date(att.date).getTime();
+                    const existingTime = new Date(existing.date).getTime();
+                    if (attTime > existingTime || (attTime === existingTime && (att.id ?? 0) > (existing.id ?? 0))) {
+                        map.set(att.submissionId, att);
+                    }
+                });
+                return Array.from(map.values());
+            };
+            const studentLatestAttempts = latestBySubmission(studentWeekAttempts);
+
             const studentWeekChecks = safeDailyChecks.filter(c => c.studentId === student.id && getWeekNumber(new Date(c.date)) === selectedWeek);
             const studentWeekRemarks = safeRemarks.filter(r => r.studentId === student.id && getWeekNumber(new Date(r.date)) === selectedWeek);
             
@@ -203,7 +222,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, submissionAt
             
             studentUnreportedResults.forEach(r => allIncludedTestResultIds.push(r.id!));
 
-            const hasHomeworkIssues = settings.reportSettings.includeHomework && studentWeekAttempts.some(att => 
+            const hasHomeworkIssues = settings.reportSettings.includeHomework && studentLatestAttempts.some(att => 
                 att.status === 'Ikke levert' || att.status === 'Må rettes' || att.status === 'Glemt bok'
             );
             const hasIpadIssues = settings.reportSettings.includeIpad && studentWeekChecks.some(c => !c.ipadBrought || !c.ipadCharged);
@@ -212,11 +231,11 @@ const WeeklySummary = ({ students, subjects, homework, submissions, submissionAt
             
             const hasAnyIssues = hasHomeworkIssues || hasIpadIssues || hasRemarks;
             
-            const onlyAbsence = !hasIpadIssues && !hasRemarks && studentWeekAttempts.length > 0 && studentWeekAttempts.every(att => att.status === 'Syk/Fravær');
+            const onlyAbsence = !hasIpadIssues && !hasRemarks && studentLatestAttempts.length > 0 && studentLatestAttempts.every(att => att.status === 'Syk/Fravær');
 
             if (onlyAbsence) return null;
             if (hasAnyIssues || hasTests || settings.reportSettings.includePositiveFeedback) {
-                return { student, studentWeekAttempts, studentWeekChecks, studentWeekRemarks, studentUnreportedResults };
+                return { student, studentLatestAttempts, studentWeekChecks, studentWeekRemarks, studentUnreportedResults };
             }
             return null;
         }).filter(Boolean);
@@ -231,7 +250,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, submissionAt
 
         const messages = studentsToReport.map(report => {
             if (!report) return null;
-            const { student, studentWeekAttempts, studentWeekChecks, studentWeekRemarks, studentUnreportedResults } = report;
+            const { student, studentLatestAttempts, studentWeekChecks, studentWeekRemarks, studentUnreportedResults } = report;
             
             const formatHomeworkWithSubject = (attempt: SubmissionAttempt) => {
                 const submission = safeSubmissions.find(s => s.id === attempt.submissionId);
@@ -261,10 +280,10 @@ const WeeklySummary = ({ students, subjects, homework, submissions, submissionAt
             const message = generateSummaryMessage(
                 student.name,
                 selectedWeek,
-                studentWeekAttempts.filter(s => s.status === 'Godkjent').map(formatHomeworkWithSubject),
-                studentWeekAttempts.filter(s => s.status === 'Ikke levert').map(formatHomeworkWithSubject),
-                studentWeekAttempts.filter(s => s.status === 'Må rettes').map(formatHomeworkWithSubject),
-                studentWeekAttempts.filter(s => s.status === 'Glemt bok').map(formatHomeworkWithSubject),
+                studentLatestAttempts.filter(s => s.status === 'Godkjent').map(formatHomeworkWithSubject),
+                studentLatestAttempts.filter(s => s.status === 'Ikke levert').map(formatHomeworkWithSubject),
+                studentLatestAttempts.filter(s => s.status === 'Må rettes').map(formatHomeworkWithSubject),
+                studentLatestAttempts.filter(s => s.status === 'Glemt bok').map(formatHomeworkWithSubject),
                 studentWeekChecks.filter(c => c.ipadBrought && !c.ipadCharged).length,
                 studentWeekChecks.filter(c => !c.ipadBrought).length,
                 studentWeekRemarks.length,
@@ -751,7 +770,7 @@ const StudentReport = (props: Omit<ReportsProps, 'activeSubTab' | 'onSubTabChang
             </CardHeader>
             <CardContent className="space-y-4 screen-only">
                 {studentStats.map(stat => (
-                    <Collapsible key={stat.studentId} open={openStudents[stat.studentId] || false} onOpenChange={() => toggleStudent(stat.studentId!)}>
+                    <Collapsible key={stat.studentId} open={openStudents[stat.studentId!] || false} onOpenChange={() => toggleStudent(stat.studentId!)}>
                         <FullReportCard stat={stat} isOpen={openStudents[stat.studentId!] || false} behaviorTypes={behaviorTypes} reportSettings={props.settings.reportSettings} />
                     </Collapsible>
                 ))}

@@ -2,7 +2,7 @@
 "use client";
 
 import { FC, useEffect, useState, useMemo } from "react";
-import type { Student, SeatingChartRecord, SeatingLayout, AppSettings, PlacementRule, AvoidPair, SeatingChartData as SeatingChartDataType, StationAssignmentLog, GroupSet, Absence } from "@/lib/types";
+import type { Student, SeatingChartRecord, SeatingLayout, AppSettings, PlacementRule, AvoidPair, SeatingChartData as SeatingChartDataType, StationAssignmentLog, GroupSet, Absence, LockedDesk } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import GroupTool from "./GroupTool";
 import StudentPicker from "./StudentPicker";
@@ -37,17 +37,17 @@ const SeatingChartTabContent: FC<{
     const { toast } = useToast();
 
     const layouts = useLiveQuery(() => db.seatingLayouts.toArray());
-    const activeLayout = useLiveQuery(() => {
+    const activeLayout = useLiveQuery<SeatingLayout | undefined>(() => {
         if (appSettings.selectedSeatingLayoutId) {
             return db.seatingLayouts.get(appSettings.selectedSeatingLayoutId);
         }
-        return Promise.resolve(undefined);
+        return Promise.resolve<SeatingLayout | undefined>(undefined);
     }, [appSettings.selectedSeatingLayoutId]);
 
     const avoidPairs = appSettings.seatingChartRules?.avoidPairs || [];
     const placementRules = appSettings.seatingChartRules?.placementRules || [];
 
-    const lastChart = history[0] ? JSON.parse(history[0].chartJson) : null;
+    const lastChart: SeatingChartDataType | null = history[0] ? JSON.parse(history[0].chartJson) : null;
 
     const handleRuleChange = (newRules: Partial<AppSettings['seatingChartRules']>) => {
         onAppSettingsChange({
@@ -108,7 +108,7 @@ const SeatingChartTabContent: FC<{
         const maxAttempts = 50;
         const avoidSameNeighbors = appSettings.seatingChartRules?.avoidSameNeighbors ?? true;
         const shuffle = <T,>(arr: T[]): T[] => [...arr].sort(() => Math.random() - 0.5);
-        const lockedDesks = activeLayout.lockedDesks || [];
+    const lockedDesks: LockedDesk[] = activeLayout.lockedDesks || [];
         const newChart: SeatingChartDataType = Array(activeLayout.rows).fill(null).map(() => Array(activeLayout.cols).fill(null).map(() => []));
 
         while (attempts < maxAttempts) {
@@ -120,7 +120,7 @@ const SeatingChartTabContent: FC<{
             }
 
             const lockedStudentNames = new Set<string>();
-            lockedDesks.forEach(lock => {
+            lockedDesks.forEach((lock: LockedDesk) => {
                 const [r, c] = lock.deskId.split('-').map(Number);
                 if (activeLayout.layout[r]?.[c]) {
                     newChart[r][c] = [lock.studentName];
@@ -138,7 +138,7 @@ const SeatingChartTabContent: FC<{
 
             let firstDeskRow = -1, lastDeskRow = -1;
             for (let r = 0; r < activeLayout.rows; r++) {
-                if (activeLayout.layout[r].some(isDesk => isDesk)) {
+                if (activeLayout.layout[r].some((isDesk: boolean) => isDesk)) {
                     if (firstDeskRow === -1) firstDeskRow = r;
                     lastDeskRow = r;
                 }
@@ -225,7 +225,10 @@ const SeatingChartTabContent: FC<{
         }
 
         toast({ title: "Kunne ikke oppfylle alle regler", description: "Genererer et kart uten alle regler.", variant: "destructive" });
-        const finalShuffled = students.map(s => s.name).filter(name => !new Set(lockedDesks.map(d => d.studentName)).has(name)).sort(() => Math.random() - 0.5);
+        const finalShuffled = students
+            .map(s => s.name)
+            .filter(name => !new Set(lockedDesks.map((d: LockedDesk) => d.studentName)).has(name))
+            .sort(() => Math.random() - 0.5);
         const finalChart: SeatingChartDataType = JSON.parse(JSON.stringify(newChart));
         let finalIndex = 0;
         for (let r = 0; r < activeLayout.rows; r++) {
@@ -254,8 +257,8 @@ const SeatingChartTabContent: FC<{
             return;
         }
 
-        const lockedDesks = activeLayout.lockedDesks || [];
-        const lockedStudentMap = new Map(lockedDesks.map(l => [l.deskId, l.studentName]));
+    const lockedDesks: LockedDesk[] = activeLayout.lockedDesks || [];
+    const lockedStudentMap = new Map<string, string>(lockedDesks.map((l: LockedDesk) => [l.deskId, l.studentName] as [string, string]));
 
         const newChart: SeatingChartDataType = Array(activeLayout.rows).fill(null).map(() => Array(activeLayout.cols).fill(null).map(() => []));
 
@@ -545,9 +548,9 @@ const CreateLayoutDialog = ({ onLayoutCreate }: { onLayoutCreate: (layout: Seati
 
 interface ClassroomToolsProps {
     students: Student[];
-    seatingChart: SeatingChartData | null;
+    seatingChart: SeatingChartDataType | null;
     activeLayout: SeatingLayout | null | undefined;
-    onSeatingChartChange: (chart: SeatingChartData | null, source: 'generation' | 'drag' | 'load') => void;
+    onSeatingChartChange: (chart: SeatingChartDataType | null, source: 'generation' | 'drag' | 'load') => void;
     history: SeatingChartRecord[];
     appSettings: AppSettings;
     onAppSettingsChange: (newSettings: AppSettings) => void;
