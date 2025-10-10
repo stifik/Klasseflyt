@@ -185,42 +185,42 @@ export default function SettingsPage({}: SettingsPageProps) {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Felles belønning - målsum */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                🎯 Felles belønning (klassens mål)
+          <Card className="max-w-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                🎯 Felles belønning
               </CardTitle>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Sett hvor mange poeng klassen må samle for å få felles belønning, f.eks. klassefest.
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Sett mål for klassen
               </p>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleGoalChange} className="flex flex-col gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="goal-title">Tittel på belønning</Label>
+            <CardContent className="pt-0">
+              <form onSubmit={handleGoalChange} className="flex flex-col gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="goal-title" className="text-sm">Tittel</Label>
                   <Input
                     id="goal-title"
                     type="text"
                     value={goalLoading ? '' : goalTitle}
                     onChange={e => setGoalTitle(e.target.value)}
                     placeholder="Felles belønning"
-                    className="max-w-xs"
+                    className="h-9"
                     disabled={goalLoading}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="goal-target">Målsum (poeng)</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="goal-target" className="text-sm">Målsum (poeng)</Label>
                   <Input
                     id="goal-target"
                     type="number"
                     min="1"
                     value={goalLoading ? '' : goalTarget}
                     onChange={e => setGoalTarget(Number(e.target.value))}
-                    className="max-w-xs"
+                    className="h-9"
                     disabled={goalLoading}
                   />
                 </div>
-                <Button type="submit" className="w-fit">Lagre innstillinger</Button>
+                <Button type="submit" className="w-fit" size="sm">Lagre</Button>
               </form>
             </CardContent>
           </Card>

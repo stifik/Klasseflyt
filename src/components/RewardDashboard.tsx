@@ -7,6 +7,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { Nfc, Zap, BarChart3 } from 'lucide-react';
 import { useNfc } from '@/hooks/useNfc';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function RewardDashboard() {
   const students = useLiveQuery(() => db.students.toArray()) || [];
@@ -16,6 +17,7 @@ export default function RewardDashboard() {
   const [pointsDesc, setPointsDesc] = useState("");
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [highlightedStudentId, setHighlightedStudentId] = useState<string | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'points'; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
 
   // Hent transaksjonshistorikk for valgt elev
   const studentTransactions = useLiveQuery(async () => {
@@ -128,8 +130,33 @@ export default function RewardDashboard() {
     }
   };
 
+  // Sortert liste
+  const sortedStudents = React.useMemo(() => {
+    let sortableItems = [...students];
+    sortableItems.sort((a, b) => {
+      const aValue = sortConfig.key === 'name' ? a.name : (a.points ?? 0);
+      const bValue = sortConfig.key === 'name' ? b.name : (b.points ?? 0);
+      
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+    return sortableItems;
+  }, [students, sortConfig]);
+
+  const handleSort = (key: 'name' | 'points') => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
   return (
-    <div className="relative">
+    <Card className="w-full max-w-md mx-auto">
       {/* Notifikasjon */}
       {notification && (
         <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
@@ -141,38 +168,68 @@ export default function RewardDashboard() {
         </div>
       )}
       
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Klassebank</h2>
+      <CardHeader>
+        <div className="flex items-center justify-between mb-3">
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="w-5 h-5" />
+            Klassebank
+          </CardTitle>
+          
+          {/* NFC-kontroller */}
+          {isSupported && (
+            <button
+              onClick={handleNFCToggle}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+                isScanning 
+                  ? 'bg-red-500 hover:bg-red-600 text-white' 
+                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+              }`}
+              disabled={!isSupported}
+            >
+              {isScanning ? <Zap className="w-4 h-4" /> : <Nfc className="w-4 h-4" />}
+              {isScanning ? 'Stopp' : 'Start'}
+            </button>
+          )}
+        </div>
         
-        {/* NFC-kontroller */}
-        {isSupported && (
+        {/* Sorterings-knapper */}
+        <div className="flex gap-2">
           <button
-            onClick={handleNFCToggle}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              isScanning 
-                ? 'bg-red-500 hover:bg-red-600 text-white' 
-                : 'bg-blue-500 hover:bg-blue-600 text-white'
+            onClick={() => handleSort('name')}
+            className={`text-xs px-3 py-1 rounded transition-colors ${
+              sortConfig.key === 'name' 
+                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' 
+                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
             }`}
-            disabled={!isSupported}
           >
-            {isScanning ? <Zap className="w-4 h-4" /> : <Nfc className="w-4 h-4" />}
-            {isScanning ? 'Stopp NFC' : 'Start NFC'}
+            Navn {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
           </button>
-        )}
-      </div>
+          <button
+            onClick={() => handleSort('points')}
+            className={`text-xs px-3 py-1 rounded transition-colors ${
+              sortConfig.key === 'points' 
+                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' 
+                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            Poeng {sortConfig.key === 'points' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+          </button>
+        </div>
+      </CardHeader>
       
-      {/* Kort-basert liste */}
-      <div className="space-y-3">
-        {students.map(student => {
+      <CardContent>
+        {/* Kort-basert liste */}
+        <div className="space-y-3">
+        {sortedStudents.map(student => {
           const isHighlighted = highlightedStudentId === student.id;
           
           return (
             <div 
               key={student.id}
-              className={`flex items-center justify-between p-4 rounded-lg shadow-sm border transition-all ${
+              className={`flex items-center justify-between p-3 rounded-lg transition-all ${
                 isHighlighted 
-                  ? 'bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-700 scale-105' 
-                  : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md'
+                  ? 'bg-blue-50 dark:bg-blue-900/30 scale-105' 
+                  : 'bg-gray-50 dark:bg-gray-800'
               }`}
             >
               <div className="flex-1">
@@ -333,7 +390,7 @@ export default function RewardDashboard() {
           </div>
         </div>
       )}
-
-    </div>
+      </CardContent>
+    </Card>
   );
 }

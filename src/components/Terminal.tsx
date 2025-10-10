@@ -1,32 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
-import { Progress } from './ui/progress';
-// Hjelpefunksjon for å summere poeng fra transaksjoner
-async function getClassTotalPoints() {
-  const transactions = await db.transactions.toArray();
-  return transactions.reduce((sum, t) => sum + (t.pointsChange || 0), 0);
-}
-
-async function getClassGoal() {
-  const settings = await db.settings.get('userSettings');
-  return settings?.classGoal || { target: 200 };
-}
-
-async function resetClassGoal() {
-  const settings = await db.settings.get('userSettings');
-  if (settings) {
-    // Logg siste oppnåelse, behold target
-    const target = settings.classGoal?.target ?? 200;
-    settings.classGoal = { target, lastAchieved: new Date().toISOString() };
-    await db.settings.put(settings);
-    // Slett alle transaksjoner (eller nullstill poeng på elever om ønskelig)
-    await db.transactions.clear();
-  }
-}
 import { rewards } from '@/lib/rewards';
 import { positiveActions } from '@/lib/positiveActions';
 import { buyReward, givePoints, type RewardResult } from '@/lib/rewardService';
@@ -45,6 +22,10 @@ type ActiveTransaction = {
   type: 'points'; 
   amount: number; 
   description: string; 
+} | {
+  type: 'custom_action';
+  name: string;
+  points: number;
 } | null;
 
 const Terminal: React.FC = () => {
@@ -60,37 +41,8 @@ const Terminal: React.FC = () => {
   
   const mode = getCurrentMode();
   
-  // Progress-bar state
-  const [classTotal, setClassTotal] = useState<number>(0);
-  const [goal, setGoal] = useState<{ target: number; lastAchieved?: string }>({ target: 200 });
-  const [goalTitle, setGoalTitle] = useState<string>('Felles belønning');
-  const [loading, setLoading] = useState(true);
-  const [showReset, setShowReset] = useState(false);
-
-  // Hent poengsum og mål
-  useEffect(() => {
-    let mounted = true;
-    async function fetchData() {
-      setLoading(true);
-      const [total, g] = await Promise.all([getClassTotalPoints(), getClassGoal()]);
-      const settings = await db.settings.get('userSettings');
-      if (mounted) {
-        setClassTotal(total);
-        setGoal(g);
-        setGoalTitle(settings?.communityGoalTitle || 'Felles belønning');
-        setShowReset(total >= (g.target || 1));
-        setLoading(false);
-      }
-    }
-    fetchData();
-    // Lytt på endringer i transaksjoner/settings
-    const interval = setInterval(fetchData, 2000);
-    return () => { mounted = false; clearInterval(interval); };
-  }, []);
   const [activeTransaction, setActiveTransaction] = useState<ActiveTransaction>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [customPoints, setCustomPoints] = useState(5);
-  const [customDescription, setCustomDescription] = useState('');
 
   // Hent studenter fra database
   const students = useLiveQuery(() => db.students.toArray()) || [];
@@ -113,14 +65,27 @@ const Terminal: React.FC = () => {
     }
   };
 
+  const handleCustomActionInitiation = () => {
+    const name = prompt('Beskriv handlingen:');
+    if (!name || !name.trim()) return;
+    
+    const pointsStr = prompt('Antall poeng:');
+    if (!pointsStr) return;
+    
+    const points = parseInt(pointsStr, 10);
+    if (isNaN(points) || points <= 0) {
+      alert('Ugyldig tall for poeng.');
+      return;
+    }
+    
+    console.log('🎯 Setter custom_action transaction:', { name, points, type: typeof points });
+    setActiveTransaction({ type: 'custom_action', name, points });
+  };
+
   const handleSelectAction = (actionId: number, actionName: string, points: number, description: string) => {
     if (actionId === 0) {
-      // Egendefinert handling - vis inputfelter
-      setActiveTransaction({ 
-        type: 'points', 
-        amount: 0, // Vil bli satt av bruker
-        description: 'Egendefinert handling' 
-      });
+      // Egendefinert handling - trigger prompt-basert input
+      handleCustomActionInitiation();
     } else {
       // Forhåndsdefinert handling
       setActiveTransaction({ 
@@ -134,22 +99,25 @@ const Terminal: React.FC = () => {
   const handleManualStudentSelect = async (studentId: string) => {
     if (!studentId || !activeTransaction) return;
 
-    // FEILSØKING: Sjekk hva vi faktisk mottar
-    console.log('Valgt student-ID fra select:', studentId, typeof studentId);
-    console.log('ActiveTransaction:', activeTransaction);
-    // Hvis ID ser numerisk ut, vis også numeric parse
-    if (/^\d+$/.test(studentId)) {
-      console.log('Numeric parse of studentId:', Number(studentId));
-    }
+    console.log('🎯 Fullfører transaksjon for elev:', studentId, 'med data:', activeTransaction);
 
     let result: RewardResult;
 
     if (activeTransaction.type === 'reward') {
-      // Sørg for at vi sender riktig type til buyReward
       result = await buyReward(studentId, activeTransaction.id);
+    } else if (activeTransaction.type === 'custom_action') {
+      console.log('🎯 Custom action - gir poeng:', {
+        studentId,
+        points: activeTransaction.points,
+        pointsType: typeof activeTransaction.points,
+        name: activeTransaction.name
+      });
+      result = await givePoints(studentId, activeTransaction.points, activeTransaction.name);
+      if (result.success) {
+        showNotification(`Ga ${activeTransaction.points} poeng til eleven for '${activeTransaction.name}'.`, 'success');
+      }
     } else if (activeTransaction.type === 'points') {
-      // FEILSØKING: Logg poeng før kall til givePoints
-      console.log('Calling givePoints with:', {
+      console.log('🎯 Forhåndsdefinert handling - gir poeng:', {
         studentId,
         amount: activeTransaction.amount,
         amountType: typeof activeTransaction.amount,
@@ -160,21 +128,16 @@ const Terminal: React.FC = () => {
       return;
     }
 
-    showNotification(result.message, result.success ? 'success' : 'error');
+    if (!result.success || activeTransaction.type !== 'custom_action') {
+      showNotification(result.message, result.success ? 'success' : 'error');
+    }
     
     // Nullstill for neste transaksjon
     setActiveTransaction(null);
   };
 
-  // Progress-bar øverst
-  const progress = Math.min(100, Math.round((classTotal / (goal.target || 1)) * 100));
-
-  // Vis progress-bar alltid øverst
-  // isCustomAction må defineres kun når activeTransaction finnes
   let content;
-  let isCustomAction = false;
   if (activeTransaction) {
-    isCustomAction = activeTransaction.type === 'points' && activeTransaction.amount === 0;
     content = (
       <div className="max-w-2xl mx-auto">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8">
@@ -189,56 +152,40 @@ const Terminal: React.FC = () => {
                 </h2>
                 <div className="bg-blue-100 dark:bg-blue-900/30 rounded-lg p-4 mb-4">
                   <h3 className="text-xl font-semibold text-blue-900 dark:text-blue-100">
-                    {'name' in activeTransaction ? activeTransaction.name : ''}
+                    {activeTransaction.name}
                   </h3>
                   <p className="text-blue-700 dark:text-blue-300 font-medium">
-                    {'cost' in activeTransaction ? activeTransaction.cost : ''} poeng
+                    {activeTransaction.cost} poeng
+                  </p>
+                </div>
+              </React.Fragment>
+            ) : activeTransaction.type === 'custom_action' ? (
+              <React.Fragment>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                  Egendefinert handling
+                </h2>
+                <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-4 mb-4">
+                  <h3 className="text-xl font-semibold text-green-900 dark:text-green-100">
+                    +{activeTransaction.points} poeng
+                  </h3>
+                  <p className="text-green-700 dark:text-green-300">
+                    {activeTransaction.name}
                   </p>
                 </div>
               </React.Fragment>
             ) : (
               <React.Fragment>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                  {isCustomAction ? 'Egendefinert handling' : 'Tildel poeng'}
+                  Tildel poeng
                 </h2>
-                {isCustomAction ? (
-                  <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-4 mb-4 space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-green-900 dark:text-green-100 mb-1">
-                        Antall poeng
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="20"
-                        value={customPoints}
-                        onChange={(e) => setCustomPoints(Number(e.target.value))}
-                        className="w-full p-2 border border-green-300 dark:border-green-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-green-900 dark:text-green-100 mb-1">
-                        Beskrivelse
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Beskriv den positive handlingen"
-                        value={customDescription}
-                        onChange={(e) => setCustomDescription(e.target.value)}
-                        className="w-full p-2 border border-green-300 dark:border-green-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-4 mb-4">
-                    <h3 className="text-xl font-semibold text-green-900 dark:text-green-100">
-                      +{activeTransaction.amount} poeng
-                    </h3>
-                    <p className="text-green-700 dark:text-green-300">
-                      {activeTransaction.description}
-                    </p>
-                  </div>
-                )}
+                <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-4 mb-4">
+                  <h3 className="text-xl font-semibold text-green-900 dark:text-green-100">
+                    +{activeTransaction.amount} poeng
+                  </h3>
+                  <p className="text-green-700 dark:text-green-300">
+                    {activeTransaction.description}
+                  </p>
+                </div>
               </React.Fragment>
             )}
           </div>
@@ -248,30 +195,7 @@ const Terminal: React.FC = () => {
             </h3>
             <select 
               defaultValue="" 
-              onChange={(e) => {
-                if (isCustomAction && (customPoints <= 0 || !customDescription.trim())) {
-                  showNotification('Vennligst fyll ut poeng og beskrivelse', 'error');
-                  return;
-                }
-                // Oppdater activeTransaction med custom verdier før behandling
-                if (isCustomAction) {
-                  // Sikre at poeng er et gyldig tall
-                  const points = parseInt(String(customPoints), 10);
-                  if (isNaN(points) || points <= 0) {
-                    showNotification('Ugyldig poengsum. Vennligst skriv inn et gyldig tall.', 'error');
-                    return;
-                  }
-                  console.log('Custom action: points =', points, 'type:', typeof points, 'description:', customDescription);
-                  setActiveTransaction({
-                    type: 'points',
-                    amount: points,
-                    description: customDescription
-                  });
-                  setTimeout(() => handleManualStudentSelect(e.target.value), 50);
-                } else {
-                  handleManualStudentSelect(e.target.value);
-                }
-              }}
+              onChange={(e) => handleManualStudentSelect(e.target.value)}
               className="w-full p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg"
             >
               <option value="" disabled>Velg elev fra listen...</option>
@@ -283,11 +207,7 @@ const Terminal: React.FC = () => {
             </select>
             <div className="flex gap-3 pt-4">
               <button 
-                onClick={() => {
-                  setActiveTransaction(null);
-                  setCustomPoints(5);
-                  setCustomDescription('');
-                }}
+                onClick={() => setActiveTransaction(null)}
                 className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-medium transition-colors"
               >
                 Avbryt transaksjon
@@ -397,28 +317,6 @@ const Terminal: React.FC = () => {
 
   return (
     <div className="p-6 min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Progress-bar */}
-      <div className="max-w-2xl mx-auto mb-6">
-        <div className="mb-2">
-          <span className="font-semibold text-gray-800 dark:text-white">{goalTitle}</span>
-        </div>
-        <Progress value={progress} />
-        <div className="flex justify-between items-center mt-1">
-          <span className="text-xs text-gray-600 dark:text-gray-300">{classTotal} poeng</span>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-600 dark:text-gray-300">Mål: {goal.target} poeng</span>
-            {showReset && (
-              <button
-                className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
-                onClick={async () => { await resetClassGoal(); setClassTotal(0); setShowReset(false); }}
-              >
-                🎉 Nullstill for ny runde
-              </button>
-            )}
-          </div>
-        </div>
-        {showReset && <div className="mt-2 text-green-700 dark:text-green-300 font-semibold text-center">Målet er nådd! Tid for felles belønning 🎉</div>}
-      </div>
       {/* Notifikasjon */}
       {notification && (
         <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
