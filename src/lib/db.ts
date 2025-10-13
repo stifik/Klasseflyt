@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -28,6 +28,8 @@ export class MySubClassedDexie extends Dexie {
     groupSets!: Table<GroupSet, string>;
     pickerGroups!: Table<PickerGroup, string>;
     pickerLogs!: Table<PickerLog, number>;
+    transactions!: Table<Transaction, number>;
+    purchasedRewards!: Table<PurchasedReward, number>;
 
 
     constructor() {
@@ -349,6 +351,16 @@ export class MySubClassedDexie extends Dexie {
             await tx.table('submissionAttempts').bulkAdd(newAttempts);
         });
 
+        // Version 23: Add transactions table for reward system
+        this.version(23).stores({
+            transactions: '++id, studentId, date',
+        });
+
+        // Version 24: Add purchasedRewards table for gift card functionality
+        this.version(24).stores({
+            purchasedRewards: '++id, purchaseId, studentId, rewardId, status',
+        });
+
 
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
@@ -360,13 +372,13 @@ export const db = new MySubClassedDexie();
 
 // --- Mock Data and Seeding ---
 const mockStudents = [
-  { name: 'Ola Nordmann' }, { name: 'Kari Normann' }, { name: 'Aisha Khan' },
-  { name: 'Lucas Moen' }, { name: 'Emilie Kristiansen' }, { name: 'Jakob Olsen' },
-  { name: 'Nora Pedersen' }, { name: 'Filip Larsen' }, { name: 'Ingrid Andersen' },
-  { name: 'Mathias Nilsen' }, { name: 'Leah Halvorsen' }, { name: 'William Jensen' },
-  { name: 'Sofia Hagen' }, { name: 'Oskar Johansen' }, { name: 'Maja Eriksen' },
-  { name: 'Isak Dahl' }, { name: 'Hedda Berg' }, { name: 'Tobias Aas' },
-  { name: 'Thea Kaasa' }, { name: 'Sander Lien' }
+    { name: 'Ola Nordmann', points: 0 }, { name: 'Kari Normann', points: 0 }, { name: 'Aisha Khan', points: 0 },
+    { name: 'Lucas Moen', points: 0 }, { name: 'Emilie Kristiansen', points: 0 }, { name: 'Jakob Olsen', points: 0 },
+    { name: 'Nora Pedersen', points: 0 }, { name: 'Filip Larsen', points: 0 }, { name: 'Ingrid Andersen', points: 0 },
+    { name: 'Mathias Nilsen', points: 0 }, { name: 'Leah Halvorsen', points: 0 }, { name: 'William Jensen', points: 0 },
+    { name: 'Sofia Hagen', points: 0 }, { name: 'Oskar Johansen', points: 0 }, { name: 'Maja Eriksen', points: 0 },
+    { name: 'Isak Dahl', points: 0 }, { name: 'Hedda Berg', points: 0 }, { name: 'Tobias Aas', points: 0 },
+    { name: 'Thea Kaasa', points: 0 }, { name: 'Sander Lien', points: 0 }
 ];
 
 const mockSubjects = [ { name: 'Norsk' }, { name: 'Matematikk' }, { name: 'Engelsk' }, { name: 'Samfunnsfag' }, { name: 'Naturfag' }];
@@ -446,6 +458,11 @@ const defaultSettings: AppSettings = {
   ],
   dpiaAnalysis: defaultDPIAAnalysis,
   onboardingCompleted: false,
+    classGoal: {
+        target: 200,
+        lastAchieved: undefined,
+    },
+    communityGoalTitle: 'Felles belønning',
 };
 
 // Function to clear all data from the database

@@ -3,6 +3,25 @@
 export type Student = {
   id?: string;
   name: string;
+  points?: number; // Antall poeng, default 0 hvis ikke satt
+};
+
+export type Transaction = {
+  id?: number;
+  studentId: string;
+  date: Date;
+  pointsChange: number;
+  description: string;
+};
+
+export type PurchasedReward = {
+  id?: number;
+  purchaseId: string;
+  studentId: string;
+  rewardId: number;
+  rewardName: string;
+  purchaseDate: Date;
+  status: 'unused' | 'used';
 };
 
 export type Subject = {
@@ -170,7 +189,11 @@ export type DashboardToolKey =
   | 'reports'
   | 'reports.summary' 
   | 'reports.studentReports' 
-  | 'reports.analysis';
+  | 'reports.analysis'
+  | 'rewardDashboard'
+  | 'rewardStore'
+  | 'activityFeed'
+  | 'terminal';
 
 export type DashboardConfig = {
     key: DashboardToolKey;
@@ -269,6 +292,11 @@ export type PickerSettings = {
 };
 
 
+export type ClassGoal = {
+  target: number; // Målsum for felles belønning
+  lastAchieved?: string; // ISO-dato for sist oppnådd
+};
+
 export type AppSettings = {
   tabs: Record<TabKey, boolean>;
   tabOrder: TabKey[];
@@ -284,4 +312,6 @@ export type AppSettings = {
   seatingChartRules?: SeatingChartRules;
   groupingRules?: GroupingRules;
   pickerSettings?: PickerSettings;
+  classGoal?: ClassGoal;
+  communityGoalTitle?: string;
 };

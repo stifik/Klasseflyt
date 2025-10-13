@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { givePoints } from "@/lib/rewardService";
 import type { Student, Remark, SeatingChartData, AppSettings, SeatingLayout } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -35,6 +36,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
   const { toast } = useToast();
   
   const [localRemarks, setLocalRemarks] = useState(initialRemarks || []);
+  const [pointsValue, setPointsValue] = useState<number>(0);
   useEffect(() => {
     setLocalRemarks(initialRemarks || []);
   }, [initialRemarks]);
@@ -107,9 +109,14 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
     try {
         const newId = await db.remarks.add(newRemark as Remark);
         setLocalRemarks(prev => prev.map(r => r.id === tempId ? { ...newRemark, id: newId } : r));
+        // Gi poeng hvis pointsValue > 0
+        if (pointsValue > 0) {
+          await givePoints(studentId, pointsValue, activeRemarkType);
+          setPointsValue(0);
+        }
     } catch (error) {
         console.error(error);
-        toast({ title: "Feil", description: `Kunne ikke lagre anmerkning for ${studentName}.`, variant: "destructive" });
+        toast({ title: "Feil", description: "Kunne ikke lagre anmerkning for " + studentName + ".", variant: "destructive" });
         setLocalRemarks(prev => prev.filter(r => r.id !== tempId));
     }
   };
@@ -131,7 +138,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
         await db.remarks.delete(remarkToRemove.id!);
     } catch (error) {
         console.error(error);
-        toast({ title: "Feil", description: `Kunne ikke fjerne anmerkning for ${studentName}.`, variant: "destructive" });
+        toast({ title: "Feil", description: "Kunne ikke fjerne anmerkning for " + studentName + ".", variant: "destructive" });
         setLocalRemarks(prev => [...prev, remarkToRemove]); // Revert on failure
     }
   };
@@ -170,6 +177,17 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
                     <MinusCircle className="w-4 h-4 text-yellow-700" />
                 </button>
              )}
+             {/* Input for poeng */}
+             <input
+                type="number"
+                min={0}
+                value={pointsValue}
+                onChange={e => setPointsValue(Number(e.target.value))}
+                className="mt-1 w-16 text-xs border rounded p-0.5 text-center"
+                placeholder="Poeng"
+                onClick={e => e.stopPropagation()}
+                style={{ position: 'absolute', bottom: 2, left: 2 }}
+             />
         </div>
     );
   };
@@ -249,13 +267,13 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
                                 const colIndex = isFlipped ? activeLayout.cols - 1 - c : c;
                                 
                                 if (!activeLayout.layout[rowIndex]?.[colIndex]) {
-                                    return <EmptyDesk key={`empty-${rowIndex}-${colIndex}`} />;
+                                    return <EmptyDesk key={'empty-' + rowIndex + '-' + colIndex} />;
                                 }
                                 
                                 const studentName = seatingChart[rowIndex]?.[colIndex]?.[0];
                                 const student = studentName ? students.find(s => s.name === studentName) : null;
                                 
-                                return student ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={`desk-${rowIndex}-${colIndex}`} />;
+                                return student ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={'desk-' + rowIndex + '-' + colIndex} />;
                             })}
                         </div>
                     );
@@ -267,7 +285,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
           </div>
         ) : (
              <div className="flex items-center justify-center h-48 text-muted-foreground">
-                <p>Klassekartet er tomt. Gå til "Klasseverktøy &gt; Klassekart" for å generere et.</p>
+                <p>Klassekartet er tomt. Gå til "Klasseverktøy" og "Klassekart" for å generere et.</p>
             </div>
         )}
       </CardContent>

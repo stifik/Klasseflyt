@@ -7,7 +7,8 @@ import type {AppSettings, TabKey, DashboardToolKey} from '@/lib/types';
 import {Card, CardHeader, CardTitle, CardDescription} from '@/components/ui/card';
 import {
     BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed, 
-    Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2, Award
+    Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2, Award,
+    Terminal
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
 
@@ -115,6 +116,13 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     icon: BarChart2,
     color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
   },
+  {
+    key: 'terminal',
+    label: 'Belønningssystem',
+    description: 'Komplett kontrollsenter for poeng og belønninger.',
+    icon: Terminal,
+    color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
+  },
 ];
 
 
@@ -128,6 +136,16 @@ const Dashboard: FC<DashboardProps> = ({settings, onNavigate}) => {
         if (!toolData) return null;
 
         const [tab, subTab] = toolData.key.split('.') as [TabKey, string | undefined];
+        
+        // Handle terminal tool that links to separate page
+        if (toolData.key === 'terminal') {
+            return {
+                ...toolData,
+                tab: null,
+                subTab: null,
+                externalLink: `/terminal`,
+            };
+        }
         
         return {
             ...toolData,
@@ -150,7 +168,13 @@ const Dashboard: FC<DashboardProps> = ({settings, onNavigate}) => {
           return (
             <Card
               key={tool.key}
-              onClick={() => onNavigate(tool.tab, tool.subTab)}
+              onClick={() => {
+                if (tool.externalLink) {
+                  window.open(tool.externalLink, '_blank');
+                } else {
+                  onNavigate(tool.tab, tool.subTab);
+                }
+              }}
               className="cursor-pointer hover:border-primary/50 hover:shadow-lg transition-all"
             >
               <CardHeader className="flex flex-row items-center gap-4">

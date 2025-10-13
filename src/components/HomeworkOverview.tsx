@@ -24,6 +24,8 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { Calendar } from "./ui/calendar";
 import { useLiveQuery } from "dexie-react-hooks";
+import { givePoints } from "@/lib/rewardService";
+import { positiveActions } from "@/lib/positiveActions";
 
 interface HomeworkOverviewProps {
   students: Student[];
@@ -75,6 +77,14 @@ const HomeworkCell: FC<{ studentId: string; homework: Homework; allSubmissions: 
             comment,
             date: new Date(),
         });
+
+        // Gi poeng automatisk ved godkjent lekse
+        if (status === "Godkjent") {
+            const homeworkAction = positiveActions.find(a => a.actionKey === 'HOMEWORK_APPROVED');
+            if (homeworkAction) {
+                await givePoints(studentId, homeworkAction.points, homeworkAction.name);
+            }
+        }
     };
     
     const handleQuickAttempt = async (status: HomeworkStatus) => {

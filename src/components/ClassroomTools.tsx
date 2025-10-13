@@ -41,7 +41,7 @@ const SeatingChartTabContent: FC<{
         if (appSettings.selectedSeatingLayoutId) {
             return db.seatingLayouts.get(appSettings.selectedSeatingLayoutId);
         }
-        return Promise.resolve<SeatingLayout | undefined>(undefined);
+        return undefined;
     }, [appSettings.selectedSeatingLayoutId]);
 
     const avoidPairs = appSettings.seatingChartRules?.avoidPairs || [];

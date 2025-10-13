@@ -4,6 +4,7 @@
 
 import { useState, useMemo } from "react";
 import type { Student, DailyCheck, SeatingChartData, SeatingLayout, Absence } from "@/lib/types";
+import type { PositiveAction } from "@/lib/positiveActions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/db";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
+import { givePoints } from "@/lib/rewardService";
 import { useLiveQuery } from "dexie-react-hooks";
 
 type IpadStatus = "OK" | "NotCharged" | "NotBrought";
@@ -25,9 +27,10 @@ interface DailyChecklistProps {
   seatingChart: SeatingChartData | null;
   activeLayout: SeatingLayout | null;
   absences: Absence[];
+  positiveActions: PositiveAction[];
 }
 
-export default function DailyChecklist({ students, seatingChart, activeLayout, absences }: DailyChecklistProps) {
+export default function DailyChecklist({ students, seatingChart, activeLayout, absences, positiveActions }: DailyChecklistProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [isFlipped, setIsFlipped] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0); // Add force update trigger
@@ -130,57 +133,83 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   };
 
   const StudentButton = ({ student }: { student: Student }) => {
-    // Guard against undefined id
-    if (!student.id) return null;
+  // Guard against undefined id
+  if (!student.id) return null;
     
-    const status = getStatus(student.id);
-    const config = statusConfig[status];
-    const isAbsent = !!getAbsenceForDate(student.id);
+  const status = getStatus(student.id);
+  const config = statusConfig[status];
+  const isAbsent = !!getAbsenceForDate(student.id);
+  const [showGivePoints, setShowGivePoints] = useState(false);
 
-    if (isAbsent) {
-        return (
-             <Button
-                variant="secondary"
-                onClick={() => handleAbsenceToggle(student.id!)}
-                className="justify-center h-auto py-2 flex-col w-28 h-20 text-muted-foreground"
-            >
-                <span className="font-semibold text-xs">{student.name}</span>
-                 <div className="flex items-center text-xs">
-                   <UserX className="mr-2" />
-                   <span>Fravær</span>
-                </div>
-            </Button>
-        );
-    }
-    
+  if (isAbsent) {
     return (
-        <div className="relative w-28 h-20">
-            <Button
-                key={student.id}
-                variant={config.variant}
-                onClick={() => handleStatusChange(student.id!)}
-                className={cn("justify-center h-auto py-2 flex-col w-full h-full", {
-                   "bg-green-600 hover:bg-green-700 text-white": status === "OK",
-                   "bg-yellow-400 hover:bg-yellow-500 text-yellow-900 border-yellow-500": status === "NotCharged",
-                })}
-            >
-                <span className="font-semibold text-xs">{student.name}</span>
-                <div className="flex items-center text-xs opacity-80">
-                   {config.icon}
-                   <span>{config.label}</span>
-                </div>
-            </Button>
-             <Button
-                size="icon"
-                variant="ghost"
-                className="absolute top-0 right-0 w-6 h-6"
-                onClick={() => handleAbsenceToggle(student.id!)}
-            >
-                <UserX className="w-4 h-4 text-muted-foreground hover:text-destructive" />
-                <span className="sr-only">Meld fravær</span>
-            </Button>
+       <Button
+        variant="secondary"
+        onClick={() => handleAbsenceToggle(student.id!)}
+        className="justify-center h-auto py-2 flex-col w-28 h-20 text-muted-foreground"
+      >
+        <span className="font-semibold text-xs">{student.name}</span>
+         <div className="flex items-center text-xs">
+           <UserX className="mr-2" />
+           <span>Fravær</span>
         </div>
+      </Button>
     );
+  }
+    
+  return (
+    <div className="relative w-28 h-20">
+      <Button
+        key={student.id}
+        variant={config.variant}
+        onClick={() => handleStatusChange(student.id!)}
+        className={cn("justify-center h-auto py-2 flex-col w-full h-full", {
+           "bg-green-600 hover:bg-green-700 text-white": status === "OK",
+           "bg-yellow-400 hover:bg-yellow-500 text-yellow-900 border-yellow-500": status === "NotCharged",
+        })}
+      >
+        <span className="font-semibold text-xs">{student.name}</span>
+        <div className="flex items-center text-xs opacity-80">
+           {config.icon}
+           <span>{config.label}</span>
+        </div>
+      </Button>
+      {/* Gi poeng for iPad ladet og klar */}
+      <Button
+        size="icon"
+        variant="ghost"
+        className="absolute bottom-0 right-0 w-6 h-6"
+        title="Gi poeng for iPad ladet og klar"
+        onClick={async () => {
+          const ipadAction = positiveActions.find(a => a.actionKey === 'IPAD_CHARGED');
+          if (ipadAction) {
+            const success = await givePoints(student.id!, ipadAction.points, ipadAction.name);
+            if (success) {
+              setShowGivePoints(true);
+              setTimeout(() => setShowGivePoints(false), 1200);
+            }
+          }
+        }}
+      >
+        <span className="text-green-600 font-bold text-lg">+</span>
+        <span className="sr-only">Gi poeng for iPad ladet og klar</span>
+      </Button>
+      {showGivePoints && (
+        <div className="absolute bottom-7 right-0 bg-green-100 text-green-800 px-2 py-1 rounded text-xs shadow">
+          +{positiveActions.find(a => a.actionKey === 'IPAD_CHARGED')?.points || 5} poeng!
+        </div>
+      )}
+      <Button
+        size="icon"
+        variant="ghost"
+        className="absolute top-0 right-0 w-6 h-6"
+        onClick={() => handleAbsenceToggle(student.id!)}
+      >
+        <UserX className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+        <span className="sr-only">Meld fravær</span>
+      </Button>
+    </div>
+  );
   };
 
   const EmptyDesk = () => (
@@ -190,6 +219,55 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   const displayedChart = isFlipped 
     ? seatingChart?.map(row => [...row].reverse()).reverse() 
     : seatingChart;
+
+  // Bulk reward handler
+  const handleBulkReward = async () => {
+    const ipadAction = positiveActions.find(a => a.actionKey === 'IPAD_CHARGED');
+
+    if (!ipadAction) {
+      toast({
+        title: "Feil",
+        description: "Konfigurasjon for 'iPad ladet' ble ikke funnet i innstillingene.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const qualifiedStudents = students.filter(student => {
+      if (!student.id) return false;
+      const isAbsent = todaysAbsences.some(a => a.studentId === student.id);
+      if (isAbsent) return false;
+      return getStatus(student.id) === 'OK';
+    });
+
+    if (qualifiedStudents.length === 0) {
+      toast({
+        title: "Ingen kvalifiserte elever",
+        description: "Ingen elever var markert med 'OK' status. Ingen poeng ble gitt.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      let successCount = 0;
+      for (const student of qualifiedStudents) {
+        const success = await givePoints(student.id!, ipadAction.points, ipadAction.name);
+        if (success) successCount++;
+      }
+      
+      toast({
+        title: "Bulk-belønning fullført!",
+        description: `${successCount} elever har mottatt ${ipadAction.points} poeng hver for ${ipadAction.name}.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Feil",
+        description: "Det oppstod en feil under bulk-belønningen.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <Card>
@@ -256,6 +334,27 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
             </div>
         )}
       </CardContent>
+      
+      {/* Bulk reward section */}
+      <div className="px-6 pb-6">
+        <div className="border-t pt-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div>
+              <h4 className="font-medium text-gray-900 dark:text-white">Bulk-belønning</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Gi poeng til alle elever som har OK status på iPad
+              </p>
+            </div>
+            <Button 
+              onClick={handleBulkReward}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+            >
+              <span className="text-lg">⚡</span>
+              Registrer og gi poeng til resten
+            </Button>
+          </div>
+        </div>
+      </div>
     </Card>
   );
 }

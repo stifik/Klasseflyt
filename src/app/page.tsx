@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { BookOpenCheck, Loader2, LogOut, Settings as SettingsIcon, GitCommit } from "lucide-react";
+import { BookOpenCheck, Loader2, LogOut, Settings as SettingsIcon, GitCommit, Trophy, Store, Activity, Terminal } from "lucide-react";
 import type { Student, Subject, Homework, Submission, DailyCheck, SeatingChartData, SeatingChartRecord, Remark, TabKey, AppSettings, SeatingLayout } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -30,6 +30,7 @@ const defaultSettings: AppSettings = {
     { key: 'observations', visible: true },
     { key: 'classroomTools', visible: true },
     { key: 'reports', visible: true },
+    { key: 'terminal', visible: true },
     { key: 'observations.hourly', visible: false },
     { key: 'observations.remarks', visible: false },
     { key: 'classroomTools.seatingChart', visible: false },
@@ -85,7 +86,7 @@ function Home() {
         let wasUpdated = false;
         const updatedTools = [...settings.dashboardTools];
         
-        const toolsToCheck = ['classroomTools'];
+        const toolsToCheck = ['classroomTools', 'terminal'];
 
         toolsToCheck.forEach(toolKey => {
             if (!updatedTools.some(t => t.key === toolKey)) {
@@ -93,6 +94,9 @@ function Home() {
                 if (toolKey === 'classroomTools') {
                     const observationsIndex = updatedTools.findIndex(t => t.key === 'observations');
                     if (observationsIndex !== -1) insertIndex = observationsIndex + 1;
+                } else if (toolKey === 'terminal') {
+                    const reportsIndex = updatedTools.findIndex(t => t.key === 'reports');
+                    if (reportsIndex !== -1) insertIndex = reportsIndex + 1;
                 }
                 
                 updatedTools.splice(insertIndex, 0, { key: toolKey as any, visible: true });
@@ -113,8 +117,8 @@ function Home() {
   
   const handleOnboardingComplete = async (finalSettings: AppSettings, teacherName: string, students: Omit<Student, 'id'>[], subjects: Omit<Subject, 'id'>[]) => {
       await db.transaction('rw', db.students, db.subjects, db.settings, async () => {
-        await db.students.bulkAdd(students.map(s => ({name: s.name})));
-        await db.subjects.bulkAdd(subjects.map(s => ({name: s.name})));
+        await db.students.bulkAdd(students.map(s => ({ name: s.name, points: 0 })));
+        await db.subjects.bulkAdd(subjects.map(s => ({ name: s.name })));
         
         const newSettings = {
             ...finalSettings,
@@ -165,6 +169,12 @@ function Home() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/terminal" target="_blank">
+              <Terminal className="h-4 w-4" />
+              <span className="sr-only">Belønningssystem</span>
+            </Link>
+          </Button>
           <Button variant="ghost" size="icon" onClick={navigateToSettings}>
               <SettingsIcon />
               <span className="sr-only">Innstillinger</span>
