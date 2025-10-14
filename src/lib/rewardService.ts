@@ -17,6 +17,7 @@ export function calculateNewPrices(
   ceilingPercent: number = 200
 ): Reward[] {
   console.log('🔄 Calculating prices for bought reward ID:', boughtRewardId, 'type:', typeof boughtRewardId);
+  console.log('📋 All rewards before calculation:', rewards.map(r => `ID ${r.id}(${typeof r.id}): ${r.name} = ${r.currentPrice}`));
   
   return rewards.map(reward => {
     let newPrice = reward.currentPrice;
@@ -24,17 +25,22 @@ export function calculateNewPrices(
 
     // Ensure we're comparing same types
     const isBought = reward.id === boughtRewardId || reward.id === Number(boughtRewardId) || Number(reward.id) === Number(boughtRewardId);
+    console.log(`  🔍 Checking ID ${reward.id}(${typeof reward.id}) vs ${boughtRewardId}(${typeof boughtRewardId}): isBought=${isBought}`);
 
     if (isBought) {
       // Increase price of bought item by configured % of base price
       newPrice += reward.basePrice * (increasePercent / 100);
-      console.log(`  ✅ ID ${reward.id} (${reward.name}): BOUGHT - ${oldPrice} → ${Math.round(newPrice)}`);
+      // Round up to ensure price always increases
+      newPrice = Math.ceil(newPrice);
+      console.log(`  ✅ ID ${reward.id} (${reward.name}): BOUGHT - ${oldPrice} → ${newPrice}`);
     } else {
       // Other items always decrease by configured % of base price
       // This creates downward pressure on all non-purchased items
       const decayAmount = reward.basePrice * (decreasePercent / 100);
       newPrice -= decayAmount;
-      console.log(`  📉 ID ${reward.id} (${reward.name}): DECREASED - ${oldPrice} → ${Math.round(newPrice)}`);
+      // Round down to ensure price always decreases (unless at floor)
+      newPrice = Math.floor(newPrice);
+      console.log(`  📉 ID ${reward.id} (${reward.name}): DECREASED - ${oldPrice} → ${newPrice}`);
     }
 
     // Enforce price bounds (configurable % of basePrice)
@@ -45,8 +51,8 @@ export function calculateNewPrices(
     
     return { 
       ...reward, 
-      currentPrice: Math.round(newPrice),
-      cost: Math.round(newPrice) // Keep cost in sync for backward compatibility
+      currentPrice: newPrice,
+      cost: newPrice // Keep cost in sync for backward compatibility
     };
   });
 }
