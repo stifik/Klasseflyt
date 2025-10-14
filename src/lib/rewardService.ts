@@ -23,16 +23,10 @@ export function calculateNewPrices(
       // Increase price of bought item by configured % of base price
       newPrice += reward.basePrice * (increasePercent / 100);
     } else {
-      // Other items decay by configured % of base price toward base price
-      // This means if current > base, subtract % of base
-      // If current < base, add % of base
+      // Other items always decrease by configured % of base price
+      // This creates downward pressure on all non-purchased items
       const decayAmount = reward.basePrice * (decreasePercent / 100);
-      if (newPrice > reward.basePrice) {
-        newPrice -= decayAmount;
-      } else if (newPrice < reward.basePrice) {
-        newPrice += decayAmount;
-      }
-      // If exactly at base, no change needed
+      newPrice -= decayAmount;
     }
 
     // Enforce price bounds (configurable % of basePrice)
