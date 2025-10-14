@@ -24,6 +24,14 @@ export type PurchasedReward = {
   status: 'unused' | 'used';
 };
 
+export type Reward = {
+  id: number;
+  name: string;
+  cost: number; // For backward compatibility (same as currentPrice initially)
+  basePrice: number; // Base/starting price
+  currentPrice: number; // Dynamic price that changes with demand
+};
+
 export type Subject = {
   id?: string;
 

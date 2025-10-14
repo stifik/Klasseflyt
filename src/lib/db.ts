@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -30,6 +30,7 @@ export class MySubClassedDexie extends Dexie {
     pickerLogs!: Table<PickerLog, number>;
     transactions!: Table<Transaction, number>;
     purchasedRewards!: Table<PurchasedReward, number>;
+    rewards!: Table<Reward, number>;
 
 
     constructor() {
@@ -359,6 +360,15 @@ export class MySubClassedDexie extends Dexie {
         // Version 24: Add purchasedRewards table for gift card functionality
         this.version(24).stores({
             purchasedRewards: '++id, purchaseId, studentId, rewardId, status',
+        });
+
+        // Version 25: Add rewards table for dynamic pricing system
+        this.version(25).stores({
+            rewards: '++id, name',
+        }).upgrade(async (tx) => {
+            // Import default rewards
+            const { defaultRewards } = await import('./rewards');
+            await tx.table('rewards').bulkAdd(defaultRewards);
         });
 
 

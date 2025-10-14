@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { rewards, type Reward } from '@/lib/rewards';
+import type { Reward } from '@/lib/types';
 import { positiveActions, type PositiveAction } from '@/lib/positiveActions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Trash2, Plus, Settings, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { db } from '@/lib/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 interface SettingsPageProps {
   // onBack prop er ikke lenger nødvendig siden layout håndterer navigasjon
@@ -55,8 +56,8 @@ export default function SettingsPage({}: SettingsPageProps) {
     }
   };
   
-  // Local state for rewards and actions (in a real app, this would be managed globally)
-  const [localRewards, setLocalRewards] = useState<Reward[]>(rewards);
+  // Load rewards from database
+  const localRewards = useLiveQuery(() => db.rewards.toArray()) || [];
   const [localActions, setLocalActions] = useState<PositiveAction[]>(positiveActions);
   
   // Form states for adding new items
@@ -66,7 +67,7 @@ export default function SettingsPage({}: SettingsPageProps) {
   const [newActionPoints, setNewActionPoints] = useState('');
 
   // Handlers for rewards
-  const handleAddReward = (e: React.FormEvent) => {
+  const handleAddReward = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRewardName.trim() || !newRewardCost.trim()) {
       toast({
@@ -87,13 +88,16 @@ export default function SettingsPage({}: SettingsPageProps) {
       return;
     }
 
+    const maxId = localRewards.length > 0 ? Math.max(...localRewards.map(r => r.id)) : 0;
     const newReward: Reward = {
-      id: Math.max(...localRewards.map(r => r.id), 0) + 1,
+      id: maxId + 1,
       name: newRewardName.trim(),
       cost,
+      basePrice: cost,
+      currentPrice: cost,
     };
 
-    setLocalRewards([...localRewards, newReward]);
+    await db.rewards.add(newReward);
     setNewRewardName('');
     setNewRewardCost('');
     
@@ -103,9 +107,9 @@ export default function SettingsPage({}: SettingsPageProps) {
     });
   };
 
-  const handleDeleteReward = (id: number) => {
+  const handleDeleteReward = async (id: number) => {
     const reward = localRewards.find(r => r.id === id);
-    setLocalRewards(localRewards.filter(r => r.id !== id));
+    await db.rewards.delete(id);
     
     toast({
       title: "Slettet",

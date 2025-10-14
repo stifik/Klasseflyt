@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
-import { rewards } from '@/lib/rewards';
+import type { Reward } from '@/lib/types';
 import { positiveActions } from '@/lib/positiveActions';
 import { buyReward, givePoints, type RewardResult } from '@/lib/rewardService';
 import PosView from './PosView';
@@ -44,8 +44,9 @@ const Terminal: React.FC = () => {
   const [activeTransaction, setActiveTransaction] = useState<ActiveTransaction>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // Hent studenter fra database
+  // Hent studenter og belønninger fra database
   const students = useLiveQuery(() => db.students.toArray()) || [];
+  const rewards = useLiveQuery(() => db.rewards.toArray()) || [];
 
   // Vis notifikasjon i 3 sekunder
   const showNotification = (message: string, type: 'success' | 'error') => {
@@ -54,13 +55,13 @@ const Terminal: React.FC = () => {
   };
 
   const handleSelectReward = (rewardId: number) => {
-    const reward = rewards.find(r => r.id === rewardId);
+    const reward = rewards.find((r: Reward) => r.id === rewardId);
     if (reward) {
       setActiveTransaction({ 
         type: 'reward', 
         id: reward.id, 
         name: reward.name, 
-        cost: reward.cost 
+        cost: reward.currentPrice || reward.cost 
       });
     }
   };
