@@ -39,11 +39,13 @@ async function syncPricesWithApi(rewards: Reward[]) {
   try {
     const apiKey = process.env.NEXT_PUBLIC_API_SECRET_KEY;
     if (!apiKey) {
-      console.warn('API_SECRET_KEY not set, skipping price sync');
+      console.warn('⚠️ API_SECRET_KEY not set, skipping price sync');
       return;
     }
 
-    await fetch('/api/prices', {
+    console.log('📤 Syncing prices to API...', rewards.length, 'rewards');
+    
+    const response = await fetch('/api/prices', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -51,8 +53,15 @@ async function syncPricesWithApi(rewards: Reward[]) {
       },
       body: JSON.stringify({ rewards }),
     });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ Prices synced successfully:', data);
+    } else {
+      console.error('❌ Failed to sync prices:', response.status, response.statusText);
+    }
   } catch (error) {
-    console.error("Failed to sync prices to API:", error);
+    console.error("❌ Failed to sync prices to API:", error);
   }
 }
 
