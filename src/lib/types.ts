@@ -331,4 +331,5 @@ export type AppSettings = {
   classGoal?: ClassGoal;
   communityGoalTitle?: string;
   rewardSystem?: RewardSystemSettings;
+  nfcEnabled?: boolean; // Enable/disable NFC scanning feature
 };

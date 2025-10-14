@@ -480,6 +480,7 @@ const defaultSettings: AppSettings = {
         priceFloorPercent: 50,
         priceCeilingPercent: 200,
     },
+    nfcEnabled: false, // NFC disabled by default
 };
 
 // Function to clear all data from the database

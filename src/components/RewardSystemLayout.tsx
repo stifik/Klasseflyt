@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Settings, ArrowLeft } from 'lucide-react';
+import { Settings, BookOpenCheck } from 'lucide-react';
 import ClassGoalProgressBar from './ClassGoalProgressBar';
 import { db } from '@/lib/db';
 
@@ -83,24 +83,21 @@ const RewardSystemLayout: React.FC<RewardSystemLayoutProps> = ({
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center gap-4">
-              {showBackButton && (
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={backButtonHref} className="flex items-center gap-2">
-                    <ArrowLeft className="w-4 h-4" />
-                    Tilbake til Klasseflyt
-                  </Link>
-                </Button>
-              )}
-              <Link href="/terminal" className="text-xl font-semibold text-foreground hover:text-primary transition-colors cursor-pointer">
+              <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <BookOpenCheck className="w-8 h-8 text-primary" />
+                <h1 className="text-xl font-bold text-foreground">Klasseflyt</h1>
+              </Link>
+              <span className="text-muted-foreground">|</span>
+              <Link href="/terminal" className="text-lg font-semibold text-foreground hover:text-primary transition-colors">
                 Belønningssystem
               </Link>
             </div>
             
             {/* Settings button - always visible */}
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="ghost" size="icon" asChild>
               <Link href="/settings" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
-                Innstillinger
+                <span className="sr-only">Innstillinger</span>
               </Link>
             </Button>
           </div>

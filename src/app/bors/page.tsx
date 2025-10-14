@@ -137,7 +137,7 @@ export default function BorsPage() {
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2 text-green-700 dark:text-green-400">
                       <TrendingUp className="w-5 h-5" />
-                      🏆 Dagens vindere
+                      🏆 Mest etterspurt
                     </CardTitle>
                   </CardHeader>
                   <CardContent>

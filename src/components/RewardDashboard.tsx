@@ -53,12 +53,16 @@ export default function RewardDashboard() {
     return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [showHistoryDialog]) || [];
 
-  // NFC hook
+  // Check if NFC is enabled in settings
+  const settings = useLiveQuery(() => db.settings.get('userSettings'));
+  const nfcEnabled = settings?.nfcEnabled || false;
+
+  // NFC hook (only use if enabled)
   const { isSupported, isScanning, lastRead, error, startScanning, stopScanning } = useNfc();
 
-  // Håndter NFC-lesninger
+  // Håndter NFC-lesninger (only if NFC is enabled)
   useEffect(() => {
-    if (lastRead) {
+    if (nfcEnabled && lastRead) {
       // Prøv å finne elev basert på NFC-data
       const matchingStudent = students.find(student => {
         // Sjekk om NFC-data matcher elevens ID eller navn
@@ -77,14 +81,14 @@ export default function RewardDashboard() {
         showNotification(`Ingen elev funnet for NFC-kort: ${lastRead}`, 'error');
       }
     }
-  }, [lastRead, students]);
+  }, [nfcEnabled, lastRead, students]);
 
-  // Håndter NFC-feil
+  // Håndter NFC-feil (only if NFC is enabled)
   useEffect(() => {
-    if (error) {
+    if (nfcEnabled && error) {
       showNotification(error, 'error');
     }
-  }, [error]);
+  }, [nfcEnabled, error]);
 
   // Vis notifikasjon i 3 sekunder
   const showNotification = (message: string, type: 'success' | 'error') => {
@@ -175,8 +179,8 @@ export default function RewardDashboard() {
             Klassebank
           </CardTitle>
           
-          {/* NFC-kontroller */}
-          {isSupported && (
+          {/* NFC-kontroller (only show if enabled in settings) */}
+          {nfcEnabled && isSupported && (
             <button
               onClick={handleNFCToggle}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
@@ -275,8 +279,8 @@ export default function RewardDashboard() {
               type="number"
               className="border p-1 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               placeholder="Antall poeng"
-              value={pointsAmount}
-              onChange={e => setPointsAmount(Number(e.target.value))}
+              value={pointsAmount === 0 ? '' : pointsAmount}
+              onChange={e => setPointsAmount(Number(e.target.value) || 0)}
               min={1}
               autoFocus
             />

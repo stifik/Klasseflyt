@@ -256,6 +256,35 @@ export default function RewardSettings() {
                 />
               </div>
 
+              {/* Enable/Disable NFC */}
+              <div className="flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                <div className="space-y-1">
+                  <Label htmlFor="nfc-enabled" className="text-base font-semibold">
+                    Aktiver NFC-skanning
+                  </Label>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Brukes for å skanne NFC-kort i Klassebank (krever spesiell hardware)
+                  </p>
+                </div>
+                <Switch
+                  id="nfc-enabled"
+                  checked={dbSettings?.nfcEnabled || false}
+                  onCheckedChange={async (checked) => {
+                    const settings = await db.settings.get('userSettings');
+                    if (settings) {
+                      settings.nfcEnabled = checked;
+                      await db.settings.put(settings);
+                      toast({
+                        title: checked ? "NFC aktivert" : "NFC deaktivert",
+                        description: checked 
+                          ? "NFC-skanning er nå tilgjengelig i Klassebank" 
+                          : "NFC-skanning er skjult",
+                      });
+                    }
+                  }}
+                />
+              </div>
+
               {/* Show configuration only if dynamic mode is enabled */}
               {rewardSystem.mode === 'dynamic' && (
                 <>

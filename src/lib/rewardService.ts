@@ -16,17 +16,25 @@ export function calculateNewPrices(
   floorPercent: number = 50,
   ceilingPercent: number = 200
 ): Reward[] {
+  console.log('🔄 Calculating prices for bought reward ID:', boughtRewardId, 'type:', typeof boughtRewardId);
+  
   return rewards.map(reward => {
     let newPrice = reward.currentPrice;
+    const oldPrice = newPrice;
 
-    if (reward.id === boughtRewardId) {
+    // Ensure we're comparing same types
+    const isBought = reward.id === boughtRewardId || reward.id === Number(boughtRewardId) || Number(reward.id) === Number(boughtRewardId);
+
+    if (isBought) {
       // Increase price of bought item by configured % of base price
       newPrice += reward.basePrice * (increasePercent / 100);
+      console.log(`  ✅ ID ${reward.id} (${reward.name}): BOUGHT - ${oldPrice} → ${Math.round(newPrice)}`);
     } else {
       // Other items always decrease by configured % of base price
       // This creates downward pressure on all non-purchased items
       const decayAmount = reward.basePrice * (decreasePercent / 100);
       newPrice -= decayAmount;
+      console.log(`  📉 ID ${reward.id} (${reward.name}): DECREASED - ${oldPrice} → ${Math.round(newPrice)}`);
     }
 
     // Enforce price bounds (configurable % of basePrice)

@@ -161,20 +161,18 @@ function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 border-b bg-background sm:px-6 no-print">
-        <div className="flex items-center gap-2">
-          <button onClick={() => setActiveView('dashboard')} className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
+          <button onClick={() => setActiveView('dashboard')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <BookOpenCheck className="w-8 h-8 text-primary" />
             <h1 className="text-xl font-bold text-foreground">Klasseflyt</h1>
           </button>
+          <span className="text-muted-foreground">|</span>
+          <Link href="/terminal" className="text-lg font-semibold text-foreground hover:text-primary transition-colors">
+            Belønningssystem
+          </Link>
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/terminal" target="_blank">
-              <Terminal className="h-4 w-4" />
-              <span className="sr-only">Belønningssystem</span>
-            </Link>
-          </Button>
           <Button variant="ghost" size="icon" onClick={navigateToSettings}>
               <SettingsIcon />
               <span className="sr-only">Innstillinger</span>

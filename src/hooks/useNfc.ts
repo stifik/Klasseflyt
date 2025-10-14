@@ -59,15 +59,13 @@ export function useNfc(): NFCHookReturn {
   const [error, setError] = useState<string | null>(null);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
 
-  // Sjekk NFC-støtte ved komponentmontering
+  // Sjekk NFC-støtte ved komponentmontering (kun sett isSupported, ikke error)
   useEffect(() => {
     const checkNFCSupport = () => {
       if ('nfc' in navigator) {
         setIsSupported(true);
-        setError(null);
       } else {
         setIsSupported(false);
-        setError('NFC støttes ikke av denne nettleseren');
       }
     };
 
