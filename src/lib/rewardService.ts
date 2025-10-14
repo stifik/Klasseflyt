@@ -7,22 +7,37 @@ export type RewardResult = {
   message: string;
 };
 
-// Dynamic pricing algorithm
-export function calculateNewPrices(rewards: Reward[], boughtRewardId: number): Reward[] {
+// Dynamic pricing algorithm with configurable parameters
+export function calculateNewPrices(
+  rewards: Reward[], 
+  boughtRewardId: number,
+  increasePercent: number = 5,
+  decreasePercent: number = 2,
+  floorPercent: number = 50,
+  ceilingPercent: number = 200
+): Reward[] {
   return rewards.map(reward => {
     let newPrice = reward.currentPrice;
 
     if (reward.id === boughtRewardId) {
-      // Increase price of bought item by 5% of base price
-      newPrice += reward.basePrice * 0.05;
+      // Increase price of bought item by configured % of base price
+      newPrice += reward.basePrice * (increasePercent / 100);
     } else {
-      // Other items decay 2% toward base price
-      newPrice = newPrice * 0.98 + reward.basePrice * 0.02;
+      // Other items decay by configured % of base price toward base price
+      // This means if current > base, subtract % of base
+      // If current < base, add % of base
+      const decayAmount = reward.basePrice * (decreasePercent / 100);
+      if (newPrice > reward.basePrice) {
+        newPrice -= decayAmount;
+      } else if (newPrice < reward.basePrice) {
+        newPrice += decayAmount;
+      }
+      // If exactly at base, no change needed
     }
 
-    // Enforce price bounds (50% - 200% of basePrice)
-    const minPrice = reward.basePrice * 0.5;
-    const maxPrice = reward.basePrice * 2;
+    // Enforce price bounds (configurable % of basePrice)
+    const minPrice = reward.basePrice * (floorPercent / 100);
+    const maxPrice = reward.basePrice * (ceilingPercent / 100);
     if (newPrice < minPrice) newPrice = minPrice;
     if (newPrice > maxPrice) newPrice = maxPrice;
     
@@ -157,19 +172,38 @@ export async function buyReward(studentId: string | number, rewardId: number): P
       description: reward.name,
     });
 
-    // 3. Beregn nye priser basert på kjøpet
-    const updatedRewards = calculateNewPrices(allRewards, rewardId);
-    
-    // 4. Oppdater alle belønninger i databasen
-    await Promise.all(
-      updatedRewards.map(r => db.rewards.update(r.id, {
-        currentPrice: r.currentPrice,
-        cost: r.cost
-      }))
-    );
+    // 3. Check if dynamic pricing is enabled
+    const settings = await db.settings.get('userSettings');
+    const rewardSystem = settings?.rewardSystem || {
+      mode: 'simple',
+      priceIncreasePercent: 5,
+      priceDecreasePercent: 2,
+      priceFloorPercent: 50,
+      priceCeilingPercent: 200,
+    };
 
-    // 5. Synkroniser priser til API (non-blocking)
-    syncPricesWithApi(updatedRewards);
+    // 4. Only calculate and update prices if in dynamic mode
+    if (rewardSystem.mode === 'dynamic') {
+      const updatedRewards = calculateNewPrices(
+        allRewards, 
+        rewardId,
+        rewardSystem.priceIncreasePercent,
+        rewardSystem.priceDecreasePercent,
+        rewardSystem.priceFloorPercent,
+        rewardSystem.priceCeilingPercent
+      );
+      
+      // Update all rewards in database
+      await Promise.all(
+        updatedRewards.map(r => db.rewards.update(r.id, {
+          currentPrice: r.currentPrice,
+          cost: r.cost
+        }))
+      );
+
+      // Synchronize prices to API (non-blocking)
+      syncPricesWithApi(updatedRewards);
+    }
 
     return { 
       success: true, 

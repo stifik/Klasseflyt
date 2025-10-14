@@ -52,7 +52,7 @@ export default function BorsPage() {
 
   const getPriceChangeIndicator = (reward: Reward) => {
     const diff = reward.currentPrice - reward.basePrice;
-    const percentChange = ((diff / reward.basePrice) * 100).toFixed(1);
+    const percentChange = Math.round((diff / reward.basePrice) * 100);
     
     if (diff > 0) {
       return {
@@ -119,6 +119,79 @@ export default function BorsPage() {
           )}
         </div>
 
+        {/* Dagens vindere og tapere */}
+        {priceData.rewards.length > 0 && (() => {
+          const sortedByChange = [...priceData.rewards].sort((a, b) => {
+            const changeA = ((a.currentPrice - a.basePrice) / a.basePrice) * 100;
+            const changeB = ((b.currentPrice - b.basePrice) / b.basePrice) * 100;
+            return changeB - changeA;
+          });
+          const topGainers = sortedByChange.slice(0, 3).filter(r => r.currentPrice > r.basePrice);
+          const topLosers = sortedByChange.slice(-3).reverse().filter(r => r.currentPrice < r.basePrice);
+
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {/* Dagens vindere */}
+              {topGainers.length > 0 && (
+                <Card className="border-green-200 bg-green-50/50 dark:bg-green-900/10">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2 text-green-700 dark:text-green-400">
+                      <TrendingUp className="w-5 h-5" />
+                      🏆 Dagens vindere
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {topGainers.map((reward, idx) => {
+                        const change = Math.round(((reward.currentPrice - reward.basePrice) / reward.basePrice) * 100);
+                        return (
+                          <div key={reward.id} className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded">
+                            <span className="font-medium text-sm">
+                              {idx + 1}. {reward.name}
+                            </span>
+                            <span className="text-green-600 dark:text-green-400 font-bold text-sm">
+                              +{change}%
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Dagens tapere */}
+              {topLosers.length > 0 && (
+                <Card className="border-red-200 bg-red-50/50 dark:bg-red-900/10">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2 text-red-700 dark:text-red-400">
+                      <TrendingDown className="w-5 h-5" />
+                      📉 Dagens kupp
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {topLosers.map((reward, idx) => {
+                        const change = Math.round(((reward.currentPrice - reward.basePrice) / reward.basePrice) * 100);
+                        return (
+                          <div key={reward.id} className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded">
+                            <span className="font-medium text-sm">
+                              {idx + 1}. {reward.name}
+                            </span>
+                            <span className="text-red-600 dark:text-red-400 font-bold text-sm">
+                              {change}%
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          );
+        })()}
+
         {/* Rewards Grid */}
         {priceData.rewards.length === 0 ? (
           <Card className="max-w-md mx-auto">
@@ -129,53 +202,70 @@ export default function BorsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {priceData.rewards.map((reward) => {
-              const priceChange = getPriceChangeIndicator(reward);
-              return (
-                <Card 
-                  key={reward.id} 
-                  className="hover:shadow-xl transition-shadow duration-300 border-2"
-                >
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-xl font-semibold text-gray-900 dark:text-white">
-                      {reward.name}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {/* Current Price */}
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-                          {reward.currentPrice}
-                        </span>
-                        <span className="text-lg text-gray-500 dark:text-gray-400">
-                          poeng
-                        </span>
-                      </div>
+          <>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Alle belønninger
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {priceData.rewards
+                .sort((a, b) => b.currentPrice - a.currentPrice) // Sort by price (highest first)
+                .map((reward) => {
+                  const priceChange = getPriceChangeIndicator(reward);
+                  const diff = reward.currentPrice - reward.basePrice;
+                  const isHot = diff > reward.basePrice * 0.2; // More than 20% increase
+                  const isCold = diff < -reward.basePrice * 0.2; // More than 20% decrease
+                  
+                  return (
+                    <Card 
+                      key={reward.id} 
+                      className={`hover:shadow-xl transition-all duration-300 border-2 ${
+                        isHot ? 'border-orange-300 bg-orange-50/30 dark:bg-orange-900/10' : 
+                        isCold ? 'border-blue-300 bg-blue-50/30 dark:bg-blue-900/10' : 
+                        ''
+                      }`}
+                    >
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-xl font-semibold text-gray-900 dark:text-white flex items-center justify-between">
+                          <span>{reward.name}</span>
+                          {isHot && <span className="text-lg">🔥</span>}
+                          {isCold && <span className="text-lg">❄️</span>}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {/* Current Price */}
+                          <div className="flex items-baseline justify-between">
+                            <span className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                              {reward.currentPrice}
+                            </span>
+                            <span className="text-lg text-gray-500 dark:text-gray-400">
+                              poeng
+                            </span>
+                          </div>
 
-                      {/* Price Change */}
-                      <div className="flex items-center justify-between pt-2 border-t">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                          Fra grunnpris:
-                        </span>
-                        <div className={`flex items-center gap-1 ${priceChange.color} font-medium`}>
-                          {priceChange.icon}
-                          <span>{priceChange.text}</span>
+                          {/* Price Change */}
+                          <div className="flex items-center justify-between pt-2 border-t">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              Fra grunnpris:
+                            </span>
+                            <div className={`flex items-center gap-1 ${priceChange.color} font-medium`}>
+                              {priceChange.icon}
+                              <span>{priceChange.text}</span>
+                            </div>
+                          </div>
+
+                          {/* Base Price */}
+                          <div className="text-xs text-gray-500 dark:text-gray-500 flex justify-between">
+                            <span>Grunnpris:</span>
+                            <span>{reward.basePrice} poeng</span>
+                          </div>
                         </div>
-                      </div>
-
-                      {/* Base Price */}
-                      <div className="text-xs text-gray-500 dark:text-gray-500 flex justify-between">
-                        <span>Grunnpris:</span>
-                        <span>{reward.basePrice} poeng</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+            </div>
+          </>
         )}
 
         {/* Info Footer */}

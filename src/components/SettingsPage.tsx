@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import type { Reward } from '@/lib/types';
 import { positiveActions, type PositiveAction } from '@/lib/positiveActions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import RewardSettings from './RewardSettings';
 
 interface SettingsPageProps {
   // onBack prop er ikke lenger nødvendig siden layout håndterer navigasjon
@@ -56,66 +56,13 @@ export default function SettingsPage({}: SettingsPageProps) {
     }
   };
   
-  // Load rewards from database
-  const localRewards = useLiveQuery(() => db.rewards.toArray()) || [];
   const [localActions, setLocalActions] = useState<PositiveAction[]>(positiveActions);
   
   // Form states for adding new items
-  const [newRewardName, setNewRewardName] = useState('');
-  const [newRewardCost, setNewRewardCost] = useState('');
   const [newActionName, setNewActionName] = useState('');
   const [newActionPoints, setNewActionPoints] = useState('');
 
-  // Handlers for rewards
-  const handleAddReward = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newRewardName.trim() || !newRewardCost.trim()) {
-      toast({
-        title: "Feil",
-        description: "Vennligst fyll ut både navn og kostnad",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    const cost = parseInt(newRewardCost);
-    if (isNaN(cost) || cost <= 0) {
-      toast({
-        title: "Feil",
-        description: "Kostnad må være et positivt tall",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const maxId = localRewards.length > 0 ? Math.max(...localRewards.map(r => r.id)) : 0;
-    const newReward: Reward = {
-      id: maxId + 1,
-      name: newRewardName.trim(),
-      cost,
-      basePrice: cost,
-      currentPrice: cost,
-    };
-
-    await db.rewards.add(newReward);
-    setNewRewardName('');
-    setNewRewardCost('');
-    
-    toast({
-      title: "Suksess",
-      description: `Belønning "${newReward.name}" lagt til`,
-    });
-  };
-
-  const handleDeleteReward = async (id: number) => {
-    const reward = localRewards.find(r => r.id === id);
-    await db.rewards.delete(id);
-    
-    toast({
-      title: "Slettet",
-      description: `Belønning "${reward?.name}" fjernet`,
-    });
-  };
 
   // Handlers for positive actions
   const handleAddAction = (e: React.FormEvent) => {
@@ -179,13 +126,16 @@ export default function SettingsPage({}: SettingsPageProps) {
 
   return (
     <div>
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto space-y-8">
         <div className="flex items-center gap-2 mb-6">
           <Settings className="w-6 h-6" />
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Innstillinger for Belønningssystem
           </h1>
         </div>
+
+        {/* New Reward Settings Component with Simple/Advanced tabs */}
+        <RewardSettings />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Felles belønning - målsum */}
@@ -228,73 +178,6 @@ export default function SettingsPage({}: SettingsPageProps) {
               </form>
             </CardContent>
           </Card>
-          {/* Administrer Butikk (POS) */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                🛒 Administrer Butikk (POS)
-              </CardTitle>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Administrer belønninger som elever kan kjøpe med poeng
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Liste over eksisterende belønninger */}
-              <div className="space-y-2">
-                <h3 className="font-medium text-gray-900 dark:text-white">Nåværende belønninger:</h3>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {localRewards.map((reward) => (
-                    <div key={reward.id} className="flex items-center justify-between p-2 border rounded bg-white dark:bg-gray-800">
-                      <div>
-                        <span className="font-medium">{reward.name}</span>
-                        <span className="text-sm text-gray-500 ml-2">({reward.cost} poeng)</span>
-                      </div>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteReward(reward.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  {localRewards.length === 0 && (
-                    <p className="text-gray-500 text-center py-4">Ingen belønninger ennå</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Skjema for å legge til ny belønning */}
-              <form onSubmit={handleAddReward} className="space-y-3 pt-4 border-t">
-                <h3 className="font-medium text-gray-900 dark:text-white">Legg til ny belønning:</h3>
-                <div>
-                  <Label htmlFor="reward-name">Navn på belønning</Label>
-                  <Input
-                    id="reward-name"
-                    placeholder="f.eks. 15 min spilletid"
-                    value={newRewardName}
-                    onChange={(e) => setNewRewardName(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="reward-cost">Kostnad (poeng)</Label>
-                  <Input
-                    id="reward-cost"
-                    type="number"
-                    placeholder="f.eks. 20"
-                    min="1"
-                    value={newRewardCost}
-                    onChange={(e) => setNewRewardCost(e.target.value)}
-                  />
-                </div>
-                <Button type="submit" className="w-full flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Legg til ny belønning
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
           {/* Administrer Handlinger (POD) */}
           <Card>
             <CardHeader>

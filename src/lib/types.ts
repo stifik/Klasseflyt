@@ -305,6 +305,14 @@ export type ClassGoal = {
   lastAchieved?: string; // ISO-dato for sist oppnådd
 };
 
+export type RewardSystemSettings = {
+  mode: 'simple' | 'dynamic'; // Simple = statiske priser, Dynamic = børs
+  priceIncreasePercent: number; // Default 5 - hvor mye kjøpt vare øker
+  priceDecreasePercent: number; // Default 2 - hvor mye andre varer synker
+  priceFloorPercent: number; // Default 50 - minimum pris som % av basePrice
+  priceCeilingPercent: number; // Default 200 - maksimum pris som % av basePrice
+};
+
 export type AppSettings = {
   tabs: Record<TabKey, boolean>;
   tabOrder: TabKey[];
@@ -322,4 +330,5 @@ export type AppSettings = {
   pickerSettings?: PickerSettings;
   classGoal?: ClassGoal;
   communityGoalTitle?: string;
+  rewardSystem?: RewardSystemSettings;
 };

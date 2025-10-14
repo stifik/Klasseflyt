@@ -473,6 +473,13 @@ const defaultSettings: AppSettings = {
         lastAchieved: undefined,
     },
     communityGoalTitle: 'Felles belønning',
+    rewardSystem: {
+        mode: 'simple', // Start with simple mode by default
+        priceIncreasePercent: 5,
+        priceDecreasePercent: 2,
+        priceFloorPercent: 50,
+        priceCeilingPercent: 200,
+    },
 };
 
 // Function to clear all data from the database

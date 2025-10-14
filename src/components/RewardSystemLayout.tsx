@@ -36,7 +36,11 @@ const RewardSystemLayout: React.FC<RewardSystemLayoutProps> = ({
     
     async function getClassTotalPoints() {
       const transactions = await db.transactions.toArray();
-      return transactions.reduce((sum, t) => sum + (t.pointsChange || 0), 0);
+      // Only count positive transactions (earned points), not negative (spent points)
+      return transactions.reduce((sum, t) => {
+        const change = t.pointsChange || 0;
+        return change > 0 ? sum + change : sum;
+      }, 0);
     }
 
     async function getClassGoal() {
