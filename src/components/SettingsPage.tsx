@@ -20,10 +20,21 @@ interface SettingsPageProps {
 export default function SettingsPage({}: SettingsPageProps) {
   const { toast } = useToast();
   
+  // Børs-ID (lagres i localStorage)
+  const [borsId, setBorsId] = useState<string>('');
+  
   // Felles belønning (classGoal)
   const [goalTarget, setGoalTarget] = useState<number>(200);
   const [goalTitle, setGoalTitle] = useState<string>('Felles belønning');
   const [goalLoading, setGoalLoading] = useState(true);
+
+  // Load Børs-ID from localStorage
+  useEffect(() => {
+    const savedBorsId = localStorage.getItem('klasseflyt_bors_id');
+    if (savedBorsId) {
+      setBorsId(savedBorsId);
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -48,6 +59,24 @@ export default function SettingsPage({}: SettingsPageProps) {
     };
     initActions();
   }, []);
+
+  const handleBorsIdChange = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!borsId.trim()) {
+      toast({ 
+        title: 'Feil', 
+        description: 'Børs-ID kan ikke være tom', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+    // Lagre til localStorage
+    localStorage.setItem('klasseflyt_bors_id', borsId.trim());
+    toast({ 
+      title: 'Lagret', 
+      description: `Børs-ID satt til: ${borsId.trim()}` 
+    });
+  };
 
   const handleGoalChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,6 +182,47 @@ export default function SettingsPage({}: SettingsPageProps) {
 
         {/* New Reward Settings Component with Simple/Advanced tabs */}
         <RewardSettings />
+
+        {/* Børs-ID Configuration */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              📊 Min Unike Børs-ID
+            </CardTitle>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Denne ID-en brukes for å holde din klasses børs adskilt fra andre klasser
+            </p>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <form onSubmit={handleBorsIdChange} className="flex flex-col gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="bors-id" className="text-sm">Børs-ID</Label>
+                <Input
+                  id="bors-id"
+                  type="text"
+                  value={borsId}
+                  onChange={e => setBorsId(e.target.value)}
+                  placeholder="f.eks. stian-klasse-2025"
+                  className="h-9"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Tips: Bruk et unikt navn uten mellomrom (f.eks. navnet-ditt-klasse-år)
+                </p>
+              </div>
+              <Button type="submit" className="w-fit" size="sm">Lagre Børs-ID</Button>
+            </form>
+            {borsId && (
+              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  <strong>Din offentlige børs-URL:</strong><br />
+                  <code className="text-xs bg-white dark:bg-gray-800 px-2 py-1 rounded mt-1 inline-block">
+                    https://din-bors-side.vercel.app/bors/{borsId}
+                  </code>
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Felles belønning - målsum */}

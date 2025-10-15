@@ -66,7 +66,15 @@ async function syncPricesWithApi(rewards: Reward[]) {
       return;
     }
 
-    console.log('📤 Syncing prices to API...', rewards.length, 'rewards');
+    // Hent Børs-ID fra localStorage
+    const borsId = localStorage.getItem('klasseflyt_bors_id');
+    if (!borsId) {
+      console.warn('⚠️ Børs-ID not set in localStorage, skipping price sync');
+      console.warn('💡 Please set your Børs-ID in Settings → Min Unike Børs-ID');
+      return;
+    }
+
+    console.log('📤 Syncing prices to API...', rewards.length, 'rewards, borsId:', borsId);
     
     const response = await fetch('/api/prices', {
       method: 'POST',
@@ -74,7 +82,7 @@ async function syncPricesWithApi(rewards: Reward[]) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ rewards }),
+      body: JSON.stringify({ borsId, rewards }),
     });
 
     if (response.ok) {
@@ -223,5 +231,50 @@ export async function buyReward(studentId: string | number, rewardId: number): P
       success: false, 
       message: 'Teknisk feil ved kjøp av belønning. Prøv igjen senere.' 
     };
+  }
+}
+
+// Sync agent status to API endpoint
+export async function syncAgentStatusWithApi(
+  status: 'pending' | 'analyzing' | 'passed' | 'failed',
+  agentName?: string,
+  mission?: string
+): Promise<RewardResult> {
+  try {
+    const apiKey = process.env.NEXT_PUBLIC_API_SECRET_KEY;
+    if (!apiKey) {
+      console.warn('⚠️ API_SECRET_KEY not set, skipping agent status sync');
+      return { success: false, message: 'API key not configured' };
+    }
+
+    // Hent Børs-ID fra localStorage
+    const borsId = localStorage.getItem('klasseflyt_bors_id');
+    if (!borsId) {
+      console.warn('⚠️ Børs-ID not set in localStorage, skipping agent status sync');
+      return { success: false, message: 'Børs-ID not configured. Please set it in Settings.' };
+    }
+
+    console.log('📤 Syncing agent status to API...', { borsId, status, agentName });
+    
+    const response = await fetch('/api/agent-status', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ borsId, status, agentName, mission }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ Agent status synced successfully:', data);
+      return { success: true, message: 'Agent status synchronized' };
+    } else {
+      console.error('❌ Failed to sync agent status:', response.status, response.statusText);
+      return { success: false, message: 'Failed to sync agent status' };
+    }
+  } catch (error) {
+    console.error("❌ Failed to sync agent status to API:", error);
+    return { success: false, message: 'Network error' };
   }
 }

@@ -1,4 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
+
+// CORS headers for cross-origin requests from display app
+function corsHeaders() {
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+}
+
+// Handle preflight requests
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders() });
+}
 
 // In-memory storage for local development (fallback when KV is not available)
 let localPriceCache: { rewards: any[]; lastUpdated: string } | null = null;
@@ -21,28 +35,28 @@ export async function POST(req: NextRequest) {
     // Check authorization header
     const authHeader = req.headers.get('authorization');
     const apiKey = process.env.API_SECRET_KEY;
-    
+
     if (!apiKey) {
       return NextResponse.json(
         { message: 'Server configuration error' },
-        { status: 500 }
+        { status: 500, headers: corsHeaders() }
       );
     }
 
-    if (authHeader !== `Bearer ${apiKey}`) {
+    if (authHeader !== Bearer ) {
       return NextResponse.json(
         { message: 'Unauthorized' },
-        { status: 401 }
+        { status: 401, headers: corsHeaders() }
       );
     }
 
     // Parse request body
     const body = await req.json();
-    
+
     if (!body.rewards || !Array.isArray(body.rewards)) {
       return NextResponse.json(
         { message: 'Invalid request body. Expected { rewards: Reward[] }' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders() }
       );
     }
 
@@ -58,19 +72,19 @@ export async function POST(req: NextRequest) {
     } else {
       // Use local cache for development
       localPriceCache = priceData;
-      console.log('💾 Prices stored in local cache (dev mode)');
+      console.log(' Prices stored in local cache (dev mode)');
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Prices updated successfully',
       count: body.rewards.length,
       mode: kvClient ? 'kv' : 'local'
-    });
+    }, { headers: corsHeaders() });
   } catch (error) {
     console.error('Error updating prices:', error);
     return NextResponse.json(
       { message: 'Internal server error' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders() }
     );
   }
 }
@@ -86,23 +100,23 @@ export async function GET() {
     } else {
       // Use local cache for development
       priceData = localPriceCache;
-      console.log('📊 Fetching prices from local cache (dev mode)');
+      console.log(' Fetching prices from local cache (dev mode)');
     }
-    
+
     if (!priceData) {
       return NextResponse.json({
         rewards: [],
         lastUpdated: null,
         message: 'No price data available yet'
-      });
+      }, { headers: corsHeaders() });
     }
 
-    return NextResponse.json(priceData);
+    return NextResponse.json(priceData, { headers: corsHeaders() });
   } catch (error) {
     console.error('Error fetching prices:', error);
     return NextResponse.json(
       { message: 'Internal server error' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders() }
     );
   }
 }

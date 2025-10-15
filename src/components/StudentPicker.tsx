@@ -25,6 +25,8 @@ import { Switch } from "./ui/switch";
 import { Slider } from "./ui/slider";
 import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import SecretAgentPicker from "./SecretAgentPicker";
 
 
 interface StudentPickerProps {
@@ -420,13 +422,25 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
     };
 
     return (
-        <div className="grid gap-6 md:grid-cols-3">
-            <div className="md:col-span-2">
-                <Card className="min-h-[400px]">
-                    <CardHeader>
-                        <CardTitle>Elev-trekker</CardTitle>
-                        <CardDescription>Trekk en tilfeldig elev ved hjelp av klassekartet. Fraværende elever er markert og vil ikke bli trukket.</CardDescription>
-                    </CardHeader>
+        <Tabs defaultValue="standard" className="w-full">
+            <TabsList className="grid w-full max-w-md mx-auto mb-6 grid-cols-2">
+                <TabsTrigger value="standard">
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Standard Trekking
+                </TabsTrigger>
+                <TabsTrigger value="agent">
+                    🕵️ Hemmelig Agent
+                </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="standard">
+                <div className="grid gap-6 md:grid-cols-3">
+                    <div className="md:col-span-2">
+                        <Card className="min-h-[400px]">
+                            <CardHeader>
+                                <CardTitle>Elev-trekker</CardTitle>
+                                <CardDescription>Trekk en tilfeldig elev ved hjelp av klassekartet. Fraværende elever er markert og vil ikke bli trukket.</CardDescription>
+                            </CardHeader>
                     <CardContent>
                         {seatingChart && activeLayout ? (
                              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${activeLayout.cols}, 1fr)` }}>
@@ -463,11 +477,11 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                     </CardContent>
                 </Card>
             </div>
-            <div>
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-xl">Kontrollpanel</CardTitle>
-                    </CardHeader>
+                    <div>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-xl">Kontrollpanel</CardTitle>
+                            </CardHeader>
                     <CardContent className="space-y-4">
                         <Button onClick={handlePickStudent} disabled={isPicking || studentsToPickFrom.length === 0} size="lg" className="w-full">
                             <Sparkles className="mr-2" />
@@ -586,9 +600,17 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
                                 </AccordionContent>
                             </AccordionItem>
                         </Accordion>
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+            </TabsContent>
+
+            <TabsContent value="agent">
+                <div className="max-w-4xl mx-auto">
+                    <SecretAgentPicker students={students} absences={absences} />
+                </div>
+            </TabsContent>
+        </Tabs>
     );
 }

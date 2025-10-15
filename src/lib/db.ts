@@ -11,7 +11,7 @@ export type PositiveAction = {
   name: string;
   points: number;
   type: 'system' | 'manual';
-  actionKey?: 'IPAD_CHARGED' | 'HOMEWORK_APPROVED';
+  actionKey?: 'IPAD_CHARGED' | 'HOMEWORK_APPROVED' | 'SECRET_AGENT_PASSED';
 };
 
 // Define the database schema
@@ -40,6 +40,7 @@ export class MySubClassedDexie extends Dexie {
     purchasedRewards!: Table<PurchasedReward, number>;
     rewards!: Table<Reward, number>;
     actions!: Table<PositiveAction, number>;
+    secretAgent!: Table<{ id: string; studentId: string; studentName: string; mission: string; date: Date; status: 'pending' | 'passed' | 'failed' }, string>;
 
 
     constructor() {
@@ -391,6 +392,11 @@ export class MySubClassedDexie extends Dexie {
             if (existingCount === 0) {
                 await tx.table('actions').bulkAdd(positiveActions);
             }
+        });
+
+        // Version 27: Add secretAgent table for storing current secret agent
+        this.version(27).stores({
+            secretAgent: 'id, date',
         });
 
         this.on('populate', async () => {
