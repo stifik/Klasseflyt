@@ -25,7 +25,15 @@ export default function BorsPage() {
     // Function to fetch price data
     const fetchPrices = async () => {
       try {
-        const response = await fetch('/api/prices');
+        // Get borsId from localStorage
+        const borsId = localStorage.getItem('klasseflyt_bors_id');
+        if (!borsId) {
+          setError('Børs-ID er ikke satt. Gå til Innstillinger for å sette børs-ID.');
+          setLoading(false);
+          return;
+        }
+
+        const response = await fetch(`/api/prices?borsId=${borsId}`);
         if (!response.ok) {
           throw new Error('Failed to fetch prices');
         }

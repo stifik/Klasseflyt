@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (authHeader !== Bearer ) {
+    if (authHeader !== `Bearer ${apiKey}`) {
       return NextResponse.json(
         { message: 'Unauthorized' },
         { status: 401, headers: corsHeaders() }
@@ -53,30 +53,40 @@ export async function POST(req: NextRequest) {
     // Parse request body
     const body = await req.json();
 
-    if (!body.rewards || !Array.isArray(body.rewards)) {
+    if (!body.borsId || typeof body.borsId !== 'string') {
       return NextResponse.json(
-        { message: 'Invalid request body. Expected { rewards: Reward[] }' },
+        { message: 'BorsID is required and must be a string' },
         { status: 400, headers: corsHeaders() }
       );
     }
 
-    // Store in KV or local cache
+    if (!body.rewards || !Array.isArray(body.rewards)) {
+      return NextResponse.json(
+        { message: 'Invalid request body. Expected { borsId: string, rewards: Reward[] }' },
+        { status: 400, headers: corsHeaders() }
+      );
+    }
+
+    // Store in KV or local cache with unique key per borsId
     const priceData = {
       rewards: body.rewards,
       lastUpdated: new Date().toISOString(),
     };
 
+    const kvKey = `price_list_${body.borsId}`;
     const kvClient = await getKv();
     if (kvClient) {
-      await kvClient.set('price_list', priceData);
+      await kvClient.set(kvKey, priceData);
+      console.log(`✅ Prices stored in KV for borsId: ${body.borsId}`);
     } else {
       // Use local cache for development
       localPriceCache = priceData;
-      console.log(' Prices stored in local cache (dev mode)');
+      console.log(`📦 Prices stored in local cache for borsId: ${body.borsId} (dev mode)`);
     }
 
     return NextResponse.json({
       message: 'Prices updated successfully',
+      borsId: body.borsId,
       count: body.rewards.length,
       mode: kvClient ? 'kv' : 'local'
     }, { headers: corsHeaders() });
@@ -90,24 +100,37 @@ export async function POST(req: NextRequest) {
 }
 
 // GET: Retrieve price list (public endpoint)
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    // Extract borsId from query parameters
+    const searchParams = req.nextUrl.searchParams;
+    const borsId = searchParams.get('borsId');
+
+    if (!borsId) {
+      return NextResponse.json(
+        { message: 'BorsID query parameter is required' },
+        { status: 400, headers: corsHeaders() }
+      );
+    }
+
     let priceData: { rewards: any[]; lastUpdated: string } | null = null;
 
+    const kvKey = `price_list_${borsId}`;
     const kvClient = await getKv();
     if (kvClient) {
-      priceData = await kvClient.get<{ rewards: any[]; lastUpdated: string }>('price_list');
+      priceData = await kvClient.get<{ rewards: any[]; lastUpdated: string }>(kvKey);
+      console.log(`📥 Fetching prices from KV for borsId: ${borsId}`);
     } else {
       // Use local cache for development
       priceData = localPriceCache;
-      console.log(' Fetching prices from local cache (dev mode)');
+      console.log(`📥 Fetching prices from local cache for borsId: ${borsId} (dev mode)`);
     }
 
     if (!priceData) {
       return NextResponse.json({
         rewards: [],
         lastUpdated: null,
-        message: 'No price data available yet'
+        message: 'No price data available yet for this borsId'
       }, { headers: corsHeaders() });
     }
 
