@@ -40,7 +40,7 @@ export class MySubClassedDexie extends Dexie {
     purchasedRewards!: Table<PurchasedReward, number>;
     rewards!: Table<Reward, number>;
     actions!: Table<PositiveAction, number>;
-    secretAgent!: Table<{ id: string; studentId: string; studentName: string; mission: string; date: Date; status: 'pending' | 'passed' | 'failed' }, string>;
+    secretAgent!: Table<{ id: string; studentId: string; studentName: string; mission: string; date: Date; status: 'pending' | 'analyzing' | 'passed' | 'failed' }, string>;
 
 
     constructor() {

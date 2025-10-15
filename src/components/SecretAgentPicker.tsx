@@ -116,11 +116,8 @@ export default function SecretAgentPicker({ students, absences = [] }: SecretAge
           description: `${secretAgent.studentName} har fullført oppdraget og fått ${points} poeng!`,
         });
 
-        // Nullstill etter 3 sekunder
-        setTimeout(async () => {
-          await db.secretAgent.delete(todayKey);
-          setMissionInput('');
-        }, 3000);
+        // IKKE slett agenten - la den bli værende til bruker trekker ny
+        // Avsløringen forblir synlig på storskjermen
       } else {
         toast({
           title: "Feil",
@@ -158,11 +155,8 @@ export default function SecretAgentPicker({ students, absences = [] }: SecretAge
         variant: "destructive"
       });
 
-      // Nullstill etter 2 sekunder
-      setTimeout(async () => {
-        await db.secretAgent.delete(todayKey);
-        setMissionInput('');
-      }, 2000);
+      // IKKE slett agenten - la den bli værende til bruker trekker ny
+      // Avsløringen forblir synlig på storskjermen
     } catch (error) {
       console.error('Error rejecting agent:', error);
       toast({
@@ -293,16 +287,46 @@ export default function SecretAgentPicker({ students, absences = [] }: SecretAge
               </div>
             )}
 
+            {secretAgent.status === 'analyzing' && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 text-center">
+                <div className="animate-pulse text-2xl mb-2">🔍</div>
+                <p className="text-yellow-700 dark:text-yellow-300 font-medium">
+                  Analyserer oppdrag... Vent litt
+                </p>
+              </div>
+            )}
+
             {(secretAgent.status === 'passed' || secretAgent.status === 'failed') && (
-              <Button
-                onClick={handleResetAgent}
-                variant="outline"
-                size="lg"
-                className="w-full"
-              >
-                <RefreshCw className="w-5 h-5 mr-2" />
-                Trekk Ny Agent
-              </Button>
+              <div className="space-y-4">
+                <div className={`rounded-lg p-6 text-center ${
+                  secretAgent.status === 'passed' 
+                    ? 'bg-green-50 dark:bg-green-900/20 border-2 border-green-300' 
+                    : 'bg-red-50 dark:bg-red-900/20 border-2 border-red-300'
+                }`}>
+                  <div className="text-6xl mb-4">
+                    {secretAgent.status === 'passed' ? '✅' : '❌'}
+                  </div>
+                  <p className={`text-2xl font-bold ${
+                    secretAgent.status === 'passed' 
+                      ? 'text-green-700 dark:text-green-300' 
+                      : 'text-red-700 dark:text-red-300'
+                  }`}>
+                    {secretAgent.status === 'passed' ? 'Oppdrag godkjent!' : 'Oppdrag avvist'}
+                  </p>
+                  <p className="text-gray-600 dark:text-gray-400 mt-2">
+                    Avsløringen er synlig på storskjermen
+                  </p>
+                </div>
+                <Button
+                  onClick={handleResetAgent}
+                  variant="outline"
+                  size="lg"
+                  className="w-full"
+                >
+                  <RefreshCw className="w-5 h-5 mr-2" />
+                  Trekk Ny Agent
+                </Button>
+              </div>
             )}
           </div>
         )}

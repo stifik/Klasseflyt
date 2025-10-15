@@ -30,10 +30,11 @@ export default function AgentRevealPage() {
 
       setStatus(secretAgent.status);
 
-      // Trigger confetti when status becomes 'passed'
-      if (secretAgent.status === 'passed' && !showConfetti) {
+      // Show confetti when status is 'passed'
+      if (secretAgent.status === 'passed') {
         setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 5000); // Stop after 5 seconds
+      } else {
+        setShowConfetti(false);
       }
     };
 
@@ -41,7 +42,7 @@ export default function AgentRevealPage() {
     const interval = setInterval(checkStatus, 500);
 
     return () => clearInterval(interval);
-  }, [secretAgent, showConfetti]);
+  }, [secretAgent]);
 
   // Get window size for confetti
   useEffect(() => {
