@@ -5,6 +5,14 @@ import type { Student, Subject, Homework, Submission, DailyCheck, Remark, Seatin
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
+// Import PositiveAction type
+export type PositiveAction = {
+  id: number;
+  name: string;
+  points: number;
+  type: 'system' | 'manual';
+  actionKey?: 'IPAD_CHARGED' | 'HOMEWORK_APPROVED';
+};
 
 // Define the database schema
 export class MySubClassedDexie extends Dexie {
@@ -31,6 +39,7 @@ export class MySubClassedDexie extends Dexie {
     transactions!: Table<Transaction, number>;
     purchasedRewards!: Table<PurchasedReward, number>;
     rewards!: Table<Reward, number>;
+    actions!: Table<PositiveAction, number>;
 
 
     constructor() {
@@ -371,6 +380,18 @@ export class MySubClassedDexie extends Dexie {
             await tx.table('rewards').bulkAdd(defaultRewards);
         });
 
+        // Version 26: Add actions table for positive actions (POD)
+        this.version(26).stores({
+            actions: '++id, name',
+        }).upgrade(async (tx) => {
+            // Import default positive actions
+            const { positiveActions } = await import('./positiveActions');
+            // Only add if table is empty
+            const existingCount = await tx.table('actions').count();
+            if (existingCount === 0) {
+                await tx.table('actions').bulkAdd(positiveActions);
+            }
+        });
 
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
@@ -659,6 +680,17 @@ export async function resetDatabase() {
 
         console.log("Database has been reset and seeded with extensive demo data.");
     });
+}
+
+// --- ENSURE ACTIONS ARE INITIALIZED ---
+export async function ensureActionsInitialized() {
+    const count = await db.actions.count();
+    if (count === 0) {
+        console.log("⚠️ Actions table is empty, initializing with default actions...");
+        const { positiveActions } = await import('./positiveActions');
+        await db.actions.bulkAdd(positiveActions);
+        console.log("✅ Actions initialized successfully");
+    }
 }
 
 // --- EXPORT/IMPORT LOGIC ---

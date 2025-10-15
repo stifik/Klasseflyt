@@ -4,7 +4,7 @@
 
 import { useState, useMemo } from "react";
 import type { Student, DailyCheck, SeatingChartData, SeatingLayout, Absence } from "@/lib/types";
-import type { PositiveAction } from "@/lib/positiveActions";
+import type { PositiveAction } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";

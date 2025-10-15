@@ -13,7 +13,6 @@ import Observations from "@/components/Observations";
 import Assessments from "@/components/Assessments";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import type { AppSettings, SeatingLayout, Student, Subject, TabKey, Absence } from '@/lib/types';
-import { positiveActions } from '@/lib/positiveActions';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { Loader2 } from 'lucide-react';
@@ -159,6 +158,18 @@ const AppViewContent: FC<AppViewProps> = ({
   useEffect(() => {
     setInternalActiveSubTab(activeSubTab || null);
   }, [activeSubTab, activeTab]);
+  
+  // Ensure actions are initialized on mount
+  useEffect(() => {
+    const initActions = async () => {
+      const { ensureActionsInitialized } = await import('@/lib/db');
+      await ensureActionsInitialized();
+    };
+    initActions();
+  }, []);
+  
+  // Hent positive actions fra database
+  const positiveActions = useLiveQuery(() => db.actions.toArray(), []) ?? [];
   
   const visibleTabs = useMemo(() => {
     const tabOrder = settings.tabOrder || [];

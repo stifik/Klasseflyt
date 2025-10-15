@@ -5,12 +5,15 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import type { Reward } from '@/lib/types';
-import { positiveActions } from '@/lib/positiveActions';
 import { buyReward, givePoints, type RewardResult } from '@/lib/rewardService';
 import PosView from './PosView';
 import PodView from './PodView';
 import ActivityFeed from './ActivityFeed';
 import RewardDashboard from './RewardDashboard';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 
 type TerminalMode = 'idle' | 'pos' | 'pod';
 type ActiveTransaction = { 
@@ -43,6 +46,11 @@ const Terminal: React.FC = () => {
   
   const [activeTransaction, setActiveTransaction] = useState<ActiveTransaction>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  
+  // Custom action dialog state
+  const [showCustomDialog, setShowCustomDialog] = useState(false);
+  const [customActionName, setCustomActionName] = useState('');
+  const [customActionPoints, setCustomActionPoints] = useState('');
 
   // Hent studenter og belønninger fra database
   const students = useLiveQuery(() => db.students.toArray()) || [];
@@ -67,20 +75,26 @@ const Terminal: React.FC = () => {
   };
 
   const handleCustomActionInitiation = () => {
-    const name = prompt('Beskriv handlingen:');
-    if (!name || !name.trim()) return;
-    
-    const pointsStr = prompt('Antall poeng:');
-    if (!pointsStr) return;
-    
-    const points = parseInt(pointsStr, 10);
-    if (isNaN(points) || points <= 0) {
-      alert('Ugyldig tall for poeng.');
+    setShowCustomDialog(true);
+  };
+
+  const handleCustomDialogSubmit = () => {
+    if (!customActionName.trim()) {
+      showNotification('Vennligst skriv inn en beskrivelse', 'error');
       return;
     }
     
-    console.log('🎯 Setter custom_action transaction:', { name, points, type: typeof points });
-    setActiveTransaction({ type: 'custom_action', name, points });
+    const points = parseInt(customActionPoints, 10);
+    if (isNaN(points) || points <= 0) {
+      showNotification('Ugyldig tall for poeng', 'error');
+      return;
+    }
+    
+    console.log('🎯 Setter custom_action transaction:', { name: customActionName, points, type: typeof points });
+    setActiveTransaction({ type: 'custom_action', name: customActionName, points });
+    setShowCustomDialog(false);
+    setCustomActionName('');
+    setCustomActionPoints('');
   };
 
   const handleSelectAction = (actionId: number, actionName: string, points: number, description: string) => {
@@ -328,6 +342,66 @@ const Terminal: React.FC = () => {
           {notification.message}
         </div>
       )}
+      
+      {/* Custom Action Dialog */}
+      <Dialog open={showCustomDialog} onOpenChange={setShowCustomDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Egendefinert poeng-tildeling</DialogTitle>
+            <DialogDescription>
+              Gi poeng for en spesiell handling som ikke er på listen
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="action-name">Beskriv handlingen</Label>
+              <Input
+                id="action-name"
+                placeholder="f.eks. Ryddet klasserommet"
+                value={customActionName}
+                onChange={(e) => setCustomActionName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && customActionName && customActionPoints) {
+                    handleCustomDialogSubmit();
+                  }
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="action-points">Antall poeng</Label>
+              <Input
+                id="action-points"
+                type="number"
+                placeholder="f.eks. 20"
+                min="1"
+                value={customActionPoints}
+                onChange={(e) => setCustomActionPoints(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && customActionName && customActionPoints) {
+                    handleCustomDialogSubmit();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCustomDialog(false);
+                setCustomActionName('');
+                setCustomActionPoints('');
+              }}
+            >
+              Avbryt
+            </Button>
+            <Button onClick={handleCustomDialogSubmit}>
+              Bekreft
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
       {content}
     </div>
   );

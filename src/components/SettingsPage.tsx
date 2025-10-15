@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { positiveActions, type PositiveAction } from '@/lib/positiveActions';
+import { type PositiveAction } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +40,15 @@ export default function SettingsPage({}: SettingsPageProps) {
     return () => { mounted = false; };
   }, []);
 
+  // Ensure actions are initialized
+  useEffect(() => {
+    const initActions = async () => {
+      const { ensureActionsInitialized } = await import('@/lib/db');
+      await ensureActionsInitialized();
+    };
+    initActions();
+  }, []);
+
   const handleGoalChange = async (e: React.FormEvent) => {
     e.preventDefault();
     const val = Number(goalTarget);
@@ -56,7 +65,8 @@ export default function SettingsPage({}: SettingsPageProps) {
     }
   };
   
-  const [localActions, setLocalActions] = useState<PositiveAction[]>(positiveActions);
+  // Use database for actions instead of local state
+  const localActions = useLiveQuery(() => db.actions.toArray(), []) ?? [];
   
   // Form states for adding new items
   const [newActionName, setNewActionName] = useState('');
@@ -65,7 +75,7 @@ export default function SettingsPage({}: SettingsPageProps) {
 
 
   // Handlers for positive actions
-  const handleAddAction = (e: React.FormEvent) => {
+  const handleAddAction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newActionName.trim() || !newActionPoints.trim()) {
       toast({
@@ -93,7 +103,7 @@ export default function SettingsPage({}: SettingsPageProps) {
       type: 'manual', // Nye handlinger er alltid manuelle
     };
 
-    setLocalActions([...localActions, newAction]);
+    await db.actions.add(newAction);
     setNewActionName('');
     setNewActionPoints('');
     
@@ -103,7 +113,7 @@ export default function SettingsPage({}: SettingsPageProps) {
     });
   };
 
-  const handleDeleteAction = (id: number) => {
+  const handleDeleteAction = async (id: number) => {
     const action = localActions.find(a => a.id === id);
     
     // Ikke tillat sletting av system-handlinger
@@ -116,12 +126,19 @@ export default function SettingsPage({}: SettingsPageProps) {
       return;
     }
     
-    setLocalActions(localActions.filter(a => a.id !== id));
+    await db.actions.delete(id);
     
     toast({
       title: "Slettet",
       description: `Handling "${action?.name}" fjernet`,
     });
+  };
+
+  // Handler for updating action points
+  const handleUpdateActionPoints = async (id: number, points: number) => {
+    if (points > 0) {
+      await db.actions.update(id, { points });
+    }
   };
 
   return (
@@ -217,11 +234,7 @@ export default function SettingsPage({}: SettingsPageProps) {
                                 className="w-16 text-sm border rounded px-2 py-1"
                                 onChange={(e) => {
                                   const points = parseInt(e.target.value);
-                                  if (!isNaN(points) && points > 0) {
-                                    setLocalActions(actions => 
-                                      actions.map(a => a.id === action.id ? { ...a, points } : a)
-                                    );
-                                  }
+                                  handleUpdateActionPoints(action.id, points);
                                 }}
                               />
                               <span className="text-sm text-gray-500">poeng</span>
@@ -254,9 +267,7 @@ export default function SettingsPage({}: SettingsPageProps) {
                                 value={action.name}
                                 className="font-medium bg-transparent border-none p-0 text-sm text-gray-900 dark:text-white"
                                 onChange={(e) => {
-                                  setLocalActions(actions => 
-                                    actions.map(a => a.id === action.id ? { ...a, name: e.target.value } : a)
-                                  );
+                                  db.actions.update(action.id, { name: e.target.value });
                                 }}
                               />
                             </div>
@@ -268,11 +279,7 @@ export default function SettingsPage({}: SettingsPageProps) {
                                 className="w-16 text-sm border rounded px-2 py-1"
                                 onChange={(e) => {
                                   const points = parseInt(e.target.value);
-                                  if (!isNaN(points) && points > 0) {
-                                    setLocalActions(actions => 
-                                      actions.map(a => a.id === action.id ? { ...a, points } : a)
-                                    );
-                                  }
+                                  handleUpdateActionPoints(action.id, points);
                                 }}
                               />
                               <span className="text-sm text-gray-500">poeng</span>
@@ -327,6 +334,29 @@ export default function SettingsPage({}: SettingsPageProps) {
             </CardContent>
           </Card>
         </div>
+
+        {/* Reset Actions Button */}
+        {localActions.length === 0 && (
+          <div className="mt-8 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+            <h3 className="font-medium text-yellow-900 dark:text-yellow-100 mb-2">⚠️ Ingen handlinger funnet</h3>
+            <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-4">
+              Det ser ut til at handlingene mangler i databasen. Klikk på knappen under for å gjenopprette standardhandlingene.
+            </p>
+            <Button 
+              onClick={async () => {
+                const { positiveActions } = await import('@/lib/positiveActions');
+                await db.actions.bulkAdd(positiveActions);
+                toast({ 
+                  title: "Gjenopprettet", 
+                  description: "Standardhandlinger er lagt til på nytt!" 
+                });
+              }}
+              className="w-full"
+            >
+              🔄 Gjenopprett standardhandlinger
+            </Button>
+          </div>
+        )}
 
         <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
           <h3 className="font-medium text-blue-900 dark:text-blue-100 mb-2">💡 Tips:</h3>
