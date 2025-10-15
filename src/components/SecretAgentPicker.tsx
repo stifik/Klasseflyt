@@ -87,7 +87,10 @@ export default function SecretAgentPicker({ students, absences = [] }: SecretAge
     setIsProcessing(true);
 
     try {
-      // Først, send 'analyzing' status
+      // Først, oppdater status til 'analyzing' i database
+      await db.secretAgent.update(todayKey, { status: 'analyzing' });
+      
+      // Send også til API (valgfritt, for ekstern skjerm)
       await syncAgentStatusWithApi('analyzing', undefined, secretAgent.mission);
       
       // Vent 2 sekunder for dramatisk effekt
@@ -102,11 +105,11 @@ export default function SecretAgentPicker({ students, absences = [] }: SecretAge
       );
 
       if (result.success) {
-        // Oppdater status i database
+        // Oppdater status til 'passed' i database
         await db.secretAgent.update(todayKey, { status: 'passed' });
 
-        // Send 'passed' status til API med agent-navn
-        await syncAgentStatusWithApi('passed', secretAgent.studentName, secretAgent.mission);
+        // Send 'passed' status til API UTEN agent-navn (personvern!)
+        await syncAgentStatusWithApi('passed', undefined, secretAgent.mission);
 
         toast({
           title: "✅ MISSION ACCOMPLISHED!",
@@ -310,9 +313,23 @@ export default function SecretAgentPicker({ students, absences = [] }: SecretAge
           <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
             <li>• Trekk en hemmelig agent på morgenen</li>
             <li>• Gi agenten et spesialoppdrag (skal være hemmelig for klassen)</li>
-            <li>• På slutten av dagen: Godkjenn eller avvis oppdraget</li>
-            <li>• Vis resultatet på storskjermen for dramatisk avsløring!</li>
+            <li>• Åpne avsløringssiden i egen fane og dra til storskjerm</li>
+            <li>• På slutten av dagen: Godkjenn eller avvis oppdraget her</li>
+            <li>• Avsløringen vises automatisk på storskjermen!</li>
           </ul>
+          <div className="mt-4 flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open('/agent-reveal', '_blank')}
+              className="flex-1"
+            >
+              🎬 Åpne Avsløringsskjerm
+            </Button>
+            <span className="text-xs text-blue-700 dark:text-blue-300">
+              (personvern-sikker - ingen data over nett)
+            </span>
+          </div>
         </div>
       </CardContent>
     </Card>
