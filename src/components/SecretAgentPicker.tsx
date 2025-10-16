@@ -58,12 +58,15 @@ export default function SecretAgentPicker({ students, absences = [] }: SecretAge
     const randomIndex = Math.floor(Math.random() * availableStudents.length);
     const selectedStudent = availableStudents[randomIndex];
 
+    // Bruk current timestamp for å markere nylig trukket agent
+    const now = new Date();
+    
     const agentData = {
       id: todayKey,
       studentId: selectedStudent.id!,
       studentName: selectedStudent.name,
       mission: missionInput || 'Fullføre spesialoppdrag',
-      date: new Date(),
+      date: now,
       status: 'pending' as const
     };
 
@@ -143,7 +146,16 @@ export default function SecretAgentPicker({ students, absences = [] }: SecretAge
     setIsProcessing(true);
 
     try {
-      // Oppdater status i database
+      // Først, oppdater status til 'analyzing' i database
+      await db.secretAgent.update(todayKey, { status: 'analyzing' });
+      
+      // Send også til API (for ekstern skjerm)
+      await syncAgentStatusWithApi('analyzing', undefined, secretAgent.mission);
+      
+      // Vent 2 sekunder for dramatisk effekt (samme som godkjenning)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Oppdater status til 'failed' i database
       await db.secretAgent.update(todayKey, { status: 'failed' });
 
       // Send 'failed' status til API
@@ -335,24 +347,23 @@ export default function SecretAgentPicker({ students, absences = [] }: SecretAge
         <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
           <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">💡 Hvordan fungerer det?</h4>
           <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-            <li>• Trekk en hemmelig agent på morgenen</li>
-            <li>• Gi agenten et spesialoppdrag (skal være hemmelig for klassen)</li>
+            <li>• Trekk en hemmelig agent på morgenen (bare du vet hvem det er)</li>
+            <li>• Gi agenten et spesialoppdrag - hold det hemmelig for klassen</li>
             <li>• Åpne avsløringssiden i egen fane og dra til storskjerm</li>
+            <li>• <strong>Viktig:</strong> Agenten selv vet ikke at de er valgt!</li>
+            <li>• Dette gjør at alle må gjøre oppdraget, siden alle tror de kan være agenten</li>
             <li>• På slutten av dagen: Godkjenn eller avvis oppdraget her</li>
             <li>• Avsløringen vises automatisk på storskjermen!</li>
           </ul>
-          <div className="mt-4 flex items-center gap-2">
+          <div className="mt-4">
             <Button
               variant="outline"
               size="sm"
               onClick={() => window.open('/agent-reveal', '_blank')}
-              className="flex-1"
+              className="w-full"
             >
               🎬 Åpne Avsløringsskjerm
             </Button>
-            <span className="text-xs text-blue-700 dark:text-blue-300">
-              (personvern-sikker - ingen data over nett)
-            </span>
           </div>
         </div>
       </CardContent>
