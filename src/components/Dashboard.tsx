@@ -141,9 +141,9 @@ const Dashboard: FC<DashboardProps> = ({settings, onNavigate}) => {
         if (toolData.key === 'terminal') {
             return {
                 ...toolData,
-                tab: null,
-                subTab: null,
-                externalLink: `/terminal`,
+                tab: null as null,
+                subTab: null as null,
+                externalLink: `/terminal` as string,
             };
         }
         
@@ -151,8 +151,18 @@ const Dashboard: FC<DashboardProps> = ({settings, onNavigate}) => {
             ...toolData,
             tab,
             subTab,
+            externalLink: undefined as string | undefined,
         };
-    }).filter(Boolean);
+    }).filter(Boolean) as Array<{
+        key: DashboardToolKey;
+        label: string;
+        description: string;
+        icon: React.ElementType;
+        color: string;
+        tab: TabKey | null;
+        subTab: string | null | undefined;
+        externalLink?: string;
+    }>;
 
 
   return (
@@ -171,8 +181,8 @@ const Dashboard: FC<DashboardProps> = ({settings, onNavigate}) => {
               onClick={() => {
                 if (tool.externalLink) {
                   window.open(tool.externalLink, '_blank');
-                } else {
-                  onNavigate(tool.tab, tool.subTab);
+                } else if (tool.tab !== null) {
+                  onNavigate(tool.tab, tool.subTab ?? undefined);
                 }
               }}
               className="cursor-pointer hover:border-primary/50 hover:shadow-lg transition-all"

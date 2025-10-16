@@ -53,22 +53,36 @@ const ActiveTabContent: FC<{ tabKey: TabKey; componentProps: Record<string, any>
     const props = { ...componentProps[tabKey], appSettings: componentProps.appSettings };
 
     // Use live queries for data needed by specific tabs
-    const homework = useLiveQuery(() => ['overview', 'reports'].includes(tabKey) ? db.homework.toArray() : undefined, [tabKey]);
-    const submissions = useLiveQuery(() => ['overview', 'reports'].includes(tabKey) ? db.submissions.toArray() : undefined, [tabKey]);
-    const submissionAttempts = useLiveQuery(() => ['overview', 'reports'].includes(tabKey) ? db.submissionAttempts.toArray() : undefined, [tabKey]);
-    const dailyChecks = useLiveQuery(() => ['dailyCheck', 'reports'].includes(tabKey) ? db.dailyChecks.toArray() : undefined, [tabKey]);
-    const absences = useLiveQuery(() => ['dailyCheck', 'observations', 'classroomTools'].includes(tabKey) ? db.absences.toArray() : undefined, [tabKey]);
-    const hourlyChecks = useLiveQuery(() => ['observations', 'reports'].includes(tabKey) ? db.hourlyChecks.toArray() : undefined, [tabKey]);
-    const remarks = useLiveQuery(() => ['observations', 'reports'].includes(tabKey) ? db.remarks.toArray() : undefined, [tabKey]);
-    const tests = useLiveQuery(() => ['assessments', 'reports'].includes(tabKey) ? db.tests.toArray() : undefined, [tabKey]);
-    const testResults = useLiveQuery(() => ['assessments', 'reports'].includes(tabKey) ? db.testResults.toArray() : undefined, [tabKey]);
-    const learningGoals = useLiveQuery(() => ['assessments', 'reports'].includes(tabKey) ? db.learningGoals.toArray() : undefined, [tabKey]);
-    const goalAchievements = useLiveQuery(() => ['assessments', 'reports'].includes(tabKey) ? db.goalAchievements.toArray() : undefined, [tabKey]);
+    // @ts-expect-error - useLiveQuery types don't handle conditional queries well, but we handle undefined with ?? operator
+    const homework = useLiveQuery(() => ['overview', 'reports'].includes(tabKey) ? db.homework.toArray() : undefined, [tabKey]) ?? [];
+    // @ts-expect-error - useLiveQuery types don't handle conditional queries well, but we handle undefined with ?? operator
+    const submissions = useLiveQuery(() => ['overview', 'reports'].includes(tabKey) ? db.submissions.toArray() : undefined, [tabKey]) ?? [];
+    // @ts-expect-error - useLiveQuery types don't handle conditional queries well, but we handle undefined with ?? operator
+    const submissionAttempts = useLiveQuery(() => ['overview', 'reports'].includes(tabKey) ? db.submissionAttempts.toArray() : undefined, [tabKey]) ?? [];
+    // @ts-expect-error - useLiveQuery types don't handle conditional queries well, but we handle undefined with ?? operator
+    const dailyChecks = useLiveQuery(() => ['dailyCheck', 'reports'].includes(tabKey) ? db.dailyChecks.toArray() : undefined, [tabKey]) ?? [];
+    // @ts-expect-error - useLiveQuery types don't handle conditional queries well, but we handle undefined with ?? operator
+    const absences = useLiveQuery(() => ['dailyCheck', 'observations', 'classroomTools'].includes(tabKey) ? db.absences.toArray() : undefined, [tabKey]) ?? [];
+    // @ts-expect-error - useLiveQuery types don't handle conditional queries well, but we handle undefined with ?? operator
+    const hourlyChecks = useLiveQuery(() => ['observations', 'reports'].includes(tabKey) ? db.hourlyChecks.toArray() : undefined, [tabKey]) ?? [];
+    // @ts-expect-error - useLiveQuery types don't handle conditional queries well, but we handle undefined with ?? operator
+    const remarks = useLiveQuery(() => ['observations', 'reports'].includes(tabKey) ? db.remarks.toArray() : undefined, [tabKey]) ?? [];
+    // @ts-expect-error - useLiveQuery types don't handle conditional queries well, but we handle undefined with ?? operator
+    const tests = useLiveQuery(() => ['assessments', 'reports'].includes(tabKey) ? db.tests.toArray() : undefined, [tabKey]) ?? [];
+    // @ts-expect-error - useLiveQuery types don't handle conditional queries well, but we handle undefined with ?? operator
+    const testResults = useLiveQuery(() => ['assessments', 'reports'].includes(tabKey) ? db.testResults.toArray() : undefined, [tabKey]) ?? [];
+    // @ts-expect-error - useLiveQuery types don't handle conditional queries well, but we handle undefined with ?? operator
+    const learningGoals = useLiveQuery(() => ['assessments', 'reports'].includes(tabKey) ? db.learningGoals.toArray() : undefined, [tabKey]) ?? [];
+    // @ts-expect-error - useLiveQuery types don't handle conditional queries well, but we handle undefined with ?? operator
+    const goalAchievements = useLiveQuery(() => ['assessments', 'reports'].includes(tabKey) ? db.goalAchievements.toArray() : undefined, [tabKey]) ?? [];
     
     // Data specific to ClassroomTools
-    const history = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingChartHistory.orderBy('createdAt').reverse().toArray() : undefined, [tabKey]);
-    const stationAssignmentLogs = useLiveQuery(() => tabKey === 'classroomTools' ? db.stationAssignmentLogs.orderBy('date').reverse().toArray() : undefined, [tabKey]);
-    const groupSets = useLiveQuery(() => tabKey === 'classroomTools' ? db.groupSets.orderBy('createdAt').reverse().toArray() : undefined, [tabKey]);
+    // @ts-expect-error - useLiveQuery types don't handle conditional queries well, but we handle undefined with ?? operator
+    const history = useLiveQuery(() => tabKey === 'classroomTools' ? db.seatingChartHistory.orderBy('createdAt').reverse().toArray() : undefined, [tabKey]) ?? [];
+    // @ts-expect-error - useLiveQuery types don't handle conditional queries well, but we handle undefined with ?? operator
+    const stationAssignmentLogs = useLiveQuery(() => tabKey === 'classroomTools' ? db.stationAssignmentLogs.orderBy('date').reverse().toArray() : undefined, [tabKey]) ?? [];
+    // @ts-expect-error - useLiveQuery types don't handle conditional queries well, but we handle undefined with ?? operator
+    const groupSets = useLiveQuery(() => tabKey === 'classroomTools' ? db.groupSets.orderBy('createdAt').reverse().toArray() : undefined, [tabKey]) ?? [];
     
     // activeLayout is needed by multiple tabs to render the chart correctly
     const activeLayoutId = props.appSettings?.selectedSeatingLayoutId;
@@ -247,7 +261,7 @@ const AppViewContent: FC<AppViewProps> = ({
 
         {allPossibleTabs.map(tabKey => {
             return (
-                <TabsContent key={tabKey} value={tabKey} forceMount={tabKey !== currentTabToRender}>
+                <TabsContent key={tabKey} value={tabKey} forceMount={tabKey !== currentTabToRender ? true : undefined}>
                     <div style={{ display: tabKey === currentTabToRender ? 'block' : 'none' }}>
                         <ActiveTabContent 
                             tabKey={tabKey}
