@@ -206,12 +206,12 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState("");
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const [defaultStatus, setDefaultStatus] = useState<HomeworkStatus | "none">("none");
 
   const handleAdd = () => {
     if (subjectId && date) {
       const finalTitle = title.trim();
-      onAddHomework(finalTitle, subjectId, date, defaultStatus);
+      // Always start with no status - teachers will use bulk actions to mark students
+      onAddHomework(finalTitle, subjectId, date, "none");
       resetState();
       setIsOpen(false);
     }
@@ -221,7 +221,6 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
       setTitle("");
       setSubjectId("");
       setDate(new Date());
-      setDefaultStatus("none");
   }
 
   return (
@@ -277,23 +276,6 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
               />
             </PopoverContent>
           </Popover>
-           <div>
-            <Label className="mb-2 block">Standard første vurdering for alle elever</Label>
-             <RadioGroup value={defaultStatus} onValueChange={(v) => setDefaultStatus(v as HomeworkStatus | "none")}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="none" id="status-none" />
-                <Label htmlFor="status-none">Ingen (standard)</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="Godkjent" id="status-godkjent" />
-                <Label htmlFor="status-godkjent">Sett alle til Godkjent</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="Ikke levert" id="status-ikke-levert" />
-                <Label htmlFor="status-ikke-levert">Sett alle til Ikke levert</Label>
-              </div>
-            </RadioGroup>
-          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setIsOpen(false)}>Avbryt</Button>
@@ -306,6 +288,12 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
 
 export default function HomeworkOverview({ students, subjects, homework: homeworkList, submissions, onUpdate }: HomeworkOverviewProps) {
   const [filters, setFilters] = useState<{ subject: string; week: string; showProblems: boolean }>({ subject: "all", week: "all", showProblems: false });
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<HomeworkStatus>('Godkjent');
+  const [remainingStatus, setRemainingStatus] = useState<HomeworkStatus>('Godkjent');
+  const [currentHomeworkId, setCurrentHomeworkId] = useState<number | null>(null);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const [showRemainingConfirm, setShowRemainingConfirm] = useState(false);
   const { toast } = useToast();
   
   const allSubmissions = useLiveQuery(() => db.submissions.toArray(), [], []);
@@ -321,6 +309,7 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
         });
         toast({ title: "Lekse lagt til", description: `"${title || subjects.find(s => s.id === subjectId)?.name}" er lagt til i oversikten.` });
 
+        // Fjernet default status logikk - alle starter uten status
         if (defaultStatus !== "none") {
             const newSubmissions: Omit<Submission, 'id'>[] = students.map(student => ({
                 studentId: student.id!,
@@ -339,6 +328,127 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
     } catch(error) {
         toast({ title: "Feil", description: "Kunne ikke legge til lekse eller standardstatus.", variant: "destructive" });
     }
+  };
+
+  // Bulk actions for selected students
+  const handleBulkAction = async (homeworkId: number, status: HomeworkStatus) => {
+    if (selectedStudents.size === 0) return;
+    
+    setCurrentHomeworkId(homeworkId);
+    setBulkStatus(status);
+    
+    // Vis bekreftelsesdialog hvis status er "Godkjent"
+    if (status === 'Godkjent') {
+      setShowBulkConfirm(true);
+    } else {
+      await executeBulkAction(homeworkId, status, Array.from(selectedStudents));
+    }
+  };
+
+  const executeBulkAction = async (homeworkId: number, status: HomeworkStatus, studentIds: string[]) => {
+    try {
+      const homeworkAction = positiveActions.find(a => a.actionKey === 'HOMEWORK_APPROVED');
+      const now = new Date();
+      
+      // Batch process: first find/create all submissions
+      const submissionMap = new Map<string, number>();
+      const newSubmissions: Omit<Submission, 'id'>[] = [];
+      
+      for (const studentId of studentIds) {
+        const submission = allSubmissions?.find(s => s.studentId === studentId && s.homeworkId === homeworkId);
+        if (submission?.id) {
+          submissionMap.set(studentId, submission.id);
+        } else {
+          newSubmissions.push({ studentId, homeworkId });
+        }
+      }
+      
+      // Bulk add missing submissions
+      if (newSubmissions.length > 0) {
+        const newIds = await db.submissions.bulkAdd(newSubmissions as Submission[], { allKeys: true }) as number[];
+        newSubmissions.forEach((sub, index) => {
+          submissionMap.set(sub.studentId, newIds[index]);
+        });
+      }
+      
+      // Batch add all attempts
+      const attempts: Omit<SubmissionAttempt, 'id'>[] = studentIds.map(studentId => ({
+        submissionId: submissionMap.get(studentId)!,
+        status,
+        date: now,
+      }));
+      
+      await db.submissionAttempts.bulkAdd(attempts as SubmissionAttempt[]);
+      
+      // Batch give points if status is Godkjent
+      if (status === 'Godkjent' && homeworkAction) {
+        await Promise.all(
+          studentIds.map(studentId => 
+            givePoints(studentId, homeworkAction.points, homeworkAction.name)
+          )
+        );
+      }
+
+      setSelectedStudents(new Set());
+      toast({ 
+        title: "Vurdering lagret", 
+        description: `${studentIds.length} elever merket som "${status}"` 
+      });
+    } catch (error) {
+      console.error('Bulk action failed:', error);
+      toast({ 
+        title: "Feil", 
+        description: "Kunne ikke lagre vurderinger", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  // Mark remaining students (without status) with a specific status
+  const handleRemainingAction = async (homeworkId: number, status: HomeworkStatus) => {
+    const studentsWithoutStatus = getStudentsWithoutStatus(homeworkId);
+    
+    if (studentsWithoutStatus.length === 0) {
+      toast({ 
+        title: "Ingen resterende elever", 
+        description: "Alle elever har allerede fått en vurdering" 
+      });
+      return;
+    }
+
+    setCurrentHomeworkId(homeworkId);
+    setRemainingStatus(status);
+
+    // Vis bekreftelsesdialog hvis status er "Godkjent"
+    if (status === 'Godkjent') {
+      setShowRemainingConfirm(true);
+    } else {
+      await executeBulkAction(homeworkId, status, studentsWithoutStatus);
+    }
+  };
+
+  const getStudentsWithoutStatus = (homeworkId: number): string[] => {
+    if (!allSubmissions || !allAttempts) return [];
+
+    return students
+      .filter(student => {
+        const submission = allSubmissions.find(s => s.studentId === student.id && s.homeworkId === homeworkId);
+        if (!submission) return true; // No submission = no status
+
+        const hasAttempts = allAttempts.some(a => a.submissionId === submission.id);
+        return !hasAttempts; // Has submission but no attempts = no status
+      })
+      .map(s => s.id!);
+  };
+
+  const toggleStudentSelection = (studentId: string) => {
+    const newSet = new Set(selectedStudents);
+    if (newSet.has(studentId)) {
+      newSet.delete(studentId);
+    } else {
+      newSet.add(studentId);
+    }
+    setSelectedStudents(newSet);
   };
 
   const handleCopyHomework = async (homeworkId: number) => {
@@ -474,24 +584,47 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
         </CollapsibleContent>
       </Collapsible>
       
+      {/* Bulk Actions - shown per homework column */}
+      
       <div className="overflow-x-auto border rounded-lg">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="sticky left-0 z-10 font-bold bg-background">Elev</TableHead>
+              <TableHead className="sticky left-0 z-10 w-12 bg-background">
+                <Checkbox 
+                  checked={selectedStudents.size === filteredStudents.length && filteredStudents.length > 0}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedStudents(new Set(filteredStudents.map(s => s.id!)));
+                    } else {
+                      setSelectedStudents(new Set());
+                    }
+                  }}
+                />
+              </TableHead>
+              <TableHead className="sticky left-12 z-10 font-bold bg-background">
+                <div>Elev</div>
+                {selectedStudents.size > 0 && (
+                  <div className="text-xs font-normal text-muted-foreground mt-1">
+                    {selectedStudents.size} valgt
+                  </div>
+                )}
+              </TableHead>
               {filteredHomework.map(hw => (
-                <TableHead key={hw.id} className="text-center group relative">
-                  <div>{subjects.find(s => s.id === hw.subjectId)?.name}</div>
-                  <div className="font-normal">{hw.title}</div>
+                <TableHead key={hw.id} className="text-center group relative min-w-[140px]">
+                  <div className="font-semibold">{subjects.find(s => s.id === hw.subjectId)?.name}</div>
+                  {hw.title && <div className="font-normal text-sm">{hw.title}</div>}
                   <div className="text-xs font-light text-muted-foreground">Uke {hw.week}</div>
-                  <div className="absolute top-0 right-0 flex invisible group-hover:visible">
+                  
+                  {/* Action buttons */}
+                  <div className="absolute top-1 right-1 flex invisible group-hover:visible">
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyHomework(hw.id!)}>
-                        <Copy className="h-4 w-4"/>
+                        <Copy className="h-3 w-3"/>
                     </Button>
                      <AlertDialog>
                         <AlertDialogTrigger asChild>
                            <Button variant="ghost" size="icon" className="h-6 w-6">
-                                <Trash2 className="h-4 w-4 text-destructive"/>
+                                <Trash2 className="h-3 w-3 text-destructive"/>
                            </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
@@ -510,6 +643,51 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
                         </AlertDialogContent>
                       </AlertDialog>
                   </div>
+                  
+                  {/* Bulk Action per homework column */}
+                  {selectedStudents.size > 0 && (
+                    <div className="mt-3 pt-2 border-t">
+                      <Select value="" onValueChange={(v) => handleBulkAction(hw.id!, v as HomeworkStatus)}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Merk valgte..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(statusIcons).map(([status, icon]) => (
+                            <SelectItem key={status} value={status}>
+                              <div className="flex items-center gap-2">
+                                <span className="[&>svg]:w-4 [&>svg]:h-4">{icon}</span>
+                                <span>{status}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  
+                  {/* Mark Remaining Section */}
+                  {getStudentsWithoutStatus(hw.id!).length > 0 && (
+                    <div className="mt-2 pt-2 border-t">
+                      <div className="text-xs text-muted-foreground mb-1.5">
+                        {getStudentsWithoutStatus(hw.id!).length} resterende
+                      </div>
+                      <Select value="" onValueChange={(v) => handleRemainingAction(hw.id!, v as HomeworkStatus)}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Merk alle..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(statusIcons).map(([status, icon]) => (
+                            <SelectItem key={status} value={status}>
+                              <div className="flex items-center gap-2">
+                                <span className="[&>svg]:w-4 [&>svg]:h-4">{icon}</span>
+                                <span>{status}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </TableHead>
               ))}
             </TableRow>
@@ -517,7 +695,18 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
           <TableBody>
             {filteredStudents.map(student => (
               <TableRow key={student.id}>
-                <TableCell className="sticky left-0 z-10 font-medium bg-background">{student.name}</TableCell>
+                <TableCell className="sticky left-0 z-10 w-12 bg-background">
+                  <Checkbox 
+                    checked={selectedStudents.has(student.id!)}
+                    onCheckedChange={() => toggleStudentSelection(student.id!)}
+                  />
+                </TableCell>
+                <TableCell 
+                  className="sticky left-12 z-10 font-medium bg-background cursor-pointer hover:bg-muted/50"
+                  onClick={() => toggleStudentSelection(student.id!)}
+                >
+                  {student.name}
+                </TableCell>
                 {filteredHomework.map(hw => {
                   return (
                     <TableCell key={hw.id} className="p-0 text-center">
@@ -535,6 +724,69 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
           </TableBody>
         </Table>
       </div>
+      
+      {/* Confirmation Dialog for Godkjent - Bulk */}
+      <AlertDialog open={showBulkConfirm} onOpenChange={setShowBulkConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bekreft godkjenning</AlertDialogTitle>
+            <AlertDialogDescription>
+              Du er i ferd med å godkjenne lekser for {selectedStudents.size} elev(er).
+              <br /><br />
+              <strong>Totalt poeng som deles ut: {selectedStudents.size * (positiveActions.find(a => a.actionKey === 'HOMEWORK_APPROVED')?.points || 0)}</strong>
+              <br />
+              ({selectedStudents.size} × {positiveActions.find(a => a.actionKey === 'HOMEWORK_APPROVED')?.points || 0} poeng)
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (currentHomeworkId && bulkStatus) {
+                await executeBulkAction(currentHomeworkId, bulkStatus, Array.from(selectedStudents));
+                setShowBulkConfirm(false);
+              }
+            }}>
+              Bekreft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Confirmation Dialog for Godkjent - Remaining */}
+      <AlertDialog open={showRemainingConfirm} onOpenChange={setShowRemainingConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bekreft godkjenning av resterende</AlertDialogTitle>
+            <AlertDialogDescription>
+              {currentHomeworkId && (() => {
+                const remaining = getStudentsWithoutStatus(currentHomeworkId);
+                const points = positiveActions.find(a => a.actionKey === 'HOMEWORK_APPROVED')?.points || 0;
+                return (
+                  <>
+                    Du er i ferd med å godkjenne lekser for {remaining.length} resterende elev(er).
+                    <br /><br />
+                    <strong>Totalt poeng som deles ut: {remaining.length * points}</strong>
+                    <br />
+                    ({remaining.length} × {points} poeng)
+                  </>
+                );
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (currentHomeworkId && remainingStatus) {
+                const remaining = getStudentsWithoutStatus(currentHomeworkId);
+                await executeBulkAction(currentHomeworkId, remainingStatus, remaining);
+                setShowRemainingConfirm(false);
+              }
+            }}>
+              Bekreft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
