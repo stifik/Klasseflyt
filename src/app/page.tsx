@@ -42,7 +42,8 @@ const defaultSettings: AppSettings = {
   ],
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
-    includePositiveFeedback: false, includeTests: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren"
+    includePositiveFeedback: false, includeTests: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren",
+    includeSecretAgent: false, secretAgentMessage: "Fullførte rollen som hemmelig agent"
   },
   schedule: [
     { period: 1, startTime: "08:30", endTime: "09:00" },

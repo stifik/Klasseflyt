@@ -832,6 +832,36 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                                     <Label htmlFor="positiveFeedbackBoth">Ros: Både lekser og iPad</Label>
                                     <Textarea id="positiveFeedbackBoth" value={localSettings.reportSettings.positiveFeedbackBoth} onChange={(e) => handleReportSettingChange('positiveFeedbackBoth', e.target.value)} />
                                 </div>
+                                
+                                {/* Secret Agent Settings */}
+                                <Separator className="my-4" />
+                                <div className="space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <Label htmlFor="includeSecretAgent" className="font-medium">🕵️ Hemmelig Agent i ukesmelding</Label>
+                                      <p className="text-sm text-gray-600 dark:text-gray-400">Inkluder godkjente agent-oppdrag i ukesmeldingen</p>
+                                    </div>
+                                    <Switch 
+                                      id="includeSecretAgent"
+                                      checked={localSettings.reportSettings.includeSecretAgent ?? false}
+                                      onCheckedChange={(value) => handleReportSettingChange('includeSecretAgent', value)}
+                                    />
+                                  </div>
+                                  {(localSettings.reportSettings.includeSecretAgent ?? false) && (
+                                    <div className="space-y-1 ml-4">
+                                      <Label htmlFor="secretAgentMessage">Tilpasset tekst for hemmelig agent</Label>
+                                      <Textarea 
+                                        id="secretAgentMessage" 
+                                        placeholder="F.eks. 'Fullførte rollen som hemmelig agent med følgende oppdrag: [OPPDRAG]'" 
+                                        value={localSettings.reportSettings.secretAgentMessage || ''} 
+                                        onChange={(e) => handleReportSettingChange('secretAgentMessage', e.target.value)} 
+                                        rows={3}
+                                      />
+                                      <p className="text-xs text-gray-500">Bruk [OPPDRAG] for å inkludere oppdraget</p>
+                                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">💡 Kun godkjente oppdrag (status "passed") inkluderes i ukesmeldingen - avviste oppdrag sendes ikke hjem</p>
+                                    </div>
+                                  )}
+                                </div>
                             </div>
                         </div>
                     </CardContent>

@@ -41,6 +41,7 @@ export class MySubClassedDexie extends Dexie {
     rewards!: Table<Reward, number>;
     actions!: Table<PositiveAction, number>;
     secretAgent!: Table<{ id: string; studentId: string; studentName: string; mission: string; date: Date; status: 'pending' | 'analyzing' | 'passed' | 'failed' }, string>;
+    secretAgentHistory!: Table<{ id?: number; studentId: string; studentName: string; mission: string; date: Date; status: 'passed' | 'failed' }, number>;
 
 
     constructor() {
@@ -397,6 +398,11 @@ export class MySubClassedDexie extends Dexie {
         // Version 27: Add secretAgent table for storing current secret agent
         this.version(27).stores({
             secretAgent: 'id, date',
+        });
+
+        // Version 28: Add secretAgentHistory table for storing agent history
+        this.version(28).stores({
+            secretAgentHistory: '++id, studentId, date',
         });
 
         this.on('populate', async () => {

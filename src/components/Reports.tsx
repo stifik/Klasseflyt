@@ -60,6 +60,7 @@ const generateSummaryMessage = (
     weekTestResults: { subjectName: string, testTitle: string, score: number, maxScore: number }[],
     settings: ReportSettings,
     additionalText?: string,
+    secretAgentMessage?: string,
 ): string => {
     
     const homeworkIssues: string[] = [];
@@ -128,6 +129,10 @@ const generateSummaryMessage = (
         });
         message += '\n';
     }
+
+    if (secretAgentMessage && (settings.includeSecretAgent ?? false)) {
+        message += `🕵️ ${secretAgentMessage}\n\n`;
+    }
     
     if (additionalText && additionalText.trim()) {
         message += `${additionalText.trim()}\n\n`;
@@ -163,7 +168,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, submissionAt
         return Array.from(allWeeks).sort((a,b) => b-a);
     }, [homework, dailyChecks, remarks, tests, submissionAttempts]);
   
-    const handleGenerateSummaries = () => {
+    const handleGenerateSummaries = async () => {
         setIsGenerating(true);
         setGeneratedMessages([]);
         setReportableTestResultIds([]);
@@ -175,6 +180,9 @@ const WeeklySummary = ({ students, subjects, homework, submissions, submissionAt
         const safeRemarks = remarks || [];
         const safeTests = tests || [];
         const safeTestResults = testResults || [];
+
+        // Hent secret agent historikk fra database
+        const secretAgentHistory = await db.secretAgentHistory.toArray();
 
         const weekSubmissionAttempts = safeSubmissionAttempts.filter(att => 
             new Date(att.date).getFullYear() === new Date().getFullYear() && 
@@ -276,6 +284,21 @@ const WeeklySummary = ({ students, subjects, homework, submissions, submissionAt
                 };
             }).filter((r): r is NonNullable<typeof r> => r !== null);
 
+            // Hent godkjente agent oppdrag for denne eleven i denne uken
+            let secretAgentMessageText: string | undefined;
+            if (settings.reportSettings.includeSecretAgent ?? false) {
+                const studentAgentMissions = secretAgentHistory.filter(agent => 
+                    agent.studentId === student.id && 
+                    agent.status === 'passed' && 
+                    getWeekNumber(new Date(agent.date)) === selectedWeek
+                );
+                
+                if (studentAgentMissions.length > 0) {
+                    const mission = studentAgentMissions[0].mission;
+                    const customTemplate = settings.reportSettings.secretAgentMessage || 'Fullførte rollen som hemmelig agent';
+                    secretAgentMessageText = customTemplate.replace('[OPPDRAG]', mission);
+                }
+            }
 
             const message = generateSummaryMessage(
                 student.name,
@@ -289,7 +312,8 @@ const WeeklySummary = ({ students, subjects, homework, submissions, submissionAt
                 studentWeekRemarks.length,
                 formattedTestResults,
                 settings.reportSettings,
-                additionalText
+                additionalText,
+                secretAgentMessageText
             );
             return { studentName: student.name, message };
         }).filter((item): item is { studentName: string; message: string } => item !== null && item.message !== "");

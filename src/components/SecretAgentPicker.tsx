@@ -8,11 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Sparkles, Check, X, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { givePoints, syncAgentStatusWithApi } from "@/lib/rewardService";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
+import { getWeekNumber } from "@/lib/utils";
 
 interface SecretAgentPickerProps {
   students: Student[];
@@ -22,6 +24,7 @@ interface SecretAgentPickerProps {
 export default function SecretAgentPicker({ students, absences = [] }: SecretAgentPickerProps) {
   const [missionInput, setMissionInput] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [withReplacement, setWithReplacement] = useState(true);
   const { toast } = useToast();
 
   // Hent dagens agent fra database
@@ -30,6 +33,12 @@ export default function SecretAgentPicker({ students, absences = [] }: SecretAge
     const agent = await db.secretAgent.get(todayKey);
     return agent || null;
   }, [todayKey]);
+
+  // Hent agent historikk
+  const agentHistory = useLiveQuery(async () => {
+    const history = await db.secretAgentHistory.toArray();
+    return history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, []) ?? [];
 
   // Hent positive actions fra database
   const allActions = useLiveQuery(() => db.actions.toArray(), []) ?? [];
@@ -54,9 +63,31 @@ export default function SecretAgentPicker({ students, absences = [] }: SecretAge
       return;
     }
 
+    let candidateStudents = availableStudents;
+
+    // Hvis uten tilbakelegging, ekskluder tidligere agenter fra denne uken
+    if (!withReplacement) {
+      const weekNumber = getWeekNumber(new Date());
+      const thisWeekAgents = agentHistory.filter(agent => {
+        const agentWeek = getWeekNumber(new Date(agent.date));
+        return agentWeek === weekNumber;
+      });
+      const usedStudentIds = new Set(thisWeekAgents.map(a => a.studentId));
+      candidateStudents = availableStudents.filter(s => !usedStudentIds.has(s.id!));
+
+      if (candidateStudents.length === 0) {
+        toast({
+          title: "Alle elever har allerede vært agenter denne uken",
+          description: "Skru på 'med tilbakelegging' for å tillate gjentakelse",
+          variant: "default"
+        });
+        return;
+      }
+    }
+
     // Velg tilfeldig elev
-    const randomIndex = Math.floor(Math.random() * availableStudents.length);
-    const selectedStudent = availableStudents[randomIndex];
+    const randomIndex = Math.floor(Math.random() * candidateStudents.length);
+    const selectedStudent = candidateStudents[randomIndex];
 
     // Bruk current timestamp for å markere nylig trukket agent
     const now = new Date();
@@ -114,6 +145,15 @@ export default function SecretAgentPicker({ students, absences = [] }: SecretAge
         // Send 'passed' status til API UTEN agent-navn (personvern!)
         await syncAgentStatusWithApi('passed', undefined, secretAgent.mission);
 
+        // Lagre i historikk
+        await db.secretAgentHistory.add({
+          studentId: secretAgent.studentId,
+          studentName: secretAgent.studentName,
+          mission: secretAgent.mission,
+          date: new Date(),
+          status: 'passed'
+        });
+
         toast({
           title: "✅ MISSION ACCOMPLISHED!",
           description: `${secretAgent.studentName} har fullført oppdraget og fått ${points} poeng!`,
@@ -160,6 +200,15 @@ export default function SecretAgentPicker({ students, absences = [] }: SecretAge
 
       // Send 'failed' status til API
       await syncAgentStatusWithApi('failed', undefined, secretAgent.mission);
+
+      // Lagre i historikk
+      await db.secretAgentHistory.add({
+        studentId: secretAgent.studentId,
+        studentName: secretAgent.studentName,
+        mission: secretAgent.mission,
+        date: new Date(),
+        status: 'failed'
+      });
 
       toast({
         title: "❌ MISSION FAILED",
@@ -213,6 +262,22 @@ export default function SecretAgentPicker({ students, absences = [] }: SecretAge
               />
             </div>
 
+            {/* Toggle for med/uten tilbakelegging */}
+            <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+              <div>
+                <Label className="font-medium">Med tilbakelegging</Label>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {withReplacement 
+                    ? "Samme elev kan bli agent flere ganger i samme uke" 
+                    : "Samme elev kan bare være agent en gang per uke"}
+                </p>
+              </div>
+              <Switch
+                checked={withReplacement}
+                onCheckedChange={setWithReplacement}
+              />
+            </div>
+
             <Button 
               onClick={handleDrawAgent} 
               className="w-full bg-purple-600 hover:bg-purple-700"
@@ -227,6 +292,31 @@ export default function SecretAgentPicker({ students, absences = [] }: SecretAge
               <p className="text-sm text-gray-500 text-center">
                 Ingen elever tilgjengelig for trekk
               </p>
+            )}
+
+            {/* Historikk over tidligere agenter */}
+            {agentHistory.length > 0 && (
+              <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">📋 Tidligere agenter</h4>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {agentHistory.slice(0, 10).map((agent, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-sm p-2 bg-white dark:bg-gray-700 rounded">
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900 dark:text-gray-100">{agent.studentName}</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">{agent.mission}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">
+                          {new Date(agent.date).toLocaleDateString('no-NO')}
+                        </span>
+                        <Badge variant={agent.status === 'passed' ? 'default' : 'destructive'}>
+                          {agent.status === 'passed' ? '✅ Godkjent' : '❌ Avvist'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         ) : (

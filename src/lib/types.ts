@@ -222,6 +222,10 @@ export type ReportSettings = {
   positiveFeedbackHomework?: string;
   positiveFeedbackIpad?: string;
   positiveFeedbackBoth?: string;
+  
+  // Secret Agent Settings
+  includeSecretAgent?: boolean;
+  secretAgentMessage?: string;
 
   // Student Report Settings
   includeHomeworkInReport?: boolean;
