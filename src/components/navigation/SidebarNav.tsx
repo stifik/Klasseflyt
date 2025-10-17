@@ -178,13 +178,13 @@ export function SidebarNav({ className, onCollapseChange }: SidebarNavProps) {
                         <SidebarItem
                             href="/rewarddashboard"
                             icon={TrendingUp}
-                            label="Statistikk"
+                            label="Poengoversikt"
                             isCollapsed={isCollapsed}
                         />
                         <SidebarItem
                             href="/rewardstore"
                             icon={Store}
-                            label="Butikk"
+                            label="Belønninger"
                             isCollapsed={isCollapsed}
                         />
                     </SidebarSection>

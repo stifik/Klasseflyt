@@ -151,12 +151,12 @@ export function MobileNav() {
                             <SidebarItem
                                 href="/rewarddashboard"
                                 icon={TrendingUp}
-                                label="Statistikk"
+                                label="Poengoversikt"
                             />
                             <SidebarItem
                                 href="/rewardstore"
                                 icon={Store}
-                                label="Butikk"
+                                label="Belønninger"
                             />
                         </div>
                     </SidebarSection>
