@@ -276,13 +276,13 @@ export default function RewardDashboard() {
                 return (
                   <div
                     key={student.id}
-                    className={`overflow-hidden rounded-lg transition-all ${
+                    className={`overflow-hidden rounded-lg shadow-sm transition-all ${
                       isHighlighted
-                        ? 'bg-blue-50 dark:bg-blue-900/30 scale-105 ring-2 ring-blue-500'
-                        : 'bg-gray-50 dark:bg-gray-800'
+                        ? 'bg-blue-50 dark:bg-blue-900/30 scale-105 ring-2 ring-blue-500 shadow-md'
+                        : 'bg-white dark:bg-gray-800 shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
                     }`}
                   >
-                    <div className="flex items-center justify-between p-3">
+                    <div className="flex items-center justify-between px-5 py-4">
                       <div className="flex-1">
                         <span className={`font-medium ${isHighlighted ? 'font-bold text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
                           {student.name}
@@ -295,15 +295,15 @@ export default function RewardDashboard() {
 
                     <div className="flex border-t border-gray-200 dark:border-gray-700">
                       <button
-                        className="flex-1 bg-green-500 text-white py-2.5 hover:bg-green-600 transition-colors font-medium flex items-center justify-center gap-2 border-r border-green-600 dark:border-green-400"
+                        className="flex-1 bg-[#10b981] hover:bg-[#059669] text-white py-3 transition-all duration-200 font-medium flex items-center justify-center gap-2 border-r border-white/20 rounded-bl-lg"
                         onClick={() => setShowGiveDialog(student.id!)}
                         title="Gi poeng"
                       >
-                        <span className="text-lg">+</span>
+                        <Zap className="w-4 h-4" />
                         <span>Gi poeng</span>
                       </button>
                       <button
-                        className="flex-1 bg-blue-500 text-white py-2.5 hover:bg-blue-600 transition-colors font-medium flex items-center justify-center gap-2"
+                        className="flex-1 bg-[#3b82f6] hover:bg-[#2563eb] text-white py-3 transition-all duration-200 font-medium flex items-center justify-center gap-2 rounded-br-lg"
                         onClick={() => viewTransactionHistory(student.id!)}
                         title="Vis transaksjonshistorikk"
                       >
@@ -336,41 +336,41 @@ export default function RewardDashboard() {
                           return (
                             <div
                               key={`${rowIndex}-${colIndex}`}
-                              className={`overflow-hidden flex flex-col border rounded-lg transition-all w-full ${
+                              className={`overflow-hidden flex flex-col rounded-lg transition-all w-full shadow-sm ${
                                 isHighlighted
-                                  ? 'bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-500'
-                                  : 'bg-gray-50 dark:bg-gray-800 border-border'
+                                  ? 'bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-500 shadow-md'
+                                  : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
                               }`}
                             >
                               {studentName ? (
                                 <>
-                                  <div className="flex-1 flex flex-col items-center justify-center p-2 min-h-[60px]">
+                                  <div className="flex-1 flex flex-col items-center justify-center p-3 min-h-[70px]">
                                     <div className="text-xs font-medium text-gray-900 dark:text-white text-center px-1">
                                       {studentName}
                                     </div>
-                                    <div className="text-sm font-semibold text-primary mt-1">
+                                    <div className="text-sm font-semibold text-primary mt-1.5">
                                       {student?.points ?? 0} pt
                                     </div>
                                   </div>
                                   <div className="flex border-t border-gray-200 dark:border-gray-700">
                                     <button
-                                      className="flex-1 bg-green-500 text-white py-1.5 hover:bg-green-600 transition-colors text-xs font-medium border-r border-green-600 dark:border-green-400"
+                                      className="flex-1 bg-[#10b981] hover:bg-[#059669] text-white py-2 transition-all duration-200 text-xs font-medium border-r border-white/20 rounded-bl-lg flex items-center justify-center"
                                       onClick={() => setShowGiveDialog(student?.id!)}
                                       title="Gi poeng"
                                     >
-                                      +
+                                      <Zap className="w-3.5 h-3.5" />
                                     </button>
                                     <button
-                                      className="flex-1 bg-blue-500 text-white py-1.5 hover:bg-blue-600 transition-colors flex items-center justify-center"
+                                      className="flex-1 bg-[#3b82f6] hover:bg-[#2563eb] text-white py-2 transition-all duration-200 flex items-center justify-center rounded-br-lg"
                                       onClick={() => viewTransactionHistory(student?.id!)}
                                       title="Vis transaksjonshistorikk"
                                     >
-                                      <BarChart3 className="w-3 h-3" />
+                                      <BarChart3 className="w-3.5 h-3.5" />
                                     </button>
                                   </div>
                                 </>
                               ) : (
-                                <div className="flex items-center justify-center h-24 text-xs text-gray-400">Tom pult</div>
+                                <div className="flex items-center justify-center h-24 text-xs text-gray-400 bg-gray-50 dark:bg-gray-900/50 rounded-lg">Tom pult</div>
                               )}
                             </div>
                           );
