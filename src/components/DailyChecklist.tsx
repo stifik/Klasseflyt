@@ -135,7 +135,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   const StudentButton = ({ student }: { student: Student }) => {
   // Guard against undefined id
   if (!student.id) return null;
-    
+
   const status = getStatus(student.id);
   const config = statusConfig[status];
   const isAbsent = !!getAbsenceForDate(student.id);
@@ -146,7 +146,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
        <Button
         variant="secondary"
         onClick={() => handleAbsenceToggle(student.id!)}
-        className="justify-center h-auto py-2 flex-col w-28 h-20 text-muted-foreground"
+        className="justify-center h-auto py-2 flex-col w-full aspect-[7/5] text-muted-foreground"
       >
         <span className="font-semibold text-xs">{student.name}</span>
          <div className="flex items-center text-xs">
@@ -156,9 +156,9 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
       </Button>
     );
   }
-    
+
   return (
-    <div className="relative w-28 h-20">
+    <div className="relative w-full aspect-[7/5]">
       <Button
         key={student.id}
         variant={config.variant}
@@ -213,7 +213,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   };
 
   const EmptyDesk = () => (
-    <div className="w-28 h-20" />
+    <div className="w-full aspect-[7/5]" />
   );
   
   const displayedChart = isFlipped 
@@ -303,21 +303,21 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
       </CardHeader>
       <CardContent>
         {seatingChart && activeLayout ? (
-            <div className="grid gap-y-4">
+            <div className="space-y-4">
                 {Array.from({ length: activeLayout.rows }).map((_, r) => {
                     const rowIndex = isFlipped ? activeLayout.rows - 1 - r : r;
                     return (
-                         <div key={rowIndex} className="flex flex-wrap justify-start gap-x-4 gap-y-4">
+                         <div key={rowIndex} className="grid gap-4" style={{ gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))` }}>
                             {Array.from({ length: activeLayout.cols }).map((_, c) => {
                                 const colIndex = isFlipped ? activeLayout.cols - 1 - c : c;
-                                
+
                                 if (!activeLayout.layout[rowIndex]?.[colIndex]) {
                                     return <EmptyDesk key={`empty-${rowIndex}-${colIndex}`} />;
                                 }
-                                
+
                                 const studentName = seatingChart[rowIndex]?.[colIndex]?.[0];
                                 const student = studentName ? students.find(s => s.name === studentName) : null;
-                                
+
                                 return student && student.id ? <StudentButton key={student.id} student={student} /> : <EmptyDesk key={`desk-${rowIndex}-${colIndex}`} />;
                             })}
                         </div>
