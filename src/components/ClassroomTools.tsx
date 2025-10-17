@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
 
 
-const SeatingChartTabContent: FC<{
+export const SeatingChartTabContent: FC<{
     students: Student[];
     appSettings: AppSettings;
     onAppSettingsChange: (settings: AppSettings) => void;

@@ -59,10 +59,6 @@ const defaultSettings: AppSettings = {
 };
 
 function Home() {
-  const [activeView, setActiveView] = useState<'dashboard' | 'app'>('dashboard');
-  const [activeTab, setActiveTab] = useState<TabKey | null>(null);
-  const [activeSubTab, setActiveSubTab] = useState<string | null>(null);
-  
   const students = useLiveQuery(() => db.students.toArray());
   const subjects = useLiveQuery(() => db.subjects.toArray());
   const settings = useLiveQuery(() => db.settings.get('userSettings'));
@@ -120,7 +116,7 @@ function Home() {
       await db.transaction('rw', db.students, db.subjects, db.settings, async () => {
         await db.students.bulkAdd(students.map(s => ({ name: s.name, points: 0 })));
         await db.subjects.bulkAdd(subjects.map(s => ({ name: s.name })));
-        
+
         const newSettings = {
             ...finalSettings,
             reportSettings: {
@@ -131,17 +127,6 @@ function Home() {
         };
         await db.settings.put({ id: 'userSettings', ...newSettings });
       });
-  }
-
-  const navigateToTab = (tab: TabKey, subTab?: string) => {
-    setActiveTab(tab);
-    setActiveSubTab(subTab || null);
-    setActiveView('app');
-  };
-
-  const navigateToSettings = () => {
-      setActiveTab('settings');
-      setActiveView('app');
   }
 
   const isLoading = students === undefined || subjects === undefined || settings === undefined;
@@ -159,49 +144,7 @@ function Home() {
       return <Onboarding onFinish={handleOnboardingComplete} initialSettings={currentSettings} />;
   }
 
-  return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 border-b bg-background sm:px-6 no-print">
-        <div className="flex items-center gap-4">
-          <button onClick={() => setActiveView('dashboard')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <BookOpenCheck className="w-8 h-8 text-primary" />
-            <h1 className="text-xl font-bold text-foreground">Klasseflyt</h1>
-          </button>
-          <span className="text-muted-foreground">|</span>
-          <Link href="/terminal" className="text-lg font-semibold text-foreground hover:text-primary transition-colors">
-            Belønningssystem
-          </Link>
-        </div>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <Button variant="ghost" size="icon" onClick={navigateToSettings}>
-              <SettingsIcon />
-              <span className="sr-only">Innstillinger</span>
-          </Button>
-        </div>
-      </header>
-      <main className="flex-1 p-4 sm:p-6 print:p-0">
-        {activeView === 'dashboard' && <Dashboard settings={currentSettings} onNavigate={navigateToTab} />}
-        {activeView === 'app' && (
-            <AppView 
-                settings={currentSettings}
-                students={students || []}
-                subjects={subjects || []}
-                onSettingsChange={handleSettingsChange}
-                activeTab={activeTab}
-                activeSubTab={activeSubTab}
-                onTabChange={setActiveTab}
-            />
-        )}
-      </main>
-       <footer className="p-4 text-center text-xs text-muted-foreground no-print">
-            <Link href="/changelog" className="inline-flex items-center hover:text-primary">
-                <GitCommit className="mr-2 h-4 w-4" />
-                Hva er nytt? (v1.2.0)
-            </Link>
-        </footer>
-    </div>
-  );
+  return <Dashboard settings={currentSettings} />;
 }
 
 export default Home;

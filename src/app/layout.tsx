@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { Providers } from '@/components/Providers';
+import { MainLayout } from '@/components/navigation/MainLayout';
 
 export const metadata: Metadata = {
   title: 'Klasseflyt',
@@ -22,7 +23,9 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <Providers>
-          {children}
+          <MainLayout>
+            {children}
+          </MainLayout>
           <Toaster />
         </Providers>
       </body>

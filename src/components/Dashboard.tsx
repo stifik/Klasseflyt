@@ -3,27 +3,29 @@
 'use client';
 
 import type {FC} from 'react';
-import type {AppSettings, TabKey, DashboardToolKey} from '@/lib/types';
+import type {AppSettings, DashboardToolKey} from '@/lib/types';
 import {Card, CardHeader, CardTitle, CardDescription} from '@/components/ui/card';
 import {
-    BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed, 
+    BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed,
     Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2, Award,
     Terminal
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface DashboardProps {
   settings: AppSettings;
-  onNavigate: (tab: TabKey, subTab?: string) => void;
 }
 
-const allTools: {key: DashboardToolKey; label: string; description: string; icon: React.ElementType; color: string}[] = [
+const allTools: {key: DashboardToolKey; label: string; description: string; icon: React.ElementType; color: string; href: string}[] = [
   {
     key: 'overview',
     label: 'Lekseoversikt',
     description: 'Full oversikt over lekser og innleveringer.',
     icon: BookOpen,
     color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+    href: '/homework',
   },
   {
     key: 'assessments',
@@ -31,6 +33,7 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     description: 'Registrer og følg opp prøveresultater.',
     icon: Award,
     color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
+    href: '/assessments',
   },
   {
     key: 'dailyCheck',
@@ -38,6 +41,7 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     description: 'Registrer iPad-status for hver elev.',
     icon: CalendarCheck,
     color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
+    href: '/daily-check',
   },
   {
     key: 'observations',
@@ -45,6 +49,7 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     description: 'Registrer atferd og anmerkninger.',
     icon: Eye,
     color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
+    href: '/observations',
   },
   {
     key: 'observations.hourly',
@@ -52,6 +57,7 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     description: 'Loggfør arbeidsinnsats i sanntid.',
     icon: CheckSquare,
     color: 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400',
+    href: '/observations',
   },
   {
     key: 'observations.remarks',
@@ -59,6 +65,7 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     description: 'Loggfør spesifikke hendelser raskt.',
     icon: Megaphone,
     color: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
+    href: '/observations',
   },
   {
     key: 'classroomTools',
@@ -66,6 +73,7 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     description: 'Klassekart, grupper og elev-trekker.',
     icon: Settings2,
     color: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400',
+    href: '/classroom/seating',
   },
   {
     key: 'classroomTools.seatingChart',
@@ -73,6 +81,7 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     description: 'Design klasserom og generer sitteplasser.',
     icon: Blocks,
     color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
+    href: '/classroom/seating',
   },
    {
     key: 'classroomTools.groupTool',
@@ -80,6 +89,7 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     description: 'Lag tilfeldige grupper raskt og enkelt.',
     icon: Shuffle,
     color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
+    href: '/classroom/groups',
   },
   {
     key: 'classroomTools.studentPicker',
@@ -87,6 +97,7 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     description: 'Trekk en tilfeldig elev fra klassekartet.',
     icon: UserCheck,
     color: 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400',
+    href: '/classroom/picker',
   },
   {
     key: 'reports',
@@ -94,6 +105,7 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     description: 'Analyser data og se trender over tid.',
     icon: BarChart2,
     color: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+    href: '/reports',
   },
   {
     key: 'reports.summary',
@@ -101,6 +113,7 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     description: 'Generer ukesmeldinger til foresatte.',
     icon: FileText,
     color: 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400',
+    href: '/reports',
   },
   {
     key: 'reports.studentReports',
@@ -108,6 +121,7 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     description: 'Se detaljerte rapporter per elev.',
     icon: NotebookText,
     color: 'bg-lime-100 text-lime-600 dark:bg-lime-900/30 dark:text-lime-400',
+    href: '/reports',
   },
   {
     key: 'reports.analysis',
@@ -115,6 +129,7 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     description: 'Dykk ned i data om anmerkninger.',
     icon: BarChart2,
     color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
+    href: '/reports',
   },
   {
     key: 'terminal',
@@ -122,47 +137,21 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     description: 'Komplett kontrollsenter for poeng og belønninger.',
     icon: Terminal,
     color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
+    href: '/terminal',
   },
 ];
 
 
-const Dashboard: FC<DashboardProps> = ({settings, onNavigate}) => {
+const Dashboard: FC<DashboardProps> = ({settings}) => {
   const teacherName = settings.reportSettings.teacherName;
-  
+  const router = useRouter();
+
   const visibleTools = settings.dashboardTools
     .filter(toolConfig => toolConfig.visible)
     .map(toolConfig => {
         const toolData = allTools.find(t => t.key === toolConfig.key);
-        if (!toolData) return null;
-
-        const [tab, subTab] = toolData.key.split('.') as [TabKey, string | undefined];
-        
-        // Handle terminal tool that links to separate page
-        if (toolData.key === 'terminal') {
-            return {
-                ...toolData,
-                tab: null as null,
-                subTab: null as null,
-                externalLink: `/terminal` as string,
-            };
-        }
-        
-        return {
-            ...toolData,
-            tab,
-            subTab,
-            externalLink: undefined as string | undefined,
-        };
-    }).filter(Boolean) as Array<{
-        key: DashboardToolKey;
-        label: string;
-        description: string;
-        icon: React.ElementType;
-        color: string;
-        tab: TabKey | null;
-        subTab: string | null | undefined;
-        externalLink?: string;
-    }>;
+        return toolData;
+    }).filter(Boolean) as typeof allTools;
 
 
   return (
@@ -178,13 +167,7 @@ const Dashboard: FC<DashboardProps> = ({settings, onNavigate}) => {
           return (
             <Card
               key={tool.key}
-              onClick={() => {
-                if (tool.externalLink) {
-                  window.open(tool.externalLink, '_blank');
-                } else if (tool.tab !== null) {
-                  onNavigate(tool.tab, tool.subTab ?? undefined);
-                }
-              }}
+              onClick={() => router.push(tool.href)}
               className="cursor-pointer hover:border-primary/50 hover:shadow-lg transition-all"
             >
               <CardHeader className="flex flex-row items-center gap-4">

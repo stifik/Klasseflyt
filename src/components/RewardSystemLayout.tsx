@@ -77,54 +77,25 @@ const RewardSystemLayout: React.FC<RewardSystemLayoutProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-background relative">
-      {/* Header with navigation */}
-      <div className="sticky top-0 z-10 bg-background border-b">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                <BookOpenCheck className="w-8 h-8 text-primary" />
-                <h1 className="text-xl font-bold text-foreground">Klasseflyt</h1>
-              </Link>
-              <span className="text-muted-foreground">|</span>
-              <Link href="/terminal" className="text-lg font-semibold text-foreground hover:text-primary transition-colors">
-                Belønningssystem
-              </Link>
-            </div>
-            
-            {/* Settings button - always visible */}
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/settings" className="flex items-center gap-2">
-                <Settings className="w-4 h-4" />
-                <span className="sr-only">Innstillinger</span>
-              </Link>
-            </Button>
-          </div>
-          
-          
+    <div>
+      {/* Progress bar - kun på terminal-sider */}
+      {isOnTerminal && (
+        <div className="mb-4">
+          <ClassGoalProgressBar
+            title={goalTitle}
+            current={classTotal}
+            goal={goal.target}
+            showReset={showReset}
+            onReset={handleReset}
+            fullBleed
+          />
         </div>
-        {/* Progress bar - kun på terminal-sider (full-bleed) */}
-        {isOnTerminal && (
-          <div className="w-full">
-            <div className="max-w-7xl mx-auto px-4 py-0">
-              <ClassGoalProgressBar
-                title={goalTitle}
-                current={classTotal}
-                goal={goal.target}
-                showReset={showReset}
-                onReset={handleReset}
-                fullBleed
-              />
-            </div>
-          </div>
-        )}
-      </div>
-      
+      )}
+
       {/* Main content */}
-      <main className="max-w-7xl mx-auto p-4">
+      <div>
         {children}
-      </main>
+      </div>
     </div>
 
   );
