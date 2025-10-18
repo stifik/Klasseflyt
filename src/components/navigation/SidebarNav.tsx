@@ -20,13 +20,15 @@ import {
     TrendingUp,
     Store,
     ShieldCheck,
-    DollarSign
+    DollarSign,
+    Settings as SettingsIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarSection } from "./SidebarSection";
 import { SidebarItem } from "./SidebarItem";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface SidebarNavProps {
     className?: string;
@@ -213,17 +215,32 @@ export function SidebarNav({ className, onCollapseChange }: SidebarNavProps) {
                 </nav>
 
                 {/* Footer */}
-                {!isCollapsed && (
-                    <div className="border-t p-3">
-                        <Link
-                            href="/changelog"
-                            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                            <Activity className="h-3 w-3" />
-                            <span>Hva er nytt?</span>
-                        </Link>
+                <div className="border-t p-3">
+                    <div className="flex items-center gap-2">
+                        {!isCollapsed && (
+                            <>
+                                <ThemeToggle />
+                                <Link href="/settings" className="flex-1">
+                                    <Button variant="ghost" className="w-full justify-start gap-2">
+                                        <SettingsIcon className="h-4 w-4" />
+                                        <span>Innstillinger</span>
+                                    </Button>
+                                </Link>
+                            </>
+                        )}
+                        {isCollapsed && (
+                            <div className="flex flex-col gap-2 w-full items-center">
+                                <ThemeToggle />
+                                <Link href="/settings">
+                                    <Button variant="ghost" size="icon">
+                                        <SettingsIcon className="h-4 w-4" />
+                                        <span className="sr-only">Innstillinger</span>
+                                    </Button>
+                                </Link>
+                            </div>
+                        )}
                     </div>
-                )}
+                </div>
             </div>
         </aside>
     );

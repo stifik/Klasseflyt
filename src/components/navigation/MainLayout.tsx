@@ -4,10 +4,6 @@ import { useState } from "react";
 import { SidebarNav } from "./SidebarNav";
 import { MobileNav } from "./MobileNav";
 import { Breadcrumbs } from "./Breadcrumbs";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { Button } from "@/components/ui/button";
-import { Settings as SettingsIcon } from "lucide-react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -42,18 +38,10 @@ export function MainLayout({ children }: MainLayoutProps) {
                     isSidebarCollapsed && "md:ml-16"
                 )}
             >
-                {/* Header */}
-                <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6 no-print">
+                {/* Mobile Nav - only visible on mobile */}
+                <div className="md:hidden sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 no-print">
                     <MobileNav />
-                    <div className="flex-1" />
-                    <ThemeToggle />
-                    <Link href="/settings">
-                        <Button variant="ghost" size="icon">
-                            <SettingsIcon className="h-5 w-5" />
-                            <span className="sr-only">Innstillinger</span>
-                        </Button>
-                    </Link>
-                </header>
+                </div>
 
                 {/* Page Content */}
                 <main className="flex-1 overflow-y-auto p-4 sm:p-6 print:p-0">
