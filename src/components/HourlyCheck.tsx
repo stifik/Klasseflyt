@@ -314,11 +314,11 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
       </CardHeader>
       <CardContent>
         {seatingChart && activeLayout ? (
-             <div className="space-y-4">
+             <div className="space-y-2">
                 {Array.from({ length: activeLayout.rows }).map((_, r) => {
                     const rowIndex = isFlipped ? activeLayout.rows - 1 - r : r;
                     return (
-                         <div key={rowIndex} className="grid gap-4" style={{ gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))` }}>
+                         <div key={rowIndex} className="grid gap-2" style={{ gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(0, 1fr))` }}>
                             {Array.from({ length: activeLayout.cols }).map((_, c) => {
                                 const colIndex = isFlipped ? activeLayout.cols - 1 - c : c;
 
