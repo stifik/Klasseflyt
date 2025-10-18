@@ -29,7 +29,7 @@ const PosView: React.FC<PosViewProps> = ({ rewards, onSelectReward }) => {
           >
             {/* Ikon eller emoji for belønning */}
             <div className="text-3xl mb-3">
-              🎁
+              {reward.emoji || '🎁'}
             </div>
             
             {/* Belønningsnavn */}

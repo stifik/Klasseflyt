@@ -100,6 +100,10 @@ export default function SettingsPage({}: SettingsPageProps) {
   // Form states for adding new items
   const [newActionName, setNewActionName] = useState('');
   const [newActionPoints, setNewActionPoints] = useState('');
+  const [newActionEmoji, setNewActionEmoji] = useState('⭐');
+
+  // Common emojis for actions
+  const commonEmojis = ['⭐', '🏆', '🎯', '💯', '✅', '👍', '💪', '🙌', '🔥', '⚡', '🎉', '🎊', '📚', '✏️', '📝', '🔋', '⏰', '🤝', '🙋', '💡', '🌟', '🏅', '🕵️', '🎓', '📖'];
 
 
 
@@ -130,11 +134,13 @@ export default function SettingsPage({}: SettingsPageProps) {
       name: newActionName.trim(),
       points,
       type: 'manual', // Nye handlinger er alltid manuelle
+      emoji: newActionEmoji,
     };
 
     await db.actions.add(newAction);
     setNewActionName('');
     setNewActionPoints('');
+    setNewActionEmoji('⭐');
     
     toast({
       title: "Suksess",
@@ -286,28 +292,41 @@ export default function SettingsPage({}: SettingsPageProps) {
                       <h4 className="text-sm font-medium text-blue-600 dark:text-blue-400 mt-4">System-handlinger (kan kun justere poeng):</h4>
                       {localActions.filter(action => action.type === 'system').map((action) => (
                         <div key={action.id} className="flex items-center justify-between p-2 border rounded bg-white dark:bg-gray-800">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                value={action.name}
-                                readOnly={true}
-                                className="font-medium bg-transparent border-none p-0 text-sm text-gray-500 cursor-not-allowed"
-                              />
-                              <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">System</span>
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <input
-                                type="number"
-                                value={action.points}
-                                min="1"
-                                className="w-16 text-sm border rounded px-2 py-1"
-                                onChange={(e) => {
-                                  const points = parseInt(e.target.value);
-                                  handleUpdateActionPoints(action.id, points);
-                                }}
-                              />
-                              <span className="text-sm text-gray-500">poeng</span>
+                          <div className="flex items-center gap-3 flex-1">
+                            <button
+                              className="text-2xl hover:scale-110 transition-transform"
+                              onClick={() => {
+                                const newEmoji = prompt('Velg en emoji:', action.emoji || '⭐');
+                                if (newEmoji && newEmoji.trim()) {
+                                  db.actions.update(action.id, { emoji: newEmoji.trim() });
+                                }
+                              }}
+                            >
+                              {action.emoji || '⭐'}
+                            </button>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={action.name}
+                                  readOnly={true}
+                                  className="font-medium bg-transparent border-none p-0 text-sm text-gray-500 cursor-not-allowed"
+                                />
+                                <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">System</span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <input
+                                  type="number"
+                                  value={action.points}
+                                  min="1"
+                                  className="w-16 text-sm border rounded px-2 py-1"
+                                  onChange={(e) => {
+                                    const points = parseInt(e.target.value);
+                                    handleUpdateActionPoints(action.id, points);
+                                  }}
+                                />
+                                <span className="text-sm text-gray-500">poeng</span>
+                              </div>
                             </div>
                           </div>
                           <Button
@@ -330,29 +349,42 @@ export default function SettingsPage({}: SettingsPageProps) {
                       <h4 className="text-sm font-medium text-green-600 dark:text-green-400 mt-4">Manuelle handlinger (kan redigeres fritt):</h4>
                       {localActions.filter(action => action.type === 'manual').map((action) => (
                         <div key={action.id} className="flex items-center justify-between p-2 border rounded bg-white dark:bg-gray-800">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                value={action.name}
-                                className="font-medium bg-transparent border-none p-0 text-sm text-gray-900 dark:text-white"
-                                onChange={(e) => {
-                                  db.actions.update(action.id, { name: e.target.value });
-                                }}
-                              />
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <input
-                                type="number"
-                                value={action.points}
-                                min="1"
-                                className="w-16 text-sm border rounded px-2 py-1"
-                                onChange={(e) => {
-                                  const points = parseInt(e.target.value);
-                                  handleUpdateActionPoints(action.id, points);
-                                }}
-                              />
-                              <span className="text-sm text-gray-500">poeng</span>
+                          <div className="flex items-center gap-3 flex-1">
+                            <button
+                              className="text-2xl hover:scale-110 transition-transform"
+                              onClick={() => {
+                                const newEmoji = prompt('Velg en emoji:', action.emoji || '⭐');
+                                if (newEmoji && newEmoji.trim()) {
+                                  db.actions.update(action.id, { emoji: newEmoji.trim() });
+                                }
+                              }}
+                            >
+                              {action.emoji || '⭐'}
+                            </button>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={action.name}
+                                  className="font-medium bg-transparent border-none p-0 text-sm text-gray-900 dark:text-white"
+                                  onChange={(e) => {
+                                    db.actions.update(action.id, { name: e.target.value });
+                                  }}
+                                />
+                              </div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <input
+                                  type="number"
+                                  value={action.points}
+                                  min="1"
+                                  className="w-16 text-sm border rounded px-2 py-1"
+                                  onChange={(e) => {
+                                    const points = parseInt(e.target.value);
+                                    handleUpdateActionPoints(action.id, points);
+                                  }}
+                                />
+                                <span className="text-sm text-gray-500">poeng</span>
+                              </div>
                             </div>
                           </div>
                           <Button
@@ -377,10 +409,39 @@ export default function SettingsPage({}: SettingsPageProps) {
               <form onSubmit={handleAddAction} className="space-y-3 pt-4 border-t">
                 <h3 className="font-medium text-gray-900 dark:text-white">Legg til ny handling:</h3>
                 <div>
+                  <Label htmlFor="action-emoji">Emoji</Label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="text-3xl hover:scale-110 transition-transform p-2 border rounded"
+                      onClick={() => {
+                        const newEmoji = prompt('Skriv inn emoji:', newActionEmoji);
+                        if (newEmoji && newEmoji.trim()) {
+                          setNewActionEmoji(newEmoji.trim());
+                        }
+                      }}
+                    >
+                      {newActionEmoji}
+                    </button>
+                    <div className="flex flex-wrap gap-1 flex-1">
+                      {commonEmojis.slice(0, 15).map(emoji => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          className="text-xl hover:scale-110 transition-transform p-1"
+                          onClick={() => setNewActionEmoji(emoji)}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div>
                   <Label htmlFor="action-name">Navn på handling</Label>
                   <Input
                     id="action-name"
-                    placeholder="f.eks. iPad ladet"
+                    placeholder="f.eks. God innsats"
                     value={newActionName}
                     onChange={(e) => setNewActionName(e.target.value)}
                   />

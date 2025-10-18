@@ -12,6 +12,7 @@ export type PositiveAction = {
   points: number;
   type: 'system' | 'manual';
   actionKey?: 'IPAD_CHARGED' | 'HOMEWORK_APPROVED' | 'SECRET_AGENT_PASSED';
+  emoji?: string;
 };
 
 // Define the database schema
@@ -403,6 +404,30 @@ export class MySubClassedDexie extends Dexie {
         // Version 28: Add secretAgentHistory table for storing agent history
         this.version(28).stores({
             secretAgentHistory: '++id, studentId, date',
+        });
+
+        // Version 29: Add emoji support for actions
+        this.version(29).stores({}).upgrade(async (tx) => {
+            // Add default emoji to existing actions if they don't have one
+            await tx.table('actions').toCollection().modify(action => {
+                if (!action.emoji) {
+                    // Set default emojis based on actionKey or just use ⭐
+                    if (action.actionKey === 'IPAD_CHARGED') action.emoji = '🔋';
+                    else if (action.actionKey === 'HOMEWORK_APPROVED') action.emoji = '📚';
+                    else if (action.actionKey === 'SECRET_AGENT_PASSED') action.emoji = '🕵️';
+                    else action.emoji = '⭐';
+                }
+            });
+        });
+
+        // Version 30: Add emoji support for rewards
+        this.version(30).stores({}).upgrade(async (tx) => {
+            // Add default emoji to existing rewards if they don't have one
+            await tx.table('rewards').toCollection().modify(reward => {
+                if (!reward.emoji) {
+                    reward.emoji = '🎁';
+                }
+            });
         });
 
         this.on('populate', async () => {

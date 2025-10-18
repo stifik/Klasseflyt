@@ -40,7 +40,7 @@ const PodView: React.FC<PodViewProps> = ({ onSelectAction }) => {
               >
                 {/* Ikon for system-handlingen */}
                 <div className="text-3xl mb-3">
-                  {action.actionKey === 'IPAD_CHARGED' ? '🔋' : '✅'}
+                  {action.emoji || '✅'}
                 </div>
                 
                 {/* Handling navn */}
@@ -78,7 +78,7 @@ const PodView: React.FC<PodViewProps> = ({ onSelectAction }) => {
             >
               {/* Standardikon for handlingen */}
               <div className="text-3xl mb-3">
-                ⭐
+                {action.emoji || '⭐'}
               </div>
               
               {/* Handling navn */}

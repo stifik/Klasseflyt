@@ -30,6 +30,7 @@ export type Reward = {
   cost: number; // For backward compatibility (same as currentPrice initially)
   basePrice: number; // Base/starting price
   currentPrice: number; // Dynamic price that changes with demand
+  emoji?: string;
 };
 
 export type Subject = {

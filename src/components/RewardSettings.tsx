@@ -24,6 +24,10 @@ export default function RewardSettings() {
   // Form states
   const [newRewardName, setNewRewardName] = useState('');
   const [newRewardCost, setNewRewardCost] = useState('');
+  const [newRewardEmoji, setNewRewardEmoji] = useState('🎁');
+
+  // Common emojis for rewards
+  const commonEmojis = ['🎁', '🏆', '🎉', '🍕', '🍬', '🍭', '🎮', '📱', '🎧', '⚽', '🏀', '🎨', '📚', '🌟', '💎', '🔥', '🎯', '🎪', '🎸', '🎬', '🍿', '🎂', '🎈', '⭐', '✨'];
   
   // Reward system settings state
   const [rewardSystem, setRewardSystem] = useState<RewardSystemSettings>({
@@ -119,11 +123,13 @@ export default function RewardSettings() {
       cost,
       basePrice: cost,
       currentPrice: cost,
+      emoji: newRewardEmoji,
     };
 
     await db.rewards.add(newReward);
     setNewRewardName('');
     setNewRewardCost('');
+    setNewRewardEmoji('🎁');
     
     toast({
       title: "Suksess",
@@ -170,24 +176,55 @@ export default function RewardSettings() {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Add new reward form */}
-              <form onSubmit={handleAddReward} className="flex gap-2">
-                <Input
-                  placeholder="Belønning"
-                  value={newRewardName}
-                  onChange={(e) => setNewRewardName(e.target.value)}
-                  className="flex-1"
-                />
-                <Input
-                  type="number"
-                  placeholder="Kostnad"
-                  value={newRewardCost}
-                  onChange={(e) => setNewRewardCost(e.target.value)}
-                  className="w-28"
-                />
-                <Button type="submit">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Legg til
-                </Button>
+              <form onSubmit={handleAddReward} className="space-y-3">
+                <div>
+                  <Label>Emoji</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <button
+                      type="button"
+                      className="text-3xl hover:scale-110 transition-transform p-2 border rounded"
+                      onClick={() => {
+                        const newEmoji = prompt('Skriv inn emoji:', newRewardEmoji);
+                        if (newEmoji && newEmoji.trim()) {
+                          setNewRewardEmoji(newEmoji.trim());
+                        }
+                      }}
+                    >
+                      {newRewardEmoji}
+                    </button>
+                    <div className="flex flex-wrap gap-1 flex-1">
+                      {commonEmojis.slice(0, 15).map(emoji => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          className="text-xl hover:scale-110 transition-transform p-1"
+                          onClick={() => setNewRewardEmoji(emoji)}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Belønning"
+                    value={newRewardName}
+                    onChange={(e) => setNewRewardName(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Kostnad"
+                    value={newRewardCost}
+                    onChange={(e) => setNewRewardCost(e.target.value)}
+                    className="w-28"
+                  />
+                  <Button type="submit">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Legg til
+                  </Button>
+                </div>
               </form>
 
               {/* Rewards list */}
@@ -202,13 +239,27 @@ export default function RewardSettings() {
                       key={reward.id}
                       className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
                     >
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {reward.name}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Grunnpris: {reward.basePrice} poeng
-                        </p>
+                      <div className="flex items-center gap-3 flex-1">
+                        <button
+                          type="button"
+                          className="text-2xl hover:scale-110 transition-transform"
+                          onClick={() => {
+                            const newEmoji = prompt('Velg en emoji:', reward.emoji || '🎁');
+                            if (newEmoji && newEmoji.trim()) {
+                              db.rewards.update(reward.id, { emoji: newEmoji.trim() });
+                            }
+                          }}
+                        >
+                          {reward.emoji || '🎁'}
+                        </button>
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {reward.name}
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Grunnpris: {reward.basePrice} poeng
+                          </p>
+                        </div>
                       </div>
                       <Button
                         variant="ghost"
