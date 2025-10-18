@@ -12,7 +12,7 @@ interface MainLayoutProps {
 }
 
 // Pages that should not show the sidebar/header
-const publicPages = ['/login', '/privacy', '/agent-reveal', '/bors'];
+const publicPages = ['/login', '/privacy', '/agent-reveal', '/bors', '/rewarddashboard'];
 
 export function MainLayout({ children }: MainLayoutProps) {
     const pathname = usePathname();

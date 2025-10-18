@@ -173,7 +173,7 @@ export default function RewardDashboard() {
   };
 
   return (
-    <div className="w-full">
+    <div className="h-screen flex flex-col overflow-hidden">
       {/* Notifikasjon */}
       {notification && (
         <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
@@ -185,9 +185,9 @@ export default function RewardDashboard() {
         </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between mb-3">
+      <Card className="flex-1 flex flex-col overflow-hidden m-2">
+        <CardHeader className="shrink-0">
+          <div className="flex items-center justify-between mb-2">
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="w-5 h-5" />
               Poengoversikt
@@ -266,7 +266,7 @@ export default function RewardDashboard() {
           )}
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="flex-1 overflow-auto">
           {viewMode === 'list' ? (
             /* Listevisning */
             <div className="space-y-3">
@@ -317,17 +317,18 @@ export default function RewardDashboard() {
             </div>
           ) : (
             /* Klassekartvisning */
-            <div className="w-full">
+            <div className="h-full w-full flex items-center justify-center overflow-hidden">
               {activeLayout && seatingChart ? (
-                <div className="w-full overflow-x-auto">
-                  <div className="p-1 inline-block" style={{ minWidth: '100%' }}>
-                    <div className="grid gap-1 w-full" style={{
-                      gridTemplateColumns: `repeat(${activeLayout.cols}, minmax(80px, 1fr))`,
-                    }}>
-                      {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
-                        Array.from({ length: activeLayout.cols }).map((_, colIndex) => {
+                <div className="w-full h-full flex flex-col items-center justify-center p-1">
+                  <div className="flex flex-col gap-1" style={{
+                    maxHeight: '100%',
+                    maxWidth: '100%',
+                  }}>
+                    {Array.from({ length: activeLayout.rows }).map((_, rowIndex) => (
+                      <div key={rowIndex} className="flex gap-0.5 justify-center">
+                        {Array.from({ length: activeLayout.cols }).map((_, colIndex) => {
                           if (!activeLayout.layout[rowIndex]?.[colIndex]) {
-                            return <div key={`${rowIndex}-${colIndex}`} className="w-full h-16" />;
+                            return <div key={`${rowIndex}-${colIndex}`} className="w-4" />;
                           }
                           const studentName = seatingChart[rowIndex]?.[colIndex]?.[0] || null;
                           const student = studentName ? students.find(s => s.name === studentName) : null;
@@ -336,47 +337,54 @@ export default function RewardDashboard() {
                           return (
                             <div
                               key={`${rowIndex}-${colIndex}`}
-                              className={`overflow-hidden flex flex-col rounded-lg transition-all w-full shadow-sm ${
+                              className={`overflow-hidden flex flex-col rounded-lg transition-all shadow-sm ${
                                 isHighlighted
                                   ? 'bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-500 shadow-md'
                                   : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
                               }`}
+                              style={{
+                                width: `calc((100vw - 4rem) / ${activeLayout.cols})`,
+                                height: `calc((100vh - 12rem) / ${activeLayout.rows})`,
+                                maxWidth: '200px',
+                                maxHeight: '140px',
+                                minHeight: '80px'
+                              }}
                             >
                               {studentName ? (
                                 <>
-                                  <div className="flex-1 flex flex-col items-center justify-center p-3 min-h-[70px]">
-                                    <div className="text-xs font-medium text-gray-900 dark:text-white text-center px-1">
+                                  <div className="flex-1 flex flex-col items-center justify-center p-2">
+                                    <div className="text-xs font-medium text-gray-900 dark:text-white text-center leading-tight">
                                       {studentName}
                                     </div>
-                                    <div className="text-sm font-semibold text-primary mt-1.5">
+                                    <div className="text-sm font-semibold text-primary mt-1">
                                       {student?.points ?? 0} pt
                                     </div>
                                   </div>
                                   <div className="flex border-t border-gray-200 dark:border-gray-700">
                                     <button
-                                      className="flex-1 bg-[#10b981] hover:bg-[#059669] text-white py-2 transition-all duration-200 text-xs font-medium border-r border-white/20 rounded-bl-lg flex items-center justify-center"
+                                      className="flex-1 bg-[#10b981] hover:bg-[#059669] text-white py-1 transition-all duration-200 border-r border-white/20 rounded-bl-lg flex items-center justify-center"
                                       onClick={() => setShowGiveDialog(student?.id!)}
                                       title="Gi poeng"
                                     >
-                                      <Zap className="w-3.5 h-3.5" />
+                                      <Zap className="w-3 h-3" />
                                     </button>
                                     <button
-                                      className="flex-1 bg-[#3b82f6] hover:bg-[#2563eb] text-white py-2 transition-all duration-200 flex items-center justify-center rounded-br-lg"
+                                      className="flex-1 bg-[#3b82f6] hover:bg-[#2563eb] text-white py-1 transition-all duration-200 flex items-center justify-center rounded-br-lg"
                                       onClick={() => viewTransactionHistory(student?.id!)}
                                       title="Vis transaksjonshistorikk"
                                     >
-                                      <BarChart3 className="w-3.5 h-3.5" />
+                                      <BarChart3 className="w-3 h-3" />
                                     </button>
                                   </div>
                                 </>
                               ) : (
-                                <div className="flex items-center justify-center h-24 text-xs text-gray-400 bg-gray-50 dark:bg-gray-900/50 rounded-lg">Tom pult</div>
+                                <div className="flex items-center justify-center h-full text-[10px] text-gray-400 bg-gray-50 dark:bg-gray-900/50 rounded-lg">Tom</div>
                               )}
                             </div>
                           );
-                        })
-                      ))}
-                    </div>
+                        })}
+                      </div>
+                    ))}
                   </div>
                 </div>
               ) : (
