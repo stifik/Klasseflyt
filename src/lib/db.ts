@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -41,6 +41,7 @@ export class MySubClassedDexie extends Dexie {
     purchasedRewards!: Table<PurchasedReward, number>;
     rewards!: Table<Reward, number>;
     actions!: Table<PositiveAction, number>;
+    rfidCards!: Table<RFIDCard, number>;
     secretAgent!: Table<{ id: string; studentId: string; studentName: string; mission: string; date: Date; status: 'pending' | 'analyzing' | 'passed' | 'failed' }, string>;
     secretAgentHistory!: Table<{ id?: number; studentId: string; studentName: string; mission: string; date: Date; status: 'passed' | 'failed' }, number>;
 
@@ -428,6 +429,11 @@ export class MySubClassedDexie extends Dexie {
                     reward.emoji = '🎁';
                 }
             });
+        });
+
+        // Version 31: Add RFID card support
+        this.version(31).stores({
+            rfidCards: '++id, &cardId, studentId, status',
         });
 
         this.on('populate', async () => {

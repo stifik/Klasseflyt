@@ -12,6 +12,8 @@ export type Transaction = {
   date: Date;
   pointsChange: number;
   description: string;
+  paymentMethod?: 'manual' | 'nfc'; // How the transaction was made
+  cardId?: string; // RFID card ID if paid with NFC
 };
 
 export type PurchasedReward = {
@@ -31,6 +33,15 @@ export type Reward = {
   basePrice: number; // Base/starting price
   currentPrice: number; // Dynamic price that changes with demand
   emoji?: string;
+};
+
+export type RFIDCard = {
+  id?: number;
+  cardId: string; // The RFID UID (unique identifier)
+  studentId: string;
+  status: 'active' | 'blocked';
+  createdAt: Date;
+  lastUsed?: Date;
 };
 
 export type Subject = {

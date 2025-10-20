@@ -61,3 +61,34 @@ For at dette skal fungere, må den samme "App Registration" som ble opprettet fo
 
 Når du mottar denne URI-en, legg den til i din `.env`-fil:
 `NEXT_PUBLIC_AZURE_AD_SCOPE_URI="api://din-client-id/user_impersonation"`
+
+## NFC/RFID-kort for belønningssystemet
+
+Klasseflyt støtter RFID/NFC-kort for enkel betaling i belønningsbutikken. Elever kan tæppe sitt personlige kort for å handle, i stedet for at lærer må håndtere hver transaksjon manuelt.
+
+### Kom i gang med NFC
+
+**Utstyr som trengs:**
+- RFID-kortleser (anbefalt: ACS ACR1255U-J1)
+- RFID-kort til elevene (ISO 14443A kompatible)
+
+**Oppsett:**
+1. Koble kortleseren til USB
+2. Start NFC Bridge Server:
+   ```bash
+   cd nfc-bridge
+   npm install    # Første gang
+   npm start      # Start serveren
+   ```
+3. Kortleseren vil automatisk bli oppdaget
+4. Bruk appen normalt - NFC-scanning er nå tilgjengelig!
+
+**Funksjoner:**
+- ✅ Registrer kort til elever (`/settings/rfid-cards`)
+- ✅ Enkel betaling i POS (`/rewardstore/pos`)
+- ✅ Blokkering av tapte kort
+- ✅ Transaksjonslogging med kort-ID
+- ✅ Test-modus uten hardware
+
+📖 **Detaljert dokumentasjon:** Se `docs/NFC_RFID_GUIDE.md` og `docs/NFC_QUICKSTART.md`
+

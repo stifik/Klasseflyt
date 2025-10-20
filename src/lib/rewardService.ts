@@ -234,6 +234,46 @@ export async function buyReward(studentId: string | number, rewardId: number): P
   }
 }
 
+// Update prices after a purchase (for external use, e.g., POS)
+export async function updatePricesAfterPurchase(rewardId: number): Promise<void> {
+  try {
+    const allRewards = await db.rewards.toArray();
+    const settings = await db.settings.get('userSettings');
+    const rewardSystem = settings?.rewardSystem || {
+      mode: 'simple',
+      priceIncreasePercent: 5,
+      priceDecreasePercent: 2,
+      priceFloorPercent: 50,
+      priceCeilingPercent: 200,
+    };
+
+    // Only update if in dynamic mode
+    if (rewardSystem.mode === 'dynamic') {
+      const updatedRewards = calculateNewPrices(
+        allRewards, 
+        rewardId,
+        rewardSystem.priceIncreasePercent,
+        rewardSystem.priceDecreasePercent,
+        rewardSystem.priceFloorPercent,
+        rewardSystem.priceCeilingPercent
+      );
+      
+      // Update all rewards in database
+      await Promise.all(
+        updatedRewards.map(r => db.rewards.update(r.id, {
+          currentPrice: r.currentPrice,
+          cost: r.cost
+        }))
+      );
+
+      // Synchronize prices to API (non-blocking)
+      syncPricesWithApi(updatedRewards);
+    }
+  } catch (error) {
+    console.error('Error updating prices after purchase:', error);
+  }
+}
+
 // Sync agent status to API endpoint
 export async function syncAgentStatusWithApi(
   status: 'pending' | 'analyzing' | 'passed' | 'failed',
