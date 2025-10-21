@@ -312,6 +312,11 @@ soundEffects.play('error');   // On error
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 21. okt 2025 | 1.1 | Bug fixes |
+| | | - Fixed infinite console logging loop |
+| | | - Fixed double charge issue |
+| | | - Improved NFC error handling |
+| | | - Reduced polling frequency (500ms → 1s) |
 | 20. okt 2025 | 1.0 | Initial implementation complete |
 | | | - Debouncing (3s cooldown) |
 | | | - Processing lock |

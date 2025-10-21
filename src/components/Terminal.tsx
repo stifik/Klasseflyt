@@ -77,38 +77,47 @@ const Terminal: React.FC = () => {
   // NFC listening effect - aktiveres når vi venter på kort
   useEffect(() => {
     let isListening = true;
+    let scanInterval: NodeJS.Timeout | null = null;
 
-    const listenForCard = async () => {
-      if (nfcStatus !== 'waiting' || !activeTransaction) {
+    const scanForCard = async () => {
+      if (!isListening || nfcStatus !== 'waiting' || !activeTransaction) {
         return;
       }
 
-      setNfcMessage('Hold kortet mot kortleseren...');
-      const card = await nfc.scanCard();
+      try {
+        const card = await nfc.scanCard();
 
-      if (!isListening) return;
+        if (!isListening) return;
 
-      if (!card) {
-        // Don't show error for normal "no card" situations
-        // Just silently retry after a short delay
-        setTimeout(() => {
-          if (isListening && nfcStatus === 'waiting') {
-            listenForCard(); // Retry
+        if (card) {
+          // Card detected - process it
+          if (scanInterval) {
+            clearInterval(scanInterval);
+            scanInterval = null;
           }
-        }, 500);
-        return;
+          await handleNFCCard(card.uid);
+        }
+        // If no card, the interval will retry automatically
+      } catch (error) {
+        console.error('Error scanning card:', error);
       }
-
-      // Process the card
-      await handleNFCCard(card.uid);
     };
 
-    if (nfcStatus === 'waiting') {
-      listenForCard();
+    if (nfcStatus === 'waiting' && activeTransaction) {
+      setNfcMessage('Hold kortet mot kortleseren...');
+      
+      // Poll for cards every 1 second instead of rapid retry
+      scanInterval = setInterval(scanForCard, 1000);
+      
+      // Also do immediate first scan
+      scanForCard();
     }
 
     return () => {
       isListening = false;
+      if (scanInterval) {
+        clearInterval(scanInterval);
+      }
     };
   }, [nfcStatus, activeTransaction]);
 

@@ -130,8 +130,6 @@ export const connectReader = async (): Promise<boolean> => {
  * Returns the card UID if successful
  */
 export const readCard = async (): Promise<NFCCard | null> => {
-  console.log('📖 Reading NFC card...');
-  
   const now = Date.now();
   
   // Priority 1: Try NFC Bridge Server
@@ -165,19 +163,15 @@ export const readCard = async (): Promise<NFCCard | null> => {
           type: 'RFID/PC-SC'
         };
       } else {
-        // Handle specific error types
+        // Handle specific error types silently (normal operation)
         const error = data.error || '';
         
-        if (error === 'CARD_REMOVED') {
-          console.log('ℹ️ Card was removed before reading could complete');
+        if (error === 'CARD_REMOVED' || error === 'NO_CARD') {
+          // Silent - these are expected during polling
           return null;
         }
         
-        if (error === 'NO_CARD') {
-          console.log('ℹ️ No card present on reader');
-          return null;
-        }
-        
+        // Only log unexpected errors
         console.error('❌ Bridge scan failed:', error);
         return null;
       }
@@ -290,8 +284,6 @@ export const isValidCardUID = (uid: string): boolean => {
  * Disconnect from reader
  */
 export const disconnectReader = async (): Promise<void> => {
-  console.log('🔌 Disconnecting from NFC reader...');
-  
   if (isWebHIDSupported()) {
     try {
       const devices = await (navigator as any).hid.getDevices();
@@ -300,7 +292,7 @@ export const disconnectReader = async (): Promise<void> => {
           await device.close();
         }
       }
-      console.log('✅ Disconnected from reader');
+      // Silent disconnect - no need to log
     } catch (error) {
       console.error('❌ Error disconnecting:', error);
     }
@@ -391,7 +383,10 @@ export const resetCooldown = (): void => {
  */
 export const setProcessing = (processing: boolean): void => {
   processingTransaction = processing;
-  console.log(`${processing ? '🔒' : '🔓'} Processing state: ${processing}`);
+  // Only log when locking (starting transaction), not when unlocking
+  if (processing) {
+    console.log('� Transaction processing started');
+  }
 };
 
 /**
