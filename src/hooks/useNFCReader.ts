@@ -10,6 +10,8 @@ import {
   listenForCards,
   isNFCSupported,
   isWebHIDSupported,
+  setProcessing,
+  resetCooldown,
   type NFCCard,
   type NFCReaderStatus
 } from '@/lib/nfcReader';
@@ -19,11 +21,13 @@ export interface UseNFCReaderReturn {
   error: string | null;
   lastCard: NFCCard | null;
   isSupported: boolean;
+  isProcessing: boolean;
   connect: () => Promise<boolean>;
   disconnect: () => Promise<void>;
   scan: () => Promise<NFCCard | null>;
   startListening: () => void;
   stopListening: () => void;
+  resetCooldown: () => void;
 }
 
 /**
@@ -34,6 +38,7 @@ export function useNFCReader(): UseNFCReaderReturn {
   const [error, setError] = useState<string | null>(null);
   const [lastCard, setLastCard] = useState<NFCCard | null>(null);
   const [isListening, setIsListening] = useState(false);
+  const [processingState, setProcessingState] = useState(false);
 
   const isSupported = isNFCSupported() || isWebHIDSupported();
 
@@ -76,21 +81,34 @@ export function useNFCReader(): UseNFCReaderReturn {
 
     setStatus('reading');
     setError(null);
+    setProcessingState(true);
+    setProcessing(true);
 
     try {
       const card = await readCard();
       if (card) {
         setLastCard(card);
         setStatus('connected');
+        
+        // Keep processing state for 2 seconds after successful read
+        setTimeout(() => {
+          setProcessingState(false);
+          setProcessing(false);
+        }, 2000);
+        
         return card;
       } else {
         setStatus('connected');
         setError('Ingen kort funnet');
+        setProcessingState(false);
+        setProcessing(false);
         return null;
       }
     } catch (err) {
       setStatus('error');
       setError(err instanceof Error ? err.message : 'Feil ved lesing');
+      setProcessingState(false);
+      setProcessing(false);
       return null;
     }
   }, [status]);
@@ -120,6 +138,11 @@ export function useNFCReader(): UseNFCReaderReturn {
     setIsListening(false);
   }, []);
 
+  const handleResetCooldown = useCallback(() => {
+    resetCooldown();
+    setProcessingState(false);
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -134,11 +157,13 @@ export function useNFCReader(): UseNFCReaderReturn {
     error,
     lastCard,
     isSupported,
+    isProcessing: processingState,
     connect,
     disconnect,
     scan,
     startListening,
-    stopListening
+    stopListening,
+    resetCooldown: handleResetCooldown
   };
 }
 

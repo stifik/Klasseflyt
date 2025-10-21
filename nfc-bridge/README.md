@@ -68,9 +68,10 @@ Server status.
 ## Feilsøking
 
 ### Problem: "No readers found"
-- Sjekk at kortleseren er koblet til
+- Sjekk at kortleseren er tilkoblet
 - Installer ACS drivere fra: https://www.acs.com.hk/en/driver/3/acr1255u-j1-secure-bluetooth-nfc-reader/
 - Restart serveren
+- På Windows, kan det være nødvendig å installere Visual Studio Build Tools for å kompilere `pcsclite` modulen
 
 ### Problem: "Access denied"
 - Kjør terminal som Administrator

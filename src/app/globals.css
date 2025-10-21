@@ -74,6 +74,22 @@ body {
         border-image: conic-gradient(from var(--gradient-angle, 0deg), hsl(0, 70%, 60%), hsl(60, 70%, 60%), hsl(120, 70%, 60%), hsl(200, 70%, 60%), hsl(270, 70%, 60%), hsl(330, 70%, 60%), hsl(0, 70%, 60%)) 1;
         animation: rainbow-pulse 2s infinite;
     }
+    
+    /* NFC Transaction Overlays */
+    @keyframes fade-in {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+    
+    .animate-fade-in {
+        animation: fade-in 0.3s ease-out;
+    }
 }
 
 

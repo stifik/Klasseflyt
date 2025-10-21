@@ -79,19 +79,25 @@ Sørg for at du har:
 7. Klikk **Registrer kort**
 
 ### Steg 3: Test POS
-1. Gå til **Belønningsbutikk → POS** (`http://localhost:3000/rewardstore/pos`)
-2. Se listen over belønninger
-3. Klikk på en belønning
-4. Hvis bridge serveren kjører:
-   - Klikk **Tæpp kort for å betale**
-   - Tæpp kortet på kortleseren
-   - Kjøpet gjennomføres automatisk!
-5. Hvis bridge ikke kjører (testing):
-   - Klikk **🧪 Test-modus**
-   - Velg et registrert kort fra dropdown
-   - Klikk **Simuler kort-scanning**
+1. Gå til **Terminal → Butikk** (`http://localhost:3000/terminal/pos`)
+2. Klikk på en belønning
+3. Velg betalingsmåte:
+   - **NFC-betaling (anbefalt):**
+     - Klikk **Tæpp NFC-kort**
+     - Nå kan elevene stå i kø og tæppe kortene sine - ett etter ett!
+     - Systemet behandler automatisk hvert kort
+   - **Manuell betaling:**
+     - Velg elev fra dropdown
+     - Klikk OK
 
-### Steg 4: Verifiser transaksjonslogg
+### Steg 4: Test kø-funksjonalitet
+1. Velg samme belønning
+2. Klikk **Tæpp NFC-kort**
+3. La 3-4 elever tæppe kortene sine etter hverandre
+4. Hver transaksjon behandles automatisk
+5. Ingen trykking på knapper mellom hver elev! 🎉
+
+### Steg 5: Verifiser transaksjonslogg
 1. Sjekk at kjøpet ble logget
 2. Se at `paymentMethod: 'nfc'` og `cardId` er satt
 3. Se at kortets `lastUsed` tidspunkt er oppdatert
@@ -201,30 +207,54 @@ const PORT = 3002;  // Endre til ledig port
 
 ## 💡 Tips for best opplevelse
 
-1. **Bruk Chrome på Windows**
-   - Best støtte for WebHID
-   - Mest stabil implementasjon
+1. **Kø-basert flyt**
+   - Klikk **Tæpp NFC-kort** én gang
+   - La elevene stå i kø og tæppe etter hverandre
+   - Systemet behandler automatisk hver transaksjon
+   - Ingen trykking mellom hver elev!
 
-2. **Test med manuell input først**
+2. **Bruk NFC Bridge Server for best ytelse**
+   - Raskere responstid enn Web NFC
+   - Fungerer på alle nettlesere (ikke bare Chrome)
+   - Ingen sikkerhetsprompts for hver scanning
+
+3. **Test med manuell input først**
    - Verifiser at all logikk fungerer
    - Lettere å debugge uten hardware
+   - Fallback når bridge server ikke kjører
 
-3. **Registrer testdata**
+4. **Registrer testdata**
    - Opprett 3-5 test-kort
    - Knytt til ulike elever
    - Test alle scenarioer (nok poeng, ikke nok, blokkert, etc.)
 
-4. **Sjekk konsollen**
+5. **Sjekk konsollen**
    - F12 → Console
    - Vi logger mye debug-info
    - Hjelper å se hva som skjer
 
-## 🎯 Neste steg
+## 🎯 Oppsummering
 
-Vil du at jeg skal:
-1. **Lage en mock/test-modus** for POS uten hardware?
-2. **Utvide transaksjonshistorikken** med bedre visning av NFC-kjøp?
-3. **Implementere iPad-ladet integrasjonen** nå?
-4. **Forbedre NFC-lesing** med bedre error handling?
+✅ **Ferdig implementert:**
+- NFC-kort registrering og administrasjon
+- PC/SC bridge server for ACS ACR1255U-J1
+- Integrert NFC-betaling i Terminal (POD/POS)
+- Kø-basert flyt (klikk én gang, scan mange kort)
+- Automatisk transaksjonslogging med cardId og paymentMethod
+- Manuell fallback hvis NFC ikke er tilgjengelig
+- **Debouncing (3 sekunder cooldown)** - forhindrer duplikater
+- **Processing lock** - kun én transaksjon om gangen
+- **Visuell feedback** - processing og success overlays
+- **Lydsignaler** - success og error-lyder
 
-La meg vite hva du vil prioritere! 🚀
+🎉 **Fordeler:**
+- Elevene kan stå i kø - ingen teacher overhead
+- Raskere transaksjonsprosess
+- Ingen duplikat-transaksjoner (selv om kort blir liggende)
+- Bedre oversikt over hvem som kjøper hva
+- Kortene kan blokkeres hvis nødvendig
+- Full transaksjonshistorikk med kortinformasjon
+- Audio feedback for umiddelbar bekreftelse
+
+📋 **Testing:**
+Se detaljert test-guide: `docs/NFC_DEBOUNCING_TEST_GUIDE.md`

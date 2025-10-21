@@ -14,6 +14,12 @@ const BRIDGE_URL = typeof window !== 'undefined'
   ? (window.localStorage?.getItem('nfc_bridge_url') || process.env.NEXT_PUBLIC_NFC_BRIDGE_URL || 'http://localhost:3001')
   : 'http://localhost:3001';
 
+// Debouncing state
+let lastReadTime: number = 0;
+let lastCardId: string | null = null;
+let processingTransaction: boolean = false;
+const DEBOUNCE_MS: number = 3000; // 3 seconds cooldown
+
 export type NFCReaderStatus = 'disconnected' | 'connecting' | 'connected' | 'reading' | 'error';
 
 export interface NFCCard {
@@ -120,11 +126,13 @@ export const connectReader = async (): Promise<boolean> => {
 };
 
 /**
- * Read NFC/RFID card
+ * Read NFC/RFID card with debouncing
  * Returns the card UID if successful
  */
 export const readCard = async (): Promise<NFCCard | null> => {
   console.log('📖 Reading NFC card...');
+  
+  const now = Date.now();
   
   // Priority 1: Try NFC Bridge Server
   const bridgeAvailable = await isBridgeAvailable();
@@ -138,13 +146,39 @@ export const readCard = async (): Promise<NFCCard | null> => {
       const data = await response.json();
       
       if (data.success) {
-        console.log('✅ Card read via Bridge:', data.cardId);
+        const cardId = data.cardId;
+        
+        // Check debounce - ignore if same card within cooldown period
+        if (cardId === lastCardId && now - lastReadTime < DEBOUNCE_MS) {
+          const remainingSeconds = Math.round((DEBOUNCE_MS - (now - lastReadTime)) / 1000);
+          console.log(`🚫 Cooldown aktiv - ignorerer lesning (${remainingSeconds}s gjenstår)`);
+          return null;
+        }
+        
+        // Update debounce state
+        lastCardId = cardId;
+        lastReadTime = now;
+        
+        console.log('✅ Card read via Bridge:', cardId);
         return {
-          uid: data.cardId,
+          uid: cardId,
           type: 'RFID/PC-SC'
         };
       } else {
-        console.error('❌ Bridge scan failed:', data.error);
+        // Handle specific error types
+        const error = data.error || '';
+        
+        if (error === 'CARD_REMOVED') {
+          console.log('ℹ️ Card was removed before reading could complete');
+          return null;
+        }
+        
+        if (error === 'NO_CARD') {
+          console.log('ℹ️ No card present on reader');
+          return null;
+        }
+        
+        console.error('❌ Bridge scan failed:', error);
         return null;
       }
     } catch (error) {
@@ -161,6 +195,20 @@ export const readCard = async (): Promise<NFCCard | null> => {
       
       return new Promise((resolve) => {
         ndef.addEventListener('reading', ({ serialNumber }: any) => {
+          const now = Date.now();
+          
+          // Check debounce
+          if (serialNumber === lastCardId && now - lastReadTime < DEBOUNCE_MS) {
+            const remainingSeconds = Math.round((DEBOUNCE_MS - (now - lastReadTime)) / 1000);
+            console.log(`🚫 Cooldown aktiv - ignorerer lesning (${remainingSeconds}s gjenstår)`);
+            resolve(null);
+            return;
+          }
+          
+          // Update debounce state
+          lastCardId = serialNumber;
+          lastReadTime = now;
+          
           console.log('✅ Card read via Web NFC:', serialNumber);
           resolve({
             uid: serialNumber,
@@ -273,12 +321,31 @@ export const listenForCards = (
     const ndef = new (window as any).NDEFReader();
     
     const handleReading = ({ serialNumber }: any) => {
-      if (isListening) {
-        onCard({
-          uid: serialNumber,
-          type: 'NFC'
-        });
+      if (!isListening) return;
+      
+      const now = Date.now();
+      
+      // Ignore if processing another transaction
+      if (processingTransaction) {
+        console.log('⏳ Transaksjon pågår - ignorerer ny lesning');
+        return;
       }
+      
+      // Check debounce
+      if (serialNumber === lastCardId && now - lastReadTime < DEBOUNCE_MS) {
+        const remainingSeconds = Math.round((DEBOUNCE_MS - (now - lastReadTime)) / 1000);
+        console.log(`🚫 Cooldown aktiv - ignorerer lesning (${remainingSeconds}s gjenstår)`);
+        return;
+      }
+      
+      // Update debounce state
+      lastCardId = serialNumber;
+      lastReadTime = now;
+      
+      onCard({
+        uid: serialNumber,
+        type: 'NFC'
+      });
     };
     
     const handleError = (error: any) => {
@@ -307,4 +374,29 @@ export const listenForCards = (
   return () => {
     isListening = false;
   };
+};
+
+/**
+ * Reset debounce cooldown (for admin override or after transaction complete)
+ */
+export const resetCooldown = (): void => {
+  lastReadTime = 0;
+  lastCardId = null;
+  processingTransaction = false;
+  console.log('🔄 NFC cooldown reset');
+};
+
+/**
+ * Set processing state (call before starting transaction)
+ */
+export const setProcessing = (processing: boolean): void => {
+  processingTransaction = processing;
+  console.log(`${processing ? '🔒' : '🔓'} Processing state: ${processing}`);
+};
+
+/**
+ * Get current processing state
+ */
+export const isProcessing = (): boolean => {
+  return processingTransaction;
 };

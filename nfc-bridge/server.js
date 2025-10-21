@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const pcsclite = require('@pokusew/pcsclite');
+const pcsclite = require('pcsclite');
 
 const app = express();
 const PORT = 3001;
@@ -59,8 +59,26 @@ pcsc.on('error', (err) => {
 // Helper function to read card UID
 function readCardUID(reader) {
   return new Promise((resolve, reject) => {
+    // Check if reader is available
+    if (!reader) {
+      return reject(new Error('No reader available'));
+    }
+
     reader.connect({ share_mode: reader.SCARD_SHARE_SHARED }, (err, protocol) => {
       if (err) {
+        // Check for specific error codes
+        const errorCode = err.message || '';
+        
+        // Card removed error (0x80100069)
+        if (errorCode.includes('0x80100069') || errorCode.includes('fjernet')) {
+          return reject(new Error('CARD_REMOVED'));
+        }
+        
+        // Card not present
+        if (errorCode.includes('0x8010000C') || errorCode.includes('No smartcard')) {
+          return reject(new Error('NO_CARD'));
+        }
+        
         return reject(new Error('Failed to connect to card: ' + err.message));
       }
 
@@ -72,6 +90,12 @@ function readCardUID(reader) {
       reader.transmit(getUID, 255, protocol, (err, data) => {
         if (err) {
           reader.disconnect(reader.SCARD_LEAVE_CARD, () => {});
+          
+          const errorCode = err.message || '';
+          if (errorCode.includes('0x80100069') || errorCode.includes('fjernet')) {
+            return reject(new Error('CARD_REMOVED'));
+          }
+          
           return reject(new Error('Failed to read UID: ' + err.message));
         }
 
