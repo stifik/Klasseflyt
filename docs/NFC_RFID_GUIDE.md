@@ -116,14 +116,15 @@ nfc.error; // Feilmelding
 - ❌ Safari - ingen NFC-støtte ennå
 
 ### Anbefalt oppsett:
-- **Kortleser**: ACS ACR1255U-J1 (USB eller Bluetooth)
+- **Kortleser**: ACS ACR1255U-J1 (USB **eller Bluetooth** ✅)
+  - ✅ **Bluetooth bekreftet fungerende!** Koble leseren via Bluetooth - fungerer akkurat som kablet
 - **Nettleser**: Chrome eller Edge (desktop)
 - **Kort**: ISO 14443A RFID-kort (MIFARE, NTAG, etc.)
 
 ## Fremtidig utvikling
 
 ### Planlagt funksjonalitet:
-- 🔄 Bluetooth-støtte for kortleser
+- ✅ **Bluetooth-støtte for kortleser** - FERDIG! Fungerer perfekt
 - 🔄 NFC-basert innskudd/uttak av poeng
 - 🔄 Integrasjon med "ladet iPad"-funksjon
 - 🔄 Bulk-registrering av kort (CSV import)

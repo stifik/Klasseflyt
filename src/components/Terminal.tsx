@@ -106,8 +106,8 @@ const Terminal: React.FC = () => {
     if (nfcStatus === 'waiting' && activeTransaction) {
       setNfcMessage('Hold kortet mot kortleseren...');
       
-      // Poll for cards every 1 second instead of rapid retry
-      scanInterval = setInterval(scanForCard, 1000);
+      // Poll for cards every 250ms (hardware polling rate)
+      scanInterval = setInterval(scanForCard, 250);
       
       // Also do immediate first scan
       scanForCard();
@@ -178,10 +178,28 @@ const Terminal: React.FC = () => {
     if (activeTransaction.type === 'reward') {
       // Check balance first for rewards
       const student = students.find(s => s.id === studentId);
-      const currentPoints = student?.points || 0;
+      
+      if (!student || !student.name) {
+        const message = 'Kunne ikke finne eleven. Vennligst prøv igjen.';
+        soundEffects.play('error');
+        if (cardId) {
+          setNfcStatus('error');
+          setNfcMessage(message);
+          setNFCProcessing(false);
+          setTimeout(() => {
+            setNfcStatus('waiting');
+          }, 4000);
+        } else {
+          showNotification(message, 'error');
+          setActiveTransaction(null);
+        }
+        return;
+      }
+      
+      const currentPoints = student.points || 0;
 
       if (currentPoints < activeTransaction.cost) {
-        const message = `${student?.name} har kun ${currentPoints} poeng, men ${activeTransaction.name} koster ${activeTransaction.cost} poeng.`;
+        const message = `${student.name} har kun ${currentPoints} poeng, men ${activeTransaction.name} koster ${activeTransaction.cost} poeng.`;
         
         soundEffects.play('error');
         
@@ -347,10 +365,19 @@ const Terminal: React.FC = () => {
     }
   };
 
-  const handleStartNFCMode = () => {
+  const handleStartNFCMode = async () => {
     setPaymentMode('nfc');
     setNfcStatus('waiting');
-    setNfcMessage('Klar! Tæpp kort for å betale...');
+    setNfcMessage('Kobler til kortleser...');
+    
+    // Ensure connection is established before scanning
+    try {
+      await nfc.connect();
+      setNfcMessage('Klar! Tæpp kort for å betale...');
+    } catch (error) {
+      console.error('Failed to connect to NFC reader:', error);
+      setNfcMessage('Klar! Tæpp kort for å betale...');
+    }
   };
 
   const handleCancelNFC = () => {
@@ -397,6 +424,16 @@ const Terminal: React.FC = () => {
 
   const handleManualStudentSelect = async (studentId: string) => {
     if (!studentId || !activeTransaction) return;
+    
+    // Verify student exists
+    const student = students.find(s => s.id === studentId);
+    console.log('Manual select - studentId:', studentId, 'found:', student, 'all students:', students.length);
+    
+    if (!student || !student.name) {
+      showNotification(`Kunne ikke finne eleven med ID: ${studentId}. Prøv igjen.`, 'error');
+      return;
+    }
+    
     await processTransaction(studentId);
   };
 
@@ -535,11 +572,13 @@ const Terminal: React.FC = () => {
                   className="w-full p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg"
                 >
                   <option value="" disabled>Velg elev fra listen...</option>
-                  {students.map((student) => (
-                    <option key={student.id} value={student.id}>
-                      {student.name} ({student.points || 0} poeng)
-                    </option>
-                  ))}
+                  {students
+                    .filter(student => student.name && student.id) // Only show students with name and id
+                    .map((student) => (
+                      <option key={student.id} value={student.id}>
+                        {student.name} ({student.points || 0} poeng)
+                      </option>
+                    ))}
                 </select>
               </div>
 

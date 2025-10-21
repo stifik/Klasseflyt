@@ -66,7 +66,7 @@ export const isWebHIDSupported = (): boolean => {
  * Returns true if successful, false otherwise
  */
 export const connectReader = async (): Promise<boolean> => {
-  console.log('🔌 Attempting to connect to NFC reader...');
+  // Silent connect - only log errors
   
   // Priority 1: Try NFC Bridge Server (best for PC/SC readers)
   const bridgeAvailable = await isBridgeAvailable();
@@ -76,7 +76,7 @@ export const connectReader = async (): Promise<boolean> => {
       const data = await response.json();
       
       if (data.readersConnected > 0) {
-        console.log('✅ Connected via NFC Bridge Server:', data.currentReader);
+        // Only log on first connect, not on every poll
         return true;
       } else {
         console.warn('⚠️ Bridge server running but no readers found');
