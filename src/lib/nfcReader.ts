@@ -70,13 +70,18 @@ export const connectReader = async (): Promise<boolean> => {
   
   // Priority 1: Try NFC Bridge Server (best for PC/SC readers)
   const bridgeAvailable = await isBridgeAvailable();
+  console.log('🔍 Bridge available:', bridgeAvailable);
+  
   if (bridgeAvailable) {
     try {
+      console.log('📡 Fetching bridge status...');
       const response = await fetch(`${BRIDGE_URL}/api/status`);
       const data = await response.json();
+      console.log('📡 Bridge status:', data);
       
       if (data.readersConnected > 0) {
         // Only log on first connect, not on every poll
+        console.log('✅ Bridge connected with', data.readersConnected, 'readers');
         return true;
       } else {
         console.warn('⚠️ Bridge server running but no readers found');
@@ -85,6 +90,7 @@ export const connectReader = async (): Promise<boolean> => {
       }
     } catch (error) {
       console.error('❌ Bridge server error:', error);
+      // Don't return here - fall through to other methods
     }
   } else {
     console.log('ℹ️ NFC Bridge Server not available at', BRIDGE_URL);
@@ -136,12 +142,15 @@ export const readCard = async (): Promise<NFCCard | null> => {
   const bridgeAvailable = await isBridgeAvailable();
   if (bridgeAvailable) {
     try {
+      console.log('📡 Fetching from bridge /api/scan...');
       const response = await fetch(`${BRIDGE_URL}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
       
+      console.log('📡 Bridge response status:', response.status, response.statusText);
       const data = await response.json();
+      console.log('📡 Bridge response data:', data);
       
       if (data.success) {
         const cardId = data.cardId;

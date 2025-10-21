@@ -43,20 +43,27 @@ export function useNFCReader(): UseNFCReaderReturn {
   const isSupported = isNFCSupported() || isWebHIDSupported();
 
   const connect = useCallback(async () => {
+    console.log('🔌 connect() called - setting status to connecting');
     setStatus('connecting');
     setError(null);
     
     try {
+      console.log('🔌 Calling connectReader()...');
       const success = await connectReader();
+      console.log('🔌 connectReader() returned:', success);
+      
       if (success) {
+        console.log('✅ Setting status to connected');
         setStatus('connected');
         return true;
       } else {
+        console.log('❌ Connection failed - setting status to error');
         setStatus('error');
         setError('Kunne ikke koble til kortleser');
         return false;
       }
     } catch (err) {
+      console.log('❌ Exception in connect:', err);
       setStatus('error');
       setError(err instanceof Error ? err.message : 'Ukjent feil');
       return false;
@@ -74,18 +81,26 @@ export function useNFCReader(): UseNFCReaderReturn {
   }, []);
 
   const scan = useCallback(async () => {
-    if (status !== 'connected' && status !== 'reading') {
+    console.log('🔍 scan() called - current status:', status);
+    
+    // Allow scanning while connecting (it will wait for connection to complete)
+    if (status !== 'connected' && status !== 'reading' && status !== 'connecting') {
+      console.log('❌ Not ready - status is:', status);
       setError('Kortleser ikke tilkoblet');
       return null;
     }
 
+    console.log('✅ Status OK, proceeding with scan');
     setStatus('reading');
     setError(null);
     setProcessingState(true);
     setProcessing(true);
 
     try {
+      console.log('📡 Calling readCard()...');
       const card = await readCard();
+      console.log('📡 readCard() returned:', card);
+      
       if (card) {
         setLastCard(card);
         setStatus('connected');
@@ -176,21 +191,30 @@ export function useCardScanner() {
 
   const scanCard = useCallback(async () => {
     setIsScanning(true);
+    console.log('🎯 scanCard called - nfc.status:', nfc.status);
 
     try {
       // Auto-connect if not connected
-      if (nfc.status === 'disconnected') {
+      if (nfc.status === 'disconnected' || nfc.status === 'error') {
+        console.log('🔌 Auto-connecting in scanCard...');
         const connected = await nfc.connect();
+        console.log('🔌 Connect result:', connected, 'new status:', nfc.status);
         if (!connected) {
           setIsScanning(false);
+          console.log('❌ Failed to connect, returning null');
           return null;
         }
+        // Wait a bit for state to update
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
+      console.log('📡 About to call nfc.scan() - status is:', nfc.status);
       const card = await nfc.scan();
+      console.log('📡 Scan result:', card);
       setIsScanning(false);
       return card;
     } catch (err) {
+      console.log('❌ Error in scanCard:', err);
       setIsScanning(false);
       return null;
     }

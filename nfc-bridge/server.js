@@ -74,6 +74,11 @@ function readCardUID(reader) {
           return reject(new Error('CARD_REMOVED'));
         }
         
+        // Reader busy/not available (0x80100017)
+        if (errorCode.includes('0x80100017') || errorCode.includes('ikke tilgjengelig')) {
+          return reject(new Error('NO_CARD'));
+        }
+        
         // Card not present, invalid handle, or device not responding (0x8010000C, 0x80100003, 0x0000001f)
         if (errorCode.includes('0x8010000C') || errorCode.includes('0x80100003') || 
             errorCode.includes('0x0000001f') || errorCode.includes('No smartcard') || 
@@ -89,8 +94,10 @@ function readCardUID(reader) {
         0xFF, 0xCA, 0x00, 0x00, 0x00  // Get Data command for UID
       ]);
 
-      // Use buffer size instead of protocol as third argument
-      reader.transmit(getUID, 40, protocol, (err, data) => {
+      // Ensure protocol is a number (pcsclite SCARD_PROTOCOL_T1 = 2)
+      const pcscProtocol = (typeof protocol === 'number' && protocol > 0) ? protocol : 2;
+      
+      reader.transmit(getUID, 40, pcscProtocol, (err, data) => {
         if (err) {
           reader.disconnect(reader.SCARD_LEAVE_CARD, () => {});
           

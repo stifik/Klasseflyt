@@ -90,6 +90,7 @@ const Terminal: React.FC = () => {
         if (!isListening) return;
 
         if (card) {
+          console.log('✅ Card detected in Terminal:', card.uid);
           // Card detected - process it
           if (scanInterval) {
             clearInterval(scanInterval);
@@ -99,7 +100,7 @@ const Terminal: React.FC = () => {
         }
         // If no card, the interval will retry automatically
       } catch (error) {
-        console.error('Error scanning card:', error);
+        console.error('❌ Error scanning card in Terminal:', error);
       }
     };
 
@@ -123,12 +124,14 @@ const Terminal: React.FC = () => {
 
   // Handle NFC card scanning
   const handleNFCCard = async (cardUid: string) => {
+    console.log('🔵 handleNFCCard called with UID:', cardUid);
     setNfcStatus('processing');
     setNfcMessage('Behandler...');
     setNFCProcessing(true);
 
     // Find RFID card
     const rfidCard = rfidCards.find(c => c.cardId === cardUid);
+    console.log('🔍 Looking for card:', cardUid, 'Found:', rfidCard, 'Total cards:', rfidCards.length);
 
     if (!rfidCard) {
       soundEffects.play('error');
@@ -154,6 +157,8 @@ const Terminal: React.FC = () => {
 
     // Find student
     const student = students.find(s => s.id === rfidCard.studentId);
+    console.log('🔍 Looking for student with ID:', rfidCard.studentId, 'Type:', typeof rfidCard.studentId, 'Found:', student);
+    
     if (!student) {
       soundEffects.play('error');
       setNfcStatus('error');
@@ -166,18 +171,23 @@ const Terminal: React.FC = () => {
     }
 
     // Process transaction
-    await processTransaction(student.id!, rfidCard.cardId);
+    console.log('💳 Processing transaction for student:', student.id, 'with card:', rfidCard.cardId);
+    await processTransaction(String(student.id), rfidCard.cardId);
   };
 
   // Process transaction (both manual and NFC)
   const processTransaction = async (studentId: string, cardId?: string) => {
+    console.log('💰 processTransaction called - studentId:', studentId, 'cardId:', cardId, 'activeTransaction:', activeTransaction?.name);
+    
     if (!activeTransaction) return;
 
     let result: RewardResult;
 
     if (activeTransaction.type === 'reward') {
       // Check balance first for rewards
-      const student = students.find(s => s.id === studentId);
+      // Match both string and number IDs
+      const student = students.find(s => String(s.id) === String(studentId));
+      console.log('🔍 Finding student in processTransaction - searching for:', studentId, 'found:', student);
       
       if (!student || !student.name) {
         const message = 'Kunne ikke finne eleven. Vennligst prøv igjen.';
@@ -425,16 +435,20 @@ const Terminal: React.FC = () => {
   const handleManualStudentSelect = async (studentId: string) => {
     if (!studentId || !activeTransaction) return;
     
-    // Verify student exists
-    const student = students.find(s => s.id === studentId);
-    console.log('Manual select - studentId:', studentId, 'found:', student, 'all students:', students.length);
+    // Convert to number if needed (Dexie auto-increment IDs are numbers)
+    const numericId = studentId;
+    
+    // Verify student exists - compare both as string and number
+    const student = students.find(s => s.id === numericId || s.id === String(numericId) || String(s.id) === numericId);
+    console.log('Manual select - studentId:', studentId, 'type:', typeof studentId, 'found:', student, 'all students:', students.length);
     
     if (!student || !student.name) {
       showNotification(`Kunne ikke finne eleven med ID: ${studentId}. Prøv igjen.`, 'error');
       return;
     }
     
-    await processTransaction(studentId);
+    // Use the student's actual ID (which might be number or string)
+    await processTransaction(String(student.id));
   };
 
   let content;
