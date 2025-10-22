@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import type { Reward } from '@/lib/rewards';
+import type { Reward } from '@/lib/types';
 
 interface PosViewProps {
   rewards: Reward[];

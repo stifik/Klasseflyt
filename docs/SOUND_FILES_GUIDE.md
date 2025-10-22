@@ -1,53 +1,242 @@
-# 🔊 Hvordan laste ned lydfiler for NFC-transaksjoner
+# 🔊 Lydfiler for NFC-transaksjoner
 
 Systemet trenger to lydfiler for å gi audio-feedback ved NFC-transaksjoner:
-- `success.mp3` - Spilles ved vellykket kjøp
-- `error.mp3` - Spilles ved feil (ikke nok poeng, blokkert kort, etc.)
+- `success.mp3` - Spilles ved vellykket kjøp ✅
+- `error.mp3` - Spilles ved feil (ikke nok poeng, blokkert kort) ❌
 
-## Raskeste Metode: Last ned fra Mixkit (gratis)
+---
 
-### Success Sound
-1. Gå til: https://mixkit.co/free-sound-effects/success/
-2. Velg en lyd du liker (anbefalt: "Notification bell alert" eller "Prize winning")
-3. Klikk **Download** (MP3 format)
+## ⚡ Raskeste metode: Mixkit (gratis, ingen registrering)
+
+### 1. Success Sound
+
+**Anbefalt lyd:** "Notification bell alert"
+
+1. Gå til: https://mixkit.co/free-sound-effects/notification/
+2. Finn "Notification bell alert" eller "Prize winning"  
+   *(Scroll nedover - det er en kort, positiv "ding" lyd)*
+3. Klikk **Free Download** knappen
 4. Omdøp filen til `success.mp3`
-5. Legg den i `public/sounds/` mappen
+5. Flytt til: `public/sounds/success.mp3` i Klasseflyt-prosjektet
 
-### Error Sound
+**Direkte link:**  
+https://mixkit.co/free-sound-effects/notification/
+
+---
+
+### 2. Error Sound
+
+**Anbefalt lyd:** "System error buzzer"
+
 1. Gå til: https://mixkit.co/free-sound-effects/fail/
-2. Velg en lyd (anbefalt: "Wrong answer fail" eller "System error buzzer")
-3. Klikk **Download** (MP3 format)
+2. Finn "Wrong answer fail" eller "System error buzzer"  
+   *(Kort "buzz" eller "beep" lyd)*
+3. Klikk **Free Download** knappen
 4. Omdøp filen til `error.mp3`
-5. Legg den i `public/sounds/` mappen
+5. Flytt til: `public/sounds/error.mp3`
 
-## Alternative Kilder
+**Direkte link:**  
+https://mixkit.co/free-sound-effects/fail/
+
+---
+
+## 📁 Plassering av filer
+
+Lag mappen hvis den ikke finnes:
+```bash
+mkdir public\sounds
+```
+
+Legg lydfilene her:
+```
+Klasseflyt/
+  public/
+    sounds/
+      success.mp3  ← Positiv lyd (ding, chime)
+      error.mp3    ← Negativ lyd (buzz, beep)
+```
+
+---
+
+## ✅ Test at det fungerer
+
+### Test i nettleser
+
+1. Start Klasseflyt: `npm run dev`
+2. Åpne: http://localhost:3000/sounds/success.mp3  
+   → Du skal høre en positiv lyd
+3. Åpne: http://localhost:3000/sounds/error.mp3  
+   → Du skal høre en negativ lyd
+
+### Test i Developer Console
+
+1. Åpne Developer Console (F12)
+2. Test success-lyd:
+   ```javascript
+   new Audio('/sounds/success.mp3').play()
+   ```
+3. Test error-lyd:
+   ```javascript
+   new Audio('/sounds/error.mp3').play()
+   ```
+
+### Test i NFC-flow
+
+1. Gå til **Terminal → Butikk**
+2. Velg en belønning
+3. Tæpp et kort med nok poeng → `success.mp3` skal spille ✅
+4. Tæpp et blokkert kort → `error.mp3` skal spille ❌
+
+---
+
+## 🎨 Alternative kilder
 
 ### Freesound.org (krever gratis konto)
+
 1. Gå til: https://freesound.org/
 2. Registrer gratis konto
-3. Søk etter "success chime" og "error beep"
+3. Søk etter:
+   - **Success**: "success chime", "positive beep", "notification"
+   - **Error**: "error beep", "buzzer", "wrong"
 4. Last ned MP3-filer
 5. Omdøp og legg i `public/sounds/`
 
+**Fordel:** Stort bibliotek, høy kvalitet  
+**Ulempe:** Krever registrering
+
+---
+
 ### ZapSplat (krever gratis konto)
+
 1. Gå til: https://www.zapsplat.com/
 2. Registrer gratis konto
-3. Søk i kategoriene:
-   - Success: "UI" → "Positive"
-   - Error: "UI" → "Negative"
+3. Gå til kategorier:
+   - **Success**: "UI" → "Positive"
+   - **Error**: "UI" → "Negative"
 4. Last ned MP3-format
 5. Omdøp og legg i `public/sounds/`
 
-## Lag egne lyder med Audacity (gratis software)
+**Fordel:** Kategorisert, lett å finne  
+**Ulempe:** Krever registrering
+
+---
+
+## 🛠️ Lag egne lyder med Audacity (gratis)
 
 ### Installer Audacity
-1. Last ned fra: https://www.audacityteam.org/
-2. Installer programmet
 
-### Lag Success Sound
+Last ned fra: https://www.audacityteam.org/
+
+### Lag success-lyd
+
 1. Åpne Audacity
-2. Generate → Tone
-   - Waveform: Sine
+2. **Generate → Tone**
+   - Waveform: `Sine`
+   - Frequency: `800 Hz`
+   - Amplitude: `0.8`
+   - Duration: `0.2 seconds`
+3. **Effect → Fade Out** (siste 0.1 sek)
+4. **File → Export → Export as MP3**
+5. Navn: `success.mp3`
+
+### Lag error-lyd
+
+1. **Generate → Tone**
+   - Waveform: `Square`
+   - Frequency: `200 Hz`
+   - Amplitude: `0.6`
+   - Duration: `0.3 seconds`
+2. **Effect → Repeat** (2 ganger for dobbel beep)
+3. **File → Export → Export as MP3**
+4. Navn: `error.mp3`
+
+---
+
+## 🐛 Feilsøking
+
+### Ingen lyd spilles i appen
+
+**Sjekkliste:**
+- [ ] Lydfiler finnes i `public/sounds/` mappen
+- [ ] Filnavn er nøyaktig `success.mp3` og `error.mp3` (små bokstaver)
+- [ ] Nettleser er ikke muted
+- [ ] Lydtest i console fungerer: `new Audio('/sounds/success.mp3').play()`
+- [ ] Sjekk console (F12) for feilmeldinger
+
+### Feil filformat
+
+Systemet krever **MP3**-format. Hvis du har andre formater:
+
+**Konverter til MP3:**
+1. Åpne Audacity
+2. **File → Open** (velg lydfil)
+3. **File → Export → Export as MP3**
+4. Lagre som `success.mp3` eller `error.mp3`
+
+### Lyd spiller i nettleser, men ikke i appen
+
+**Debugging:**
+1. Åpne Developer Console (F12) under testing
+2. Se etter feilmeldinger når transaksjon fullføres
+3. Test manuelt:
+   ```javascript
+   const audio = new Audio('/sounds/success.mp3');
+   audio.play().then(() => console.log('✅ Lyd spilte'))
+     .catch(err => console.error('❌ Lydfeil:', err));
+   ```
+
+---
+
+## 📋 Rask sjekkliste
+
+- [ ] `success.mp3` lastet ned fra Mixkit
+- [ ] `error.mp3` lastet ned fra Mixkit
+- [ ] Begge filer ligger i `public/sounds/` mappen
+- [ ] Test i nettleser: http://localhost:3000/sounds/success.mp3
+- [ ] Test i console: `new Audio('/sounds/success.mp3').play()`
+- [ ] Test i NFC-flow: Tæpp kort og hør success-lyd
+- [ ] Test error-lyd: Tæpp blokkert kort og hør error-lyd
+
+---
+
+## 💡 Tips for beste lydopplevelse
+
+### Volum
+- Ikke for høy (kan skremme elever)
+- Ikke for lav (må høres i klasserom)
+- Test i faktisk klasseromsmiljø
+
+### Lengde
+- **Success**: 0.2-0.5 sekunder (kort og positiv)
+- **Error**: 0.3-0.6 sekunder (litt lengre, tydelig)
+
+### Type
+- **Success**: Høy frekvens (pleasant, "ding")
+- **Error**: Lav frekvens (attention-grabbing, "buzz")
+
+---
+
+## 🎯 Anbefalte lydfiler
+
+### Mine favoritter fra Mixkit:
+
+**Success:**
+- "Notification bell alert" - kort, positiv ding
+- "Prize winning" - litt lenger, mer "celebration"
+- "Positive notification" - moderne, clean
+
+**Error:**
+- "System error buzzer" - klassisk error-buzz
+- "Wrong answer fail" - litt mer "game-like"
+- "Negative notification" - subtil men tydelig
+
+**Alle er gratis uten registrering!** 🎉
+
+---
+
+**Versjon:** 2.0  
+**Sist oppdatert:** 22. oktober 2025  
+**Kompatibel med:** Klasseflyt v3.1+
    - Frequency: 800 Hz
    - Amplitude: 0.8
    - Duration: 0.5 seconds

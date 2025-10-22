@@ -1,157 +1,311 @@
-# 📚 NFC Debouncing - Complete Documentation Index
+# 📚 NFC/RFID Dokumentasjon - Index# 📚 NFC Debouncing - Complete Documentation Index
 
-**Status:** ✅ Implementation Complete - Ready for Testing  
+
+
+Komplett dokumentasjonsindex for NFC/RFID-funksjonalitet i Klasseflyt.**Status:** ✅ Implementation Complete - Ready for Testing  
+
 **Date:** 20. oktober 2025
 
 ---
 
+---
+
+## 🚀 Start her!
+
 ## 🎯 Quick Start
 
-1. **Les først:** `NFC_DEBOUNCING_IMPLEMENTATION_SUMMARY.md` - Komplett oversikt
-2. **Last ned lydfiler:** `SOUND_FILES_GUIDE.md` - Påkrevd for testing
+### Ny bruker?
+
+👉 **[NFC_GETTING_STARTED.md](./NFC_GETTING_STARTED.md)** - Kom i gang med NFC/RFID  1. **Les først:** `NFC_DEBOUNCING_IMPLEMENTATION_SUMMARY.md` - Komplett oversikt
+
+Komplett guide fra oppsett til første transaksjon. Start her hvis du aldri har brukt NFC i Klasseflyt før.2. **Last ned lydfiler:** `SOUND_FILES_GUIDE.md` - Påkrevd for testing
+
 3. **Test systemet:** `NFC_DEBOUNCING_TEST_GUIDE.md` - 10 scenarier
-4. **Forstå flyten:** `NFC_TRANSACTION_FLOW_VISUAL.md` - Visuelle diagrammer
 
----
+---4. **Forstå flyten:** `NFC_TRANSACTION_FLOW_VISUAL.md` - Visuelle diagrammer
 
-## 📄 Documentation Files
 
-### Core Documentation
 
-#### 1. `NFC_DEBOUNCING_IMPLEMENTATION_SUMMARY.md`
-**Hva:** Komplett implementerings-oversikt  
-**For hvem:** Alle  
+## 📖 Dokumentasjon---
+
+
+
+### Brukerguider## 📄 Documentation Files
+
+
+
+| Dokument | Beskrivelse | For hvem |### Core Documentation
+
+|----------|-------------|----------|
+
+| **[NFC_GETTING_STARTED.md](./NFC_GETTING_STARTED.md)** | Kom i gang - oppsett og testing | Alle nye brukere |#### 1. `NFC_DEBOUNCING_IMPLEMENTATION_SUMMARY.md`
+
+| **[NFC_RFID_GUIDE.md](./NFC_RFID_GUIDE.md)** | Fullstendig funksjonalitetsoversikt | Sluttbrukere, lærere |**Hva:** Komplett implementerings-oversikt  
+
+| **[SOUND_FILES_GUIDE.md](./SOUND_FILES_GUIDE.md)** | Hvordan laste ned lydfiler | Alle |**For hvem:** Alle  
+
 **Innhold:**
-- Hva er implementert (debouncing, processing lock, overlays, lyd)
+
+### Testing og QA- Hva er implementert (debouncing, processing lock, overlays, lyd)
+
 - Alle endrede/nye filer
-- Tekniske detaljer
-- Success criteria
-- Neste steg
+
+| Dokument | Beskrivelse | For hvem |- Tekniske detaljer
+
+|----------|-------------|----------|- Success criteria
+
+| **[NFC_TESTING_GUIDE.md](./NFC_TESTING_GUIDE.md)** | Omfattende testscenarier | QA, Testing |- Neste steg
+
+| **[NFC_TRANSACTION_FLOW_VISUAL.md](./NFC_TRANSACTION_FLOW_VISUAL.md)** | Visuelle flytdiagrammer | Utviklere, QA |
 
 ---
+
+### Teknisk dokumentasjon
 
 #### 2. `NFC_DEBOUNCING_TEST_GUIDE.md`
-**Hva:** Omfattende test-guide  
-**For hvem:** QA / Testing  
-**Innhold:**
+
+| Dokument | Beskrivelse | For hvem |**Hva:** Omfattende test-guide  
+
+|----------|-------------|----------|**For hvem:** QA / Testing  
+
+| **[NFC_DEBOUNCING_IMPLEMENTATION_SUMMARY.md](./NFC_DEBOUNCING_IMPLEMENTATION_SUMMARY.md)** | Implementeringsdetaljer | Utviklere |**Innhold:**
+
 - 10 detaljerte test-scenarier
-- Forventede resultater for hvert scenario
+
+### Arkiv (historiske bugfixes)- Forventede resultater for hvert scenario
+
 - Lydtesting
-- Feilsøking
-- Success criteria checklist
-- Console output forklaring
+
+| Dokument | Beskrivelse | Status |- Feilsøking
+
+|----------|-------------|--------|- Success criteria checklist
+
+| **[archive/BUGFIX_DOUBLE_CHARGE_AND_SCAN_ERROR.md](./archive/BUGFIX_DOUBLE_CHARGE_AND_SCAN_ERROR.md)** | Fix for dobbel-belastning | ✅ Fikset |- Console output forklaring
+
+| **[archive/BUGFIX_INFINITE_CONSOLE_LOOP.md](./archive/BUGFIX_INFINITE_CONSOLE_LOOP.md)** | Fix for infinite retry loop | ✅ Fikset |
 
 **Test-scenarier:**
-1. Normal flyt
+
+---1. Normal flyt
+
 2. Kort blir liggende på leseren (debouncing)
-3. Fjern/legg raskt (< 3 sek)
+
+## 🎯 Bruksscenarier - Hvilken guide trenger du?3. Fjern/legg raskt (< 3 sek)
+
 4. Fjern/legg sent (> 3 sek)
-5. Ikke nok poeng (error-lyd)
-6. Blokkert kort (error-lyd)
+
+### "Jeg skal sette opp NFC for første gang"5. Ikke nok poeng (error-lyd)
+
+➡️ **[NFC_GETTING_STARTED.md](./NFC_GETTING_STARTED.md)**6. Blokkert kort (error-lyd)
+
 7. Ukjent kort (error-lyd)
-8. Kø-funksjonalitet (4 elever)
-9. Avbryt scanning
+
+### "Jeg vil forstå hva NFC kan gjøre i Klasseflyt"8. Kø-funksjonalitet (4 elever)
+
+➡️ **[NFC_RFID_GUIDE.md](./NFC_RFID_GUIDE.md)**9. Avbryt scanning
+
 10. Manuell fallback
 
----
+### "Jeg skal teste NFC-funksjonaliteten"
 
-#### 3. `NFC_TRANSACTION_FLOW_VISUAL.md`
-**Hva:** Visuelle flow-diagrammer  
+➡️ **[NFC_TESTING_GUIDE.md](./NFC_TESTING_GUIDE.md)**---
+
+
+
+### "Jeg trenger lydfiler"#### 3. `NFC_TRANSACTION_FLOW_VISUAL.md`
+
+➡️ **[SOUND_FILES_GUIDE.md](./SOUND_FILES_GUIDE.md)****Hva:** Visuelle flow-diagrammer  
+
 **For hvem:** Utviklere / Teknisk forståelse  
-**Innhold:**
-- Steg-for-steg transaksjonsflyt (ASCII art)
-- Error flows
+
+### "Jeg skal debugge eller forstå implementeringen"**Innhold:**
+
+➡️ **[NFC_DEBOUNCING_IMPLEMENTATION_SUMMARY.md](./NFC_DEBOUNCING_IMPLEMENTATION_SUMMARY.md)**  - Steg-for-steg transaksjonsflyt (ASCII art)
+
+➡️ **[NFC_TRANSACTION_FLOW_VISUAL.md](./NFC_TRANSACTION_FLOW_VISUAL.md)**- Error flows
+
 - Debouncing i aksjon (timeline)
-- Queue mode visualisering
+
+---- Queue mode visualisering
+
 - Decision tree
-- State machine diagrammer
+
+## ✨ Hva er implementert?- State machine diagrammer
+
 - UI states
 
----
+### Core funksjonalitet
 
-#### 4. `SOUND_FILES_GUIDE.md`
-**Hva:** Guide for å laste ned lydfiler  
-**For hvem:** Setup / Installation  
+- ✅ **RFID-kort administrasjon** (`/settings/rfid-cards`)---
+
+  - Registrer kort (skann eller manuelt)
+
+  - Knytt kort til elever#### 4. `SOUND_FILES_GUIDE.md`
+
+  - Blokker/aktiver kort**Hva:** Guide for å laste ned lydfiler  
+
+  - Administrer kortliste**For hvem:** Setup / Installation  
+
 **Innhold:**
-- Hvor få gratis lydfiler (Mixkit, Freesound, ZapSplat)
-- Hvordan lage egne med Audacity
-- Online generators (SFXR.me)
-- Anbefalte lydkarakteristikker
-- Verifikasjons-instruksjoner
+
+- ✅ **NFC-betaling i Terminal** (`/terminal/pos`)- Hvor få gratis lydfiler (Mixkit, Freesound, ZapSplat)
+
+  - Velg belønning- Hvordan lage egne med Audacity
+
+  - Tæpp kort for å betale- Online generators (SFXR.me)
+
+  - Kø-funksjonalitet (ingen teacher overhead!)- Anbefalte lydkarakteristikker
+
+  - Automatisk transaksjonslogging- Verifikasjons-instruksjoner
+
 - Hvordan slå av/på lyd
 
----
+### Sikkerhet og robusthet
 
-### Supporting Documentation
+- ✅ **Debouncing** - 3 sekunders cooldown forhindrer duplikater---
+
+- ✅ **Processing lock** - Kun én transaksjon om gangen
+
+- ✅ **Saldosjekk** - Avviser kjøp ved utilstrekkelig saldo### Supporting Documentation
+
+- ✅ **Kortvalidering** - Blokkerte og uregistrerte kort avvises
 
 #### 5. `NFC_QUICKSTART.md`
-**Hva:** Opprinnelig NFC-oppsett guide  
-**Status:** Oppdatert med debouncing-info  
-**Innhold:**
-- Hardware setup (ACS ACR1255U-J1)
-- NFC Bridge Server setup
+
+### Brukeropplevelse**Hva:** Opprinnelig NFC-oppsett guide  
+
+- ✅ **Visuell feedback** - Processing og success overlays**Status:** Oppdatert med debouncing-info  
+
+- ✅ **Lydsignaler** - Success og error-lyder**Innhold:**
+
+- ✅ **Live status** - Fargekodede statuser i UI- Hardware setup (ACS ACR1255U-J1)
+
+- ✅ **Transaksjonshistorikk** - Full logging med kort-ID- NFC Bridge Server setup
+
 - Kort-registrering
-- Oppdatert med nye features
 
----
+### Teknisk- Oppdatert med nye features
 
-#### 6. `public/sounds/README.md`
+- ✅ **PC/SC Bridge Server** - For ACS ACR1255U-J1 (USB eller Bluetooth)
+
+- ✅ **Web NFC fallback** - Chrome Android support---
+
+- ✅ **Manuell input** - Testing uten hardware
+
+- ✅ **Dexie database** - Lokal lagring med `rfidCards` tabell#### 6. `public/sounds/README.md`
+
 **Hva:** Kort guide i sounds-mappen  
-**Innhold:**
+
+---**Innhold:**
+
 - Quick start for lydfiler
-- Link til detaljert guide
+
+## 🛠️ Hardware støtte- Link til detaljert guide
+
 - Verifikasjonskommandoer
 
----
+### Anbefalt oppsett
 
-## 🗂️ File Structure
+- **Kortleser**: ACS ACR1255U-J1---
 
-```
+- **Tilkobling**: USB eller Bluetooth ✅
+
+- **Kort**: ISO 14443A RFID-kort (MIFARE, NTAG)## 🗂️ File Structure
+
+- **OS**: Windows (med PC/SC drivere)
+
+- **Nettleser**: Alle (Chrome, Edge, Firefox, Safari)```
+
 Klasseflyt/
-├── docs/
-│   ├── NFC_DEBOUNCING_IMPLEMENTATION_SUMMARY.md  ⭐ START HER
-│   ├── NFC_DEBOUNCING_TEST_GUIDE.md              ⭐ TESTING
+
+### Alternativ (begrenset)├── docs/
+
+- **Mobil**: Android med Chrome (Web NFC API)│   ├── NFC_DEBOUNCING_IMPLEMENTATION_SUMMARY.md  ⭐ START HER
+
+- **Uten hardware**: Manuell input for testing│   ├── NFC_DEBOUNCING_TEST_GUIDE.md              ⭐ TESTING
+
 │   ├── NFC_TRANSACTION_FLOW_VISUAL.md            📊 VISUALISERING
-│   ├── SOUND_FILES_GUIDE.md                      🔊 LYD SETUP
+
+---│   ├── SOUND_FILES_GUIDE.md                      🔊 LYD SETUP
+
 │   ├── NFC_QUICKSTART.md                         🚀 OPPRINNELIG GUIDE
-│   └── NFC_README.md                             📚 DENNE FILEN
+
+## 🔄 Quick Links│   └── NFC_README.md                             📚 DENNE FILEN
+
 │
-├── public/
-│   └── sounds/
-│       ├── README.md                             📝 Kort guide
-│       ├── success.mp3                           🔊 TRENGS (download)
-│       └── error.mp3                             🔊 TRENGS (download)
+
+### Kom i gang (5 minutter)├── public/
+
+1. [Sjekk kortleser](./NFC_GETTING_STARTED.md#1%EF%B8%8F%E2%83%A3-sjekk-at-kortleseren-er-tilkoblet)│   └── sounds/
+
+2. [Installer bridge](./NFC_GETTING_STARTED.md#2%EF%B8%8F%E2%83%A3-installer-nfc-bridge-server)│       ├── README.md                             📝 Kort guide
+
+3. [Start servere](./NFC_GETTING_STARTED.md#3%EF%B8%8F%E2%83%A3-start-bridge-server)│       ├── success.mp3                           🔊 TRENGS (download)
+
+4. [Test](./NFC_GETTING_STARTED.md#5%EF%B8%8F%E2%83%A3-test-at-bridge-fungerer)│       └── error.mp3                             🔊 TRENGS (download)
+
 │
-├── src/
-│   ├── lib/
-│   │   ├── nfcReader.ts                          ✅ ENDRET (debouncing)
-│   │   └── soundEffects.ts                       ✨ NY (audio system)
-│   ├── hooks/
+
+### Vanlige problemer├── src/
+
+- [Bridge finner ikke kortleser](./NFC_GETTING_STARTED.md#bridge-server-problemer)│   ├── lib/
+
+- [Kort blir ikke lest](./NFC_GETTING_STARTED.md#kortleser-problemer)│   │   ├── nfcReader.ts                          ✅ ENDRET (debouncing)
+
+- [Duplikat-transaksjoner](./NFC_TESTING_GUIDE.md#scenario-2-kort-blir-liggende-på-leseren)│   │   └── soundEffects.ts                       ✨ NY (audio system)
+
+- [Ingen lyd](./SOUND_FILES_GUIDE.md)│   ├── hooks/
+
 │   │   └── useNFCReader.ts                       ✅ ENDRET (processing state)
-│   ├── components/
+
+---│   ├── components/
+
 │   │   └── Terminal.tsx                          ✅ ENDRET (overlays + lyd)
-│   └── app/
+
+## 📊 Dokumentstatus│   └── app/
+
 │       └── globals.css                           ✅ ENDRET (fade-in animation)
-│
-└── nfc-bridge/
-    └── server.js                                 ✅ EKSISTERER (PC/SC bridge)
-```
 
----
+| Kategori | Antall | Status |│
 
-## 🎯 Implementation Checklist
+|----------|--------|--------|└── nfc-bridge/
+
+| **Brukerguider** | 3 | ✅ Oppdatert |    └── server.js                                 ✅ EKSISTERER (PC/SC bridge)
+
+| **Testing** | 2 | ✅ Oppdatert |```
+
+| **Teknisk** | 1 | ✅ Oppdatert |
+
+| **Arkiv** | 2 | 🗄️ Historisk |---
+
+
+
+**Sist oppdatert:** 22. oktober 2025  ## 🎯 Implementation Checklist
+
+**Versjon:** 2.0
 
 ### ✅ Completed (Code)
-- [x] Debouncing logic (3 second cooldown)
-- [x] Processing lock (one transaction at a time)
-- [x] Sound system with preload
-- [x] Processing overlay (spinner + "Don't remove card")
-- [x] Success overlay (green screen + checkmark)
-- [x] Error handling with audio feedback
-- [x] Status alerts in transaction dialog
-- [x] CSS animations (fade-in)
 
-### ⏳ Pending (Setup)
+---- [x] Debouncing logic (3 second cooldown)
+
+- [x] Processing lock (one transaction at a time)
+
+## 💡 Tips- [x] Sound system with preload
+
+- [x] Processing overlay (spinner + "Don't remove card")
+
+- **Første gang?** Start med [NFC_GETTING_STARTED.md](./NFC_GETTING_STARTED.md)- [x] Success overlay (green screen + checkmark)
+
+- **Problemer?** Sjekk [feilsøkingsseksjonen](./NFC_GETTING_STARTED.md#%E2%9D%93-feilsøking) først- [x] Error handling with audio feedback
+
+- **Testing?** Følg alle scenarier i [NFC_TESTING_GUIDE.md](./NFC_TESTING_GUIDE.md)- [x] Status alerts in transaction dialog
+
+- **Utvikler?** Les [NFC_DEBOUNCING_IMPLEMENTATION_SUMMARY.md](./NFC_DEBOUNCING_IMPLEMENTATION_SUMMARY.md) for tekniske detaljer- [x] CSS animations (fade-in)
+
+
+
+**Lykke til med NFC i Klasseflyt! 🎉**### ⏳ Pending (Setup)
+
 - [ ] Download sound files (`success.mp3`, `error.mp3`)
 - [ ] Place sound files in `public/sounds/`
 - [ ] Test all 10 scenarios

@@ -13,15 +13,15 @@ interface StudentLockStatusProps {
 export default function StudentLockStatus({ appSettings }: StudentLockStatusProps) {
   const students = useLiveQuery(() => db.students.toArray());
   
-  const activeLayout = useLiveQuery(() => {
+  const activeLayout: SeatingLayout | undefined = useLiveQuery(() => {
     if (appSettings.selectedSeatingLayoutId) {
       return db.seatingLayouts.get(appSettings.selectedSeatingLayoutId);
     }
     return Promise.resolve(undefined);
-  }, [appSettings.selectedSeatingLayoutId]);
+  }, [appSettings.selectedSeatingLayoutId]) as SeatingLayout | undefined;
 
   const lockedStudentNames = useMemo(() => {
-    return new Set(activeLayout?.lockedDesks?.map(desk => desk.studentName) || []);
+    return new Set(activeLayout?.lockedDesks?.map((desk) => desk.studentName) || []);
   }, [activeLayout]);
 
   if (!students) {

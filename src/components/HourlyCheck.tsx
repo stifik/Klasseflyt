@@ -60,7 +60,7 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
   
   const [localChecks, setLocalChecks] = useState(initialChecks || []);
 
-  const [selectedStudentsForLog, setSelectedStudentsForLog] = useState<string[]>([]);
+  const [selectedStudentsForLog, setSelectedStudentsForLog] = useState<number[]>([]);
   const [logMessage, setLogMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const sortedStudents = useMemo(() => [...students].sort((a,b) => a.name.localeCompare(b.name)), [students]);
@@ -133,7 +133,7 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
            d1Date.getDate() === d2Date.getDate();
   }
   
-  const getChecksForStudent = (studentId: string, checkDate: Date, period: number): HourlyCheck[] => {
+  const getChecksForStudent = (studentId: number, checkDate: Date, period: number): HourlyCheck[] => {
     return localChecks.filter(
       (c) =>
         c.studentId === studentId &&
@@ -142,7 +142,7 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
     );
   };
 
-  const handleStudentClick = async (studentId: string) => {
+  const handleStudentClick = async (studentId: number) => {
     if (!activeBehaviorId) return;
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
     const dateStartOfDay = new Date(date);
@@ -214,14 +214,14 @@ export default function HourlyCheck({ students, initialChecks, onUpdate, seating
 
 
   const StudentButton = ({ student }: { student: Student }) => {
-    const checksForPeriod = getChecksForStudent(student.id, date, currentPeriod);
+    const checksForPeriod = getChecksForStudent(student.id!, date, currentPeriod);
     const activeBehaviorType = behaviorTypes.find(bt => bt.id === activeBehaviorId);
     const hasActiveBehavior = checksForPeriod.some(c => c.behaviorId === activeBehaviorId);
     const selectedColorClasses = activeBehaviorType ? colorConfig[activeBehaviorType.color] : null;
 
     return (
         <button
-            onClick={() => handleStudentClick(student.id)}
+            onClick={() => handleStudentClick(student.id!)}
             className={cn(
                 "flex flex-col items-center justify-center p-2 text-center border rounded-lg w-full aspect-[7/5] transition-all",
                 "bg-secondary hover:bg-muted",

@@ -759,25 +759,25 @@ const useStudentStats = (
 
 
 const StudentReport = (props: Omit<ReportsProps, 'activeSubTab' | 'onSubTabChange'>) => {
-    const [openStudents, setOpenStudents] = useState<Record<string, boolean>>({});
+    const [openStudents, setOpenStudents] = useState<Record<number, boolean>>({});
     const behaviorTypes = props.settings.behaviorTypes || [];
     const studentStats = useStudentStats(
-        props.students, 
-        props.subjects, 
-        props.homework, 
-        props.submissions, 
+        props.students,
+        props.subjects,
+        props.homework,
+        props.submissions,
         props.submissionAttempts,
-        props.tests, 
-        props.testResults, 
-        props.dailyChecks, 
-        props.remarks, 
+        props.tests,
+        props.testResults,
+        props.dailyChecks,
+        props.remarks,
         props.hourlyChecks,
         props.learningGoals,
-        props.goalAchievements, 
+        props.goalAchievements,
         behaviorTypes
     );
-    
-    const toggleStudent = (studentId: string) => {
+
+    const toggleStudent = (studentId: number) => {
         setOpenStudents(prev => ({ ...prev, [studentId]: !prev[studentId] }));
     };
 

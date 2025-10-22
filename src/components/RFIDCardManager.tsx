@@ -45,7 +45,7 @@ export default function RFIDCardManager() {
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState<RFIDCard | null>(null);
   const [manualCardId, setManualCardId] = useState('');
-  const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [selectedStudentId, setSelectedStudentId] = useState<number | ''>('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   const cards = useLiveQuery(() => db.rfidCards.toArray(), []) || [];
@@ -54,7 +54,7 @@ export default function RFIDCardManager() {
   const nfc = useCardScanner();
 
   // Get student name for a card
-  const getStudentName = (studentId: string) => {
+  const getStudentName = (studentId: number) => {
     const student = students.find(s => s.id === studentId);
     return student?.name || 'Ukjent elev';
   };
@@ -381,13 +381,13 @@ export default function RFIDCardManager() {
             {/* Student Selection */}
             <div className="space-y-2">
               <Label htmlFor="student">Velg elev</Label>
-              <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+              <Select value={selectedStudentId === '' ? '' : String(selectedStudentId)} onValueChange={(v) => setSelectedStudentId(v === '' ? '' : Number(v))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Velg en elev" />
                 </SelectTrigger>
                 <SelectContent>
                   {students.map((student) => (
-                    <SelectItem key={student.id} value={student.id!}>
+                    <SelectItem key={student.id} value={String(student.id!)}>
                       {student.name}
                     </SelectItem>
                   ))}
@@ -427,13 +427,13 @@ export default function RFIDCardManager() {
 
             <div className="space-y-2">
               <Label htmlFor="newStudent">Velg ny elev</Label>
-              <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+              <Select value={selectedStudentId === '' ? '' : String(selectedStudentId)} onValueChange={(v) => setSelectedStudentId(v === '' ? '' : Number(v))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Velg en elev" />
                 </SelectTrigger>
                 <SelectContent>
                   {students.map((student) => (
-                    <SelectItem key={student.id} value={student.id!}>
+                    <SelectItem key={student.id} value={String(student.id!)}>
                       {student.name}
                     </SelectItem>
                   ))}

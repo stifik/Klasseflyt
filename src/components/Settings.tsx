@@ -188,7 +188,7 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
     }
   };
 
-  const handleDeleteStudent = async (id: string) => {
+  const handleDeleteStudent = async (id: number) => {
     const studentName = initialStudents.find(s => s.id === id)?.name;
     try {
       await db.students.delete(id);
@@ -1065,9 +1065,9 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
 }
 
 const GroupingRulesManager: React.FC<{students: Student[], appSettings: AppSettings, onAppSettingsChange: (settings: AppSettings) => void}> = ({ students, appSettings, onAppSettingsChange }) => {
-    const [keepTogetherSelection, setKeepTogetherSelection] = React.useState<string[]>([]);
-    const [keepApartStudent1, setKeepApartStudent1] = React.useState("");
-    const [keepApartStudent2, setKeepApartStudent2] = React.useState("");
+    const [keepTogetherSelection, setKeepTogetherSelection] = React.useState<number[]>([]);
+    const [keepApartStudent1, setKeepApartStudent1] = React.useState<number | "">("");
+    const [keepApartStudent2, setKeepApartStudent2] = React.useState<number | "">("");
     const [search, setSearch] = React.useState("");
     
     const rules = appSettings.groupingRules || { keepTogether: [], keepApart: [] };
@@ -1187,13 +1187,13 @@ const GroupingRulesManager: React.FC<{students: Student[], appSettings: AppSetti
             <div>
                 <Label>Hold elever adskilt</Label>
                 <div className="flex gap-2 mt-1">
-                    <Select value={keepApartStudent1} onValueChange={setKeepApartStudent1}>
+                    <Select value={keepApartStudent1 === "" ? "" : String(keepApartStudent1)} onValueChange={(v) => setKeepApartStudent1(v === "" ? "" : Number(v))}>
                         <SelectTrigger><SelectValue placeholder="Elev 1" /></SelectTrigger>
-                        <SelectContent>{students.filter(s => s.id !== keepApartStudent2).map(s => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}</SelectContent>
+                        <SelectContent>{students.filter(s => s.id !== keepApartStudent2).map(s => <SelectItem key={s.id} value={String(s.id!)}>{s.name}</SelectItem>)}</SelectContent>
                     </Select>
-                    <Select value={keepApartStudent2} onValueChange={setKeepApartStudent2}>
+                    <Select value={keepApartStudent2 === "" ? "" : String(keepApartStudent2)} onValueChange={(v) => setKeepApartStudent2(v === "" ? "" : Number(v))}>
                         <SelectTrigger><SelectValue placeholder="Elev 2" /></SelectTrigger>
-                        <SelectContent>{students.filter(s => s.id !== keepApartStudent1).map(s => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}</SelectContent>
+                        <SelectContent>{students.filter(s => s.id !== keepApartStudent1).map(s => <SelectItem key={s.id} value={String(s.id!)}>{s.name}</SelectItem>)}</SelectContent>
                     </Select>
                     <Button onClick={handleAddKeepApart} size="icon"><Plus /></Button>
                 </div>

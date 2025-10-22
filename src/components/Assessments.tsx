@@ -155,7 +155,7 @@ const AddTestDialog: FC<{ subjects: Subject[]; learningGoals: LearningGoal[]; on
 const TestsComponent = ({ students, subjects, tests = [], testResults = [], learningGoals }: TestsProps) => {
   const { toast } = useToast();
   
-  const getResult = (studentId: string, testId: number) => testResults.find(r => r.studentId === studentId && r.testId === testId);
+  const getResult = (studentId: number, testId: number) => testResults.find(r => r.studentId === studentId && r.testId === testId);
 
   const sortedStudents = useMemo(() => {
     return [...students].sort((a, b) => a.name.localeCompare(b.name, 'nb'));
@@ -165,7 +165,7 @@ const TestsComponent = ({ students, subjects, tests = [], testResults = [], lear
     return [...(tests || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [tests]);
 
-  const handleScoreChange = async (studentId: string, testId: number, score: string) => {
+  const handleScoreChange = async (studentId: number, testId: number, score: string) => {
     const newScore = score === '' ? null : parseFloat(score);
     if (newScore !== null && isNaN(newScore)) return;
 
@@ -359,7 +359,7 @@ const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchieve
         }
     };
 
-    const handleStatusChange = async (studentId: string, goalId: string) => {
+    const handleStatusChange = async (studentId: number, goalId: string) => {
         const existing = goalAchievements.find(a => a.studentId === studentId && a.goalId === goalId);
         const currentStatus = existing?.status || 'NotAchieved';
         const nextIndex = (statusOrder.indexOf(currentStatus) + 1) % statusOrder.length;
@@ -445,7 +445,7 @@ const LearningGoalsComponent = ({ students, subjects, learningGoals, goalAchieve
                                     const relevantResults = linkedTests.map(test => {
                                         const result = testResults.find(r => r.studentId === student.id && r.testId === test.id);
                                         return result ? { ...result, maxScore: test.maxScore, score: result.score!, testTitle: test.title } : null;
-                                    }).filter((r): r is { id: number, studentId: string; testId: number; score: number; comment?: string | undefined; maxScore: number; testTitle: string } => r !== null && r.score !== null);
+                                    }).filter((r): r is { id: number, studentId: number; testId: number; score: number; comment?: string | undefined; maxScore: number; testTitle: string } => r !== null && r.score !== null);
 
                                     return (
                                         <TableCell key={goal.id} className="p-1 text-center">

@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "./ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { ScrollArea } from "./ui/scroll-area";
 import { formatDistanceToNow } from 'date-fns';
@@ -24,7 +24,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Checkbox } from "./ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
-import { Settings as SettingsComponent } from "@/components/Settings";
+import SettingsComponent from "@/components/Settings";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 
@@ -43,7 +43,7 @@ type ViewMode = 'groups' | 'stations';
 
 type GroupWithId = {
     id: string;
-    studentIds: string[];
+    studentIds: number[];
     groupNumber: number; // Permanent group number
 };
 
@@ -58,7 +58,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 };
 
 
-const DraggableStudentItem = ({ studentId, studentName }: { studentId: string, studentName: string }) => {
+const DraggableStudentItem = ({ studentId, studentName }: { studentId: number, studentName: string }) => {
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
         id: `student-${studentId}`,
         data: { type: 'student', studentId, studentName },
@@ -79,7 +79,7 @@ const DraggableStudentItem = ({ studentId, studentName }: { studentId: string, s
     );
 };
 
-const DroppableGroupCard = ({ group, studentMap, onEdit, onDelete, children }: { group: GroupWithId, studentMap: Map<string, string>, onEdit: () => void, onDelete: () => void, children: React.ReactNode }) => {
+const DroppableGroupCard = ({ group, studentMap, onEdit, onDelete, children }: { group: GroupWithId, studentMap: Map<number, string>, onEdit: () => void, onDelete: () => void, children: React.ReactNode }) => {
     const { setNodeRef, isOver } = useDroppable({
         id: `group-${group.id}`,
         data: { type: 'group', groupId: group.id },
@@ -104,7 +104,7 @@ const DroppableGroupCard = ({ group, studentMap, onEdit, onDelete, children }: {
 };
 
 
-const DraggableGroup = ({ group, studentMap }: { group: GroupWithId; studentMap: Map<string, string> }) => {
+const DraggableGroup = ({ group, studentMap }: { group: GroupWithId; studentMap: Map<number, string> }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: group.id,
     data: { type: 'group', group },
@@ -127,7 +127,7 @@ const DraggableGroup = ({ group, studentMap }: { group: GroupWithId; studentMap:
   );
 };
 
-const DroppableStation = ({ station, children, isOver, hint, assignments, studentMap }: { station: Workstation, children: React.ReactNode, isOver: boolean, hint: { text: string, isBest: boolean } | null, assignments: GroupWithId[], studentMap: Map<string, string> }) => {
+const DroppableStation = ({ station, children, isOver, hint, assignments, studentMap }: { station: Workstation, children: React.ReactNode, isOver: boolean, hint: { text: string, isBest: boolean } | null, assignments: GroupWithId[], studentMap: Map<number, string> }) => {
     const { setNodeRef } = useDroppable({ id: station.id, data: { type: 'station' } });
     const studentCount = assignments.reduce((sum, group) => sum + group.studentIds.length, 0);
     const isFull = station.capacity && studentCount >= station.capacity;
@@ -166,13 +166,13 @@ const DroppableStation = ({ station, children, isOver, hint, assignments, studen
 };
 
 const EditGroupDialog: FC<{
-    group?: { id: string, studentIds: string[], groupNumber: number };
+    group?: { id: string, studentIds: number[], groupNumber: number };
     students: Student[];
-    onSave: (group: { id: string, studentIds: string[], groupNumber: number }) => void;
+    onSave: (group: { id: string, studentIds: number[], groupNumber: number }) => void;
     trigger: React.ReactNode;
 }> = ({ group, students, onSave, trigger }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+    const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
     const [search, setSearch] = useState("");
     
     useEffect(() => {
@@ -684,7 +684,7 @@ export default function GroupTool({ students, appSettings, onAppSettingsChange, 
       }
   };
   
-  const handleManualGroupSave = (group: { id: string, studentIds: string[], groupNumber: number }) => {
+  const handleManualGroupSave = (group: { id: string, studentIds: number[], groupNumber: number }) => {
     const existingIndex = unassignedGroups.findIndex(g => g.id === group.id);
     if (existingIndex > -1) {
         // Update existing group
@@ -725,6 +725,7 @@ export default function GroupTool({ students, appSettings, onAppSettingsChange, 
 
 
   return (
+    <TooltipProvider>
     <div className="space-y-6">
        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="md:col-span-2">
@@ -940,13 +941,14 @@ export default function GroupTool({ students, appSettings, onAppSettingsChange, 
       )}
 
     </div>
+    </TooltipProvider>
   );
 }
 
 const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings, onAppSettingsChange: (settings: AppSettings) => void}> = ({ students, appSettings, onAppSettingsChange }) => {
-    const [keepTogetherSelection, setKeepTogetherSelection] = useState<string[]>([]);
-    const [keepApartStudent1, setKeepApartStudent1] = useState("");
-    const [keepApartStudent2, setKeepApartStudent2] = useState("");
+    const [keepTogetherSelection, setKeepTogetherSelection] = useState<number[]>([]);
+    const [keepApartStudent1, setKeepApartStudent1] = useState<number | "">("");
+    const [keepApartStudent2, setKeepApartStudent2] = useState<number | "">("");
     const [search, setSearch] = useState("");
     
     const rules = appSettings.groupingRules || { keepTogether: [], keepApart: [] };
@@ -1066,13 +1068,13 @@ const GroupingRulesManager: FC<{students: Student[], appSettings: AppSettings, o
             <div>
                 <Label>Hold elever adskilt</Label>
                 <div className="flex gap-2 mt-1">
-                    <Select value={keepApartStudent1} onValueChange={setKeepApartStudent1}>
+                    <Select value={keepApartStudent1 === "" ? "" : String(keepApartStudent1)} onValueChange={(v) => setKeepApartStudent1(v === "" ? "" : Number(v))}>
                         <SelectTrigger><SelectValue placeholder="Elev 1" /></SelectTrigger>
-                        <SelectContent>{students.filter(s => s.id !== keepApartStudent2).map(s => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}</SelectContent>
+                        <SelectContent>{students.filter(s => s.id !== keepApartStudent2).map(s => <SelectItem key={s.id} value={String(s.id!)}>{s.name}</SelectItem>)}</SelectContent>
                     </Select>
-                    <Select value={keepApartStudent2} onValueChange={setKeepApartStudent2}>
+                    <Select value={keepApartStudent2 === "" ? "" : String(keepApartStudent2)} onValueChange={(v) => setKeepApartStudent2(v === "" ? "" : Number(v))}>
                         <SelectTrigger><SelectValue placeholder="Elev 2" /></SelectTrigger>
-                        <SelectContent>{students.filter(s => s.id !== keepApartStudent1).map(s => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}</SelectContent>
+                        <SelectContent>{students.filter(s => s.id !== keepApartStudent1).map(s => <SelectItem key={s.id} value={String(s.id!)}>{s.name}</SelectItem>)}</SelectContent>
                     </Select>
                     <Button onClick={handleAddKeepApart} size="icon"><Plus /></Button>
                 </div>

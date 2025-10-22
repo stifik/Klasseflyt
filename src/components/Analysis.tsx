@@ -30,6 +30,24 @@ interface AnalysisProps {
 }
 
 export default function Analysis(props: AnalysisProps) {
+    // Fetch additional data needed by Reports component
+    const submissionAttempts = useLiveQuery(() => db.submissionAttempts.toArray()) || [];
+    const tests = useLiveQuery(() => db.tests.toArray()) || [];
+    const testResults = useLiveQuery(() => db.testResults.toArray()) || [];
+    const learningGoals = useLiveQuery(() => db.learningGoals.toArray()) || [];
+    const goalAchievements = useLiveQuery(() => db.goalAchievements.toArray()) || [];
+    const dailyChecks = useLiveQuery(() => db.dailyChecks.toArray()) || [];
+    const hourlyChecks = useLiveQuery(() => db.hourlyChecks.toArray()) || [];
+
     // The Reports component now handles all the logic and UI
-    return <Reports {...props} />;
+    return <Reports
+        {...props}
+        submissionAttempts={submissionAttempts}
+        tests={tests}
+        testResults={testResults}
+        learningGoals={learningGoals}
+        goalAchievements={goalAchievements}
+        dailyChecks={dailyChecks}
+        hourlyChecks={hourlyChecks}
+    />;
 }

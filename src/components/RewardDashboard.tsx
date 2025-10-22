@@ -25,41 +25,22 @@ export default function RewardDashboard() {
   }, [settings?.selectedSeatingLayoutId]);
 
   const [viewMode, setViewMode] = useState<'list' | 'seating'>('list');
-  const [showGiveDialog, setShowGiveDialog] = useState<string | null>(null);
-  const [showHistoryDialog, setShowHistoryDialog] = useState<string | null>(null);
+  const [showGiveDialog, setShowGiveDialog] = useState<number | null>(null);
+  const [showHistoryDialog, setShowHistoryDialog] = useState<number | null>(null);
   const [pointsAmount, setPointsAmount] = useState(0);
   const [pointsDesc, setPointsDesc] = useState("");
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [highlightedStudentId, setHighlightedStudentId] = useState<string | null>(null);
+  const [highlightedStudentId, setHighlightedStudentId] = useState<number | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'points'; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
 
   // Hent transaksjonshistorikk for valgt elev
   const studentTransactions = useLiveQuery(async () => {
     if (!showHistoryDialog) return [];
 
-    // Prøv både string og number versjoner av studentId
-    let transactions = await db.transactions
+    const transactions = await db.transactions
       .where('studentId')
       .equals(showHistoryDialog)
       .toArray();
-
-    // Hvis ingen funnet som string, prøv som number (hvis studentId er numerisk)
-    if (transactions.length === 0 && /^\d+$/.test(showHistoryDialog)) {
-      const numericId = Number(showHistoryDialog);
-      transactions = await db.transactions
-        .where('studentId')
-        .equals(numericId as any)
-        .toArray();
-    }
-
-    // Hvis ingen funnet som number, prøv som string (hvis studentId er number)
-    if (transactions.length === 0) {
-      const stringId = String(showHistoryDialog);
-      transactions = await db.transactions
-        .where('studentId')
-        .equals(stringId)
-        .toArray();
-    }
 
     console.log(`Found ${transactions.length} transactions for student ${showHistoryDialog}:`, transactions);
 
@@ -79,7 +60,7 @@ export default function RewardDashboard() {
       // Prøv å finne elev basert på NFC-data
       const matchingStudent = students.find(student => {
         // Sjekk om NFC-data matcher elevens ID eller navn
-        return student.id === lastRead || 
+        return String(student.id) === lastRead ||
                student.name.toLowerCase().includes(lastRead.toLowerCase()) ||
                lastRead.toLowerCase().includes(student.name.toLowerCase());
       });
@@ -87,7 +68,7 @@ export default function RewardDashboard() {
       if (matchingStudent) {
         setHighlightedStudentId(matchingStudent.id!);
         showNotification(`Elev funnet: ${matchingStudent.name}`, 'success');
-        
+
         // Fjern highlighting etter 5 sekunder
         setTimeout(() => setHighlightedStudentId(null), 5000);
       } else {
@@ -109,7 +90,7 @@ export default function RewardDashboard() {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const handleGivePoints = async (studentId: string) => {
+  const handleGivePoints = async (studentId: number) => {
     if (pointsAmount > 0 && pointsDesc) {
       const result = await givePoints(studentId, pointsAmount, pointsDesc);
       if (result.success) {
@@ -123,7 +104,7 @@ export default function RewardDashboard() {
     }
   };
 
-  const viewTransactionHistory = (studentId: string) => {
+  const viewTransactionHistory = (studentId: number) => {
     setShowHistoryDialog(studentId);
   };
 

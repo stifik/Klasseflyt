@@ -63,7 +63,7 @@ export type Homework = {
 // Represents a "folder" for a student's submissions for a specific homework
 export type Submission = {
   id?: number;
-  studentId: string;
+  studentId: number;
   homeworkId: number;
 };
 
@@ -78,7 +78,7 @@ export type SubmissionAttempt = {
 
 export type DailyCheck = {
   id?: number;
-  studentId: string;
+  studentId: number;
   date: Date;
   ipadCharged: boolean;
   ipadBrought: boolean;
@@ -86,13 +86,13 @@ export type DailyCheck = {
 
 export type Absence = {
   id?: number;
-  studentId: string;
+  studentId: number;
   date: Date;
 };
 
 export type Remark = {
   id?: number;
-  studentId: string;
+  studentId: number;
   date: Date;
   period: number;
   type: string;
@@ -109,7 +109,7 @@ export type BehaviorType = {
 
 export type HourlyCheck = {
     id?: number;
-    studentId: string;
+    studentId: number;
     date: Date;
     period: number;
     behaviorId: string;
@@ -126,7 +126,7 @@ export type Test = {
 
 export type TestResult = {
   id?: number;
-  studentId: string;
+  studentId: number;
   testId: number;
   score: number | null;
   comment?: string;
@@ -145,7 +145,7 @@ export type GoalStatus = 'NotAchieved' | 'InProgress' | 'Achieved';
 
 export type GoalAchievement = {
   id: string;
-  studentId: string;
+  studentId: number;
   goalId: string;
   status: GoalStatus;
   updatedAt: Date;
@@ -157,9 +157,10 @@ export type SeatingChartData = (string[] | null)[][];
 export type SeatingChartRecord = {
   id?: number;
   chartJson: string; // Stored as a JSON string
-  rows: number;
-  cols: number;
+  rows?: number;
+  cols?: number;
   createdAt: Date;
+  source?: 'generation' | 'drag' | 'load';
 };
 
 export type LockedDesk = {
@@ -274,7 +275,7 @@ export type Workstation = {
 
 export type GroupInSet = {
   id: string; // Unique ID for this group within this set
-  studentIds: string[];
+  studentIds: number[];
 };
 
 export type GroupSet = {
@@ -286,7 +287,7 @@ export type GroupSet = {
 
 export type StationAssignmentLog = {
   id?: number;
-  studentId: string;
+  studentId: number;
   stationId: string;
   date: Date;
   groupSetId?: string; // Optional: ID of the GroupSet
@@ -296,14 +297,14 @@ export type StationAssignmentLog = {
 export type PickerGroup = {
   id?: string;
   name: string;
-  studentIds: string[];
+  studentIds: number[];
   createdAt: Date;
 };
 
 export type PickerLog = {
   id?: number;
   groupId: string;
-  studentId: string;
+  studentId: number;
   date: Date;
 };
 

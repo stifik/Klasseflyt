@@ -44,7 +44,7 @@ const EditGroupDialog: FC<{
 }> = ({ group, students, onSave, trigger }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [name, setName] = useState(group?.name || "");
-    const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>(group?.studentIds || []);
+    const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>(group?.studentIds || []);
     
     const allStudentIds = useMemo(() => students.map(s => s.id!), [students]);
     const areAllSelected = useMemo(() => selectedStudentIds.length === allStudentIds.length, [selectedStudentIds, allStudentIds]);
@@ -133,7 +133,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
     const [isPicking, setIsPicking] = useState(false);
     const [pickedStudent, setPickedStudent] = useState<Student | null>(null);
     const [animatingStudent, setAnimatingStudent] = useState<Student | null>(null);
-    const [sessionPickedStudentIds, setSessionPickedStudentIds] = useState<Set<string>>(new Set());
+    const [sessionPickedStudentIds, setSessionPickedStudentIds] = useState<Set<number>>(new Set());
     const [currentAnimationStyle, setCurrentAnimationStyle] = useState<React.CSSProperties>({});
     const { toast } = useToast();
 
@@ -195,7 +195,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
     }, [selectedGroupId, pickerLogs, sessionPickedStudentIds]);
     
     const studentLastPicked = useMemo(() => {
-        const lastPickedMap = new Map<string, Date>();
+        const lastPickedMap = new Map<number, Date>();
         const logs = pickerLogs || []; // Use all logs for weighting
         logs.forEach(log => {
             if (!lastPickedMap.has(log.studentId)) {
@@ -206,7 +206,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
     }, [pickerLogs]);
     
     const alreadyPickedIds = useMemo(() => {
-        if (withReplacement) return new Set<string>();
+        if (withReplacement) return new Set<number>();
         if (selectedGroupId === 'all') {
             return sessionPickedStudentIds;
         }
@@ -276,7 +276,7 @@ export default function StudentPicker({ students, seatingChart, activeLayout, ap
             'hsl(120, 70%, 60%)', 'hsl(200, 70%, 60%)', 'hsl(270, 70%, 60%)'
         ];
         let colorIndex = 0;
-        let lastAnimatingStudentId: string | null = null;
+        let lastAnimatingStudentId: number | null = null;
 
         const pickRandomStudentForAnimation = () => {
             const availableForAnimation = weightedList.filter(s => s.id !== lastAnimatingStudentId);

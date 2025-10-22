@@ -56,19 +56,19 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
 
   // Memoize these functions with proper dependencies
   const getAbsenceForDate = useMemo(() => {
-    return (studentId: string) => {
+    return (studentId: number) => {
       return todaysAbsences.find(a => a.studentId === studentId);
     };
   }, [todaysAbsences]);
 
   const getCheckForDate = useMemo(() => {
-    return (studentId: string) => {
+    return (studentId: number) => {
       return todaysChecks.find(c => c.studentId === studentId);
     };
   }, [todaysChecks]);
-  
+
   const getStatus = useMemo(() => {
-    return (studentId: string): IpadStatus => {
+    return (studentId: number): IpadStatus => {
       const check = getCheckForDate(studentId);
       if (!check) return "OK";
       if (!check.ipadBrought) return "NotBrought";
@@ -77,7 +77,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
     };
   }, [getCheckForDate]);
   
-  const handleStatusChange = async (studentId: string) => {
+  const handleStatusChange = async (studentId: number) => {
     const currentStatus = getStatus(studentId);
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
     const existingCheck = getCheckForDate(studentId);
@@ -108,7 +108,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
     }
   };
 
-  const handleAbsenceToggle = async (studentId: string) => {
+  const handleAbsenceToggle = async (studentId: number) => {
     const existingAbsence = getAbsenceForDate(studentId);
     try {
       if (existingAbsence) {

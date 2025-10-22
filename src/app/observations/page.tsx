@@ -41,7 +41,7 @@ export default function ObservationsPage() {
             onUpdate={handleUpdate}
             seatingChart={seatingChart}
             settings={settings}
-            activeLayout={activeLayout}
+            activeLayout={activeLayout ?? null}
         />
     );
 }

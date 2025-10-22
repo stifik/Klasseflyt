@@ -33,7 +33,7 @@ export default function DailyCheckPage() {
         <DailyChecklist
             students={students}
             seatingChart={seatingChart}
-            activeLayout={activeLayout}
+            activeLayout={activeLayout ?? null}
             absences={absences}
             positiveActions={positiveActions}
         />
