@@ -1,17 +1,27 @@
-# NFC Reader Bridge Server
+# NFC Reader Bridge Server v2.0
 
-En robust Node.js server som fungerer som bro mellom Klasseflyt webapp og ACS ACR1255U-J1 kortleser via PC/SC protokoll.
+En robust Node.js server med **WebSocket-støtte** som fungerer som bro mellom Klasseflyt webapp og ACS ACR1255U-J1 kortleser via PC/SC protokoll.
+
+## 🚀 Hva er nytt i v2.0?
+
+- ✨ **WebSocket-basert event-driven arkitektur** - Ingen mer polling!
+- ⚡ **Sanntids kortdeteksjon** - Umiddelbar respons når kort settes på
+- 🔌 **Automatisk kortlesing** - Serveren leser kort automatisk når de settes på
+- 📉 **Redusert CPU og nettverksbruk** - Mye mer effektiv enn polling
+- 🎯 **Enklere klient-integrasjon** - En enkel WebSocket hook erstatter kompleks polling-logikk
+- ⬆️ **Bakoverkompatibel** - Gamle HTTP-endepunkter fungerer fortsatt
 
 ## Funksjoner
 
+- ✅ **Event-basert kortdeteksjon** - WebSocket pusher events når kort oppdages
 - ✅ **Automatisk reader-deteksjon** - Finner og velger tilgjengelige kortlesere
 - ✅ **Timeout-håndtering** - Forhindrer at requests henger
-- ✅ **Polling-vennlig** - Støtter kontinuerlig skanning for køer
 - ✅ **Automatisk reconnect** - Bytter til ny reader hvis den aktive fjernes
 - ✅ **Standardiserte feilkoder** - Konsistent feilhåndtering
 - ✅ **Stille feilhåndtering** - Logger kun uventede feil
 - ✅ **Norske feilmeldinger** - Brukervennlige tilbakemeldinger
 - ✅ **Konfigurerbar via miljøvariabler** - PORT og SCAN_TIMEOUT
+- ✅ **Legacy HTTP API** - Støtter fortsatt polling for bakoverkompatibilitet
 
 ## Installasjon
 
@@ -41,7 +51,93 @@ npm start
 
 Serveren starter på `http://localhost:3001` (eller den porten du har konfigurert)
 
-## API Endepunkter
+## WebSocket API (Anbefalt)
+
+Koble til WebSocket-serveren på `ws://localhost:3001` for sanntids kortdeteksjon.
+
+### WebSocket Events (Server → Klient)
+
+**`status`** - Sendt ved tilkobling
+```json
+{
+  "type": "status",
+  "readersConnected": 1,
+  "currentReader": "ACS ACR1255U-J1 0",
+  "isMonitoring": false,
+  "timestamp": "2025-10-22T12:34:56.789Z"
+}
+```
+
+**`card_detected`** - Sendt når kort oppdages (kun hvis monitoring er aktivert)
+```json
+{
+  "type": "card_detected",
+  "uid": "04:5A:B2:3C:D4:E5:F6",
+  "cardId": "04:5A:B2:3C:D4:E5:F6",
+  "length": 7,
+  "reader": "ACS ACR1255U-J1 0",
+  "timestamp": "2025-10-22T12:34:56.789Z"
+}
+```
+
+**`card_removed`** - Sendt når kort fjernes
+```json
+{
+  "type": "card_removed",
+  "reader": "ACS ACR1255U-J1 0",
+  "timestamp": "2025-10-22T12:34:56.789Z"
+}
+```
+
+**`error`** - Sendt ved feil
+```json
+{
+  "type": "error",
+  "error": "TIMEOUT",
+  "message": "Tidsavbrudd - kortet svarte ikke",
+  "timestamp": "2025-10-22T12:34:56.789Z"
+}
+```
+
+### WebSocket Commands (Klient → Server)
+
+**Start monitoring** - Aktiver automatisk kortdeteksjon
+```json
+{ "command": "start_monitoring" }
+```
+
+**Stop monitoring** - Deaktiver automatisk kortdeteksjon
+```json
+{ "command": "stop_monitoring" }
+```
+
+**Scan once** - Skann én gang (uten monitoring)
+```json
+{ "command": "scan_once" }
+```
+
+### Bruk i Klasseflyt
+
+```typescript
+import { useNFCWebSocket } from '@/hooks/useNFCWebSocket';
+
+const nfc = useNFCWebSocket({
+  enabled: true,
+  autoConnect: true,
+  onCardDetected: (card) => {
+    console.log('Card detected:', card.uid);
+    // Handle card...
+  }
+});
+
+// Start monitoring when ready
+nfc.startMonitoring();
+
+// Stop monitoring when done
+nfc.stopMonitoring();
+```
+
+## HTTP API (Legacy - Bakoverkompatibilitet)
 
 ### `GET /api/readers`
 Liste over tilgjengelige kortlesere.
@@ -56,7 +152,7 @@ Liste over tilgjengelige kortlesere.
 ```
 
 ### `POST /api/scan`
-Skann kort på kortleseren. Kun én skanning om gangen.
+Skann kort på kortleseren (krever polling fra klient).
 
 **Response (success):**
 ```json
@@ -81,15 +177,13 @@ Skann kort på kortleseren. Kun én skanning om gangen.
 
 **Feilkoder:**
 - `NO_READER` (503) - Ingen kortleser tilgjengelig
-- `NO_CARD` (404) - Intet kort påvist *(ikke logget - normal polling)*
-- `CARD_REMOVED` (404) - Intet kort påvist *(ikke logget - normal polling)*
+- `NO_CARD` (404) - Intet kort påvist
+- `CARD_REMOVED` (404) - Intet kort påvist
 - `TIMEOUT` (408) - Tidsavbrudd - kortet svarte ikke
 - `CONNECT_ERROR` (400) - Kunne ikke koble til kort
 - `TRANSMIT_ERROR` (400) - Feil ved kommunikasjon med kort
 - `INVALID_RESPONSE` (400) - Ugyldig svar fra kort
 - `CARD_ERROR` (400) - Kortet returnerte en feil
-
-**Note:** `NO_CARD` og `CARD_REMOVED` er forventede situasjoner ved kontinuerlig polling og logges ikke som errors.
 
 ### `GET /api/status`
 Server status og tilstand.
@@ -100,8 +194,11 @@ Server status og tilstand.
   "status": "ok",
   "readersConnected": 1,
   "currentReader": "ACS ACR1255U-J1 0",
-  "isScanning": false,
-  "version": "1.1.0"
+  "pollingSupported": true,
+  "websocketSupported": true,
+  "isMonitoring": false,
+  "connectedClients": 1,
+  "version": "2.0.0"
 }
 ```
 
@@ -113,7 +210,8 @@ Health check endpoint for monitoring.
 {
   "status": "ok",
   "healthy": true,
-  "readers": 1
+  "readers": 1,
+  "websocket": true
 }
 ```
 
@@ -162,8 +260,45 @@ NEXT_PUBLIC_NFC_BRIDGE_URL=http://localhost:3001
 
 Serveren vil automatisk bli brukt når tilgjengelig.
 
-## Changelog v1.1.0
+## Hvorfor WebSocket er bedre enn polling?
 
+**Polling-basert arkitektur (gammel):**
+```
+Klient → [250ms] → Server → PC/SC → Connect → Read → Disconnect → Klient
+Klient → [250ms] → Server → PC/SC → Connect → Read → Disconnect → Klient
+Klient → [250ms] → Server → PC/SC → Connect → Read → Disconnect → Klient
+```
+- ❌ Konstant CPU-bruk (hvert 250ms)
+- ❌ Mange HTTP-requests (4 per sekund)
+- ❌ Gjentatte connect/disconnect-kall kan destabilisere kortleseren
+- ❌ Latency: Opptil 250ms forsinkelse før kort oppdages
+- ❌ Kompleks debouncing-logikk nødvendig
+
+**Event-basert arkitektur (ny):**
+```
+Klient ←→ WebSocket ←→ Server ←→ PC/SC (holder forbindelse åpen)
+                                    ↓
+                              Card inserted event
+                                    ↓
+                            Automatisk lesing → Klient
+```
+- ✅ Minimal CPU-bruk (kun når kort settes på)
+- ✅ Én WebSocket-forbindelse (persistent)
+- ✅ PC/SC holder forbindelse åpen (mer stabilt)
+- ✅ Latency: ~10-50ms (umiddelbar deteksjon)
+- ✅ Ingen behov for kompleks debouncing
+
+## Changelog
+
+### v2.0.0 (Nåværende)
+- ✨ **WebSocket-støtte** - Sanntids event-basert kortdeteksjon
+- ⚡ **Automatisk kortlesing** - Leser kort automatisk når de settes på
+- 📉 **Drastisk redusert nettverksbruk** - Ingen mer polling
+- 🔌 **Persistent PC/SC-forbindelse** - Mer stabilt enn gjentatte connect/disconnect
+- 🎯 **Enklere klient-integrasjon** - useNFCWebSocket hook
+- ⬆️ **Bakoverkompatibel** - HTTP API fungerer fortsatt
+
+### v1.1.0
 - ✅ Lagt til timeout-håndtering (5 sekunder default)
 - ✅ Polling-støtte - tillater kontinuerlig skanning
 - ✅ Stille håndtering av NO_CARD/CARD_REMOVED (reduserer logging)

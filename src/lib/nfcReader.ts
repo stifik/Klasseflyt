@@ -1,26 +1,26 @@
 /**
  * NFC/RFID Reader Utility
  * Supports ACS ACR1255U-J1 via PC/SC protocol
- * 
- * Methods (in priority order):
- * 1. NFC Bridge Server (PC/SC via Node.js) - BEST for ACS readers
- * 2. Web NFC API (limited browser support - mainly Android)
- * 3. WebHID API (for generic HID devices, NOT smartcard readers)
+ *
+ * Modes (in priority order):
+ * 1. WebSocket (event-based, RECOMMENDED) - Real-time card detection
+ * 2. NFC Bridge Server (PC/SC via polling) - Legacy support
+ * 3. Web NFC API (limited browser support - mainly Android)
  * 4. Manual input (fallback for testing)
  */
 
 // Bridge server URL (can be configured via env)
-const BRIDGE_URL = typeof window !== 'undefined' 
+const BRIDGE_URL = typeof window !== 'undefined'
   ? (window.localStorage?.getItem('nfc_bridge_url') || process.env.NEXT_PUBLIC_NFC_BRIDGE_URL || 'http://localhost:3001')
   : 'http://localhost:3001';
 
-// Debouncing state
+// Debouncing state (only used for legacy polling mode)
 let lastReadTime: number = 0;
 let lastCardId: string | null = null;
 let processingTransaction: boolean = false;
 const DEBOUNCE_MS: number = 3000; // 3 seconds cooldown
 
-// Centralized debounce check
+// Centralized debounce check (for legacy mode only)
 function shouldDebounceCard(cardId: string): boolean {
   const now = Date.now();
 
@@ -60,7 +60,7 @@ export interface NFCReaderState {
 // Check if NFC Bridge Server is available
 export const isBridgeAvailable = async (): Promise<boolean> => {
   if (typeof window === 'undefined') return false;
-  
+
   try {
     const response = await fetch(`${BRIDGE_URL}/health`, {
       method: 'GET',
@@ -90,21 +90,20 @@ export const isWebHIDSupported = (): boolean => {
  */
 export const connectReader = async (): Promise<boolean> => {
   // Silent connect - only log errors
-  
+
   // Priority 1: Try NFC Bridge Server (best for PC/SC readers)
   const bridgeAvailable = await isBridgeAvailable();
-  console.log('🔍 Bridge available:', bridgeAvailable);
-  
+
   if (bridgeAvailable) {
     try {
-      console.log('📡 Fetching bridge status...');
       const response = await fetch(`${BRIDGE_URL}/api/status`);
       const data = await response.json();
-      console.log('📡 Bridge status:', data);
-      
+
       if (data.readersConnected > 0) {
-        // Only log on first connect, not on every poll
         console.log('✅ Bridge connected with', data.readersConnected, 'readers');
+        if (data.websocketSupported) {
+          console.log('🔌 WebSocket support detected - use useNFCWebSocket hook for best experience');
+        }
         return true;
       } else {
         console.warn('⚠️ Bridge server running but no readers found');
@@ -113,7 +112,6 @@ export const connectReader = async (): Promise<boolean> => {
       }
     } catch (error) {
       console.error('❌ Bridge server error:', error);
-      // Don't return here - fall through to other methods
     }
   } else {
     console.log('ℹ️ NFC Bridge Server not available at', BRIDGE_URL);
@@ -122,32 +120,13 @@ export const connectReader = async (): Promise<boolean> => {
     console.log('   2. npm install');
     console.log('   3. npm start');
   }
-  
+
   // Priority 2: Try Web NFC (mobile devices)
   if (isNFCSupported()) {
     console.log('✅ Web NFC API available');
     return true;
   }
-  
-  // Priority 3: Try WebHID (won't work for smartcard readers, but try anyway)
-  if (isWebHIDSupported()) {
-    try {
-      const devices = await (navigator as any).hid.requestDevice({
-        filters: [
-          { vendorId: 0x072f } // ACS vendor ID
-        ]
-      });
-      
-      if (devices.length > 0) {
-        console.log('✅ Found HID device:', devices[0]);
-        console.warn('⚠️ Note: HID mode has limited functionality for smartcard readers');
-        return true;
-      }
-    } catch (error) {
-      console.error('❌ Error connecting to HID device:', error);
-    }
-  }
-  
+
   // Fallback: Assume connected for manual input
   console.warn('⚠️ No automatic reader connection available');
   console.warn('💡 Use manual card ID input or start NFC Bridge Server');
@@ -155,7 +134,8 @@ export const connectReader = async (): Promise<boolean> => {
 };
 
 /**
- * Read NFC/RFID card with debouncing
+ * Read NFC/RFID card (legacy polling mode)
+ * NOTE: For best performance, use useNFCWebSocket hook instead
  * Returns the card UID if successful
  */
 export const readCard = async (): Promise<NFCCard | null> => {
@@ -163,16 +143,13 @@ export const readCard = async (): Promise<NFCCard | null> => {
   const bridgeAvailable = await isBridgeAvailable();
   if (bridgeAvailable) {
     try {
-      console.log('📡 Fetching from bridge /api/scan...');
       const response = await fetch(`${BRIDGE_URL}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
-      
-      console.log('📡 Bridge response status:', response.status, response.statusText);
+
       const data = await response.json();
-      console.log('📡 Bridge response data:', data);
-      
+
       if (data.success) {
         const cardId = data.cardId;
 
@@ -181,7 +158,7 @@ export const readCard = async (): Promise<NFCCard | null> => {
           return null;
         }
 
-        console.log('✅ Card read via Bridge:', cardId);
+        console.log('✅ Card read via Bridge (polling):', cardId);
         return {
           uid: cardId,
           type: 'RFID/PC-SC'
@@ -189,12 +166,12 @@ export const readCard = async (): Promise<NFCCard | null> => {
       } else {
         // Handle specific error types silently (normal operation)
         const error = data.error || '';
-        
+
         if (error === 'CARD_REMOVED' || error === 'NO_CARD' || error === 'SCAN_IN_PROGRESS') {
           // Silent - these are expected during polling
           return null;
         }
-        
+
         // Only log unexpected errors
         console.error('❌ Bridge scan failed:', error);
         return null;
@@ -204,7 +181,7 @@ export const readCard = async (): Promise<NFCCard | null> => {
       // Fall through to other methods
     }
   }
-  
+
   // Priority 2: Try Web NFC (mainly mobile)
   if (isNFCSupported()) {
     try {
@@ -236,14 +213,7 @@ export const readCard = async (): Promise<NFCCard | null> => {
       console.error('❌ Error reading NFC:', error);
     }
   }
-  
-  // Priority 3: WebHID (limited functionality for smartcard readers)
-  if (isWebHIDSupported()) {
-    console.warn('⚠️ WebHID cannot read smartcard UIDs directly');
-    console.warn('💡 Please use NFC Bridge Server for PC/SC readers');
-    return null;
-  }
-  
+
   console.error('❌ No NFC reading method available');
   console.error('💡 Start NFC Bridge Server: cd nfc-bridge && npm start');
   return null;
@@ -255,7 +225,7 @@ export const readCard = async (): Promise<NFCCard | null> => {
  */
 export const writeCard = async (data: string): Promise<boolean> => {
   console.log('✍️ Writing to NFC card:', data);
-  
+
   if (isNFCSupported()) {
     try {
       const ndef = new (window as any).NDEFReader();
@@ -269,7 +239,7 @@ export const writeCard = async (data: string): Promise<boolean> => {
       return false;
     }
   }
-  
+
   console.error('❌ Writing not supported on this device');
   return false;
 };
@@ -280,10 +250,10 @@ export const writeCard = async (data: string): Promise<boolean> => {
  */
 export const formatCardUID = (uid: string | undefined): string => {
   if (!uid) return '';
-  
+
   // Remove any non-hex characters
   const cleanUid = uid.replace(/[^0-9A-Fa-f]/g, '');
-  
+
   // Format as groups of 2 hex digits
   return cleanUid.match(/.{1,2}/g)?.join(':').toUpperCase() || cleanUid;
 };
@@ -318,7 +288,8 @@ export const disconnectReader = async (): Promise<void> => {
 };
 
 /**
- * Listen for card scans
+ * Listen for card scans (legacy polling mode)
+ * NOTE: For best performance, use useNFCWebSocket hook instead
  * Returns a cleanup function to stop listening
  */
 export const listenForCards = (
@@ -326,10 +297,10 @@ export const listenForCards = (
   onError?: (error: Error) => void
 ): (() => void) => {
   let isListening = true;
-  
+
   if (isNFCSupported()) {
     const ndef = new (window as any).NDEFReader();
-    
+
     const handleReading = ({ serialNumber }: any) => {
       if (!isListening) return;
 
@@ -343,30 +314,27 @@ export const listenForCards = (
         type: 'NFC'
       });
     };
-    
+
     const handleError = (error: any) => {
       if (isListening && onError) {
         onError(error);
       }
     };
-    
+
     ndef.scan().then(() => {
       ndef.addEventListener('reading', handleReading);
       ndef.addEventListener('error', handleError);
     }).catch((error: any) => {
       if (onError) onError(error);
     });
-    
+
     return () => {
       isListening = false;
       ndef.removeEventListener('reading', handleReading);
       ndef.removeEventListener('error', handleError);
     };
   }
-  
-  // For WebHID, we'd need to poll or set up event listeners
-  // This is more complex and would require proper implementation
-  
+
   return () => {
     isListening = false;
   };
@@ -389,7 +357,7 @@ export const setProcessing = (processing: boolean): void => {
   processingTransaction = processing;
   // Only log when locking (starting transaction), not when unlocking
   if (processing) {
-    console.log('� Transaction processing started');
+    console.log('🔒 Transaction processing started');
   }
 };
 

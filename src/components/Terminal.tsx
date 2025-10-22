@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useCardScanner } from '@/hooks/useNFCReader';
-import { useNFCPolling } from '@/hooks/useNFCPolling';
+import { useNFCWebSocket } from '@/hooks/useNFCWebSocket';
 import { formatCardUID, setProcessing as setNFCProcessing } from '@/lib/nfcReader';
 import { soundEffects } from '@/lib/soundEffects';
 import { Loader2, CheckCircle2 } from 'lucide-react';
@@ -73,19 +73,8 @@ const Terminal: React.FC = () => {
 
   const nfc = useCardScanner();
 
-  // Use NFC polling hook
-  const handleCardDetected = useCallback(async (card: any) => {
-    console.log('✅ Card detected:', card.uid);
-    await handleNFCCard(card.uid);
-  }, [rfidCards, students, activeTransaction]);
-
-  useNFCPolling({
-    enabled: nfcStatus === 'waiting' && !!activeTransaction,
-    onCardDetected: handleCardDetected
-  });
-
   // Handle NFC card scanning
-  const handleNFCCard = async (cardUid: string) => {
+  const handleNFCCard = useCallback(async (cardUid: string) => {
     console.log('🔵 handleNFCCard called with UID:', cardUid);
     setNfcStatus('processing');
     setNfcMessage('Behandler...');
@@ -135,7 +124,35 @@ const Terminal: React.FC = () => {
     // Process transaction
     console.log('💳 Processing transaction for student:', student.id, 'with card:', rfidCard.cardId);
     await processTransaction(student.id!, rfidCard.cardId);
-  };
+  }, [rfidCards, students, activeTransaction]);
+
+  // WebSocket NFC handler - automatically called when card is detected
+  const handleCardDetected = useCallback(async (card: any) => {
+    console.log('✅ Card detected via WebSocket:', card.uid);
+    await handleNFCCard(card.uid);
+  }, [handleNFCCard]);
+
+  // Use WebSocket for real-time NFC events (replaces polling)
+  const nfcWebSocket = useNFCWebSocket({
+    enabled: true,
+    autoConnect: true,
+    autoMonitor: false, // We'll control monitoring manually
+    onCardDetected: handleCardDetected,
+    onError: (error, message) => {
+      console.error('❌ NFC WebSocket error:', error, message);
+    }
+  });
+
+  // Start/stop monitoring when NFC status changes
+  React.useEffect(() => {
+    if (nfcStatus === 'waiting' && activeTransaction) {
+      console.log('🔌 Starting NFC monitoring...');
+      nfcWebSocket.startMonitoring();
+    } else {
+      console.log('🔌 Stopping NFC monitoring...');
+      nfcWebSocket.stopMonitoring();
+    }
+  }, [nfcStatus, activeTransaction, nfcWebSocket.startMonitoring, nfcWebSocket.stopMonitoring]);
 
   // Process transaction (both manual and NFC)
   const processTransaction = async (studentId: number, cardId?: string) => {
