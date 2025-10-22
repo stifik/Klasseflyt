@@ -17,7 +17,7 @@ export type PositiveAction = {
 
 // Define the database schema
 export class MySubClassedDexie extends Dexie {
-    students!: Table<Student, string>;
+    students!: Table<Student, number>;
     subjects!: Table<Subject, string>;
     homework!: Table<Homework, number>;
     submissions!: Table<Submission, number>;

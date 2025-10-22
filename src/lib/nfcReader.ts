@@ -20,6 +20,29 @@ let lastCardId: string | null = null;
 let processingTransaction: boolean = false;
 const DEBOUNCE_MS: number = 3000; // 3 seconds cooldown
 
+// Centralized debounce check
+function shouldDebounceCard(cardId: string): boolean {
+  const now = Date.now();
+
+  // Ignore if processing another transaction
+  if (processingTransaction) {
+    console.log('⏳ Transaksjon pågår - ignorerer ny lesning');
+    return true;
+  }
+
+  // Check cooldown - ignore if same card within cooldown period
+  if (cardId === lastCardId && now - lastReadTime < DEBOUNCE_MS) {
+    const remainingSeconds = Math.round((DEBOUNCE_MS - (now - lastReadTime)) / 1000);
+    console.log(`🚫 Cooldown aktiv - ignorerer lesning (${remainingSeconds}s gjenstår)`);
+    return true;
+  }
+
+  // Update debounce state
+  lastCardId = cardId;
+  lastReadTime = now;
+  return false;
+}
+
 export type NFCReaderStatus = 'disconnected' | 'connecting' | 'connected' | 'reading' | 'error';
 
 export interface NFCCard {
@@ -136,8 +159,6 @@ export const connectReader = async (): Promise<boolean> => {
  * Returns the card UID if successful
  */
 export const readCard = async (): Promise<NFCCard | null> => {
-  const now = Date.now();
-  
   // Priority 1: Try NFC Bridge Server
   const bridgeAvailable = await isBridgeAvailable();
   if (bridgeAvailable) {
@@ -154,18 +175,12 @@ export const readCard = async (): Promise<NFCCard | null> => {
       
       if (data.success) {
         const cardId = data.cardId;
-        
-        // Check debounce - ignore if same card within cooldown period
-        if (cardId === lastCardId && now - lastReadTime < DEBOUNCE_MS) {
-          const remainingSeconds = Math.round((DEBOUNCE_MS - (now - lastReadTime)) / 1000);
-          console.log(`🚫 Cooldown aktiv - ignorerer lesning (${remainingSeconds}s gjenstår)`);
+
+        // Check debounce using centralized function
+        if (shouldDebounceCard(cardId)) {
           return null;
         }
-        
-        // Update debounce state
-        lastCardId = cardId;
-        lastReadTime = now;
-        
+
         console.log('✅ Card read via Bridge:', cardId);
         return {
           uid: cardId,
@@ -195,30 +210,22 @@ export const readCard = async (): Promise<NFCCard | null> => {
     try {
       const ndef = new (window as any).NDEFReader();
       await ndef.scan();
-      
+
       return new Promise((resolve) => {
         ndef.addEventListener('reading', ({ serialNumber }: any) => {
-          const now = Date.now();
-          
-          // Check debounce
-          if (serialNumber === lastCardId && now - lastReadTime < DEBOUNCE_MS) {
-            const remainingSeconds = Math.round((DEBOUNCE_MS - (now - lastReadTime)) / 1000);
-            console.log(`🚫 Cooldown aktiv - ignorerer lesning (${remainingSeconds}s gjenstår)`);
+          // Check debounce using centralized function
+          if (shouldDebounceCard(serialNumber)) {
             resolve(null);
             return;
           }
-          
-          // Update debounce state
-          lastCardId = serialNumber;
-          lastReadTime = now;
-          
+
           console.log('✅ Card read via Web NFC:', serialNumber);
           resolve({
             uid: serialNumber,
             type: 'NFC'
           });
         });
-        
+
         // Timeout after 10 seconds
         setTimeout(() => {
           console.warn('⏱️ NFC read timeout');
@@ -325,26 +332,12 @@ export const listenForCards = (
     
     const handleReading = ({ serialNumber }: any) => {
       if (!isListening) return;
-      
-      const now = Date.now();
-      
-      // Ignore if processing another transaction
-      if (processingTransaction) {
-        console.log('⏳ Transaksjon pågår - ignorerer ny lesning');
+
+      // Check debounce using centralized function
+      if (shouldDebounceCard(serialNumber)) {
         return;
       }
-      
-      // Check debounce
-      if (serialNumber === lastCardId && now - lastReadTime < DEBOUNCE_MS) {
-        const remainingSeconds = Math.round((DEBOUNCE_MS - (now - lastReadTime)) / 1000);
-        console.log(`🚫 Cooldown aktiv - ignorerer lesning (${remainingSeconds}s gjenstår)`);
-        return;
-      }
-      
-      // Update debounce state
-      lastCardId = serialNumber;
-      lastReadTime = now;
-      
+
       onCard({
         uid: serialNumber,
         type: 'NFC'

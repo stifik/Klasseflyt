@@ -1,27 +1,26 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import type { Reward } from '@/lib/types';
 import { buyReward, givePoints, type RewardResult } from '@/lib/rewardService';
-import { updatePricesAfterPurchase } from '@/lib/rewardService';
 import PosView from './PosView';
 import PodView from './PodView';
 import ActivityFeed from './ActivityFeed';
 import RewardDashboard from './RewardDashboard';
+import { NFCPaymentModal } from './NFCPaymentModal';
+import { ManualPaymentModal } from './ManualPaymentModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useCardScanner } from '@/hooks/useNFCReader';
+import { useNFCPolling } from '@/hooks/useNFCPolling';
 import { formatCardUID, setProcessing as setNFCProcessing } from '@/lib/nfcReader';
 import { soundEffects } from '@/lib/soundEffects';
-import { CreditCard, User, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
+import { Loader2, CheckCircle2 } from 'lucide-react';
 
 type TerminalMode = 'idle' | 'pos' | 'pod';
 type PaymentMode = 'manual' | 'nfc';
@@ -74,53 +73,16 @@ const Terminal: React.FC = () => {
 
   const nfc = useCardScanner();
 
-  // NFC listening effect - aktiveres når vi venter på kort
-  useEffect(() => {
-    let isListening = true;
-    let scanInterval: NodeJS.Timeout | null = null;
+  // Use NFC polling hook
+  const handleCardDetected = useCallback(async (card: any) => {
+    console.log('✅ Card detected:', card.uid);
+    await handleNFCCard(card.uid);
+  }, [rfidCards, students, activeTransaction]);
 
-    const scanForCard = async () => {
-      if (!isListening || nfcStatus !== 'waiting' || !activeTransaction) {
-        return;
-      }
-
-      try {
-        const card = await nfc.scanCard();
-
-        if (!isListening) return;
-
-        if (card) {
-          console.log('✅ Card detected in Terminal:', card.uid);
-          // Card detected - process it
-          if (scanInterval) {
-            clearInterval(scanInterval);
-            scanInterval = null;
-          }
-          await handleNFCCard(card.uid);
-        }
-        // If no card, the interval will retry automatically
-      } catch (error) {
-        console.error('❌ Error scanning card in Terminal:', error);
-      }
-    };
-
-    if (nfcStatus === 'waiting' && activeTransaction) {
-      setNfcMessage('Hold kortet mot kortleseren...');
-      
-      // Poll for cards every 250ms (hardware polling rate)
-      scanInterval = setInterval(scanForCard, 250);
-      
-      // Also do immediate first scan
-      scanForCard();
-    }
-
-    return () => {
-      isListening = false;
-      if (scanInterval) {
-        clearInterval(scanInterval);
-      }
-    };
-  }, [nfcStatus, activeTransaction]);
+  useNFCPolling({
+    enabled: nfcStatus === 'waiting' && !!activeTransaction,
+    onCardDetected: handleCardDetected
+  });
 
   // Handle NFC card scanning
   const handleNFCCard = async (cardUid: string) => {
@@ -172,23 +134,22 @@ const Terminal: React.FC = () => {
 
     // Process transaction
     console.log('💳 Processing transaction for student:', student.id, 'with card:', rfidCard.cardId);
-    await processTransaction(String(student.id), rfidCard.cardId);
+    await processTransaction(student.id!, rfidCard.cardId);
   };
 
   // Process transaction (both manual and NFC)
-  const processTransaction = async (studentId: string, cardId?: string) => {
-    console.log('💰 processTransaction called - studentId:', studentId, 'cardId:', cardId, 'activeTransaction:', activeTransaction?.name);
-    
+  const processTransaction = async (studentId: number, cardId?: string) => {
+    console.log('💰 processTransaction called - studentId:', studentId, 'cardId:', cardId, 'activeTransaction:', activeTransaction);
+
     if (!activeTransaction) return;
 
     let result: RewardResult;
 
     if (activeTransaction.type === 'reward') {
       // Check balance first for rewards
-      // Match both string and number IDs
-      const student = students.find(s => String(s.id) === String(studentId));
+      const student = students.find(s => s.id === studentId);
       console.log('🔍 Finding student in processTransaction - searching for:', studentId, 'found:', student);
-      
+
       if (!student || !student.name) {
         const message = 'Kunne ikke finne eleven. Vennligst prøv igjen.';
         soundEffects.play('error');
@@ -205,14 +166,14 @@ const Terminal: React.FC = () => {
         }
         return;
       }
-      
+
       const currentPoints = student.points || 0;
 
       if (currentPoints < activeTransaction.cost) {
         const message = `${student.name} har kun ${currentPoints} poeng, men ${activeTransaction.name} koster ${activeTransaction.cost} poeng.`;
-        
+
         soundEffects.play('error');
-        
+
         if (cardId) {
           setNfcStatus('error');
           setNfcMessage(message);
@@ -227,89 +188,14 @@ const Terminal: React.FC = () => {
         return;
       }
 
-      // Buy reward
-      result = await buyReward(studentId, activeTransaction.id);
-
-      // If NFC, update card metadata and payment method in transaction
-      if (cardId && result.success) {
-        // Find the transaction that was just created by buyReward
-        const recentTransactions = await db.transactions
-          .where('studentId')
-          .equals(studentId)
-          .reverse()
-          .limit(1)
-          .toArray();
-        
-        if (recentTransactions.length > 0) {
-          const lastTransaction = recentTransactions[0];
-          // Update the transaction to include NFC payment method and cardId
-          await db.transactions.update(lastTransaction.id!, {
-            paymentMethod: 'nfc',
-            cardId: cardId
-          });
-        }
-
-        // Add purchased reward record
-        await db.purchasedRewards.add({
-          purchaseId: uuidv4(),
-          studentId,
-          rewardId: activeTransaction.id,
-          rewardName: activeTransaction.name,
-          purchaseDate: new Date(),
-          status: 'unused'
-        });
-
-        // Update card last used
-        const card = rfidCards.find(c => c.cardId === cardId);
-        if (card?.id) {
-          await db.rfidCards.update(card.id, { lastUsed: new Date() });
-        }
-
-        // Update prices (if not already done by buyReward)
-        // Note: buyReward already handles dynamic pricing
-      }
+      // Buy reward (now handles all NFC metadata internally)
+      result = await buyReward(studentId, activeTransaction.id, cardId);
     } else if (activeTransaction.type === 'custom_action') {
-      result = await givePoints(studentId, activeTransaction.points, activeTransaction.name);
-      
-      if (cardId && result.success) {
-        // Find the transaction that was just created by givePoints
-        const recentTransactions = await db.transactions
-          .where('studentId')
-          .equals(studentId)
-          .reverse()
-          .limit(1)
-          .toArray();
-        
-        if (recentTransactions.length > 0) {
-          const lastTransaction = recentTransactions[0];
-          // Update to include NFC payment method and cardId
-          await db.transactions.update(lastTransaction.id!, {
-            paymentMethod: 'nfc',
-            cardId: cardId
-          });
-        }
-      }
+      // Give points for custom action (now handles NFC metadata internally)
+      result = await givePoints(studentId, activeTransaction.points, activeTransaction.name, cardId);
     } else {
-      result = await givePoints(studentId, activeTransaction.amount, activeTransaction.description);
-      
-      if (cardId && result.success) {
-        // Find the transaction that was just created by givePoints
-        const recentTransactions = await db.transactions
-          .where('studentId')
-          .equals(studentId)
-          .reverse()
-          .limit(1)
-          .toArray();
-        
-        if (recentTransactions.length > 0) {
-          const lastTransaction = recentTransactions[0];
-          // Update to include NFC payment method and cardId
-          await db.transactions.update(lastTransaction.id!, {
-            paymentMethod: 'nfc',
-            cardId: cardId
-          });
-        }
-      }
+      // Give points for predefined action (now handles NFC metadata internally)
+      result = await givePoints(studentId, activeTransaction.amount, activeTransaction.description, cardId);
     }
 
     // Show result
@@ -432,23 +318,18 @@ const Terminal: React.FC = () => {
     }
   };
 
-  const handleManualStudentSelect = async (studentId: string) => {
+  const handleManualStudentSelect = async (studentId: number) => {
     if (!studentId || !activeTransaction) return;
-    
-    // Convert to number if needed (Dexie auto-increment IDs are numbers)
-    const numericId = studentId;
-    
-    // Verify student exists - compare both as string and number
-    const student = students.find(s => s.id === numericId || s.id === String(numericId) || String(s.id) === numericId);
-    console.log('Manual select - studentId:', studentId, 'type:', typeof studentId, 'found:', student, 'all students:', students.length);
-    
+
+    const student = students.find(s => s.id === studentId);
+    console.log('Manual select - studentId:', studentId, 'found:', student);
+
     if (!student || !student.name) {
       showNotification(`Kunne ikke finne eleven med ID: ${studentId}. Prøv igjen.`, 'error');
       return;
     }
-    
-    // Use the student's actual ID (which might be number or string)
-    await processTransaction(String(student.id));
+
+    await processTransaction(studentId);
   };
 
   let content;
@@ -507,115 +388,31 @@ const Terminal: React.FC = () => {
 
           {/* NFC Mode */}
           {paymentMode === 'nfc' && (
-            <div className="space-y-4">
-              <Alert className={
-                nfcStatus === 'success' ? 'border-green-500 bg-green-50 dark:bg-green-950' :
-                nfcStatus === 'error' ? 'border-red-500 bg-red-50 dark:bg-red-950' :
-                nfcStatus === 'processing' ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' :
-                'border-blue-500 bg-blue-50 dark:bg-blue-950'
-              }>
-                {nfcStatus === 'success' && <CheckCircle2 className="h-5 w-5 text-green-600" />}
-                {nfcStatus === 'error' && <XCircle className="h-5 w-5 text-red-600" />}
-                {nfcStatus === 'processing' && <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />}
-                {nfcStatus === 'waiting' && <CreditCard className="h-5 w-5 text-blue-600 animate-pulse" />}
-                
-                <div className="ml-2">
-                  <AlertTitle className="text-lg font-semibold">
-                    {nfcStatus === 'waiting' && '🔵 Venter på kort...'}
-                    {nfcStatus === 'processing' && '⏳ Behandler...'}
-                    {nfcStatus === 'success' && '✅ Vellykket!'}
-                    {nfcStatus === 'error' && '❌ Feil'}
-                  </AlertTitle>
-                  <AlertDescription className="text-base mt-1">
-                    {nfcMessage}
-                  </AlertDescription>
-                </div>
-              </Alert>
-
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={handleCancelNFC}
-                  className="flex-1"
-                >
-                  Avbryt NFC-modus
-                </Button>
-                <Button
-                  onClick={() => {
-                    setActiveTransaction(null);
-                    setPaymentMode('manual');
-                    setNfcStatus('idle');
-                  }}
-                  variant="destructive"
-                  className="flex-1"
-                >
-                  Avslutt transaksjon
-                </Button>
-              </div>
-            </div>
+            <NFCPaymentModal
+              nfcStatus={nfcStatus}
+              nfcMessage={nfcMessage}
+              onCancel={handleCancelNFC}
+              onAbort={() => {
+                setActiveTransaction(null);
+                setPaymentMode('manual');
+                setNfcStatus('idle');
+              }}
+            />
           )}
 
           {/* Manual Mode */}
           {paymentMode === 'manual' && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Velg betalingsmåte
-              </h3>
-              
-              {/* NFC Button */}
-              {nfc.isSupported && rfidCards.length > 0 && (
-                <Button
-                  onClick={handleStartNFCMode}
-                  className="w-full h-16 text-lg"
-                  variant="default"
-                >
-                  <CreditCard className="w-5 h-5 mr-2" />
-                  Tæpp NFC-kort (anbefalt)
-                </Button>
-              )}
-
-              {/* Manual Selection */}
-              <div className="space-y-2">
-                <Label htmlFor="manual-select" className="text-base">
-                  Eller velg elev manuelt:
-                </Label>
-                <select 
-                  id="manual-select"
-                  defaultValue="" 
-                  onChange={(e) => handleManualStudentSelect(e.target.value)}
-                  className="w-full p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg"
-                >
-                  <option value="" disabled>Velg elev fra listen...</option>
-                  {students
-                    .filter(student => student.name && student.id) // Only show students with name and id
-                    .map((student) => (
-                      <option key={student.id} value={student.id}>
-                        {student.name} ({student.points || 0} poeng)
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-              {!nfc.isSupported && (
-                <Alert className="border-orange-500">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    NFC støttes ikke i denne nettleseren. Bruk manuell modus eller start NFC Bridge Server.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <Button 
-                onClick={() => {
-                  setActiveTransaction(null);
-                  setPaymentMode('manual');
-                }}
-                variant="outline"
-                className="w-full"
-              >
-                Avbryt transaksjon
-              </Button>
-            </div>
+            <ManualPaymentModal
+              students={students}
+              rfidCards={rfidCards}
+              isNFCSupported={nfc.isSupported}
+              onNFCMode={handleStartNFCMode}
+              onManualSelect={handleManualStudentSelect}
+              onCancel={() => {
+                setActiveTransaction(null);
+                setPaymentMode('manual');
+              }}
+            />
           )}
         </div>
       </div>

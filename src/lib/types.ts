@@ -1,14 +1,14 @@
 
 
 export type Student = {
-  id?: string;
+  id?: number;
   name: string;
   points?: number; // Antall poeng, default 0 hvis ikke satt
 };
 
 export type Transaction = {
   id?: number;
-  studentId: string;
+  studentId: number;
   date: Date;
   pointsChange: number;
   description: string;
@@ -19,7 +19,7 @@ export type Transaction = {
 export type PurchasedReward = {
   id?: number;
   purchaseId: string;
-  studentId: string;
+  studentId: number;
   rewardId: number;
   rewardName: string;
   purchaseDate: Date;
@@ -38,7 +38,7 @@ export type Reward = {
 export type RFIDCard = {
   id?: number;
   cardId: string; // The RFID UID (unique identifier)
-  studentId: string;
+  studentId: number;
   status: 'active' | 'blocked';
   createdAt: Date;
   lastUsed?: Date;
