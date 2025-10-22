@@ -1,9 +1,11 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const pcsclite = require('pcsclite');
 
 const app = express();
-const PORT = 3001;
+const PORT = parseInt(process.env.PORT) || 3001;
+const SCAN_TIMEOUT = parseInt(process.env.SCAN_TIMEOUT) || 5000; // 5 seconds default
 
 // Middleware
 app.use(cors());
@@ -44,11 +46,22 @@ pcsc.on('reader', (reader) => {
   reader.on('end', () => {
     console.log('Reader removed:', reader.name);
     readers = readers.filter(r => r.name !== reader.name);
+    
+    // If current reader was removed, select another one
+    if (currentReader && currentReader.name === reader.name) {
+      currentReader = readers.length > 0 ? readers[0] : null;
+      if (currentReader) {
+        console.log('📱 Switched to reader:', currentReader.name);
+      } else {
+        console.log('⚠️ No readers available');
+      }
+    }
   });
 
   // Set as current reader if none selected
   if (!currentReader) {
     currentReader = reader;
+    console.log('✅ Current reader set to:', reader.name);
   }
 });
 
@@ -56,18 +69,34 @@ pcsc.on('error', (err) => {
   console.error('❌ PC/SC Error:', err.message);
 });
 
-// Helper function to read card UID
-function readCardUID(reader) {
+// Helper function to read card UID with timeout
+function readCardUID(reader, timeout = SCAN_TIMEOUT) {
   return new Promise((resolve, reject) => {
     // Check if reader is available
     if (!reader) {
-      return reject(new Error('No reader available'));
+      return reject(new Error('NO_READER'));
     }
 
     let isConnected = false;
+    let timeoutHandle = null;
+    let isResolved = false;
     
-    // Helper to ensure we always disconnect
+    // Set timeout
+    timeoutHandle = setTimeout(() => {
+      if (!isResolved) {
+        isResolved = true;
+        console.warn('⏱️ Scan timeout reached');
+        safeDisconnect(() => reject(new Error('TIMEOUT')));
+      }
+    }, timeout);
+    
+    // Helper to ensure we always disconnect and clear timeout
     const safeDisconnect = (callback) => {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+        timeoutHandle = null;
+      }
+      
       if (isConnected) {
         reader.disconnect(reader.SCARD_LEAVE_CARD, (err) => {
           isConnected = false;
@@ -80,28 +109,31 @@ function readCardUID(reader) {
     };
 
     reader.connect({ share_mode: reader.SCARD_SHARE_SHARED }, (err, protocol) => {
+      if (isResolved) return; // Already timed out
+      
       if (err) {
+        isResolved = true;
         // Check for specific error codes
         const errorCode = err.message || '';
         
         // Card removed error (0x80100069)
         if (errorCode.includes('0x80100069') || errorCode.includes('fjernet')) {
-          return reject(new Error('CARD_REMOVED'));
+          return safeDisconnect(() => reject(new Error('CARD_REMOVED')));
         }
         
         // Reader busy/not available (0x80100017)
         if (errorCode.includes('0x80100017') || errorCode.includes('ikke tilgjengelig')) {
-          return reject(new Error('NO_CARD'));
+          return safeDisconnect(() => reject(new Error('NO_CARD')));
         }
         
         // Card not present, invalid handle, or device not responding (0x8010000C, 0x80100003, 0x0000001f)
         if (errorCode.includes('0x8010000C') || errorCode.includes('0x80100003') || 
             errorCode.includes('0x0000001f') || errorCode.includes('No smartcard') || 
             errorCode.includes('referansen var ugyldig') || errorCode.includes('virker ikke')) {
-          return reject(new Error('NO_CARD'));
+          return safeDisconnect(() => reject(new Error('NO_CARD')));
         }
         
-        return reject(new Error('Failed to connect to card: ' + err.message));
+        return safeDisconnect(() => reject(new Error('CONNECT_ERROR')));
       }
 
       // Mark as connected - we MUST disconnect later
@@ -116,11 +148,14 @@ function readCardUID(reader) {
       const pcscProtocol = (typeof protocol === 'number' && protocol > 0) ? protocol : 2;
       
       reader.transmit(getUID, 40, pcscProtocol, (err, data) => {
+        if (isResolved) return; // Already timed out
+        
         // ALWAYS disconnect, even on error
         if (err) {
+          isResolved = true;
           const errorCode = err.message || '';
           
-          let errorType = 'Failed to read UID: ' + err.message;
+          let errorType = 'TRANSMIT_ERROR';
           if (errorCode.includes('0x80100069') || errorCode.includes('fjernet')) {
             errorType = 'CARD_REMOVED';
           } else if (errorCode.includes('0x80100003') || errorCode.includes('0x8010000C') || 
@@ -132,9 +167,12 @@ function readCardUID(reader) {
           return safeDisconnect(() => reject(new Error(errorType)));
         }
 
+        if (isResolved) return; // Already timed out
+        isResolved = true;
+        
         // Check response
         if (data.length < 2) {
-          return safeDisconnect(() => reject(new Error('Invalid response from card')));
+          return safeDisconnect(() => reject(new Error('INVALID_RESPONSE')));
         }
 
         // Last 2 bytes are status word (should be 90 00 for success)
@@ -142,7 +180,7 @@ function readCardUID(reader) {
         const sw2 = data[data.length - 1];
 
         if (sw1 !== 0x90 || sw2 !== 0x00) {
-          return safeDisconnect(() => reject(new Error(`Card returned error: ${sw1.toString(16)} ${sw2.toString(16)}`)));
+          return safeDisconnect(() => reject(new Error('CARD_ERROR')));
         }
 
         // UID is everything except last 2 bytes (status word)
@@ -158,34 +196,76 @@ function readCardUID(reader) {
   });
 }
 
+// Helper function to map error codes to user-friendly messages
+function getErrorMessage(errorCode) {
+  const errorMessages = {
+    'NO_READER': 'Ingen kortleser tilgjengelig',
+    'NO_CARD': 'Intet kort påvist',
+    'CARD_REMOVED': 'Intet kort påvist',
+    'TIMEOUT': 'Tidsavbrudd - kortet svarte ikke',
+    'CONNECT_ERROR': 'Kunne ikke koble til kort',
+    'TRANSMIT_ERROR': 'Feil ved kommunikasjon med kort',
+    'INVALID_RESPONSE': 'Ugyldig svar fra kort',
+    'CARD_ERROR': 'Kortet returnerte en feil'
+  };
+  
+  return errorMessages[errorCode] || errorCode;
+}
+
 // Routes
 
 // Get list of available readers
 app.get('/api/readers', (req, res) => {
-  res.json({
-    readers: readers.map(r => r.name),
-    count: readers.length
-  });
+  try {
+    res.json({
+      readers: readers.map(r => r.name),
+      count: readers.length,
+      currentReader: currentReader ? currentReader.name : null
+    });
+  } catch (error) {
+    console.error('Error getting readers:', error);
+    res.status(500).json({
+      success: false,
+      error: 'SERVER_ERROR',
+      message: 'Kunne ikke hente kortlesere'
+    });
+  }
 });
 
 // Get server status
 app.get('/api/status', (req, res) => {
-  res.json({
-    status: 'ok',
-    readersConnected: readers.length,
-    currentReader: currentReader ? currentReader.name : null
-  });
+  try {
+    res.json({
+      status: 'ok',
+      readersConnected: readers.length,
+      currentReader: currentReader ? currentReader.name : null,
+      pollingSupported: true,
+      version: '1.1.0'
+    });
+  } catch (error) {
+    console.error('Error getting status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'SERVER_ERROR',
+      message: 'Kunne ikke hente server status'
+    });
+  }
 });
 
 // Scan for card
 app.post('/api/scan', async (req, res) => {
+  // Check if reader is available
   if (!currentReader) {
     return res.status(503).json({
       success: false,
-      error: 'No card reader available'
+      error: 'NO_READER',
+      message: getErrorMessage('NO_READER')
     });
   }
 
+  // Note: We removed the isScanning lock to allow polling/continuous scanning
+  // The PC/SC library handles concurrent access internally
+  
   try {
     const cardData = await readCardUID(currentReader);
     
@@ -194,20 +274,38 @@ app.post('/api/scan', async (req, res) => {
       uid: cardData.uid,
       cardId: cardData.uid,
       length: cardData.length,
-      reader: currentReader.name
+      reader: currentReader.name,
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Scan error:', error.message);
-    res.status(400).json({
+    const errorCode = error.message;
+    
+    // Only log unexpected errors (not normal "no card" situations)
+    if (errorCode !== 'NO_CARD' && errorCode !== 'CARD_REMOVED') {
+      console.error('❌ Scan error:', error.message);
+    }
+    
+    const statusCode = errorCode === 'NO_CARD' ? 404 : 
+                       errorCode === 'CARD_REMOVED' ? 404 :
+                       errorCode === 'TIMEOUT' ? 408 : 
+                       errorCode === 'NO_READER' ? 503 : 400;
+    
+    res.status(statusCode).json({
       success: false,
-      error: error.message
+      error: errorCode,
+      message: getErrorMessage(errorCode)
     });
   }
 });
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+  const hasReader = readers.length > 0;
+  res.json({ 
+    status: hasReader ? 'ok' : 'no_readers',
+    healthy: true,
+    readers: readers.length
+  });
 });
 
 // Start server

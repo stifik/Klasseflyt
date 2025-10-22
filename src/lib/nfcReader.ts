@@ -190,7 +190,7 @@ export const readCard = async (): Promise<NFCCard | null> => {
         // Handle specific error types silently (normal operation)
         const error = data.error || '';
         
-        if (error === 'CARD_REMOVED' || error === 'NO_CARD') {
+        if (error === 'CARD_REMOVED' || error === 'NO_CARD' || error === 'SCAN_IN_PROGRESS') {
           // Silent - these are expected during polling
           return null;
         }
