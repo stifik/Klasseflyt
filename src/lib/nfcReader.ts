@@ -271,7 +271,9 @@ export const writeCard = async (data: string): Promise<boolean> => {
  * Format card UID for display
  * Converts hex string to readable format
  */
-export const formatCardUID = (uid: string): string => {
+export const formatCardUID = (uid: string | undefined): string => {
+  if (!uid) return '';
+  
   // Remove any non-hex characters
   const cleanUid = uid.replace(/[^0-9A-Fa-f]/g, '');
   

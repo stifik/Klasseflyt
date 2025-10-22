@@ -64,6 +64,21 @@ function readCardUID(reader) {
       return reject(new Error('No reader available'));
     }
 
+    let isConnected = false;
+    
+    // Helper to ensure we always disconnect
+    const safeDisconnect = (callback) => {
+      if (isConnected) {
+        reader.disconnect(reader.SCARD_LEAVE_CARD, (err) => {
+          isConnected = false;
+          if (err) console.error('⚠️ Disconnect error:', err.message);
+          if (callback) callback();
+        });
+      } else if (callback) {
+        callback();
+      }
+    };
+
     reader.connect({ share_mode: reader.SCARD_SHARE_SHARED }, (err, protocol) => {
       if (err) {
         // Check for specific error codes
@@ -89,6 +104,9 @@ function readCardUID(reader) {
         return reject(new Error('Failed to connect to card: ' + err.message));
       }
 
+      // Mark as connected - we MUST disconnect later
+      isConnected = true;
+
       // APDU command to get UID (works with most ISO 14443A cards)
       const getUID = Buffer.from([
         0xFF, 0xCA, 0x00, 0x00, 0x00  // Get Data command for UID
@@ -98,30 +116,25 @@ function readCardUID(reader) {
       const pcscProtocol = (typeof protocol === 'number' && protocol > 0) ? protocol : 2;
       
       reader.transmit(getUID, 40, pcscProtocol, (err, data) => {
+        // ALWAYS disconnect, even on error
         if (err) {
-          reader.disconnect(reader.SCARD_LEAVE_CARD, () => {});
-          
           const errorCode = err.message || '';
           
-          // Card removed during read
+          let errorType = 'Failed to read UID: ' + err.message;
           if (errorCode.includes('0x80100069') || errorCode.includes('fjernet')) {
-            return reject(new Error('CARD_REMOVED'));
+            errorType = 'CARD_REMOVED';
+          } else if (errorCode.includes('0x80100003') || errorCode.includes('0x8010000C') || 
+                     errorCode.includes('0x0000001f') || errorCode.includes('referansen var ugyldig') ||
+                     errorCode.includes('virker ikke')) {
+            errorType = 'NO_CARD';
           }
           
-          // Invalid handle, no card, or device not responding (0x80100003, 0x8010000C, 0x0000001f)
-          if (errorCode.includes('0x80100003') || errorCode.includes('0x8010000C') || 
-              errorCode.includes('0x0000001f') || errorCode.includes('referansen var ugyldig') ||
-              errorCode.includes('virker ikke')) {
-            return reject(new Error('NO_CARD'));
-          }
-          
-          return reject(new Error('Failed to read UID: ' + err.message));
+          return safeDisconnect(() => reject(new Error(errorType)));
         }
 
         // Check response
         if (data.length < 2) {
-          reader.disconnect(reader.SCARD_LEAVE_CARD, () => {});
-          return reject(new Error('Invalid response from card'));
+          return safeDisconnect(() => reject(new Error('Invalid response from card')));
         }
 
         // Last 2 bytes are status word (should be 90 00 for success)
@@ -129,8 +142,7 @@ function readCardUID(reader) {
         const sw2 = data[data.length - 1];
 
         if (sw1 !== 0x90 || sw2 !== 0x00) {
-          reader.disconnect(reader.SCARD_LEAVE_CARD, () => {});
-          return reject(new Error(`Card returned error: ${sw1.toString(16)} ${sw2.toString(16)}`));
+          return safeDisconnect(() => reject(new Error(`Card returned error: ${sw1.toString(16)} ${sw2.toString(16)}`)));
         }
 
         // UID is everything except last 2 bytes (status word)
@@ -139,15 +151,8 @@ function readCardUID(reader) {
           .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
           .join(':');
 
-        reader.disconnect(reader.SCARD_LEAVE_CARD, (err) => {
-          if (err) console.error('Error disconnecting:', err);
-        });
-
-        resolve({
-          uid: uidHex,
-          raw: uid,
-          length: uid.length
-        });
+        // Disconnect and resolve with card data
+        safeDisconnect(() => resolve({ uid: uidHex, length: uid.length }));
       });
     });
   });
@@ -186,6 +191,7 @@ app.post('/api/scan', async (req, res) => {
     
     res.json({
       success: true,
+      uid: cardData.uid,
       cardId: cardData.uid,
       length: cardData.length,
       reader: currentReader.name
