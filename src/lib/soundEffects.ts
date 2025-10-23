@@ -1,19 +1,21 @@
 /**
  * Sound Effects for NFC Transactions
  * Provides audio feedback for successful purchases and errors
+ *
+ * Now powered by the randomized sounds utility (supports multiple files per category)
  */
 
+import { playSuccess, playError, preloadSounds } from '@/lib/sounds';
+
 class SoundEffects {
-  private sounds: Map<string, HTMLAudioElement> = new Map();
   private isEnabled: boolean = true;
 
   constructor() {
-    // Only initialize in browser environment
     if (typeof window !== 'undefined') {
-      this.loadSound('success', '/sounds/success.mp3');
-      this.loadSound('error', '/sounds/error.mp3');
+      // Preload/detect available files
+      preloadSounds();
 
-      // Check if sound is enabled in localStorage
+      // Restore persisted setting
       const soundEnabled = localStorage.getItem('nfc_sound_enabled');
       if (soundEnabled !== null) {
         this.isEnabled = soundEnabled === 'true';
@@ -21,43 +23,24 @@ class SoundEffects {
     }
   }
 
-  private loadSound(name: string, path: string): void {
-    try {
-      const audio = new Audio(path);
-      audio.preload = 'auto';
-      
-      // Handle loading errors gracefully
-      audio.addEventListener('error', (e) => {
-        console.warn(`⚠️ Could not load sound: ${path}`, e);
-      });
-      
-      this.sounds.set(name, audio);
-    } catch (err) {
-      console.warn(`⚠️ Error creating audio element for ${name}:`, err);
-    }
-  }
-
   /**
    * Play a sound effect
    * @param soundName - The name of the sound to play ('success' or 'error')
    */
-  play(soundName: 'success' | 'error'): void {
+  async play(soundName: 'success' | 'error'): Promise<void> {
     if (!this.isEnabled) {
       console.log('🔇 Sound disabled');
       return;
     }
 
-    const sound = this.sounds.get(soundName);
-    if (sound) {
-      // Reset playback position if already playing
-      sound.currentTime = 0;
-      
-      sound.play().catch(err => {
-        // Browser may block autoplay - this is expected
-        console.warn('⚠️ Could not play sound (may be blocked by browser):', err);
-      });
-    } else {
-      console.warn(`⚠️ Sound not found: ${soundName}`);
+    try {
+      if (soundName === 'success') {
+        await playSuccess();
+      } else {
+        await playError();
+      }
+    } catch (err) {
+      console.warn('⚠️ Could not play sound:', err);
     }
   }
 
