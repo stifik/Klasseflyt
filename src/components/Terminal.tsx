@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useCardScanner } from '@/hooks/useNFCReader';
-import { useNFCWebSocket } from '@/hooks/useNFCWebSocket';
+import { useNFCPolling } from '@/hooks/useNFCPolling';
 import { formatCardUID, setProcessing as setNFCProcessing } from '@/lib/nfcReader';
 import { soundEffects } from '@/lib/soundEffects';
 import { Loader2, CheckCircle2 } from 'lucide-react';
@@ -126,33 +126,17 @@ const Terminal: React.FC = () => {
     await processTransaction(student.id!, rfidCard.cardId);
   }, [rfidCards, students, activeTransaction]);
 
-  // WebSocket NFC handler - automatically called when card is detected
+  // NFC card detection handler
   const handleCardDetected = useCallback(async (card: any) => {
-    console.log('✅ Card detected via WebSocket:', card.uid);
+    console.log('✅ Card detected:', card.uid);
     await handleNFCCard(card.uid);
   }, [handleNFCCard]);
 
-  // Use WebSocket for real-time NFC events (replaces polling)
-  const nfcWebSocket = useNFCWebSocket({
-    enabled: true,
-    autoConnect: true,
-    autoMonitor: false, // We'll control monitoring manually
-    onCardDetected: handleCardDetected,
-    onError: (error, message) => {
-      console.error('❌ NFC WebSocket error:', error, message);
-    }
+  // Use polling for NFC (simpler and more stable)
+  useNFCPolling({
+    enabled: nfcStatus === 'waiting' && !!activeTransaction,
+    onCardDetected: handleCardDetected
   });
-
-  // Start/stop monitoring when NFC status changes
-  React.useEffect(() => {
-    if (nfcStatus === 'waiting' && activeTransaction) {
-      console.log('🔌 Starting NFC monitoring...');
-      nfcWebSocket.startMonitoring();
-    } else {
-      console.log('🔌 Stopping NFC monitoring...');
-      nfcWebSocket.stopMonitoring();
-    }
-  }, [nfcStatus, activeTransaction, nfcWebSocket.startMonitoring, nfcWebSocket.stopMonitoring]);
 
   // Process transaction (both manual and NFC)
   const processTransaction = async (studentId: number, cardId?: string) => {
@@ -514,12 +498,12 @@ const Terminal: React.FC = () => {
         </div>
 
         <div className="text-center mt-8">
-          {nfc.isSupported && rfidCards.length > 0 ? (
+          {typeof window !== 'undefined' && nfc.isSupported && rfidCards.length > 0 ? (
             <p className="text-green-600 dark:text-green-400 font-medium flex items-center justify-center gap-2">
               <CheckCircle2 className="w-5 h-5" />
               NFC-støtte aktivert ({rfidCards.length} kort registrert)
             </p>
-          ) : !nfc.isSupported ? (
+          ) : typeof window !== 'undefined' && !nfc.isSupported ? (
             <p className="text-gray-500 dark:text-gray-400">
               💡 Start NFC Bridge Server for kortlesing
             </p>

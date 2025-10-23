@@ -82,15 +82,22 @@ export function useNFCReader(): UseNFCReaderReturn {
 
   const scan = useCallback(async () => {
     console.log('🔍 scan() called - current status:', status);
-    
-    // Allow scanning while connecting (it will wait for connection to complete)
-    if (status !== 'connected' && status !== 'reading' && status !== 'connecting') {
-      console.log('❌ Not ready - status is:', status);
-      setError('Kortleser ikke tilkoblet');
-      return null;
+
+    // If disconnected, try to connect first
+    if (status === 'disconnected' || status === 'error') {
+      console.log('🔌 Auto-connecting in scan()...');
+      const connected = await connectReader();
+      if (!connected) {
+        console.log('❌ Connection failed in scan()');
+        setError('Kortleser ikke tilkoblet');
+        return null;
+      }
+      setStatus('connected');
+      // Small delay to ensure connection is established
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    console.log('✅ Status OK, proceeding with scan');
+    console.log('✅ Proceeding with scan');
     setStatus('reading');
     setError(null);
     setProcessingState(true);
@@ -198,17 +205,17 @@ export function useCardScanner() {
       if (nfc.status === 'disconnected' || nfc.status === 'error') {
         console.log('🔌 Auto-connecting in scanCard...');
         const connected = await nfc.connect();
-        console.log('🔌 Connect result:', connected, 'new status:', nfc.status);
+        console.log('🔌 Connect result:', connected);
         if (!connected) {
           setIsScanning(false);
           console.log('❌ Failed to connect, returning null');
           return null;
         }
-        // Wait a bit for state to update
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Wait for state to settle
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
 
-      console.log('📡 About to call nfc.scan() - status is:', nfc.status);
+      console.log('📡 Calling nfc.scan()...');
       const card = await nfc.scan();
       console.log('📡 Scan result:', card);
       setIsScanning(false);

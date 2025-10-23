@@ -140,7 +140,12 @@ export function useNFCWebSocket({
   }, [onCardDetected, onCardRemoved, onError, updateStatus]);
 
   const connect = useCallback(() => {
-    if (!enabled || wsRef.current?.readyState === WebSocket.OPEN) {
+    if (!enabled) {
+      return;
+    }
+
+    // Don't reconnect if already connected or connecting
+    if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
       return;
     }
 
@@ -170,26 +175,29 @@ export function useNFCWebSocket({
 
       ws.onerror = (error) => {
         console.error('❌ WebSocket error:', error);
-        updateStatus('error');
-        onError?.('WEBSOCKET_ERROR', 'Failed to connect to NFC bridge');
+        // Don't update status here - wait for onclose
       };
 
-      ws.onclose = () => {
-        console.log('🔌 WebSocket disconnected');
+      ws.onclose = (event) => {
+        console.log('🔌 WebSocket disconnected', event.code, event.reason);
+        wsRef.current = null;
         updateStatus('disconnected');
 
-        // Auto-reconnect if enabled
-        if (enabled && autoConnect) {
+        // Only auto-reconnect if it wasn't a clean close and if enabled
+        if (enabled && autoConnect && event.code !== 1000) {
           console.log(`🔄 Reconnecting in ${reconnectInterval}ms...`);
           reconnectTimerRef.current = setTimeout(() => {
             connect();
           }, reconnectInterval);
+        } else if (event.code !== 1000) {
+          onError?.('WEBSOCKET_ERROR', 'Failed to connect to NFC bridge - is the server running?');
         }
       };
 
       wsRef.current = ws;
     } catch (error) {
       console.error('❌ Failed to create WebSocket:', error);
+      wsRef.current = null;
       updateStatus('error');
       onError?.('CONNECTION_FAILED', 'Could not connect to NFC bridge server');
 
@@ -209,7 +217,8 @@ export function useNFCWebSocket({
     }
 
     if (wsRef.current) {
-      wsRef.current.close();
+      // Use 1000 for normal closure to prevent reconnect
+      wsRef.current.close(1000, 'Client disconnecting');
       wsRef.current = null;
     }
 
@@ -238,14 +247,19 @@ export function useNFCWebSocket({
 
   // Auto-connect on mount if enabled
   useEffect(() => {
-    if (enabled && autoConnect) {
+    let isMounted = true;
+
+    if (enabled && autoConnect && isMounted) {
       connect();
     }
 
     return () => {
+      isMounted = false;
       disconnect();
     };
-  }, [enabled, autoConnect, connect, disconnect]);
+    // Only run on mount/unmount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
     status,
