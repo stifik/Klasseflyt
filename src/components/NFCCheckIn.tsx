@@ -1,0 +1,312 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Scan,
+  StopCircle,
+  CheckCircle2,
+  Clock,
+  Users,
+  UserX,
+  AlertCircle,
+  Info
+} from "lucide-react";
+import {
+  startRegistrationSession,
+  endRegistrationSession,
+  getActiveSession,
+  getRegistrationStats,
+  getRegisteredStudentsToday,
+  handleCardTap,
+  type CheckInResult
+} from "@/lib/nfcCheckInService";
+import { useNFCPolling } from "@/hooks/useNFCPolling";
+import { format } from "date-fns";
+
+export default function NFCCheckIn() {
+  const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [lastCheckInResult, setLastCheckInResult] = useState<CheckInResult | null>(null);
+
+  // Live query for active session
+  const activeSession = useLiveQuery(async () => {
+    const session = await getActiveSession();
+    return session;
+  }, []);
+
+  // Live query for stats
+  const stats = useLiveQuery(async () => {
+    return await getRegistrationStats();
+  }, []);
+
+  // Live query for registered students
+  const registeredStudents = useLiveQuery(async () => {
+    return await getRegisteredStudentsToday();
+  }, []);
+
+  // Set up NFC polling
+  const { nfc } = useNFCPolling({
+    enabled: !!activeSession,
+    onCardDetected: async (card) => {
+      setIsProcessing(true);
+      setLastCheckInResult(null);
+
+      const result = await handleCardTap(card.uid);
+      setLastCheckInResult(result);
+
+      if (result.success) {
+        toast({
+          title: "✅ Registrert!",
+          description: `${result.studentName} har sjekket inn (+${result.points} poeng)`,
+        });
+      } else {
+        toast({
+          title: "Feil",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+
+      setIsProcessing(false);
+    },
+  });
+
+  const handleStartRegistration = async () => {
+    setIsProcessing(true);
+    const result = await startRegistrationSession();
+
+    if (result.success) {
+      toast({
+        title: "NFC-registrering startet",
+        description: "Elever kan nå tappe kort for å sjekke inn.",
+      });
+    } else {
+      toast({
+        title: "Feil",
+        description: result.message,
+        variant: "destructive",
+      });
+    }
+
+    setIsProcessing(false);
+  };
+
+  const handleEndRegistration = async () => {
+    setIsProcessing(true);
+    const result = await endRegistrationSession();
+
+    if (result.success) {
+      toast({
+        title: "Registrering avsluttet",
+        description: `${result.registered} elever fikk poeng. ${result.notCharged} markert som "Ikke ladet".`,
+      });
+    } else {
+      toast({
+        title: "Feil",
+        description: result.message,
+        variant: "destructive",
+      });
+    }
+
+    setIsProcessing(false);
+  };
+
+  // Show "not active" state
+  if (!activeSession) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Scan className="w-5 h-5" />
+            NFC-registrering (valgfritt)
+          </CardTitle>
+          <CardDescription>
+            La elevene registrere iPad-lading ved å tappe kort. Krever NFC-utstyr.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Slik fungerer det:</strong>
+              <ol className="list-decimal list-inside mt-2 space-y-1">
+                <li>Trykk "Start NFC-registrering"</li>
+                <li>Elevene tapper kort når de kommer</li>
+                <li>De får automatisk poeng for ladet iPad</li>
+                <li>Trykk "Avslutt registrering" når alle er kommet</li>
+                <li>Gjenstående elever settes som "Ikke ladet"</li>
+                <li>Juster manuelt for fraværende eller glemt iPad</li>
+              </ol>
+            </AlertDescription>
+          </Alert>
+
+          {stats && (
+            <div className="flex gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Users className="w-4 h-4" />
+                <span>{stats.totalStudents} elever totalt</span>
+              </div>
+              {stats.absent > 0 && (
+                <div className="flex items-center gap-1">
+                  <UserX className="w-4 h-4" />
+                  <span>{stats.absent} fraværende</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <Button
+            onClick={handleStartRegistration}
+            disabled={isProcessing}
+            className="w-full sm:w-auto"
+          >
+            <Scan className="w-4 h-4 mr-2" />
+            Start NFC-registrering
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show "active" state
+  if (activeSession && !activeSession.isCompleted) {
+    return (
+      <Card className="border-green-200 dark:border-green-800">
+        <CardHeader className="bg-green-50 dark:bg-green-950">
+          <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-300">
+            <Scan className="w-5 h-5 animate-pulse" />
+            NFC-registrering aktiv
+          </CardTitle>
+          <CardDescription>
+            Elever kan nå tappe kort for å sjekke inn
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-6">
+          {/* Stats */}
+          <div className="flex flex-wrap gap-3">
+            <Badge variant="default" className="text-base px-4 py-2">
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              {stats?.registered || 0} av {stats?.totalStudents || 0} registrert
+            </Badge>
+            {stats && stats.notRegistered > 0 && (
+              <Badge variant="outline" className="text-base px-4 py-2">
+                <Clock className="w-4 h-4 mr-2" />
+                {stats.notRegistered} venter
+              </Badge>
+            )}
+            {stats && stats.absent > 0 && (
+              <Badge variant="secondary" className="text-base px-4 py-2">
+                <UserX className="w-4 h-4 mr-2" />
+                {stats.absent} fraværende
+              </Badge>
+            )}
+          </div>
+
+          {/* Last check-in feedback */}
+          {lastCheckInResult && lastCheckInResult.success && (
+            <Alert className="border-green-200 bg-green-50 dark:bg-green-950">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-700 dark:text-green-300">
+                <strong>{lastCheckInResult.studentName}</strong> registrert!
+                {lastCheckInResult.points && ` (+${lastCheckInResult.points} poeng)`}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Registered students list */}
+          {registeredStudents && registeredStudents.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Registrerte elever ({registeredStudents.length})
+              </h4>
+              <div className="max-h-48 overflow-y-auto space-y-1 border rounded-md p-2">
+                {registeredStudents.map((student) => (
+                  <div
+                    key={student.studentId}
+                    className="flex items-center justify-between p-2 rounded-md bg-secondary/50 text-sm"
+                  >
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                      <span className="font-medium">{student.studentName}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {format(new Date(student.registeredAt), 'HH:mm:ss')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* NFC status */}
+          {nfc.error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{nfc.error}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* End button */}
+          <div className="flex gap-2 pt-4 border-t">
+            <Button
+              onClick={handleEndRegistration}
+              disabled={isProcessing}
+              variant="destructive"
+              className="flex-1"
+            >
+              <StopCircle className="w-4 h-4 mr-2" />
+              Avslutt registrering
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Når du avslutter vil alle gjenstående elever (som ikke er fraværende)
+            bli markert som "Ikke ladet".
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show "completed" state
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CheckCircle2 className="w-5 h-5 text-green-600" />
+          Registrering fullført
+        </CardTitle>
+        <CardDescription>
+          NFC-registrering for i dag er avsluttet
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Oppsummering:</strong>
+            <ul className="mt-2 space-y-1">
+              <li>✅ Registrert: {stats?.registered || 0} elever</li>
+              {stats && stats.notCharged > 0 && (
+                <li>⚠️ Ikke ladet: {stats.notCharged} elever</li>
+              )}
+              {stats && stats.absent > 0 && (
+                <li>👤 Fraværende: {stats.absent} elever</li>
+              )}
+            </ul>
+          </AlertDescription>
+        </Alert>
+
+        <p className="text-sm text-muted-foreground">
+          Du kan nå justere statusene manuelt i klassekartet ovenfor om nødvendig.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}

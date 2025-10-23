@@ -82,6 +82,17 @@ export type DailyCheck = {
   date: Date;
   ipadCharged: boolean;
   ipadBrought: boolean;
+  registrationMethod?: 'manual' | 'nfc';
+  registeredAt?: Date;
+};
+
+export type NFCRegistrationSession = {
+  id: string; // Date string: YYYY-MM-DD
+  date: Date;
+  startTime: Date;
+  endTime?: Date;
+  isActive: boolean;
+  isCompleted: boolean;
 };
 
 export type Absence = {

@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -44,6 +44,7 @@ export class MySubClassedDexie extends Dexie {
     rfidCards!: Table<RFIDCard, number>;
     secretAgent!: Table<{ id: string; studentId: number; studentName: string; mission: string; date: Date; status: 'pending' | 'analyzing' | 'passed' | 'failed' }, string>;
     secretAgentHistory!: Table<{ id?: number; studentId: number; studentName: string; mission: string; date: Date; status: 'passed' | 'failed' }, number>;
+    nfcRegistrationSessions!: Table<NFCRegistrationSession, string>;
 
 
     constructor() {
@@ -434,6 +435,11 @@ export class MySubClassedDexie extends Dexie {
         // Version 31: Add RFID card support
         this.version(31).stores({
             rfidCards: '++id, &cardId, studentId, status',
+        });
+
+        // Version 32: Add NFC registration sessions table for iPad check-in
+        this.version(32).stores({
+            nfcRegistrationSessions: 'id, date, isActive, isCompleted',
         });
 
         this.on('populate', async () => {

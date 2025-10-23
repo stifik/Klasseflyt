@@ -19,6 +19,7 @@ import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
 import { givePoints } from "@/lib/rewardService";
 import { useLiveQuery } from "dexie-react-hooks";
+import NFCCheckIn from "./NFCCheckIn";
 
 type IpadStatus = "OK" | "NotCharged" | "NotBrought";
 
@@ -270,6 +271,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   };
 
   return (
+    <>
     <Card>
       <CardHeader>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -345,7 +347,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
                 Gi poeng til alle elever som har OK status på iPad
               </p>
             </div>
-            <Button 
+            <Button
               onClick={handleBulkReward}
               className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
             >
@@ -356,5 +358,11 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
         </div>
       </div>
     </Card>
+
+    {/* NFC Check-in section */}
+    <div className="mt-6">
+      <NFCCheckIn />
+    </div>
+  </>
   );
 }
