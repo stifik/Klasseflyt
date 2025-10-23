@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "./ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { ScrollArea } from "./ui/scroll-area";
 import { formatDistanceToNow } from 'date-fns';
@@ -725,6 +725,7 @@ export default function GroupTool({ students, appSettings, onAppSettingsChange, 
 
 
   return (
+    <TooltipProvider>
     <div className="space-y-6">
        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="md:col-span-2">
@@ -940,6 +941,7 @@ export default function GroupTool({ students, appSettings, onAppSettingsChange, 
       )}
 
     </div>
+    </TooltipProvider>
   );
 }
 
