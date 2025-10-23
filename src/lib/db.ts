@@ -387,7 +387,7 @@ export class MySubClassedDexie extends Dexie {
 
         // Version 26: Add actions table for positive actions (POD)
         this.version(26).stores({
-            actions: '++id, name',
+            actions: '++id, name, actionKey',
         }).upgrade(async (tx) => {
             // Import default positive actions
             const { positiveActions } = await import('./positiveActions');

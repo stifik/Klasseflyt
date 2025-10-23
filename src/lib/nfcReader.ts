@@ -195,8 +195,10 @@ export const readCard = async (): Promise<NFCCard | null> => {
           return null;
         }
 
-        // Only log unexpected errors
-        console.error('❌ Bridge scan failed:', error);
+        // Only log unexpected errors (not TRANSMIT_ERROR which happens when no card present)
+        if (error !== 'TRANSMIT_ERROR') {
+          console.error('❌ Bridge scan failed:', error);
+        }
         return null;
       }
     } catch (error) {

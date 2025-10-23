@@ -107,9 +107,24 @@ export default function NFCCheckIn({ showOnlyButton, showOnlyPanel }: NFCCheckIn
     const result = await endRegistrationSession();
 
     if (result.success) {
+      // Show appropriate message based on results
+      const registered = result.registered || 0;
+      const notCharged = result.notCharged || 0;
+
+      let description = '';
+      if (registered > 0 && notCharged > 0) {
+        description = `${registered} elever fikk poeng. ${notCharged} markert som "Ikke ladet".`;
+      } else if (registered > 0) {
+        description = `${registered} elever fikk poeng.`;
+      } else if (notCharged > 0) {
+        description = `${notCharged} elever markert som "Ikke ladet".`;
+      } else {
+        description = 'Ingen elever ble registrert.';
+      }
+
       toast({
         title: "Registrering avsluttet",
-        description: `${result.registered} elever fikk poeng. ${result.notCharged} markert som "Ikke ladet".`,
+        description,
       });
     } else {
       toast({

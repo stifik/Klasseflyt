@@ -37,8 +37,7 @@ export function useNFCPolling({
         if (!isPollingRef.current) return;
 
         if (card) {
-          console.log('✅ Card detected in polling hook:', card.uid);
-          // Clear interval after card detected
+          // Card detected - clear interval and notify
           if (scanInterval) {
             clearInterval(scanInterval);
             scanInterval = null;
@@ -46,7 +45,13 @@ export function useNFCPolling({
           await onCardDetected(card);
         }
       } catch (error) {
-        console.error('❌ Error scanning card in polling hook:', error);
+        // Only log if it's not a routine "no card" scenario
+        if (error && typeof error === 'object' && 'message' in error) {
+          const msg = (error as Error).message;
+          if (!msg.includes('No card') && !msg.includes('TRANSMIT')) {
+            console.error('❌ Error scanning card:', error);
+          }
+        }
       }
     };
 

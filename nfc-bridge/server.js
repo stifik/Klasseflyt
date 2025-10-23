@@ -226,6 +226,12 @@ function readCardUID(reader, timeout = SCAN_TIMEOUT) {
 
       const pcscProtocol = (typeof protocol === 'number' && protocol > 0) ? protocol : 2;
 
+      // Check if reader still exists before transmitting
+      if (!reader) {
+        isResolved = true;
+        return safeDisconnect(() => reject(new Error('READER_DISCONNECTED')));
+      }
+
       reader.transmit(getUID, 40, pcscProtocol, (err, data) => {
         if (isResolved) return;
 
@@ -280,7 +286,8 @@ function getErrorMessage(errorCode) {
     'CONNECT_ERROR': 'Kunne ikke koble til kort',
     'TRANSMIT_ERROR': 'Feil ved kommunikasjon med kort',
     'INVALID_RESPONSE': 'Ugyldig svar fra kort',
-    'CARD_ERROR': 'Kortet returnerte en feil'
+    'CARD_ERROR': 'Kortet returnerte en feil',
+    'READER_DISCONNECTED': 'Kortleseren ble frakoblet under lesing'
   };
 
   return errorMessages[errorCode] || errorCode;

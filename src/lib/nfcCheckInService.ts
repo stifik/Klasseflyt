@@ -262,7 +262,18 @@ export async function endRegistrationSession(): Promise<{
         registrationMethod: 'manual' as const,
       }));
 
-      await db.dailyChecks.bulkAdd(checksToAdd);
+      // Use bulkAdd with allKeys option to skip duplicates in dev mode
+      try {
+        await db.dailyChecks.bulkAdd(checksToAdd);
+      } catch (error: any) {
+        // If we get a constraint error in dev mode, use bulkPut to overwrite
+        if (isDevMode() && error.name === 'ConstraintError') {
+          console.log('Dev mode: Using bulkPut to overwrite existing checks');
+          await db.dailyChecks.bulkPut(checksToAdd);
+        } else {
+          throw error;
+        }
+      }
     }
 
     // Update session
@@ -272,10 +283,13 @@ export async function endRegistrationSession(): Promise<{
       endTime: new Date(),
     });
 
+    // Count only students who actually got points (ipadCharged: true)
+    const studentsWhoGotPoints = todaysChecks.filter(c => c.ipadCharged && c.ipadBrought).length;
+
     return {
       success: true,
       message: "Registrering avsluttet",
-      registered: registeredIds.size,
+      registered: studentsWhoGotPoints,  // Only count those who got points
       notCharged: remainingStudents.length,
       absent: absentIds.size,
     };
