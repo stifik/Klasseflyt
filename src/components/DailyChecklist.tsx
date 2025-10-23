@@ -36,6 +36,9 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   const [isFlipped, setIsFlipped] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0); // Add force update trigger
   const { toast } = useToast();
+
+  // Check if dev mode is enabled
+  const isDevMode = typeof window !== 'undefined' && window.localStorage?.getItem('nfc_dev_mode') === 'true';
   
   // Get all data and filter in useMemo to ensure proper reactivity
   const allChecks = useLiveQuery(() => db.dailyChecks.toArray(), [forceUpdate]);
@@ -222,6 +225,49 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
     : seatingChart;
 
   // Bulk reward handler
+  // Dev mode: Reset today's data (dailyChecks, absences, NFC session)
+  const handleResetToday = async () => {
+    const todayString = date.toISOString().split('T')[0];
+
+    try {
+      // Delete today's checks
+      const checksToDelete = await db.dailyChecks
+        .filter(c => new Date(c.date).toISOString().split('T')[0] === todayString)
+        .toArray();
+
+      for (const check of checksToDelete) {
+        if (check.id) await db.dailyChecks.delete(check.id);
+      }
+
+      // Delete today's absences
+      const absencesToDelete = await db.absences
+        .filter(a => new Date(a.date).toISOString().split('T')[0] === todayString)
+        .toArray();
+
+      for (const absence of absencesToDelete) {
+        if (absence.id) await db.absences.delete(absence.id);
+      }
+
+      // Delete NFC session
+      await db.nfcRegistrationSessions.delete(todayString);
+
+      // Force refresh
+      setForceUpdate(prev => prev + 1);
+
+      toast({
+        title: "Nullstilt",
+        description: "Dagens data er tilbakestilt som om det var en ny dag.",
+      });
+    } catch (error) {
+      console.error('Reset error:', error);
+      toast({
+        title: "Feil",
+        description: "Kunne ikke nullstille dagens data.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleBulkReward = async () => {
     const ipadAction = positiveActions.find(a => a.actionKey === 'IPAD_CHARGED');
 
@@ -369,7 +415,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <NFCCheckIn showOnlyButton />
               <Button
                 onClick={handleBulkReward}
@@ -378,6 +424,16 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
                 <span className="text-lg">⚡</span>
                 Registrer og gi poeng til resten
               </Button>
+              {isDevMode && (
+                <Button
+                  onClick={handleResetToday}
+                  variant="outline"
+                  className="flex items-center gap-2 border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950"
+                >
+                  <span className="text-lg">🔄</span>
+                  Reset (Dev)
+                </Button>
+              )}
             </div>
           </div>
         </div>
