@@ -43,3 +43,14 @@ next-env.d.ts
 # firebase
 firebase-debug.log
 firestore-debug.log
+
+# nfc-bridge (separate repo/branch)
+/nfc-bridge/
+
+# Windows reserved filenames
+nul
+aux
+con
+prn
+com[0-9]
+lpt[0-9]
