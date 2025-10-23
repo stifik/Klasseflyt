@@ -449,17 +449,31 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Start server
-server.listen(PORT, () => {
-  console.log(`🚀 NFC Bridge Server v2.0 running on http://localhost:${PORT}`);
-  console.log(`🔌 WebSocket server running on ws://localhost:${PORT}`);
-  console.log(`📡 Waiting for card readers...`);
-  console.log(`💡 Make sure ACS ACR1255U-J1 is connected via USB`);
-  console.log(`\n✨ New features:`);
-  console.log(`   - Event-based card detection (no more polling!)`);
-  console.log(`   - WebSocket support for real-time updates`);
-  console.log(`   - Automatic card reading when inserted`);
-});
+// Start server with automatic port fallback
+function startServer(port) {
+  server.listen(port, () => {
+    console.log(`🚀 NFC Bridge Server v2.0 running on http://localhost:${port}`);
+    console.log(`🔌 WebSocket server running on ws://localhost:${port}`);
+    console.log(`📡 Waiting for card readers...`);
+    console.log(`💡 Make sure ACS ACR1255U-J1 is connected via USB`);
+    console.log(`\n✨ New features:`);
+    console.log(`   - Event-based card detection (no more polling!)`);
+    console.log(`   - WebSocket support for real-time updates`);
+    console.log(`   - Automatic card reading when inserted`);
+  }).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      const nextPort = port + 1;
+      console.log(`⚠️  Port ${port} is already in use, trying ${nextPort}...`);
+      startServer(nextPort);
+    } else {
+      console.error('❌ Server error:', err);
+      process.exit(1);
+    }
+  });
+}
+
+// Start the server
+startServer(PORT);
 
 // Graceful shutdown
 process.on('SIGINT', () => {

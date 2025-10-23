@@ -10,6 +10,7 @@
  */
 
 // Bridge server URL (can be configured via env)
+const DEFAULT_BRIDGE_PORTS = [3001, 3002, 3003, 3004];
 const BRIDGE_URL = typeof window !== 'undefined'
   ? (window.localStorage?.getItem('nfc_bridge_url') || process.env.NEXT_PUBLIC_NFC_BRIDGE_URL || 'http://localhost:3001')
   : 'http://localhost:3001';
@@ -57,19 +58,41 @@ export interface NFCReaderState {
   lastRead?: NFCCard;
 }
 
-// Check if NFC Bridge Server is available
+// Check if NFC Bridge Server is available (tries multiple ports)
 export const isBridgeAvailable = async (): Promise<boolean> => {
   if (typeof window === 'undefined') return false;
 
+  // First try the configured URL
   try {
     const response = await fetch(`${BRIDGE_URL}/health`, {
       method: 'GET',
       signal: AbortSignal.timeout(2000) // 2 second timeout
     });
-    return response.ok;
+    if (response.ok) return true;
   } catch {
-    return false;
+    // Continue to try default ports
   }
+
+  // If configured URL failed, try default ports
+  for (const port of DEFAULT_BRIDGE_PORTS) {
+    try {
+      const response = await fetch(`http://localhost:${port}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(1000)
+      });
+      if (response.ok) {
+        // Update localStorage to remember the working port
+        if (typeof window !== 'undefined') {
+          window.localStorage?.setItem('nfc_bridge_url', `http://localhost:${port}`);
+        }
+        return true;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return false;
 };
 
 // Check if Web NFC is available
