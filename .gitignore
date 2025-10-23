@@ -43,3 +43,11 @@ next-env.d.ts
 # firebase
 firebase-debug.log
 firestore-debug.log
+
+# Windows reserved filenames
+nul
+aux
+con
+prn
+com[0-9]
+lpt[0-9]

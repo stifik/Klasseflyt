@@ -157,16 +157,22 @@ export async function handleCardTap(cardId: string): Promise<CheckInResult> {
       }
     }
 
-    // 6. Get iPad charged action points
-    const ipadAction = await db.actions
+    // 6. Get iPad charged action points from db with fallback
+    let ipadAction = await db.actions
       .where('actionKey').equals('IPAD_CHARGED')
       .first();
 
+    // Fallback to default if not in db
     if (!ipadAction) {
-      return {
-        success: false,
-        message: "Konfigurasjon for 'iPad ladet' ikke funnet."
-      };
+      const { positiveActions } = await import('./positiveActions');
+      const fallback = positiveActions.find(a => a.actionKey === 'IPAD_CHARGED');
+      if (!fallback) {
+        return {
+          success: false,
+          message: "Konfigurasjon for 'iPad ladet' ikke funnet."
+        };
+      }
+      ipadAction = fallback;
     }
 
     // 7. Create daily check entry

@@ -130,11 +130,22 @@ export default function SecretAgentPicker({ students, absences = [] }: SecretAge
       // Vent 2 sekunder for dramatisk effekt
       await new Promise(resolve => setTimeout(resolve, 2000));
 
+      // Hent konfigurerte poeng fra db med fallback
+      let actionPoints = agentAction?.points || 50;
+      let actionName = agentAction?.name || '🕵️ Hemmelig Agent - Oppdrag fullført';
+      
+      if (!agentAction) {
+        // Fallback to default if not in db
+        const { positiveActions } = await import('@/lib/positiveActions');
+        const fallback = positiveActions.find(a => a.actionKey === 'SECRET_AGENT_PASSED');
+        actionPoints = fallback?.points || 50;
+        actionName = fallback?.name || '🕵️ Hemmelig Agent - Oppdrag fullført';
+      }
+
       // Gi poeng til agenten
-      const points = agentAction?.points || 50;
       const result = await givePoints(
         secretAgent.studentId, 
-        points, 
+        actionPoints, 
         `🕵️ Hemmelig Agent: ${secretAgent.mission}`
       );
 
@@ -156,7 +167,7 @@ export default function SecretAgentPicker({ students, absences = [] }: SecretAge
 
         toast({
           title: "✅ MISSION ACCOMPLISHED!",
-          description: `${secretAgent.studentName} har fullført oppdraget og fått ${points} poeng!`,
+          description: `${secretAgent.studentName} har fullført oppdraget og fått ${actionPoints} poeng!`,
         });
 
         // IKKE slett agenten - la den bli værende til bruker trekker ny
