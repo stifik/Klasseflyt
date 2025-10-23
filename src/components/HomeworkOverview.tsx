@@ -26,6 +26,7 @@ import { Calendar } from "./ui/calendar";
 import { useLiveQuery } from "dexie-react-hooks";
 import { givePoints } from "@/lib/rewardService";
 import { positiveActions } from "@/lib/positiveActions";
+import type { PositiveAction as DBPositiveAction } from "@/lib/db";
 
 interface HomeworkOverviewProps {
   students: Student[];
@@ -43,7 +44,9 @@ const statusIcons: Record<HomeworkStatus, React.ReactElement> = {
   "Glemt bok": <BookX className="text-orange-500" />,
 };
 
-const HomeworkCell: FC<{ studentId: string; homework: Homework; allSubmissions: Submission[]; allAttempts: SubmissionAttempt[] }> = ({ studentId, homework, allSubmissions, allAttempts }) => {
+type AwardAction = Pick<DBPositiveAction, 'name' | 'points'>;
+
+const HomeworkCell: FC<{ studentId: string; homework: Homework; allSubmissions: Submission[]; allAttempts: SubmissionAttempt[]; awardAction: AwardAction }> = ({ studentId, homework, allSubmissions, allAttempts, awardAction }) => {
     const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
     const { toast } = useToast();
@@ -79,11 +82,8 @@ const HomeworkCell: FC<{ studentId: string; homework: Homework; allSubmissions: 
         });
 
         // Gi poeng automatisk ved godkjent lekse
-        if (status === "Godkjent") {
-            const homeworkAction = positiveActions.find(a => a.actionKey === 'HOMEWORK_APPROVED');
-            if (homeworkAction) {
-                await givePoints(studentId, homeworkAction.points, homeworkAction.name);
-            }
+        if (status === "Godkjent" && awardAction) {
+            await givePoints(studentId, awardAction.points, awardAction.name);
         }
     };
     
@@ -299,6 +299,13 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
   const allSubmissions = useLiveQuery(() => db.submissions.toArray(), [], []);
   const allAttempts = useLiveQuery(() => db.submissionAttempts.toArray(), [], []);
 
+  // Hent konfigurerte poeng for "Godkjent lekse" fra database (POD), med fallback til default
+  const homeworkApprovedFromDb = useLiveQuery(() => db.actions.where('actionKey').equals('HOMEWORK_APPROVED').first(), [], undefined) as (DBPositiveAction | undefined);
+  const homeworkApproved = useMemo<AwardAction>(() => {
+    const fallback = positiveActions.find(a => a.actionKey === 'HOMEWORK_APPROVED');
+    return homeworkApprovedFromDb ? { name: homeworkApprovedFromDb.name, points: homeworkApprovedFromDb.points } : { name: fallback?.name || 'Godkjent lekse', points: fallback?.points || 0 };
+  }, [homeworkApprovedFromDb]);
+
   const handleAddHomework = async (title: string, subjectId: string, date: Date, defaultStatus: HomeworkStatus | "none") => {
     try {
         const newHomeworkId = await db.homework.add({
@@ -347,7 +354,7 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
 
   const executeBulkAction = async (homeworkId: number, status: HomeworkStatus, studentIds: string[]) => {
     try {
-      const homeworkAction = positiveActions.find(a => a.actionKey === 'HOMEWORK_APPROVED');
+      const homeworkAction = homeworkApproved;
       const now = new Date();
       
       // Batch process: first find/create all submissions
@@ -715,6 +722,7 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
                         homework={hw}
                         allSubmissions={allSubmissions || []}
                         allAttempts={allAttempts || []}
+                        awardAction={homeworkApproved}
                       />
                     </TableCell>
                   )
@@ -733,9 +741,9 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
             <AlertDialogDescription>
               Du er i ferd med å godkjenne lekser for {selectedStudents.size} elev(er).
               <br /><br />
-              <strong>Totalt poeng som deles ut: {selectedStudents.size * (positiveActions.find(a => a.actionKey === 'HOMEWORK_APPROVED')?.points || 0)}</strong>
+              <strong>Totalt poeng som deles ut: {selectedStudents.size * (homeworkApproved?.points || 0)}</strong>
               <br />
-              ({selectedStudents.size} × {positiveActions.find(a => a.actionKey === 'HOMEWORK_APPROVED')?.points || 0} poeng)
+              ({selectedStudents.size} × {homeworkApproved?.points || 0} poeng)
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -760,7 +768,7 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
             <AlertDialogDescription>
               {currentHomeworkId && (() => {
                 const remaining = getStudentsWithoutStatus(currentHomeworkId);
-                const points = positiveActions.find(a => a.actionKey === 'HOMEWORK_APPROVED')?.points || 0;
+                const points = homeworkApproved?.points || 0;
                 return (
                   <>
                     Du er i ferd med å godkjenne lekser for {remaining.length} resterende elev(er).
