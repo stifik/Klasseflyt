@@ -59,7 +59,12 @@ export async function startRegistrationSession(): Promise<{ success: boolean; me
       isCompleted: false,
     };
 
-    await db.nfcRegistrationSessions.add(newSession);
+    // In dev mode, use put() to allow overwriting existing sessions
+    if (isDevMode()) {
+      await db.nfcRegistrationSessions.put(newSession);
+    } else {
+      await db.nfcRegistrationSessions.add(newSession);
+    }
 
     return { success: true, message: "NFC-registrering startet" };
   } catch (error) {
