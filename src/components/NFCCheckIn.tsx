@@ -29,7 +29,12 @@ import {
 import { useNFCPolling } from "@/hooks/useNFCPolling";
 import { format } from "date-fns";
 
-export default function NFCCheckIn() {
+interface NFCCheckInProps {
+  showOnlyButton?: boolean;  // Only show the start button
+  showOnlyPanel?: boolean;   // Only show the active/completed panel
+}
+
+export default function NFCCheckIn({ showOnlyButton, showOnlyPanel }: NFCCheckInProps = {}) {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastCheckInResult, setLastCheckInResult] = useState<CheckInResult | null>(null);
@@ -119,63 +124,27 @@ export default function NFCCheckIn() {
 
   // Show "not active" state
   if (!activeSession) {
+    // If showing only panel, return null when not active
+    if (showOnlyPanel) return null;
+
+    // Otherwise show the button
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Scan className="w-5 h-5" />
-            NFC-registrering (valgfritt)
-          </CardTitle>
-          <CardDescription>
-            La elevene registrere iPad-lading ved å tappe kort. Krever NFC-utstyr.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Slik fungerer det:</strong>
-              <ol className="list-decimal list-inside mt-2 space-y-1">
-                <li>Trykk "Start NFC-registrering"</li>
-                <li>Elevene tapper kort når de kommer</li>
-                <li>De får automatisk poeng for ladet iPad</li>
-                <li>Trykk "Avslutt registrering" når alle er kommet</li>
-                <li>Gjenstående elever settes som "Ikke ladet"</li>
-                <li>Juster manuelt for fraværende eller glemt iPad</li>
-              </ol>
-            </AlertDescription>
-          </Alert>
-
-          {stats && (
-            <div className="flex gap-2 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Users className="w-4 h-4" />
-                <span>{stats.totalStudents} elever totalt</span>
-              </div>
-              {stats.absent > 0 && (
-                <div className="flex items-center gap-1">
-                  <UserX className="w-4 h-4" />
-                  <span>{stats.absent} fraværende</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          <Button
-            onClick={handleStartRegistration}
-            disabled={isProcessing}
-            className="w-full sm:w-auto"
-          >
-            <Scan className="w-4 h-4 mr-2" />
-            Start NFC-registrering
-          </Button>
-        </CardContent>
-      </Card>
+      <Button
+        onClick={handleStartRegistration}
+        disabled={isProcessing}
+        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+      >
+        <Scan className="w-4 h-4" />
+        Start NFC-registrering
+      </Button>
     );
   }
 
   // Show "active" state
   if (activeSession && !activeSession.isCompleted) {
+    // If showing only button, return null when active
+    if (showOnlyButton) return null;
+
     return (
       <Card className="border-green-200 dark:border-green-800">
         <CardHeader className="bg-green-50 dark:bg-green-950">
@@ -244,8 +213,8 @@ export default function NFCCheckIn() {
             </div>
           )}
 
-          {/* NFC status */}
-          {nfc.error && (
+          {/* NFC status - only show critical errors */}
+          {nfc.error && !nfc.error.includes('No card') && !nfc.error.includes('Ingen kort') && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{nfc.error}</AlertDescription>
@@ -275,6 +244,9 @@ export default function NFCCheckIn() {
   }
 
   // Show "completed" state
+  // If showing only button, return null when completed
+  if (showOnlyButton) return null;
+
   return (
     <Card>
       <CardHeader>

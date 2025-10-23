@@ -2,6 +2,13 @@ import { db } from "./db";
 import { givePoints } from "./rewardService";
 import type { NFCRegistrationSession } from "./types";
 
+// Dev mode: Allow multiple registrations per day for testing
+// Set to true in localStorage: localStorage.setItem('nfc_dev_mode', 'true')
+const isDevMode = () => {
+  if (typeof window === 'undefined') return false;
+  return window.localStorage?.getItem('nfc_dev_mode') === 'true';
+};
+
 export type CheckInResult = {
   success: boolean;
   message: string;
@@ -26,7 +33,7 @@ export async function startRegistrationSession(): Promise<{ success: boolean; me
     // Check if there's already a session for today
     const existingSession = await db.nfcRegistrationSessions.get(todayString);
 
-    if (existingSession) {
+    if (existingSession && !isDevMode()) {
       if (existingSession.isActive) {
         return { success: false, message: "En registrering er allerede aktiv for i dag." };
       }
@@ -129,18 +136,20 @@ export async function handleCardTap(cardId: string): Promise<CheckInResult> {
       };
     }
 
-    // 5. Check if student already registered today
-    const existingCheck = await db.dailyChecks
-      .where('studentId').equals(card.studentId)
-      .and(c => new Date(c.date).toISOString().split('T')[0] === todayString)
-      .first();
+    // 5. Check if student already registered today (skip in dev mode)
+    if (!isDevMode()) {
+      const existingCheck = await db.dailyChecks
+        .where('studentId').equals(card.studentId)
+        .and(c => new Date(c.date).toISOString().split('T')[0] === todayString)
+        .first();
 
-    if (existingCheck) {
-      return {
-        success: false,
-        message: `${student.name} er allerede registrert.`,
-        studentName: student.name
-      };
+      if (existingCheck) {
+        return {
+          success: false,
+          message: `${student.name} er allerede registrert.`,
+          studentName: student.name
+        };
+      }
     }
 
     // 6. Get iPad charged action points
@@ -238,15 +247,17 @@ export async function endRegistrationSession(): Promise<{
       s.id && !absentIds.has(s.id) && !registeredIds.has(s.id)
     );
 
-    // Mark remaining students as "not charged"
-    for (const student of remainingStudents) {
-      await db.dailyChecks.add({
+    // Mark remaining students as "not charged" - bulk operation
+    if (remainingStudents.length > 0) {
+      const checksToAdd = remainingStudents.map(student => ({
         studentId: student.id!,
         date: todayDate,
         ipadCharged: false,
         ipadBrought: true,
-        registrationMethod: 'manual',
-      });
+        registrationMethod: 'manual' as const,
+      }));
+
+      await db.dailyChecks.bulkAdd(checksToAdd);
     }
 
     // Update session

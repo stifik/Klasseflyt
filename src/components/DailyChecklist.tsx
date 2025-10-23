@@ -8,7 +8,7 @@ import type { PositiveAction } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, BatteryWarning, TabletSmartphone, UserX } from "lucide-react";
+import { Calendar as CalendarIcon, BatteryWarning, TabletSmartphone, UserX, Info } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -337,31 +337,56 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
         )}
       </CardContent>
       
-      {/* Bulk reward section */}
+      {/* Bulk reward and NFC section */}
       <div className="px-6 pb-6">
         <div className="border-t pt-4">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <div>
-              <h4 className="font-medium text-gray-900 dark:text-white">Bulk-belønning</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Gi poeng til alle elever som har OK status på iPad
-              </p>
+            <div className="flex items-center gap-2">
+              <div>
+                <h4 className="font-medium text-gray-900 dark:text-white">Registrering & Belønning</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Gi poeng automatisk via NFC eller manuelt til alle med OK status
+                </p>
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-5 w-5">
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div className="space-y-2">
+                    <h4 className="font-medium">NFC-registrering:</h4>
+                    <ol className="list-decimal list-inside text-sm space-y-1">
+                      <li>Trykk "Start NFC-registrering"</li>
+                      <li>Elevene tapper kort når de kommer</li>
+                      <li>De får automatisk poeng for ladet iPad</li>
+                      <li>Trykk "Avslutt registrering" når alle er kommet</li>
+                      <li>Gjenstående elever settes som "Ikke ladet"</li>
+                      <li>Juster manuelt for fraværende eller glemt iPad</li>
+                    </ol>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
-            <Button
-              onClick={handleBulkReward}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-            >
-              <span className="text-lg">⚡</span>
-              Registrer og gi poeng til resten
-            </Button>
+            <div className="flex gap-2">
+              <NFCCheckIn showOnlyButton />
+              <Button
+                onClick={handleBulkReward}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+              >
+                <span className="text-lg">⚡</span>
+                Registrer og gi poeng til resten
+              </Button>
+            </div>
           </div>
         </div>
       </div>
     </Card>
 
-    {/* NFC Check-in section */}
+    {/* NFC Status Panel - shows when registration is active or completed */}
     <div className="mt-6">
-      <NFCCheckIn />
+      <NFCCheckIn showOnlyPanel />
     </div>
   </>
   );
