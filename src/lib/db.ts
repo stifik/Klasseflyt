@@ -430,6 +430,26 @@ export class MySubClassedDexie extends Dexie {
             });
         });
 
+        // Version 31: Add missing "Hemmelig Agent" action if it doesn't exist
+        this.version(31).stores({}).upgrade(async (tx) => {
+            // Check if SECRET_AGENT_PASSED action exists
+            const actions = await tx.table('actions').toArray();
+            const hasSecretAgent = actions.some((action: any) => action.actionKey === 'SECRET_AGENT_PASSED');
+
+            if (!hasSecretAgent) {
+                // Add the missing Hemmelig Agent action
+                await tx.table('actions').add({
+                    id: 7,
+                    name: 'Hemmelig Agent - Oppdrag fullført',
+                    points: 50,
+                    type: 'system',
+                    actionKey: 'SECRET_AGENT_PASSED',
+                    emoji: '🕵️'
+                });
+                console.log('✅ Added missing "Hemmelig Agent" action');
+            }
+        });
+
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
         });
