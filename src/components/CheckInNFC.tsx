@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Scan, CheckCircle2, AlertCircle, Hand, PlayCircle, StopCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { soundEffects } from "@/lib/soundEffects";
 
 interface CheckInNFCProps {
   activeSession: ActiveCheckInSession | null;
@@ -42,17 +43,6 @@ export default function CheckInNFC({
   const [lastCheckIn, setLastCheckIn] = useState<{ studentName: string; points: number; percent: number } | null>(null);
   const [mode, setMode] = useState<'nfc' | 'manual'>('manual'); // Default to manual mode
 
-  // Play sound
-  const playSound = (soundFile: string) => {
-    try {
-      const audio = new Audio(`/sounds/${soundFile}`);
-      audio.volume = 0.5;
-      audio.play().catch(err => console.log('Audio play failed:', err));
-    } catch (err) {
-      console.log('Audio not supported:', err);
-    }
-  };
-
   // Handle manual check-in
   const handleManualClick = async (studentId: number) => {
     if (!activeSession || isProcessing) return;
@@ -68,8 +58,8 @@ export default function CheckInNFC({
         percent: result.pointsPercent!,
       });
 
-      // Play success sound
-      if (result.soundFile) playSound(result.soundFile);
+      // Play sound
+      soundEffects.play(result.soundType);
 
       toast({
         title: "✅ Sjekket inn!",
@@ -79,8 +69,8 @@ export default function CheckInNFC({
       // Clear last check-in after 3 seconds
       setTimeout(() => setLastCheckIn(null), 3000);
     } else {
-      // Play error sound
-      if (result.soundFile) playSound(result.soundFile);
+      // Play sound
+      soundEffects.play(result.soundType);
 
       toast({
         title: "❌ Feil",
@@ -109,8 +99,8 @@ export default function CheckInNFC({
           percent: result.pointsPercent!,
         });
 
-        // Play success sound
-        if (result.soundFile) playSound(result.soundFile);
+        // Play sound
+        soundEffects.play(result.soundType);
 
         toast({
           title: "✅ Sjekket inn!",
@@ -120,8 +110,8 @@ export default function CheckInNFC({
         // Clear last check-in after 3 seconds
         setTimeout(() => setLastCheckIn(null), 3000);
       } else {
-        // Play error sound
-        if (result.soundFile) playSound(result.soundFile);
+        // Play sound
+        soundEffects.play(result.soundType);
 
         toast({
           title: "❌ Feil",

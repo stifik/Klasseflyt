@@ -18,7 +18,7 @@ export interface CheckInTapResult {
   pointsAwarded?: number;
   pointsPercent?: 100 | 50 | 10 | 0;
   message: string;
-  soundFile?: string;
+  soundType: 'success' | 'error';
 }
 
 /**
@@ -35,7 +35,7 @@ export async function handleCheckInTap(
     return {
       success: false,
       message: 'Kortet er ikke registrert på noen elev',
-      soundFile: 'error.wav',
+      soundType: 'error',
     };
   }
 
@@ -46,7 +46,7 @@ export async function handleCheckInTap(
       success: false,
       message: `${student.name} har allerede sjekket inn`,
       studentName: student.name,
-      soundFile: 'error-1.wav',
+      soundType: 'error',
     };
   }
 
@@ -68,7 +68,7 @@ export async function handleCheckInTap(
       success: false,
       message: `${student.name} er markert som fraværende`,
       studentName: student.name,
-      soundFile: 'error-2.wav',
+      soundType: 'error',
     };
   }
 
@@ -78,7 +78,7 @@ export async function handleCheckInTap(
     return {
       success: false,
       message: 'Innsjekking er ikke konfigurert',
-      soundFile: 'error.wav',
+      soundType: 'error',
     };
   }
 
@@ -96,7 +96,7 @@ export async function handleCheckInTap(
       success: false,
       message: `${student.name}: Tiden er ute for å sjekke inn`,
       studentName: student.name,
-      soundFile: 'error-3.wav',
+      soundType: 'error',
     };
   }
 
@@ -118,9 +118,7 @@ export async function handleCheckInTap(
     await givePoints(student.id, pointsAwarded, `Innsjekking (${pointsPercent}%)`);
 
     // Choose sound based on percentage
-    let soundFile = 'success.wav';
-    if (pointsPercent === 50) soundFile = 'error.wav';
-    if (pointsPercent === 10) soundFile = 'error.wav';
+    const soundType: 'success' | 'error' = (pointsPercent === 50 || pointsPercent === 10) ? 'error' : 'success';
 
     return {
       success: true,
@@ -128,7 +126,7 @@ export async function handleCheckInTap(
       pointsAwarded,
       pointsPercent,
       message: `${student.name}: +${pointsAwarded} poeng (${pointsPercent}%)`,
-      soundFile,
+      soundType,
     };
   } catch (error) {
     console.error('Check-in error:', error);
@@ -136,7 +134,7 @@ export async function handleCheckInTap(
       success: false,
       message: `Kunne ikke registrere innsjekking for ${student.name}`,
       studentName: student.name,
-      soundFile: 'error.wav',
+      soundType: 'error',
     };
   }
 }
@@ -155,7 +153,7 @@ export async function handleManualCheckIn(
     return {
       success: false,
       message: 'Eleven ble ikke funnet',
-      soundFile: 'error.wav',
+      soundType: 'error',
     };
   }
 
@@ -166,7 +164,7 @@ export async function handleManualCheckIn(
       success: false,
       message: `${student.name} har allerede sjekket inn`,
       studentName: student.name,
-      soundFile: 'error-1.wav',
+      soundType: 'error',
     };
   }
 
@@ -188,7 +186,7 @@ export async function handleManualCheckIn(
       success: false,
       message: `${student.name} er markert som fraværende`,
       studentName: student.name,
-      soundFile: 'error-2.wav',
+      soundType: 'error',
     };
   }
 
@@ -198,7 +196,7 @@ export async function handleManualCheckIn(
     return {
       success: false,
       message: 'Innsjekking er ikke konfigurert',
-      soundFile: 'error.wav',
+      soundType: 'error',
     };
   }
 
@@ -216,7 +214,7 @@ export async function handleManualCheckIn(
       success: false,
       message: `${student.name}: Tiden er ute for å sjekke inn`,
       studentName: student.name,
-      soundFile: 'error-3.wav',
+      soundType: 'error',
     };
   }
 
@@ -238,9 +236,7 @@ export async function handleManualCheckIn(
     await givePoints(student.id, pointsAwarded, `Innsjekking (${pointsPercent}%)`);
 
     // Choose sound based on percentage
-    let soundFile = 'success.wav';
-    if (pointsPercent === 50) soundFile = 'error.wav';
-    if (pointsPercent === 10) soundFile = 'error.wav';
+    const soundType: 'success' | 'error' = (pointsPercent === 50 || pointsPercent === 10) ? 'error' : 'success';
 
     return {
       success: true,
@@ -248,7 +244,7 @@ export async function handleManualCheckIn(
       pointsAwarded,
       pointsPercent,
       message: `${student.name}: +${pointsAwarded} poeng (${pointsPercent}%)`,
-      soundFile,
+      soundType,
     };
   } catch (error) {
     console.error('Manual check-in error:', error);
@@ -256,7 +252,7 @@ export async function handleManualCheckIn(
       success: false,
       message: `Kunne ikke registrere innsjekking for ${student.name}`,
       studentName: student.name,
-      soundFile: 'error.wav',
+      soundType: 'error',
     };
   }
 }
