@@ -133,6 +133,13 @@
   gap: 0.5rem;
 }
 
+.help-text {
+  font-size: 0.85rem;
+  color: #6b7280;
+  font-style: italic;
+  margin-bottom: 0.75rem;
+}
+
 .add-item-button {
   background: #3b82f6;
   color: white;
@@ -253,6 +260,7 @@
   min-height: 100px;
 }
 
+.bulk-textarea,
 .notes-input {
   width: 100%;
   padding: 1rem;
@@ -262,11 +270,17 @@
   font-family: inherit;
   resize: vertical;
   transition: border-color 0.2s ease;
+  line-height: 1.6;
 }
 
+.bulk-textarea:focus,
 .notes-input:focus {
   outline: none;
   border-color: #3b82f6;
+}
+
+.bulk-textarea {
+  background: #f9fafb;
 }
 
 @media (max-width: 768px) {

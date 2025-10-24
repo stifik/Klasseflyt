@@ -19,6 +19,16 @@ export default function LessonPlanPage() {
     loadLessonPlan();
   }, [sessionId]);
 
+  // Reload when window regains focus (e.g., coming back from another tab)
+  useEffect(() => {
+    const handleFocus = () => {
+      loadLessonPlan();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [sessionId]);
+
   const loadLessonPlan = async () => {
     setIsLoading(true);
     try {
@@ -122,50 +132,18 @@ export default function LessonPlanPage() {
     setIsEditMode(false);
   };
 
-  const handleAddObjective = () => {
+  const handleObjectivesTextChange = (value: string) => {
     if (!lessonPlan) return;
-    setLessonPlan({
-      ...lessonPlan,
-      objectives: [...lessonPlan.objectives, ''],
-    });
+    // Split by newlines and filter out empty lines
+    const lines = value.split('\n').filter(line => line.trim() !== '');
+    setLessonPlan({ ...lessonPlan, objectives: lines });
   };
 
-  const handleUpdateObjective = (index: number, value: string) => {
+  const handleActivitiesTextChange = (value: string) => {
     if (!lessonPlan) return;
-    const newObjectives = [...lessonPlan.objectives];
-    newObjectives[index] = value;
-    setLessonPlan({ ...lessonPlan, objectives: newObjectives });
-  };
-
-  const handleDeleteObjective = (index: number) => {
-    if (!lessonPlan) return;
-    setLessonPlan({
-      ...lessonPlan,
-      objectives: lessonPlan.objectives.filter((_, i) => i !== index),
-    });
-  };
-
-  const handleAddActivity = () => {
-    if (!lessonPlan) return;
-    setLessonPlan({
-      ...lessonPlan,
-      activities: [...lessonPlan.activities, ''],
-    });
-  };
-
-  const handleUpdateActivity = (index: number, value: string) => {
-    if (!lessonPlan) return;
-    const newActivities = [...lessonPlan.activities];
-    newActivities[index] = value;
-    setLessonPlan({ ...lessonPlan, activities: newActivities });
-  };
-
-  const handleDeleteActivity = (index: number) => {
-    if (!lessonPlan) return;
-    setLessonPlan({
-      ...lessonPlan,
-      activities: lessonPlan.activities.filter((_, i) => i !== index),
-    });
+    // Split by newlines and filter out empty lines
+    const lines = value.split('\n').filter(line => line.trim() !== '');
+    setLessonPlan({ ...lessonPlan, activities: lines });
   };
 
   const handleUpdateNotes = (value: string) => {
@@ -228,78 +206,72 @@ export default function LessonPlanPage() {
 
         <div className="lesson-plan-section">
           <h2>📌 MÅL FOR TIMEN</h2>
-          {isEditMode && (
-            <button onClick={handleAddObjective} className="add-item-button">
-              + Legg til mål
-            </button>
-          )}
-          <ul className="objectives-list">
-            {lessonPlan.objectives.length === 0 && !isEditMode ? (
-              <li className="empty-message">Ingen mål lagt til enda</li>
-            ) : (
-              lessonPlan.objectives.map((objective, index) => (
-                <li key={index} className="objective-item">
-                  {!isEditMode ? (
+          {!isEditMode ? (
+            <ul className="objectives-list">
+              {lessonPlan.objectives.length === 0 ? (
+                <li className="empty-message">Ingen mål lagt til enda</li>
+              ) : (
+                lessonPlan.objectives.map((objective, index) => (
+                  <li key={index} className="objective-item">
                     <span>{objective}</span>
-                  ) : (
-                    <div className="edit-item-row">
-                      <input
-                        type="text"
-                        value={objective}
-                        onChange={(e) => handleUpdateObjective(index, e.target.value)}
-                        placeholder="Skriv læringsmål..."
-                        className="item-input"
-                      />
-                      <button
-                        onClick={() => handleDeleteObjective(index)}
-                        className="delete-item-button"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  )}
-                </li>
-              ))
-            )}
-          </ul>
+                  </li>
+                ))
+              )}
+            </ul>
+          ) : (
+            <>
+              <p className="help-text">Ett mål per linje</p>
+              <textarea
+                value={lessonPlan.objectives.join('\n')}
+                onChange={(e) => handleObjectivesTextChange(e.target.value)}
+                onKeyPress={(e) => {
+                  // Allow Enter key for line breaks - don't prevent default
+                  if (e.key === 'Enter') {
+                    e.stopPropagation();
+                    // Don't call e.preventDefault() - let the textarea handle Enter naturally
+                  }
+                }}
+                placeholder="Skriv hvert læringsmål på en ny linje...&#10;For eksempel:&#10;Forstå hvordan man multipliserer med tocifrede tall&#10;Kunne bruke standardalgoritmen&#10;Løse praktiske oppgaver"
+                className="bulk-textarea"
+                rows={6}
+              />
+            </>
+          )}
         </div>
 
         <div className="lesson-plan-section">
           <h2>📝 TIMENS GANG</h2>
-          {isEditMode && (
-            <button onClick={handleAddActivity} className="add-item-button">
-              + Legg til aktivitet
-            </button>
-          )}
-          <ul className="activities-list">
-            {lessonPlan.activities.length === 0 && !isEditMode ? (
-              <li className="empty-message">Ingen aktiviteter lagt til enda</li>
-            ) : (
-              lessonPlan.activities.map((activity, index) => (
-                <li key={index} className="activity-item">
-                  {!isEditMode ? (
+          {!isEditMode ? (
+            <ul className="activities-list">
+              {lessonPlan.activities.length === 0 ? (
+                <li className="empty-message">Ingen aktiviteter lagt til enda</li>
+              ) : (
+                lessonPlan.activities.map((activity, index) => (
+                  <li key={index} className="activity-item">
                     <span>{activity}</span>
-                  ) : (
-                    <div className="edit-item-row">
-                      <input
-                        type="text"
-                        value={activity}
-                        onChange={(e) => handleUpdateActivity(index, e.target.value)}
-                        placeholder="Skriv aktivitet..."
-                        className="item-input"
-                      />
-                      <button
-                        onClick={() => handleDeleteActivity(index)}
-                        className="delete-item-button"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  )}
-                </li>
-              ))
-            )}
-          </ul>
+                  </li>
+                ))
+              )}
+            </ul>
+          ) : (
+            <>
+              <p className="help-text">Én aktivitet per linje</p>
+              <textarea
+                value={lessonPlan.activities.join('\n')}
+                onChange={(e) => handleActivitiesTextChange(e.target.value)}
+                onKeyPress={(e) => {
+                  // Allow Enter key for line breaks - don't prevent default
+                  if (e.key === 'Enter') {
+                    e.stopPropagation();
+                    // Don't call e.preventDefault() - let the textarea handle Enter naturally
+                  }
+                }}
+                placeholder="Skriv hver aktivitet på en ny linje...&#10;For eksempel:&#10;Oppstart og oppmøte&#10;Repetisjon av forrige time&#10;Gjennomgang på tavla&#10;Elevene jobber med oppgaver&#10;Oppsummering"
+                className="bulk-textarea"
+                rows={8}
+              />
+            </>
+          )}
         </div>
 
         <div className="lesson-plan-section">

@@ -82,8 +82,9 @@ export default function WeeklyPlannerPage() {
     // Load templates and lesson plans for each day
     for (let i = 0; i < 5; i++) {
       const day = DAYS[i];
-      const date = new Date(monday);
-      date.setDate(monday.getDate() + i);
+      // Create a new date for each day to avoid mutation issues
+      const date = new Date(monday.getTime());
+      date.setDate(date.getDate() + i);
       const dateStr = date.toISOString().split('T')[0];
 
       // Load template for this day of week
@@ -178,7 +179,8 @@ export default function WeeklyPlannerPage() {
         {DAYS.map((day, dayIndex) => {
           const dayData = weekData.days[day.key];
           const template = dayData.template;
-          const date = new Date(dayData.date);
+          // Parse date correctly by adding time to avoid timezone issues
+          const date = new Date(dayData.date + 'T12:00:00');
           const isToday = dayData.date === new Date().toISOString().split('T')[0];
 
           return (

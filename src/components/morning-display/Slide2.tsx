@@ -69,8 +69,10 @@ export default function Slide2({ showAllSessions = false }: Slide2Props) {
 
       if (template) {
         setTemplateId(template.id);
-        setSessions(template.sessions || []);
-        setVisibleSessionCount(0); // Reset visible sessions when loading new schedule
+        const sessionsList = template.sessions || [];
+        setSessions(sessionsList);
+        // If showAllSessions is true, show all immediately
+        setVisibleSessionCount(showAllSessions ? sessionsList.length : 0);
       } else {
         setTemplateId(undefined);
         setSessions([]);

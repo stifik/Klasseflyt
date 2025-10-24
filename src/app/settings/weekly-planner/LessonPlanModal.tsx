@@ -197,6 +197,13 @@ export default function LessonPlanModal({
             <textarea
               value={objectives.join('\n')}
               onChange={(e) => handleObjectivesTextChange(e.target.value)}
+              onKeyPress={(e) => {
+                // Allow Enter key for line breaks - don't prevent default
+                if (e.key === 'Enter') {
+                  e.stopPropagation();
+                  // Don't call e.preventDefault() - let the textarea handle Enter naturally
+                }
+              }}
               placeholder="Skriv hvert læringsmål på en ny linje...&#10;For eksempel:&#10;Forstå hvordan man multipliserer med tocifrede tall&#10;Kunne bruke standardalgoritmen&#10;Løse praktiske oppgaver"
               className="bulk-textarea"
               rows={6}
@@ -211,6 +218,13 @@ export default function LessonPlanModal({
             <textarea
               value={activities.join('\n')}
               onChange={(e) => handleActivitiesTextChange(e.target.value)}
+              onKeyPress={(e) => {
+                // Allow Enter key for line breaks - don't prevent default
+                if (e.key === 'Enter') {
+                  e.stopPropagation();
+                  // Don't call e.preventDefault() - let the textarea handle Enter naturally
+                }
+              }}
               placeholder="Skriv hver aktivitet på en ny linje...&#10;For eksempel:&#10;Oppstart og oppmøte&#10;Repetisjon av forrige time&#10;Gjennomgang på tavla&#10;Elevene jobber med oppgaver&#10;Oppsummering"
               className="bulk-textarea"
               rows={8}
