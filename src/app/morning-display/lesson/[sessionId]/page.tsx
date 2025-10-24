@@ -134,15 +134,15 @@ export default function LessonPlanPage() {
 
   const handleObjectivesTextChange = (value: string) => {
     if (!lessonPlan) return;
-    // Split by newlines and filter out empty lines
-    const lines = value.split('\n').filter(line => line.trim() !== '');
+    // Split by newlines - keep empty lines to allow natural editing
+    const lines = value.split('\n');
     setLessonPlan({ ...lessonPlan, objectives: lines });
   };
 
   const handleActivitiesTextChange = (value: string) => {
     if (!lessonPlan) return;
-    // Split by newlines and filter out empty lines
-    const lines = value.split('\n').filter(line => line.trim() !== '');
+    // Split by newlines - keep empty lines to allow natural editing
+    const lines = value.split('\n');
     setLessonPlan({ ...lessonPlan, activities: lines });
   };
 

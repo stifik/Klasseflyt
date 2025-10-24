@@ -85,7 +85,11 @@ export default function WeeklyPlannerPage() {
       // Create a new date for each day to avoid mutation issues
       const date = new Date(monday.getTime());
       date.setDate(date.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
+      // Format date as YYYY-MM-DD without timezone conversion
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const dayOfMonth = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${dayOfMonth}`;
 
       // Load template for this day of week
       const template = await db.scheduleTemplates
@@ -179,8 +183,9 @@ export default function WeeklyPlannerPage() {
         {DAYS.map((day, dayIndex) => {
           const dayData = weekData.days[day.key];
           const template = dayData.template;
-          // Parse date correctly by adding time to avoid timezone issues
-          const date = new Date(dayData.date + 'T12:00:00');
+          // Parse date from YYYY-MM-DD format correctly without timezone conversion
+          const dateParts = dayData.date.split('-');
+          const date = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
           const isToday = dayData.date === new Date().toISOString().split('T')[0];
 
           return (
