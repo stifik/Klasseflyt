@@ -186,7 +186,7 @@ export default function MorningDisplayPage() {
     <div
       className="morning-display"
       style={{
-        background: themeGradient,
+        backgroundImage: themeGradient,
         backgroundSize: '400% 400%',
       }}
     >

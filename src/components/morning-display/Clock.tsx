@@ -11,10 +11,12 @@ type ClockProps = {
 type ClockColor = 'green' | 'yellow' | 'orange' | 'red';
 
 export default function Clock({ bellTime, checkInSettings }: ClockProps) {
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState<Date | null>(null);
   const [clockColor, setClockColor] = useState<ClockColor>('green');
 
+  // Initialize time on client side only
   useEffect(() => {
+    setTime(new Date());
     const interval = setInterval(() => {
       setTime(new Date());
     }, 1000);
@@ -23,7 +25,7 @@ export default function Clock({ bellTime, checkInSettings }: ClockProps) {
   }, []);
 
   useEffect(() => {
-    if (bellTime && checkInSettings) {
+    if (time && bellTime && checkInSettings) {
       const minutesSinceBell = getMinutesSinceBellTime(bellTime, time);
       setClockColor(getClockColor(minutesSinceBell, checkInSettings));
     }
@@ -36,6 +38,15 @@ export default function Clock({ bellTime, checkInSettings }: ClockProps) {
       second: '2-digit',
     });
   };
+
+  // Prevent hydration mismatch by not rendering until client-side
+  if (!time) {
+    return (
+      <div className={`clock clock-${clockColor}`}>
+        --:--:--
+      </div>
+    );
+  }
 
   return (
     <div className={`clock clock-${clockColor}`}>
