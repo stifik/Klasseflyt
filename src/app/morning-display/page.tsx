@@ -147,7 +147,8 @@ export default function MorningDisplayPage() {
       const todayString = new Date().toISOString().split('T')[0];
       const todayDate = new Date(todayString);
 
-      const checkedInStudents = await db.dailyChecks
+      // Get check-ins from the new NFC check-in system
+      const checkInLogs = await db.checkInLogs
         .where('date')
         .equals(todayDate)
         .toArray();
@@ -159,7 +160,7 @@ export default function MorningDisplayPage() {
 
       setStudents(prev =>
         prev.map(student => {
-          const isCheckedIn = checkedInStudents.some(c => c.studentId === student.id);
+          const isCheckedIn = checkInLogs.some(log => log.studentId === student.id);
           const isAbsent = absentStudents.some(a => a.studentId === student.id);
 
           if (isAbsent) return { ...student, status: 'absent' as const };
