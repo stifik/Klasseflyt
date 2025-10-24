@@ -95,6 +95,40 @@ export type NFCRegistrationSession = {
   isCompleted: boolean;
 };
 
+// Check-in system types
+export type BellTime = {
+  id?: number;
+  weekday: 'mandag' | 'tirsdag' | 'onsdag' | 'torsdag' | 'fredag';
+  time: string; // HH:MM format
+  points: number;
+  type: 'morgen' | 'ordinær';
+};
+
+export type CheckInLog = {
+  id?: number;
+  studentId: number;
+  bellTimeId: number;
+  timestamp: Date;
+  pointsPercent: 100 | 50 | 10;
+  pointsAwarded: number;
+  date: Date; // For easy filtering by date
+};
+
+export type CheckInSettings = {
+  // Morning check-in (with absence registration)
+  morning: {
+    percent100Minutes: number; // Default: 3
+    percent50Minutes: number;  // Default: 5
+    percent10Minutes: number;  // Default: 7
+    absenceMinutes: number;    // Default: 7
+  };
+  // Regular check-in
+  regular: {
+    percent100Minutes: number; // Default: 3
+    stopMinutes: number;       // Default: 3
+  };
+};
+
 export type Absence = {
   id?: number;
   studentId: number;
@@ -360,4 +394,5 @@ export type AppSettings = {
   communityGoalTitle?: string;
   rewardSystem?: RewardSystemSettings;
   nfcEnabled?: boolean; // Enable/disable NFC scanning feature
+  checkInSettings?: CheckInSettings; // Auto check-in system settings
 };

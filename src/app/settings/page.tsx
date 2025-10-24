@@ -3,11 +3,12 @@
 import React from 'react';
 import SettingsPage from '@/components/SettingsPage';
 import Settings from '@/components/Settings';
+import CheckInSettings from '@/components/CheckInSettings';
 import RewardSystemLayout from '@/components/RewardSystemLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Settings as SettingsIcon, Gift } from 'lucide-react';
+import { Settings as SettingsIcon, Gift, Bell } from 'lucide-react';
 
 export default function SettingsRoute() {
   const students = useLiveQuery(() => db.students.toArray());
@@ -21,14 +22,18 @@ export default function SettingsRoute() {
   return (
     <RewardSystemLayout showBackButton={true}>
       <Tabs defaultValue="app" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
+        <TabsList className="grid w-full grid-cols-3 mb-6">
           <TabsTrigger value="app" className="flex items-center gap-2">
             <SettingsIcon className="w-4 h-4" />
             Hovedapp
           </TabsTrigger>
           <TabsTrigger value="rewards" className="flex items-center gap-2">
             <Gift className="w-4 h-4" />
-            Belønningssystem
+            Belønning
+          </TabsTrigger>
+          <TabsTrigger value="checkin" className="flex items-center gap-2">
+            <Bell className="w-4 h-4" />
+            Innsjekking
           </TabsTrigger>
         </TabsList>
         <TabsContent value="app">
@@ -49,6 +54,9 @@ export default function SettingsRoute() {
         </TabsContent>
         <TabsContent value="rewards">
           <SettingsPage />
+        </TabsContent>
+        <TabsContent value="checkin">
+          <CheckInSettings />
         </TabsContent>
       </Tabs>
     </RewardSystemLayout>

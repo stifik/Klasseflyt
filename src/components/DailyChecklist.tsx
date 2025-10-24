@@ -8,7 +8,7 @@ import type { PositiveAction } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, BatteryWarning, TabletSmartphone, UserX, Info } from "lucide-react";
+import { Calendar as CalendarIcon, BatteryWarning, TabletSmartphone, UserX, Info, Bell, Clock } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -20,6 +20,9 @@ import { Label } from "./ui/label";
 import { givePoints } from "@/lib/rewardService";
 import { useLiveQuery } from "dexie-react-hooks";
 import NFCCheckIn from "./NFCCheckIn";
+import { useCheckInTimer } from "@/hooks/useCheckInTimer";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import CheckInNFC from "./CheckInNFC";
 
 type IpadStatus = "OK" | "NotCharged" | "NotBrought";
 
@@ -35,7 +38,11 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   const [date, setDate] = useState<Date>(new Date());
   const [isFlipped, setIsFlipped] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0); // Add force update trigger
+  const [mode, setMode] = useState<'ipad' | 'checkin'>('ipad');
   const { toast } = useToast();
+
+  // Check for active check-in session
+  const activeCheckIn = useCheckInTimer();
 
   // Check if dev mode is enabled
   const isDevMode = typeof window !== 'undefined' && window.localStorage?.getItem('nfc_dev_mode') === 'true';
@@ -43,6 +50,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   // Get all data and filter in useMemo to ensure proper reactivity
   const allChecks = useLiveQuery(() => db.dailyChecks.toArray(), [forceUpdate]);
   const allAbsences = useLiveQuery(() => db.absences.toArray(), [forceUpdate]);
+  const allCheckInLogs = useLiveQuery(() => db.checkInLogs.toArray(), [forceUpdate]);
   
   // Get date string for filtering
   const dateString = useMemo(() => date.toISOString().split("T")[0], [date]);
@@ -57,6 +65,14 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
     if (!allAbsences) return [];
     return allAbsences.filter(a => new Date(a.date).toISOString().split("T")[0] === dateString);
   }, [allAbsences, dateString]);
+
+  const todaysCheckInLogs = useMemo(() => {
+    if (!allCheckInLogs || !activeCheckIn) return [];
+    return allCheckInLogs.filter(log => {
+      const logDate = new Date(log.date);
+      return logDate.toISOString().split("T")[0] === dateString && log.bellTimeId === activeCheckIn.bellTime.id;
+    });
+  }, [allCheckInLogs, dateString, activeCheckIn]);
 
   // Memoize these functions with proper dependencies
   const getAbsenceForDate = useMemo(() => {
@@ -80,6 +96,12 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
       return "OK";
     };
   }, [getCheckForDate]);
+
+  const hasCheckedIn = useMemo(() => {
+    return (studentId: number) => {
+      return todaysCheckInLogs.some(log => log.studentId === studentId);
+    };
+  }, [todaysCheckInLogs]);
   
   const handleStatusChange = async (studentId: number) => {
     const currentStatus = getStatus(studentId);
@@ -143,8 +165,10 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   const status = getStatus(student.id);
   const config = statusConfig[status];
   const isAbsent = !!getAbsenceForDate(student.id);
+  const checkedIn = hasCheckedIn(student.id);
   const [showGivePoints, setShowGivePoints] = useState(false);
 
+  // Show absent button in both modes
   if (isAbsent) {
     return (
        <Button
@@ -161,6 +185,38 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
     );
   }
 
+  // Check-in mode
+  if (mode === 'checkin') {
+    return (
+      <div className="relative w-full aspect-[7/5]">
+        <Button
+          key={student.id}
+          variant={checkedIn ? "default" : "outline"}
+          disabled={!activeCheckIn}
+          className={cn("justify-center h-auto py-2 flex-col w-full h-full", {
+            "bg-green-600 hover:bg-green-700 text-white": checkedIn,
+            "opacity-50": !activeCheckIn,
+          })}
+        >
+          <span className="font-semibold text-xs">{student.name}</span>
+          <div className="flex items-center text-xs opacity-80">
+            {checkedIn ? <span>✓ Sjekket inn</span> : <span>Venter...</span>}
+          </div>
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="absolute top-0 right-0 w-6 h-6"
+          onClick={() => handleAbsenceToggle(student.id!)}
+        >
+          <UserX className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+          <span className="sr-only">Meld fravær</span>
+        </Button>
+      </div>
+    );
+  }
+
+  // iPad mode (original)
   return (
     <div className="relative w-full aspect-[7/5]">
       <Button
@@ -320,33 +376,95 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
     <>
     <Card>
       <CardHeader>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle>Daglig sjekk & Fravær</CardTitle>
-            <CardDescription>
-              Registrer status for iPad og fravær. Klikk på ikonet øverst til høyre på en elev for å melde fravær.
-            </CardDescription>
-             {seatingChart && (
-                <div className="flex items-center space-x-2 mt-4">
-                    <Switch id="flip-view-daily" checked={isFlipped} onCheckedChange={setIsFlipped} />
-                    <Label htmlFor="flip-view-daily">Speilvendt visning (lærerperspektiv)</Label>
+        <div className="flex flex-col gap-4">
+          {/* Mode Toggle */}
+          <div className="flex items-center justify-between">
+            <Tabs value={mode} onValueChange={(v) => setMode(v as 'ipad' | 'checkin')}>
+              <TabsList>
+                <TabsTrigger value="ipad" className="flex items-center gap-2">
+                  <TabletSmartphone className="w-4 h-4" />
+                  iPad-sjekk
+                </TabsTrigger>
+                <TabsTrigger value="checkin" className="flex items-center gap-2">
+                  <Bell className="w-4 h-4" />
+                  Innsjekking
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className="w-[280px] justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(date, "PPP", { locale: nb }) : <span>Velg en dato</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar locale={nb} mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Check-in Status Banner */}
+          {mode === 'checkin' && activeCheckIn && (
+            <div className={cn(
+              "p-4 rounded-lg border-2",
+              activeCheckIn.shouldStop ? "bg-gray-100 border-gray-300" : "bg-green-50 border-green-300"
+            )}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Clock className="w-5 h-5 text-green-600" />
+                  <div>
+                    <h3 className="font-semibold text-sm">
+                      {activeCheckIn.bellTime.type === 'morgen' ? 'Morgeninnsjekking' : 'Innsjekking'} aktiv
+                    </h3>
+                    <p className="text-xs text-gray-600">
+                      {activeCheckIn.minutesElapsed} minutter siden ringetid • {activeCheckIn.pointsPercent}% poeng
+                    </p>
+                  </div>
                 </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-green-600">
+                    {todaysCheckInLogs.length}/{students.filter(s => !getAbsenceForDate(s.id!)).length}
+                  </div>
+                  <div className="text-xs text-gray-600">sjekket inn</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {mode === 'checkin' && !activeCheckIn && (
+            <div className="p-4 rounded-lg border-2 bg-gray-50 border-gray-200">
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-gray-400" />
+                <div>
+                  <h3 className="font-semibold text-sm text-gray-600">Ingen aktiv innsjekking</h3>
+                  <p className="text-xs text-gray-500">
+                    Vent på neste ringetid eller gå til innstillinger for å konfigurere ringetider
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Mode Description */}
+          <div>
+            <CardTitle>{mode === 'ipad' ? 'iPad-sjekk & Fravær' : 'Innsjekking'}</CardTitle>
+            <CardDescription>
+              {mode === 'ipad' 
+                ? 'Registrer status for iPad og fravær. Klikk på ikonet øverst til høyre på en elev for å melde fravær.'
+                : 'Elever sjekker inn med NFC-kort. Grønne knapper = sjekket inn. Grå = venter på innsjekking.'
+              }
+            </CardDescription>
+            {seatingChart && (
+              <div className="flex items-center space-x-2 mt-4">
+                <Switch id="flip-view-daily" checked={isFlipped} onCheckedChange={setIsFlipped} />
+                <Label htmlFor="flip-view-daily">Speilvendt visning (lærerperspektiv)</Label>
+              </div>
             )}
           </div>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className="w-full sm:w-[280px] justify-start text-left font-normal"
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "PPP", { locale: nb }) : <span>Velg en dato</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar locale={nb} mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
-            </PopoverContent>
-          </Popover>
         </div>
       </CardHeader>
       <CardContent>
@@ -383,7 +501,8 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
         )}
       </CardContent>
       
-      {/* Bulk reward and NFC section */}
+      {/* Bulk reward and NFC section - only in iPad mode */}
+      {mode === 'ipad' && (
       <div className="px-6 pb-6">
         <div className="border-t pt-4">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -438,12 +557,26 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
           </div>
         </div>
       </div>
+      )}
     </Card>
 
-    {/* NFC Status Panel - shows when registration is active or completed */}
+    {/* NFC Status Panel - shows when registration is active or completed - only in iPad mode */}
+    {mode === 'ipad' && (
     <div className="mt-6">
       <NFCCheckIn showOnlyPanel />
     </div>
+    )}
+
+    {/* Check-in NFC Panel - only in check-in mode */}
+    {mode === 'checkin' && (
+    <div className="mt-6">
+      <CheckInNFC 
+        activeSession={activeCheckIn} 
+        checkInCount={todaysCheckInLogs.length}
+        totalStudents={students.filter(s => !getAbsenceForDate(s.id!)).length}
+      />
+    </div>
+    )}
   </>
   );
 }

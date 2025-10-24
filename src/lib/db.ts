@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -45,6 +45,8 @@ export class MySubClassedDexie extends Dexie {
     secretAgent!: Table<{ id: string; studentId: number; studentName: string; mission: string; date: Date; status: 'pending' | 'analyzing' | 'passed' | 'failed' }, string>;
     secretAgentHistory!: Table<{ id?: number; studentId: number; studentName: string; mission: string; date: Date; status: 'passed' | 'failed' }, number>;
     nfcRegistrationSessions!: Table<NFCRegistrationSession, string>;
+    bellTimes!: Table<BellTime, number>;
+    checkInLogs!: Table<CheckInLog, number>;
 
 
     constructor() {
@@ -442,6 +444,18 @@ export class MySubClassedDexie extends Dexie {
             nfcRegistrationSessions: 'id, date, isActive, isCompleted',
         });
 
+        // Version 33: Add auto check-in system (bell times and check-in logs)
+        this.version(33).stores({
+            bellTimes: '++id, weekday, time',
+            checkInLogs: '++id, &[studentId+bellTimeId+date], studentId, bellTimeId, date',
+        }).upgrade(async (tx) => {
+            const userSettings = await tx.table('settings').get('userSettings');
+            if (userSettings && !userSettings.checkInSettings) {
+                userSettings.checkInSettings = defaultCheckInSettings;
+                await tx.table('settings').put(userSettings);
+            }
+        });
+
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
         });
@@ -498,6 +512,19 @@ const defaultDPIAAnalysis: DPIAAnalysis = {
     riskMeasures: "- Tekniske tiltak: Bruk av Microsofts sikre autentiseringsløsning (MSAL). Data isoleres i app-spesifikk mappe på OneDrive. Appen kjører helt på klienten.\n- Organisatoriske tiltak: Personvernerklæring er tilgjengelig. Ansvaret som behandlingsansvarlig er tydeliggjort. Anbefaling om bruk av sikre enheter og 2FA.\n- Juridiske tiltak: En klar personvernerklæring forklarer databehandlingen. Appen legger seg under skolens eksisterende databehandleravtale med Microsoft, og introduserer ingen nye tredjeparter.",
 };
 
+const defaultCheckInSettings: CheckInSettings = {
+    morning: {
+        percent100Minutes: 3,
+        percent50Minutes: 5,
+        percent10Minutes: 7,
+        absenceMinutes: 7,
+    },
+    regular: {
+        percent100Minutes: 3,
+        stopMinutes: 3,
+    },
+};
+
 const defaultSettings: AppSettings = {
   tabs: {
     overview: true, assessments: true, dailyCheck: true, observations: true, reports: true,
@@ -551,6 +578,7 @@ const defaultSettings: AppSettings = {
         priceCeilingPercent: 200,
     },
     nfcEnabled: false, // NFC disabled by default
+    checkInSettings: defaultCheckInSettings, // Auto check-in system settings
 };
 
 // Function to clear all data from the database
