@@ -140,3 +140,123 @@ export async function handleCheckInTap(
     };
   }
 }
+
+/**
+ * Handle manual check-in during check-in session
+ */
+export async function handleManualCheckIn(
+  studentId: number,
+  activeSession: ActiveCheckInSession
+): Promise<CheckInTapResult> {
+  // Find student by ID
+  const student = await db.students.get(studentId);
+
+  if (!student || !student.id) {
+    return {
+      success: false,
+      message: 'Eleven ble ikke funnet',
+      soundFile: 'error.wav',
+    };
+  }
+
+  // Check if already checked in
+  const alreadyCheckedIn = await hasStudentCheckedIn(student.id, activeSession.bellTime.id!);
+  if (alreadyCheckedIn) {
+    return {
+      success: false,
+      message: `${student.name} har allerede sjekket inn`,
+      studentName: student.name,
+      soundFile: 'error-1.wav',
+    };
+  }
+
+  // Check if student is marked as absent
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const absence = await db.absences
+    .where('studentId')
+    .equals(student.id)
+    .and(a => {
+      const absDate = new Date(a.date);
+      absDate.setHours(0, 0, 0, 0);
+      return absDate.getTime() === today.getTime();
+    })
+    .first();
+
+  if (absence) {
+    return {
+      success: false,
+      message: `${student.name} er markert som fraværende`,
+      studentName: student.name,
+      soundFile: 'error-2.wav',
+    };
+  }
+
+  // Get settings
+  const settings = await db.settings.get('userSettings');
+  if (!settings?.checkInSettings) {
+    return {
+      success: false,
+      message: 'Innsjekking er ikke konfigurert',
+      soundFile: 'error.wav',
+    };
+  }
+
+  // Calculate minutes elapsed and points
+  const minutesElapsed = getMinutesSince(activeSession.bellTime.time);
+  const pointsPercent = calculatePointsPercent(
+    minutesElapsed,
+    activeSession.bellTime.type,
+    settings.checkInSettings
+  );
+
+  // Check if time is up
+  if (pointsPercent === 0) {
+    return {
+      success: false,
+      message: `${student.name}: Tiden er ute for å sjekke inn`,
+      studentName: student.name,
+      soundFile: 'error-3.wav',
+    };
+  }
+
+  // Calculate actual points (percentage of bell time points)
+  const pointsAwarded = Math.round((activeSession.bellTime.points * pointsPercent) / 100);
+
+  // Record check-in log
+  try {
+    await db.checkInLogs.add({
+      studentId: student.id,
+      bellTimeId: activeSession.bellTime.id!,
+      timestamp: new Date(),
+      pointsPercent,
+      pointsAwarded,
+      date: today,
+    });
+
+    // Award points
+    await givePoints(student.id, pointsAwarded, `Innsjekking (${pointsPercent}%)`);
+
+    // Choose sound based on percentage
+    let soundFile = 'success.wav';
+    if (pointsPercent === 50) soundFile = 'error.wav';
+    if (pointsPercent === 10) soundFile = 'error.wav';
+
+    return {
+      success: true,
+      studentName: student.name,
+      pointsAwarded,
+      pointsPercent,
+      message: `${student.name}: +${pointsAwarded} poeng (${pointsPercent}%)`,
+      soundFile,
+    };
+  } catch (error) {
+    console.error('Manual check-in error:', error);
+    return {
+      success: false,
+      message: `Kunne ikke registrere innsjekking for ${student.name}`,
+      studentName: student.name,
+      soundFile: 'error.wav',
+    };
+  }
+}

@@ -20,16 +20,62 @@ export interface ActiveCheckInSession {
   minutesElapsed: number;
   pointsPercent: 100 | 50 | 10 | 0;
   shouldStop: boolean;
+  isManual?: boolean; // Flag for manually triggered sessions
 }
 
 export function useCheckInTimer() {
   const [activeSession, setActiveSession] = useState<ActiveCheckInSession | null>(null);
+  const [manualSession, setManualSession] = useState<BellTime | null>(null);
   const settings = useLiveQuery(() => db.settings.get('userSettings'));
+
+  // Function to manually start a check-in session
+  const startManualCheckIn = (points: number = 10) => {
+    const manualBell: BellTime = {
+      id: -1, // Temporary ID for manual session
+      weekday: 'mandag', // Doesn't matter for manual
+      time: new Date().toTimeString().substring(0, 5),
+      points,
+      type: 'ordinær',
+    };
+    setManualSession(manualBell);
+  };
+
+  // Function to stop manual session
+  const stopManualCheckIn = () => {
+    setManualSession(null);
+  };
   
   useEffect(() => {
     if (!settings?.checkInSettings) return;
 
     const checkForBellTime = async () => {
+      // Prioritize manual session
+      if (manualSession) {
+        const minutesElapsed = getMinutesSince(manualSession.time);
+        const shouldStop = shouldStopListening(
+          minutesElapsed,
+          manualSession.type,
+          settings.checkInSettings!
+        );
+
+        let pointsPercent: 100 | 50 | 10 | 0 = 0;
+        if (minutesElapsed <= settings.checkInSettings!.regular.percent100Minutes) pointsPercent = 100;
+
+        setActiveSession({
+          bellTime: manualSession,
+          minutesElapsed,
+          pointsPercent,
+          shouldStop,
+          isManual: true,
+        });
+
+        if (shouldStop) {
+          setManualSession(null);
+          setActiveSession(null);
+        }
+        return;
+      }
+
       const activeBell = await getActiveBellTime();
       
       if (activeBell) {
@@ -55,6 +101,7 @@ export function useCheckInTimer() {
           minutesElapsed,
           pointsPercent,
           shouldStop,
+          isManual: false,
         });
         
         // Handle absence registration for morning check-ins
@@ -82,7 +129,7 @@ export function useCheckInTimer() {
     const interval = setInterval(checkForBellTime, 30000);
 
     return () => clearInterval(interval);
-  }, [settings]);
+  }, [settings, manualSession]);
 
-  return activeSession;
+  return { activeSession, startManualCheckIn, stopManualCheckIn };
 }

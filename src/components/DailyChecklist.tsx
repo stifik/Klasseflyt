@@ -42,7 +42,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   const { toast } = useToast();
 
   // Check for active check-in session
-  const activeCheckIn = useCheckInTimer();
+  const { activeSession: activeCheckIn, startManualCheckIn, stopManualCheckIn } = useCheckInTimer();
 
   // Check if dev mode is enabled
   const isDevMode = typeof window !== 'undefined' && window.localStorage?.getItem('nfc_dev_mode') === 'true';
@@ -101,6 +101,10 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
     return (studentId: number) => {
       return todaysCheckInLogs.some(log => log.studentId === studentId);
     };
+  }, [todaysCheckInLogs]);
+
+  const checkedInStudentIds = useMemo(() => {
+    return new Set(todaysCheckInLogs.map(log => log.studentId));
   }, [todaysCheckInLogs]);
   
   const handleStatusChange = async (studentId: number) => {
@@ -573,7 +577,11 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
       <CheckInNFC 
         activeSession={activeCheckIn} 
         checkInCount={todaysCheckInLogs.length}
-        totalStudents={students.filter(s => !getAbsenceForDate(s.id!)).length}
+        totalStudents={students.filter(s => s.id && !getAbsenceForDate(s.id)).length}
+        students={students}
+        checkedInStudentIds={checkedInStudentIds}
+        onStartManual={startManualCheckIn}
+        onStopManual={stopManualCheckIn}
       />
     </div>
     )}

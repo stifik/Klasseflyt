@@ -433,34 +433,45 @@ export default function CheckInSettings() {
               </p>
             </div>
           ) : (
-            <div className="space-y-2">{bellTimes.map((bellTime) => (
-                <div
-                  key={bellTime.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <Clock className="w-5 h-5 text-gray-500" />
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        {getWeekdayLabel(bellTime.weekday)} kl. {bellTime.time}
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {bellTime.type === 'morgen' ? 'Morgen-innsjekking' : 'Ordinær innsjekking'} 
-                        {' • '}
-                        {bellTime.points} poeng
-                      </p>
+            <div className="space-y-3">
+              {WEEKDAYS.map(day => {
+                const dayBellTimes = bellTimes.filter(bt => bt.weekday === day.value);
+                if (dayBellTimes.length === 0) return null;
+                
+                return (
+                  <div key={day.value} className="border rounded-lg p-3 bg-gray-50 dark:bg-gray-800">
+                    <div className="font-semibold text-gray-900 dark:text-white mb-2">
+                      {day.label}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {dayBellTimes
+                        .sort((a, b) => a.time.localeCompare(b.time))
+                        .map(bellTime => (
+                          <div
+                            key={bellTime.id}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-700 rounded-md border border-gray-200 dark:border-gray-600"
+                          >
+                            <Clock className="w-3.5 h-3.5 text-gray-500" />
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              {bellTime.time}
+                            </span>
+                            <span className="text-xs text-gray-600 dark:text-gray-400">
+                              ({bellTime.type === 'morgen' ? 'M' : 'O'}, {bellTime.points}p)
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => bellTime.id && handleDeleteBellTime(bellTime.id)}
+                              className="h-5 w-5 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        ))}
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => bellTime.id && handleDeleteBellTime(bellTime.id)}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
