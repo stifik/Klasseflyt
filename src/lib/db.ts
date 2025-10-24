@@ -464,7 +464,7 @@ export class MySubClassedDexie extends Dexie {
         this.version(34).stores({
             welcomeMessages: '++id, createdAt',
             instructionMessages: '++id, createdAt',
-            scheduleTemplates: '++id, name, day',
+            scheduleTemplates: '++id, name, dayOfWeek',
             themeHistory: '++id, date',
         }).upgrade(async (tx) => {
             const userSettings = await tx.table('settings').get('userSettings');

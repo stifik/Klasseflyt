@@ -1,36 +1,110 @@
 'use client';
 
-import { useState } from 'react';
-import type { ScheduleSession } from '@/lib/types';
+import { useState, useEffect } from 'react';
+import { db } from '@/lib/db';
+import type { ScheduleSession, ScheduleTemplate } from '@/lib/types';
 
-type Slide2Props = {
-  sessions: ScheduleSession[];
-  onSave?: (sessions: ScheduleSession[]) => void;
-};
+type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
 
-export default function Slide2({ sessions: initialSessions, onSave }: Slide2Props) {
+export default function Slide2() {
   const [isEditMode, setIsEditMode] = useState(false);
-  const [sessions, setSessions] = useState<ScheduleSession[]>(initialSessions);
+  const [sessions, setSessions] = useState<ScheduleSession[]>([]);
+  const [templateId, setTemplateId] = useState<number | undefined>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [visibleSessionCount, setVisibleSessionCount] = useState(0);
 
-  const handleSave = () => {
-    if (onSave) {
-      onSave(sessions);
+  useEffect(() => {
+    loadTodaySchedule();
+  }, []);
+
+  const getTodayDayOfWeek = (): DayOfWeek | null => {
+    const days: (DayOfWeek | null)[] = [null, 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', null];
+    const dayIndex = new Date().getDay();
+    return days[dayIndex];
+  };
+
+  const loadTodaySchedule = async () => {
+    setIsLoading(true);
+    try {
+      const dayOfWeek = getTodayDayOfWeek();
+
+      if (!dayOfWeek) {
+        // Weekend - no schedule
+        setSessions([]);
+        setTemplateId(undefined);
+        setIsLoading(false);
+        return;
+      }
+
+      // Find template for today
+      const template = await db.scheduleTemplates
+        .where('dayOfWeek')
+        .equals(dayOfWeek)
+        .first();
+
+      if (template) {
+        setTemplateId(template.id);
+        setSessions(template.sessions || []);
+        setVisibleSessionCount(0); // Reset visible sessions when loading new schedule
+      } else {
+        setTemplateId(undefined);
+        setSessions([]);
+        setVisibleSessionCount(0);
+      }
+    } catch (error) {
+      console.error('Error loading schedule:', error);
+    } finally {
+      setIsLoading(false);
     }
-    setIsEditMode(false);
+  };
+
+  const handleSave = async () => {
+    try {
+      const dayOfWeek = getTodayDayOfWeek();
+      if (!dayOfWeek) return;
+
+      const dayNames = {
+        monday: 'Mandag',
+        tuesday: 'Tirsdag',
+        wednesday: 'Onsdag',
+        thursday: 'Torsdag',
+        friday: 'Fredag',
+      };
+
+      const templateData: ScheduleTemplate = {
+        name: `${dayNames[dayOfWeek]}-mal`,
+        dayOfWeek,
+        sessions: sessions.map((s, index) => ({ ...s, id: index })),
+        updatedAt: new Date(),
+      };
+
+      if (templateId) {
+        await db.scheduleTemplates.update(templateId, templateData);
+      } else {
+        templateData.createdAt = new Date();
+        const newId = await db.scheduleTemplates.add(templateData as any);
+        setTemplateId(newId as number);
+      }
+
+      setIsEditMode(false);
+    } catch (error) {
+      console.error('Error saving schedule:', error);
+      alert('Feil ved lagring av dagsplan');
+    }
   };
 
   const handleCancel = () => {
-    setSessions(initialSessions);
+    loadTodaySchedule();
     setIsEditMode(false);
   };
 
   const handleAddSession = () => {
-    const newId = Math.max(...sessions.map(s => s.id), 0) + 1;
+    const newId = sessions.length > 0 ? Math.max(...sessions.map(s => s.id)) + 1 : 0;
     setSessions([
       ...sessions,
       {
         id: newId,
-        time: '08:30',
+        time: '08:00',
         subject: '',
         topic: '',
       },
@@ -67,8 +141,47 @@ export default function Slide2({ sessions: initialSessions, onSave }: Slide2Prop
     return `${day}. ${month}`;
   };
 
+  const handleSlideClick = () => {
+    // Only allow revealing in non-edit mode and if there are more sessions to reveal
+    if (!isEditMode && visibleSessionCount < sessions.length) {
+      setVisibleSessionCount(visibleSessionCount + 1);
+    }
+  };
+
+  const isWeekend = getTodayDayOfWeek() === null;
+
+  if (isLoading) {
+    return (
+      <div className="slide slide-2">
+        <div className="schedule-content">
+          <div className="empty-schedule">
+            <h2>Laster dagsplan...</h2>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isWeekend) {
+    return (
+      <div className="slide slide-2">
+        <div className="schedule-header">
+          <h1 className="schedule-title">
+            DAGSPLAN - {getDayName().charAt(0).toUpperCase() + getDayName().slice(1)} {getFormattedDate()}
+          </h1>
+        </div>
+        <div className="schedule-content">
+          <div className="empty-schedule">
+            <h2>Ingen skole i dag! 🎉</h2>
+            <p>God helg!</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="slide slide-2">
+    <div className="slide slide-2" onClick={handleSlideClick} style={{ cursor: !isEditMode && visibleSessionCount < sessions.length ? 'pointer' : 'default' }}>
       <div className="schedule-header">
         <h1 className="schedule-title">
           DAGSPLAN - {getDayName().charAt(0).toUpperCase() + getDayName().slice(1)} {getFormattedDate()}
@@ -76,17 +189,27 @@ export default function Slide2({ sessions: initialSessions, onSave }: Slide2Prop
         <div className="schedule-controls">
           {!isEditMode ? (
             <button
-              onClick={() => setIsEditMode(true)}
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent slide click when clicking edit button
+                setIsEditMode(true);
+              }}
               className="edit-button"
+              title="Rediger dagsplan"
             >
-              🔓 Rediger
+              🔓
             </button>
           ) : (
             <div className="edit-controls">
-              <button onClick={handleSave} className="save-button">
-                ✅ Lagre
+              <button onClick={(e) => {
+                e.stopPropagation();
+                handleSave();
+              }} className="save-button">
+                💾 Lagre
               </button>
-              <button onClick={handleCancel} className="cancel-button">
+              <button onClick={(e) => {
+                e.stopPropagation();
+                handleCancel();
+              }} className="cancel-button">
                 ❌ Avbryt
               </button>
             </div>
@@ -96,7 +219,10 @@ export default function Slide2({ sessions: initialSessions, onSave }: Slide2Prop
 
       <div className="schedule-content">
         {isEditMode && (
-          <button onClick={handleAddSession} className="add-session-button">
+          <button onClick={(e) => {
+            e.stopPropagation();
+            handleAddSession();
+          }} className="add-session-button">
             + Legg til økt
           </button>
         )}
@@ -108,8 +234,14 @@ export default function Slide2({ sessions: initialSessions, onSave }: Slide2Prop
               <p>Klikk &quot;Rediger&quot; for å legge til økter.</p>
             </div>
           ) : (
-            sessions.map((session) => (
-              <div key={session.id} className="schedule-session">
+            sessions.map((session, index) => (
+              <div
+                key={session.id}
+                className="schedule-session"
+                style={{
+                  display: isEditMode || index < visibleSessionCount ? 'flex' : 'none'
+                }}
+              >
                 {!isEditMode ? (
                   <>
                     <span className="session-time">{session.time}</span>
@@ -130,6 +262,7 @@ export default function Slide2({ sessions: initialSessions, onSave }: Slide2Prop
                       onChange={(e) =>
                         handleUpdateSession(session.id, 'time', e.target.value)
                       }
+                      onClick={(e) => e.stopPropagation()}
                       className="session-input session-time-input"
                     />
                     <input
@@ -138,6 +271,7 @@ export default function Slide2({ sessions: initialSessions, onSave }: Slide2Prop
                       onChange={(e) =>
                         handleUpdateSession(session.id, 'subject', e.target.value)
                       }
+                      onClick={(e) => e.stopPropagation()}
                       placeholder="Fag"
                       className="session-input session-subject-input"
                     />
@@ -147,11 +281,15 @@ export default function Slide2({ sessions: initialSessions, onSave }: Slide2Prop
                       onChange={(e) =>
                         handleUpdateSession(session.id, 'topic', e.target.value)
                       }
+                      onClick={(e) => e.stopPropagation()}
                       placeholder="Tema"
                       className="session-input session-topic-input"
                     />
                     <button
-                      onClick={() => handleDeleteSession(session.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteSession(session.id);
+                      }}
                       className="delete-session-button"
                     >
                       🗑️

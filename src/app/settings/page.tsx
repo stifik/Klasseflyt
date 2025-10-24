@@ -67,15 +67,24 @@ export default function SettingsRoute() {
           <div className="bg-white p-6 rounded-lg shadow-sm border">
             <h2 className="text-2xl font-bold mb-4">Morning Display Innstillinger</h2>
             <p className="text-gray-600 mb-6">
-              Konfigurer meldinger, instruksjoner og innstillinger for morgenvisningen.
+              Konfigurer meldinger, instruksjoner, klassenavn og ukesmaler for morgenvisningen.
             </p>
-            <Link
-              href="/settings/morning-display"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
-            >
-              <Monitor className="w-5 h-5" />
-              Gå til Morning Display Innstillinger
-            </Link>
+            <div className="flex flex-col gap-4">
+              <Link
+                href="/settings/morning-display"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition w-fit"
+              >
+                <Monitor className="w-5 h-5" />
+                Meldinger og klassenavn
+              </Link>
+              <Link
+                href="/settings/weekly-schedule"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition w-fit"
+              >
+                <SettingsIcon className="w-5 h-5" />
+                Ukesmaler for dagsplan
+              </Link>
+            </div>
           </div>
         </TabsContent>
       </Tabs>

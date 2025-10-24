@@ -6,7 +6,7 @@ import { getTodayTheme, getThemeGradient } from '@/lib/themes';
 import Slide1 from '@/components/morning-display/Slide1';
 import Slide2 from '@/components/morning-display/Slide2';
 import SlideControls from '@/components/morning-display/SlideControls';
-import type { Student, WelcomeMessage, InstructionMessage, ScheduleTemplate, BellTime } from '@/lib/types';
+import type { Student, WelcomeMessage, InstructionMessage, BellTime } from '@/lib/types';
 import './morning-display.css';
 
 type StudentWithStatus = {
@@ -22,7 +22,6 @@ export default function MorningDisplayPage() {
   const [welcomeMessage, setWelcomeMessage] = useState('God morgen!');
   const [instructions, setInstructions] = useState('Velkommen til en ny dag!');
   const [className, setClassName] = useState('klassen');
-  const [schedule, setSchedule] = useState<ScheduleTemplate | null>(null);
   const [bellTime, setBellTime] = useState<string | undefined>();
   const [checkInSettings, setCheckInSettings] = useState<any>();
   const [themeGradient, setThemeGradient] = useState<string>('');
@@ -88,21 +87,8 @@ export default function MorningDisplayPage() {
         setInstructions(randomInstruction.message);
       }
 
-      // Load schedule for today
-      const today = new Date();
-      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-      const dayName = dayNames[today.getDay()];
-
-      const templates = await db.scheduleTemplates
-        .where('day')
-        .equals(dayName as any)
-        .toArray();
-
-      if (templates.length > 0) {
-        setSchedule(templates[0]);
-      }
-
       // Load bell time for today
+      const today = new Date();
       const weekdayNames = ['søndag', 'mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag'];
       const weekday = weekdayNames[today.getDay()];
 
@@ -173,16 +159,6 @@ export default function MorningDisplayPage() {
     return () => clearInterval(interval);
   };
 
-  const handleSaveSchedule = async (sessions: any[]) => {
-    if (schedule) {
-      await db.scheduleTemplates.update(schedule.id!, {
-        sessions,
-        updatedAt: new Date(),
-      });
-      setSchedule({ ...schedule, sessions });
-    }
-  };
-
   return (
     <div
       className="morning-display"
@@ -210,10 +186,7 @@ export default function MorningDisplayPage() {
 
       {currentSlide === 2 && (
         <>
-          <Slide2
-            sessions={schedule?.sessions || []}
-            onSave={handleSaveSchedule}
-          />
+          <Slide2 />
           <SlideControls
             currentSlide={currentSlide}
             onSlideChange={setCurrentSlide}

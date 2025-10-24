@@ -152,7 +152,7 @@ export type ScheduleSession = {
 export type ScheduleTemplate = {
   id?: number;
   name: string;
-  day?: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
+  dayOfWeek?: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
   sessions: ScheduleSession[];
   createdAt?: Date;
   updatedAt?: Date;
