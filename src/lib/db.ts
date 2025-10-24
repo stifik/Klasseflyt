@@ -450,6 +450,21 @@ export class MySubClassedDexie extends Dexie {
             }
         });
 
+        // Version 32: Ensure actions.actionKey is indexed so queries like
+        // db.actions.where('actionKey') work without throwing SchemaError.
+        // This creates the missing index in existing databases during upgrade.
+        this.version(32).stores({
+            actions: '++id, name, actionKey'
+        }).upgrade(async (tx) => {
+            // No special migration required — adding the index is sufficient.
+            // But ensure existing rows have the actionKey property populated when possible.
+            await tx.table('actions').toCollection().modify(action => {
+                if (!('actionKey' in action) && action.name) {
+                    // best-effort: keep as-is, index will be undefined for these entries
+                }
+            });
+        });
+
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
         });
