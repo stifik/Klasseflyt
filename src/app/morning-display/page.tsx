@@ -191,27 +191,34 @@ export default function MorningDisplayPage() {
       }}
     >
       {currentSlide === 1 && (
-        <Slide1
-          students={students}
-          welcomeMessage={welcomeMessage}
-          instructions={instructions}
-          className={className}
-          bellTime={bellTime}
-          checkInSettings={checkInSettings}
-        />
+        <>
+          <Slide1
+            students={students}
+            welcomeMessage={welcomeMessage}
+            instructions={instructions}
+            className={className}
+            bellTime={bellTime}
+            checkInSettings={checkInSettings}
+          />
+          <SlideControls
+            currentSlide={currentSlide}
+            onSlideChange={setCurrentSlide}
+          />
+        </>
       )}
 
       {currentSlide === 2 && (
-        <Slide2
-          sessions={schedule?.sessions || []}
-          onSave={handleSaveSchedule}
-        />
+        <>
+          <Slide2
+            sessions={schedule?.sessions || []}
+            onSave={handleSaveSchedule}
+          />
+          <SlideControls
+            currentSlide={currentSlide}
+            onSlideChange={setCurrentSlide}
+          />
+        </>
       )}
-
-      <SlideControls
-        currentSlide={currentSlide}
-        onSlideChange={setCurrentSlide}
-      />
     </div>
   );
 }

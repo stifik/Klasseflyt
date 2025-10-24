@@ -31,22 +31,20 @@ export default function Slide1({
 }: Slide1Props) {
   return (
     <div className="slide slide-1">
-      <div className="clock-container">
-        <Clock bellTime={bellTime} checkInSettings={checkInSettings} />
+      <div className="left-column">
+        <StudentList students={students} />
       </div>
 
-      <div className="slide-content">
-        <div className="student-list-column">
-          <StudentList students={students} />
+      <div className="right-column">
+        <div className="clock-container">
+          <Clock bellTime={bellTime} checkInSettings={checkInSettings} />
         </div>
 
-        <div className="welcome-column">
-          <WelcomeSection
-            message={welcomeMessage}
-            instructions={instructions}
-            className={className}
-          />
-        </div>
+        <WelcomeSection
+          message={welcomeMessage}
+          instructions={instructions}
+          className={className}
+        />
       </div>
     </div>
   );
