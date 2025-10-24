@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings, WelcomeMessage, InstructionMessage, ScheduleTemplate, ThemeHistory, MorningDisplaySettings } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -47,6 +47,10 @@ export class MySubClassedDexie extends Dexie {
     nfcRegistrationSessions!: Table<NFCRegistrationSession, string>;
     bellTimes!: Table<BellTime, number>;
     checkInLogs!: Table<CheckInLog, number>;
+    welcomeMessages!: Table<WelcomeMessage, number>;
+    instructionMessages!: Table<InstructionMessage, number>;
+    scheduleTemplates!: Table<ScheduleTemplate, number>;
+    themeHistory!: Table<ThemeHistory, number>;
 
 
     constructor() {
@@ -456,6 +460,20 @@ export class MySubClassedDexie extends Dexie {
             }
         });
 
+        // Version 34: Add morning display tables
+        this.version(34).stores({
+            welcomeMessages: '++id, createdAt',
+            instructionMessages: '++id, createdAt',
+            scheduleTemplates: '++id, name, day',
+            themeHistory: '++id, date',
+        }).upgrade(async (tx) => {
+            const userSettings = await tx.table('settings').get('userSettings');
+            if (userSettings && !userSettings.morningDisplaySettings) {
+                userSettings.morningDisplaySettings = defaultMorningDisplaySettings;
+                await tx.table('settings').put(userSettings);
+            }
+        });
+
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
         });
@@ -498,6 +516,7 @@ const defaultDashboardTools: DashboardConfig[] = [
     { key: 'reports.summary', visible: false },
     { key: 'reports.studentReports', visible: false },
     { key: 'reports.analysis', visible: false },
+    { key: 'morning-display', visible: true },
 ];
 
 const defaultDPIAAnalysis: DPIAAnalysis = {
@@ -513,19 +532,25 @@ const defaultDPIAAnalysis: DPIAAnalysis = {
 };
 
 const defaultCheckInSettings: CheckInSettings = {
-    morning: {
-        percent100Minutes: 3,
-        percent50Minutes: 5,
-        percent10Minutes: 7,
-        absenceMinutes: 7,
-    },
-    regular: {
-        percent100Minutes: 3,
-        stopMinutes: 3,
-    },
+  morning: {
+    percent100Minutes: 3,
+    percent50Minutes: 5,
+    percent10Minutes: 7,
+    absenceMinutes: 7,
+  },
+  regular: {
+    percent100Minutes: 3,
+    stopMinutes: 3,
+  },
 };
 
-const defaultSettings: AppSettings = {
+const defaultMorningDisplaySettings: MorningDisplaySettings = {
+  className: 'klassen',
+  messageRotationMode: 'daily',
+  instructionRotationMode: 'daily',
+  lastThemeId: undefined,
+  lastThemeDate: undefined,
+};const defaultSettings: AppSettings = {
   tabs: {
     overview: true, assessments: true, dailyCheck: true, observations: true, reports: true,
     classroomTools: true,
@@ -579,6 +604,7 @@ const defaultSettings: AppSettings = {
     },
     nfcEnabled: false, // NFC disabled by default
     checkInSettings: defaultCheckInSettings, // Auto check-in system settings
+    morningDisplaySettings: defaultMorningDisplaySettings, // Morning display settings
 };
 
 // Function to clear all data from the database

@@ -129,6 +129,49 @@ export type CheckInSettings = {
   };
 };
 
+// Morning Display types
+export type WelcomeMessage = {
+  id?: number;
+  message: string;
+  createdAt?: Date;
+};
+
+export type InstructionMessage = {
+  id?: number;
+  message: string;
+  createdAt?: Date;
+};
+
+export type ScheduleSession = {
+  id: number;
+  time: string; // HH:MM format
+  subject: string;
+  topic: string;
+};
+
+export type ScheduleTemplate = {
+  id?: number;
+  name: string;
+  day?: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
+  sessions: ScheduleSession[];
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+export type ThemeHistory = {
+  id?: number;
+  themeId: number;
+  date: string; // YYYY-MM-DD
+};
+
+export type MorningDisplaySettings = {
+  className: string;
+  messageRotationMode: 'daily' | 'per-ringetid';
+  instructionRotationMode: 'daily' | 'per-ringetid';
+  lastThemeId?: number;
+  lastThemeDate?: string;
+};
+
 export type Absence = {
   id?: number;
   studentId: number;
@@ -259,7 +302,8 @@ export type DashboardToolKey =
   | 'rewardDashboard'
   | 'rewardStore'
   | 'activityFeed'
-  | 'terminal';
+  | 'terminal'
+  | 'morning-display';
 
 export type DashboardConfig = {
     key: DashboardToolKey;
@@ -395,4 +439,5 @@ export type AppSettings = {
   rewardSystem?: RewardSystemSettings;
   nfcEnabled?: boolean; // Enable/disable NFC scanning feature
   checkInSettings?: CheckInSettings; // Auto check-in system settings
+  morningDisplaySettings?: MorningDisplaySettings; // Morning display settings
 };
