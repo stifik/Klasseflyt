@@ -446,7 +446,7 @@ export class MySubClassedDexie extends Dexie {
 
         // Version 33: Add auto check-in system (bell times and check-in logs)
         this.version(33).stores({
-            bellTimes: '++id, weekday, time',
+            bellTimes: '++id, weekday, time, [weekday+time]',
             checkInLogs: '++id, &[studentId+bellTimeId+date], studentId, bellTimeId, date',
         }).upgrade(async (tx) => {
             const userSettings = await tx.table('settings').get('userSettings');

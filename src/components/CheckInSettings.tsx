@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Trash2, Plus, Clock, Bell } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Trash2, Plus, Clock, Bell, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -21,6 +22,13 @@ const WEEKDAYS = [
   { value: 'fredag', label: 'Fredag' },
 ] as const;
 
+// Default bell times: Mon-Fri 08:30, 10:30, 12:30
+const DEFAULT_BELL_TIMES = [
+  { time: '08:30', points: 10, type: 'morgen' as const },
+  { time: '10:30', points: 5, type: 'ordinær' as const },
+  { time: '12:30', points: 5, type: 'ordinær' as const },
+];
+
 export default function CheckInSettings() {
   const { toast } = useToast();
 
@@ -33,6 +41,10 @@ export default function CheckInSettings() {
   const [newTime, setNewTime] = useState('08:30');
   const [newPoints, setNewPoints] = useState('10');
   const [newType, setNewType] = useState<'morgen' | 'ordinær'>('morgen');
+  
+  // Bulk add states
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set(['mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag']));
 
   // Settings states
   const [checkInSettings, setCheckInSettings] = useState<CheckInSettingsType>({
@@ -55,6 +67,49 @@ export default function CheckInSettings() {
     }
   }, [dbSettings]);
 
+  const handleAddDefaultBellTimes = async () => {
+    const newBellTimes: Omit<BellTime, 'id'>[] = [];
+    
+    for (const day of WEEKDAYS) {
+      for (const defaultTime of DEFAULT_BELL_TIMES) {
+        newBellTimes.push({
+          weekday: day.value,
+          time: defaultTime.time,
+          points: defaultTime.points,
+          type: defaultTime.type,
+        });
+      }
+    }
+
+    try {
+      await db.bellTimes.bulkAdd(newBellTimes as BellTime[]);
+      toast({
+        title: "Standard ringetider lagt til",
+        description: `${newBellTimes.length} ringetider er lagt til (man-fre: 08:30, 10:30, 12:30)`,
+      });
+    } catch (error) {
+      console.error('Error adding default bell times:', error);
+    }
+  };
+
+  const toggleBulkMode = () => {
+    setBulkMode(!bulkMode);
+    if (!bulkMode) {
+      // When entering bulk mode, select all days by default
+      setSelectedDays(new Set(['mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag']));
+    }
+  };
+
+  const toggleDay = (day: string) => {
+    const newSet = new Set(selectedDays);
+    if (newSet.has(day)) {
+      newSet.delete(day);
+    } else {
+      newSet.add(day);
+    }
+    setSelectedDays(newSet);
+  };
+
   const handleAddBellTime = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -68,47 +123,106 @@ export default function CheckInSettings() {
       return;
     }
 
-    // Check if this weekday/time combination already exists
-    const exists = bellTimes.some(bt => bt.weekday === newWeekday && bt.time === newTime);
-    if (exists) {
-      toast({
-        title: "Feil",
-        description: "Det finnes allerede en ringetid for dette tidspunktet",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check if trying to add second morning bell on same day
-    if (newType === 'morgen') {
-      const morningExists = bellTimes.some(bt => bt.weekday === newWeekday && bt.type === 'morgen');
-      if (morningExists) {
+    if (bulkMode) {
+      // Bulk add mode
+      if (selectedDays.size === 0) {
         toast({
           title: "Feil",
-          description: "Det kan kun være én morgen-innsjekking per dag",
+          description: "Velg minst én dag",
           variant: "destructive",
         });
         return;
       }
+
+      const newBellTimes: Omit<BellTime, 'id'>[] = [];
+      const conflicts: string[] = [];
+
+      for (const day of Array.from(selectedDays)) {
+        // Check if this weekday/time combination already exists
+        const exists = bellTimes.some(bt => bt.weekday === day && bt.time === newTime);
+        if (exists) {
+          conflicts.push(getWeekdayLabel(day));
+          continue;
+        }
+
+        // Check if trying to add second morning bell on same day
+        if (newType === 'morgen') {
+          const morningExists = bellTimes.some(bt => bt.weekday === day && bt.type === 'morgen');
+          if (morningExists) {
+            conflicts.push(`${getWeekdayLabel(day)} (har allerede morgen)`);
+            continue;
+          }
+        }
+
+        newBellTimes.push({
+          weekday: day as 'mandag' | 'tirsdag' | 'onsdag' | 'torsdag' | 'fredag',
+          time: newTime,
+          points,
+          type: newType,
+        });
+      }
+
+      if (newBellTimes.length === 0) {
+        toast({
+          title: "Feil",
+          description: conflicts.length > 0 
+            ? `Ringetid finnes allerede for: ${conflicts.join(', ')}`
+            : "Ingen ringetider kunne legges til",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await db.bellTimes.bulkAdd(newBellTimes as BellTime[]);
+
+      toast({
+        title: "Lagt til",
+        description: `${newBellTimes.length} ringetider lagt til kl. ${newTime}${conflicts.length > 0 ? ` (hoppet over: ${conflicts.join(', ')})` : ''}`,
+      });
+    } else {
+      // Single add mode
+      // Check if this weekday/time combination already exists
+      const exists = bellTimes.some(bt => bt.weekday === newWeekday && bt.time === newTime);
+      if (exists) {
+        toast({
+          title: "Feil",
+          description: "Det finnes allerede en ringetid for dette tidspunktet",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if trying to add second morning bell on same day
+      if (newType === 'morgen') {
+        const morningExists = bellTimes.some(bt => bt.weekday === newWeekday && bt.type === 'morgen');
+        if (morningExists) {
+          toast({
+            title: "Feil",
+            description: "Det kan kun være én morgen-innsjekking per dag",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      const newBellTime: Omit<BellTime, 'id'> = {
+        weekday: newWeekday,
+        time: newTime,
+        points,
+        type: newType,
+      };
+
+      await db.bellTimes.add(newBellTime as BellTime);
+
+      toast({
+        title: "Lagt til",
+        description: `Ringetid for ${getWeekdayLabel(newWeekday)} kl. ${newTime} er lagt til`,
+      });
     }
-
-    const newBellTime: Omit<BellTime, 'id'> = {
-      weekday: newWeekday,
-      time: newTime,
-      points,
-      type: newType,
-    };
-
-    await db.bellTimes.add(newBellTime as BellTime);
 
     // Reset form
     setNewTime('08:30');
     setNewPoints('10');
-
-    toast({
-      title: "Lagt til",
-      description: `Ringetid for ${newWeekday} kl. ${newTime} er lagt til`,
-    });
   };
 
   const handleDeleteBellTime = async (id: number) => {
@@ -173,17 +287,55 @@ export default function CheckInSettings() {
       {/* Add new bell time */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="w-5 h-5" />
-            Legg til ny ringetid
-          </CardTitle>
-          <CardDescription>
-            Opprett ringetider som automatisk aktiverer innsjekking
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="w-5 h-5" />
+                Legg til ny ringetid
+              </CardTitle>
+              <CardDescription>
+                {bulkMode 
+                  ? 'Legg til samme ringetid for flere dager samtidig'
+                  : 'Opprett ringetider som automatisk aktiverer innsjekking'
+                }
+              </CardDescription>
+            </div>
+            <Button
+              variant={bulkMode ? "default" : "outline"}
+              size="sm"
+              onClick={toggleBulkMode}
+            >
+              <Calendar className="w-4 h-4 mr-2" />
+              {bulkMode ? 'Enkeltdag-modus' : 'Bulk-modus'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAddBellTime} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {bulkMode ? (
+              // Bulk mode: Day checkboxes
+              <div className="space-y-2">
+                <Label>Velg dager</Label>
+                <div className="flex flex-wrap gap-3">
+                  {WEEKDAYS.map(day => (
+                    <div key={day.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`bulk-${day.value}`}
+                        checked={selectedDays.has(day.value)}
+                        onCheckedChange={() => toggleDay(day.value)}
+                      />
+                      <Label
+                        htmlFor={`bulk-${day.value}`}
+                        className="font-normal cursor-pointer"
+                      >
+                        {day.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              // Single mode: Day dropdown
               <div className="space-y-2">
                 <Label>Ukedag</Label>
                 <Select value={newWeekday} onValueChange={(v: any) => setNewWeekday(v)}>
@@ -199,7 +351,9 @@ export default function CheckInSettings() {
                   </SelectContent>
                 </Select>
               </div>
+            )}
 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Tidspunkt</Label>
                 <Input
@@ -240,7 +394,7 @@ export default function CheckInSettings() {
 
             <Button type="submit" className="w-full md:w-auto">
               <Plus className="w-4 h-4 mr-2" />
-              Legg til ringetid
+              {bulkMode ? `Legg til for ${selectedDays.size} dag(er)` : 'Legg til ringetid'}
             </Button>
           </form>
         </CardContent>
@@ -249,19 +403,37 @@ export default function CheckInSettings() {
       {/* List of bell times */}
       <Card>
         <CardHeader>
-          <CardTitle>Registrerte ringetider</CardTitle>
-          <CardDescription>
-            Oversikt over alle ringetider sortert etter ukedag og klokkeslett
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Registrerte ringetider</CardTitle>
+              <CardDescription>
+                Oversikt over alle ringetider sortert etter ukedag og klokkeslett
+              </CardDescription>
+            </div>
+            {bellTimes.length === 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddDefaultBellTimes}
+              >
+                <Clock className="w-4 h-4 mr-2" />
+                Last inn standard (man-fre: 08:30, 10:30, 12:30)
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {bellTimes.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
-              Ingen ringetider lagt til ennå
-            </p>
+            <div className="text-center py-8 space-y-4">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Ingen ringetider lagt til ennå
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">
+                Klikk "Last inn standard" for å legge til man-fre: 08:30, 10:30, 12:30
+              </p>
+            </div>
           ) : (
-            <div className="space-y-2">
-              {bellTimes.map((bellTime) => (
+            <div className="space-y-2">{bellTimes.map((bellTime) => (
                 <div
                   key={bellTime.id}
                   className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
