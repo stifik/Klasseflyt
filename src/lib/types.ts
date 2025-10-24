@@ -158,6 +158,21 @@ export type ScheduleTemplate = {
   updatedAt?: Date;
 };
 
+export type LessonPlan = {
+  id?: number;
+  sessionId: number; // Links to the session ID
+  templateId: number; // Links to which template this belongs to
+  date: string; // YYYY-MM-DD format
+  subject: string; // Snapshot from session
+  topic: string; // Snapshot from session
+  time: string; // Snapshot from session
+  objectives: string[]; // Learning objectives for the lesson
+  activities: string[]; // Activities/flow without timestamps
+  notes?: string; // Optional teacher notes
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
 export type ThemeHistory = {
   id?: number;
   themeId: number;

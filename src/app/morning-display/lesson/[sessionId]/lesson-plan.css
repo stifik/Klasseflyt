@@ -1,0 +1,305 @@
+.lesson-plan-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2rem;
+}
+
+.lesson-plan-loading,
+.lesson-plan-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  color: white;
+  font-size: 1.5rem;
+}
+
+.lesson-plan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.back-button {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.back-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateX(-5px);
+}
+
+.lesson-plan-controls {
+  display: flex;
+  gap: 1rem;
+}
+
+.edit-button,
+.save-button,
+.cancel-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+}
+
+.edit-button {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.edit-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.save-button {
+  background: #4ade80;
+  color: white;
+}
+
+.save-button:hover {
+  background: #22c55e;
+  transform: translateY(-2px);
+}
+
+.cancel-button {
+  background: #f87171;
+  color: white;
+}
+
+.cancel-button:hover {
+  background: #ef4444;
+  transform: translateY(-2px);
+}
+
+.edit-controls {
+  display: flex;
+  gap: 1rem;
+}
+
+.lesson-plan-content {
+  background: white;
+  border-radius: 20px;
+  padding: 3rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.lesson-plan-title {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 3px solid #e5e7eb;
+}
+
+.lesson-plan-title h1 {
+  font-size: 2.5rem;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+.lesson-time {
+  font-size: 1.5rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.lesson-plan-section {
+  margin-bottom: 3rem;
+}
+
+.lesson-plan-section h2 {
+  font-size: 1.8rem;
+  color: #374151;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.add-item-button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  transition: all 0.2s ease;
+}
+
+.add-item-button:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+}
+
+.objectives-list,
+.activities-list {
+  list-style: none;
+  padding: 0;
+}
+
+.objective-item,
+.activity-item {
+  padding: 1rem 1.5rem;
+  margin-bottom: 0.75rem;
+  background: #f9fafb;
+  border-radius: 10px;
+  border-left: 4px solid #3b82f6;
+  font-size: 1.1rem;
+  color: #1f2937;
+}
+
+.objective-item::before {
+  content: '•';
+  color: #3b82f6;
+  font-weight: bold;
+  display: inline-block;
+  width: 1.5rem;
+  margin-right: 0.5rem;
+}
+
+.activity-item::before {
+  content: '→';
+  color: #8b5cf6;
+  font-weight: bold;
+  display: inline-block;
+  width: 1.5rem;
+  margin-right: 0.5rem;
+}
+
+.activity-item {
+  border-left-color: #8b5cf6;
+}
+
+.empty-message {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.empty-message::before {
+  content: '';
+  margin: 0;
+  width: 0;
+}
+
+.edit-item-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.edit-item-row::before {
+  content: '';
+  margin: 0;
+  width: 0;
+}
+
+.item-input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s ease;
+}
+
+.item-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.delete-item-button {
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.delete-item-button:hover {
+  background: #fecaca;
+  transform: scale(1.1);
+}
+
+.notes-display {
+  padding: 1.5rem;
+  background: #f9fafb;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  color: #1f2937;
+  white-space: pre-wrap;
+  min-height: 100px;
+}
+
+.notes-input {
+  width: 100%;
+  padding: 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.2s ease;
+}
+
+.notes-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+@media (max-width: 768px) {
+  .lesson-plan-page {
+    padding: 1rem;
+  }
+
+  .lesson-plan-content {
+    padding: 1.5rem;
+  }
+
+  .lesson-plan-title h1 {
+    font-size: 1.8rem;
+  }
+
+  .lesson-time {
+    font-size: 1.2rem;
+  }
+
+  .lesson-plan-section h2 {
+    font-size: 1.4rem;
+  }
+
+  .lesson-plan-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .back-button,
+  .edit-button,
+  .save-button,
+  .cancel-button {
+    width: 100%;
+  }
+}

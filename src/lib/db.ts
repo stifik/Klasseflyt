@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings, WelcomeMessage, InstructionMessage, ScheduleTemplate, ThemeHistory, MorningDisplaySettings } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings, WelcomeMessage, InstructionMessage, ScheduleTemplate, ThemeHistory, MorningDisplaySettings, LessonPlan } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -51,6 +51,7 @@ export class MySubClassedDexie extends Dexie {
     instructionMessages!: Table<InstructionMessage, number>;
     scheduleTemplates!: Table<ScheduleTemplate, number>;
     themeHistory!: Table<ThemeHistory, number>;
+    lessonPlans!: Table<LessonPlan, number>;
 
 
     constructor() {
@@ -472,6 +473,11 @@ export class MySubClassedDexie extends Dexie {
                 userSettings.morningDisplaySettings = defaultMorningDisplaySettings;
                 await tx.table('settings').put(userSettings);
             }
+        });
+
+        // Version 35: Add lesson plans table
+        this.version(35).stores({
+            lessonPlans: '++id, [templateId+sessionId+date], templateId, sessionId, date, subject',
         });
 
         this.on('populate', async () => {

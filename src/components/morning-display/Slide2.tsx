@@ -1,12 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { db } from '@/lib/db';
 import type { ScheduleSession, ScheduleTemplate } from '@/lib/types';
 
 type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
 
-export default function Slide2() {
+interface Slide2Props {
+  showAllSessions?: boolean;
+}
+
+export default function Slide2({ showAllSessions = false }: Slide2Props) {
+  const router = useRouter();
   const [isEditMode, setIsEditMode] = useState(false);
   const [sessions, setSessions] = useState<ScheduleSession[]>([]);
   const [templateId, setTemplateId] = useState<number | undefined>();
@@ -16,6 +22,25 @@ export default function Slide2() {
   useEffect(() => {
     loadTodaySchedule();
   }, []);
+
+  useEffect(() => {
+    // If showAllSessions is true, reveal all sessions
+    if (showAllSessions && sessions.length > 0) {
+      setVisibleSessionCount(sessions.length);
+    }
+  }, [showAllSessions, sessions.length]);
+
+  useEffect(() => {
+    // Add keyboard navigation
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' && !isEditMode && visibleSessionCount < sessions.length) {
+        setVisibleSessionCount(prev => prev + 1);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isEditMode, visibleSessionCount, sessions.length]);
 
   const getTodayDayOfWeek = (): DayOfWeek | null => {
     const days: (DayOfWeek | null)[] = [null, 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', null];
@@ -148,6 +173,13 @@ export default function Slide2() {
     }
   };
 
+  const handleSessionClick = (e: React.MouseEvent, sessionId: number) => {
+    e.stopPropagation(); // Prevent slide click
+    if (!isEditMode) {
+      router.push(`/morning-display/lesson/${sessionId}`);
+    }
+  };
+
   const isWeekend = getTodayDayOfWeek() === null;
 
   if (isLoading) {
@@ -243,7 +275,11 @@ export default function Slide2() {
                 }}
               >
                 {!isEditMode ? (
-                  <>
+                  <div
+                    className="session-display"
+                    onClick={(e) => handleSessionClick(e, session.id)}
+                    style={{ cursor: 'pointer', flex: 1 }}
+                  >
                     <span className="session-time">{session.time}</span>
                     <span className="session-separator">-</span>
                     <span className="session-subject">{session.subject}</span>
@@ -253,7 +289,7 @@ export default function Slide2() {
                         <span className="session-topic">{session.topic}</span>
                       </>
                     )}
-                  </>
+                  </div>
                 ) : (
                   <div className="session-edit-row">
                     <input

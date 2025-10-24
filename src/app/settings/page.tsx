@@ -84,6 +84,13 @@ export default function SettingsRoute() {
                 <SettingsIcon className="w-5 h-5" />
                 Ukesmaler for dagsplan
               </Link>
+              <Link
+                href="/settings/weekly-planner"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition w-fit"
+              >
+                📅
+                Ukesplanlegger (timeplaner)
+              </Link>
             </div>
           </div>
         </TabsContent>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { db } from '@/lib/db';
 import { getTodayTheme, getThemeGradient } from '@/lib/themes';
 import Slide1 from '@/components/morning-display/Slide1';
@@ -17,6 +18,7 @@ type StudentWithStatus = {
 };
 
 export default function MorningDisplayPage() {
+  const searchParams = useSearchParams();
   const [currentSlide, setCurrentSlide] = useState(1);
   const [students, setStudents] = useState<StudentWithStatus[]>([]);
   const [welcomeMessage, setWelcomeMessage] = useState('God morgen!');
@@ -25,11 +27,23 @@ export default function MorningDisplayPage() {
   const [bellTime, setBellTime] = useState<string | undefined>();
   const [checkInSettings, setCheckInSettings] = useState<any>();
   const [themeGradient, setThemeGradient] = useState<string>('');
+  const [showAllSessions, setShowAllSessions] = useState(false);
 
   useEffect(() => {
+    // Check URL parameters
+    const slideParam = searchParams.get('slide');
+    const showAllParam = searchParams.get('showAll');
+
+    if (slideParam === '2') {
+      setCurrentSlide(2);
+    }
+    if (showAllParam === 'true') {
+      setShowAllSessions(true);
+    }
+
     loadData();
     setupKeyboardNavigation();
-  }, []);
+  }, [searchParams]);
 
   const loadData = async () => {
     try {
@@ -186,7 +200,7 @@ export default function MorningDisplayPage() {
 
       {currentSlide === 2 && (
         <>
-          <Slide2 />
+          <Slide2 showAllSessions={showAllSessions} />
           <SlideControls
             currentSlide={currentSlide}
             onSlideChange={setCurrentSlide}
