@@ -50,9 +50,31 @@ export async function getActiveBellTime(): Promise<BellTime | null> {
   const currentTime = getCurrentTime();
   const bellTimes = await db.bellTimes.where('weekday').equals(weekday).toArray();
 
-  // Find bell time that matches current time
-  const activeBell = bellTimes.find(bt => bt.time === currentTime);
-  return activeBell || null;
+  // Get settings to check time windows
+  const settings = await db.settings.get('userSettings');
+  if (!settings?.checkInSettings) return null;
+
+  // Find bell time that we're currently within the active window for
+  // Check each bell time to see if current time is within its active period
+  for (const bellTime of bellTimes) {
+    const minutesSince = getMinutesSince(bellTime.time);
+
+    // Only consider bell times that have started (minutesSince >= 0)
+    if (minutesSince < 0) continue;
+
+    // Check if we're still within the listening window
+    const shouldStop = shouldStopListening(
+      minutesSince,
+      bellTime.type,
+      settings.checkInSettings
+    );
+
+    if (!shouldStop) {
+      return bellTime;
+    }
+  }
+
+  return null;
 }
 
 // Calculate minutes since bell time

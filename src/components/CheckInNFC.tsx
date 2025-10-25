@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Scan, CheckCircle2, AlertCircle, Hand, StopCircle } from "lucide-react";
 import { soundEffects } from "@/lib/soundEffects";
+import { cn } from "@/lib/utils";
 
 interface CheckInNFCProps {
   activeSession: ActiveCheckInSession | null;
@@ -40,9 +41,12 @@ export default function CheckInNFC({
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastCheckIn, setLastCheckIn] = useState<{ studentName: string; points: number; percent: number } | null>(null);
 
+  // Check if NFC is disabled in dev mode
+  const nfcDisabled = typeof window !== 'undefined' && window.localStorage?.getItem('dev_nfc_disabled') === 'true';
+
   // Set up NFC polling when session is active (only for NFC sessions, not manual)
   useNFCPolling({
-    enabled: !!activeSession && !activeSession.isManual && !activeSession.shouldStop,
+    enabled: !!activeSession && !activeSession.isManual && !activeSession.shouldStop && !nfcDisabled,
     onCardDetected: async (card) => {
       if (!activeSession || isProcessing) return;
 
@@ -113,11 +117,13 @@ export default function CheckInNFC({
     // Active session - show NFC mode and stats
     return (
       <>
-        <Alert className="bg-green-50 border-green-200">
-          <Scan className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800">
+        <Alert className={nfcDisabled ? "bg-yellow-50 border-yellow-200" : "bg-green-50 border-green-200"}>
+          <Scan className={cn("h-4 w-4", nfcDisabled ? "text-yellow-600" : "text-green-600")} />
+          <AlertDescription className={nfcDisabled ? "text-yellow-800" : "text-green-800"}>
             {activeSession.isManual
               ? "Manuell innsjekking aktiv. Klikk på elevene i klassekartet over for å sjekke dem inn."
+              : nfcDisabled
+              ? "⚠️ NFC-polling er deaktivert i dev-modus. Klikk på elever i klassekartet for å sjekke dem inn."
               : "NFC-leser klar. Elever kan nå tappe kort for å sjekke inn."
             }
           </AlertDescription>

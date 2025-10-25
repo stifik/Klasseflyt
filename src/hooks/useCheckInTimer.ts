@@ -112,8 +112,10 @@ export function useCheckInTimer() {
         });
         
         // Handle absence registration for morning check-ins
-        if (activeBell.type === 'morgen' && 
-            minutesElapsed === settings.checkInSettings!.morning.absenceMinutes) {
+        // Register absences when we reach or pass the absence time, but only once
+        if (activeBell.type === 'morgen' &&
+            minutesElapsed >= settings.checkInSettings!.morning.absenceMinutes &&
+            minutesElapsed <= settings.checkInSettings!.morning.absenceMinutes + 1) {
           const notCheckedIn = await getStudentsNotCheckedIn(activeBell.id!);
           if (notCheckedIn.length > 0) {
             await registerAbsences(notCheckedIn);
@@ -132,8 +134,8 @@ export function useCheckInTimer() {
     // Check immediately
     checkForBellTime();
 
-    // Check every 30 seconds
-    const interval = setInterval(checkForBellTime, 30000);
+    // Check every 5 seconds for better responsiveness
+    const interval = setInterval(checkForBellTime, 5000);
 
     return () => clearInterval(interval);
   }, [settings, manualSession]);

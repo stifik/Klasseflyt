@@ -49,15 +49,20 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   // Check if dev mode is enabled
   const isDevMode = typeof window !== 'undefined' && window.localStorage?.getItem('nfc_dev_mode') === 'true';
 
+  // Get settings for dev display
+  const settings = useLiveQuery(() => db.settings.get('userSettings'));
+
   // Dev mode state
   const [devWeekday, setDevWeekday] = useState<string>('');
   const [devTime, setDevTime] = useState<string>('');
+  const [nfcDisabled, setNfcDisabled] = useState<boolean>(false);
 
   // Load dev overrides from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setDevWeekday(window.localStorage?.getItem('dev_weekday_override') || '');
       setDevTime(window.localStorage?.getItem('dev_time_override') || '');
+      setNfcDisabled(window.localStorage?.getItem('dev_nfc_disabled') === 'true');
     }
   }, []);
 
@@ -86,6 +91,18 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
       }
     }
     setForceUpdate(prev => prev + 1);
+  };
+
+  // Handle NFC toggle
+  const handleNfcToggle = (disabled: boolean) => {
+    setNfcDisabled(disabled);
+    if (typeof window !== 'undefined') {
+      if (disabled) {
+        window.localStorage?.setItem('dev_nfc_disabled', 'true');
+      } else {
+        window.localStorage?.removeItem('dev_nfc_disabled');
+      }
+    }
   };
 
   // Reset check-ins for today
@@ -128,7 +145,8 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   // Get all data and filter in useMemo to ensure proper reactivity
   const allChecks = useLiveQuery(() => db.dailyChecks.toArray(), [forceUpdate]);
   const allAbsences = useLiveQuery(() => db.absences.toArray(), [forceUpdate]);
-  const allCheckInLogs = useLiveQuery(() => db.checkInLogs.toArray(), [forceUpdate]);
+  // useLiveQuery auto-updates when DB changes, no need for forceUpdate dependency
+  const allCheckInLogs = useLiveQuery(() => db.checkInLogs.toArray());
   
   // Get date string for filtering
   const dateString = useMemo(() => date.toISOString().split("T")[0], [date]);
@@ -146,11 +164,17 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
 
   const todaysCheckInLogs = useMemo(() => {
     if (!allCheckInLogs || !activeCheckIn) return [];
-    return allCheckInLogs.filter(log => {
+    const filtered = allCheckInLogs.filter(log => {
       const logDate = new Date(log.date);
-      return logDate.toISOString().split("T")[0] === dateString && log.bellTimeId === activeCheckIn.bellTime.id;
+      logDate.setHours(0, 0, 0, 0);
+      const selectedDate = new Date(date);
+      selectedDate.setHours(0, 0, 0, 0);
+      const dateMatch = logDate.getTime() === selectedDate.getTime();
+      const bellMatch = log.bellTimeId === activeCheckIn.bellTime.id;
+      return dateMatch && bellMatch;
     });
-  }, [allCheckInLogs, dateString, activeCheckIn]);
+    return filtered;
+  }, [allCheckInLogs, date, activeCheckIn]);
 
   // Memoize these functions with proper dependencies
   const getAbsenceForDate = useMemo(() => {
@@ -280,8 +304,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
           title: "✅ Sjekket inn!",
           description: result.message,
         });
-        // Force refresh
-        setForceUpdate(prev => prev + 1);
+        // useLiveQuery will auto-update
       } else {
         toast({
           title: "❌ Feil",
@@ -630,10 +653,38 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
                   </Button>
                 </div>
               </div>
+
+              {/* NFC Toggle */}
+              <div className="mt-3 pt-3 border-t border-orange-200">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="nfc-toggle"
+                    checked={nfcDisabled}
+                    onCheckedChange={handleNfcToggle}
+                  />
+                  <Label htmlFor="nfc-toggle" className="text-xs text-gray-700">
+                    Deaktiver NFC-polling (reduserer konsoll-spam)
+                  </Label>
+                </div>
+              </div>
+
               {(devWeekday || devTime) && (
                 <p className="text-xs text-orange-600 mt-2">
                   ⚠️ Du simulerer: {devWeekday && `${devWeekday.charAt(0).toUpperCase() + devWeekday.slice(1)}`} {devTime && `kl. ${devTime}`}
                 </p>
+              )}
+
+              {/* Debug info */}
+              {activeCheckIn && settings?.checkInSettings && (
+                <div className="mt-3 pt-3 border-t border-orange-200 text-xs space-y-1">
+                  <p className="font-semibold text-orange-800">Debug Info:</p>
+                  <p>Type: {activeCheckIn.bellTime.type} | Minutter: {activeCheckIn.minutesElapsed} | Poeng: {activeCheckIn.pointsPercent}%</p>
+                  {activeCheckIn.bellTime.type === 'morgen' ? (
+                    <p>Innstillinger: 100%≤{settings.checkInSettings.morning.percent100Minutes}min, 50%≤{settings.checkInSettings.morning.percent50Minutes}min, 10%≤{settings.checkInSettings.morning.percent10Minutes}min, Stopp{'>'}{settings.checkInSettings.morning.absenceMinutes}min</p>
+                  ) : (
+                    <p>Innstillinger: 100%≤{settings.checkInSettings.regular.percent100Minutes}min, Stopp{'>'}{settings.checkInSettings.regular.stopMinutes}min</p>
+                  )}
+                </div>
               )}
             </div>
           )}
