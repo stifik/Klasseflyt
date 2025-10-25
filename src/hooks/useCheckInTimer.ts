@@ -29,13 +29,13 @@ export function useCheckInTimer() {
   const settings = useLiveQuery(() => db.settings.get('userSettings'));
 
   // Function to manually start a check-in session
-  const startManualCheckIn = (points: number = 10) => {
+  const startManualCheckIn = (type: 'morgen' | 'ordinær', points: number = 10) => {
     const manualBell: BellTime = {
       id: -1, // Temporary ID for manual session
       weekday: 'mandag', // Doesn't matter for manual
       time: new Date().toTimeString().substring(0, 5),
       points,
-      type: 'ordinær',
+      type,
     };
     setManualSession(manualBell);
   };
@@ -58,8 +58,15 @@ export function useCheckInTimer() {
           settings.checkInSettings!
         );
 
+        // Calculate points percentage based on session type
         let pointsPercent: 100 | 50 | 10 | 0 = 0;
-        if (minutesElapsed <= settings.checkInSettings!.regular.percent100Minutes) pointsPercent = 100;
+        if (manualSession.type === 'morgen') {
+          if (minutesElapsed <= settings.checkInSettings!.morning.percent100Minutes) pointsPercent = 100;
+          else if (minutesElapsed <= settings.checkInSettings!.morning.percent50Minutes) pointsPercent = 50;
+          else if (minutesElapsed <= settings.checkInSettings!.morning.percent10Minutes) pointsPercent = 10;
+        } else {
+          if (minutesElapsed <= settings.checkInSettings!.regular.percent100Minutes) pointsPercent = 100;
+        }
 
         setActiveSession({
           bellTime: manualSession,

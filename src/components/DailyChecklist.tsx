@@ -23,6 +23,7 @@ import NFCCheckIn from "./NFCCheckIn";
 import { useCheckInTimer } from "@/hooks/useCheckInTimer";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CheckInNFC from "./CheckInNFC";
+import { handleManualCheckIn } from "@/lib/checkInHandler";
 
 type IpadStatus = "OK" | "NotCharged" | "NotBrought";
 
@@ -191,27 +192,54 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
 
   // Check-in mode
   if (mode === 'checkin') {
+    const handleCheckInClick = async () => {
+      // Only allow manual check-in if session is active and manual
+      if (!activeCheckIn || !activeCheckIn.isManual || checkedIn) return;
+
+      const result = await handleManualCheckIn(student.id!, activeCheckIn);
+
+      if (result.success) {
+        toast({
+          title: "✅ Sjekket inn!",
+          description: result.message,
+        });
+        // Force refresh
+        setForceUpdate(prev => prev + 1);
+      } else {
+        toast({
+          title: "❌ Feil",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    };
+
     return (
       <div className="relative w-full aspect-[7/5]">
         <Button
           key={student.id}
           variant={checkedIn ? "default" : "outline"}
-          disabled={!activeCheckIn}
+          disabled={!activeCheckIn || (!activeCheckIn.isManual && !checkedIn)}
+          onClick={handleCheckInClick}
           className={cn("justify-center h-auto py-2 flex-col w-full h-full", {
             "bg-green-600 hover:bg-green-700 text-white": checkedIn,
             "opacity-50": !activeCheckIn,
+            "cursor-pointer hover:bg-blue-50": activeCheckIn?.isManual && !checkedIn,
           })}
         >
           <span className="font-semibold text-xs">{student.name}</span>
           <div className="flex items-center text-xs opacity-80">
-            {checkedIn ? <span>✓ Sjekket inn</span> : <span>Venter...</span>}
+            {checkedIn ? <span>✓ Sjekket inn</span> : activeCheckIn?.isManual ? <span>Klikk for å sjekke inn</span> : <span>Venter...</span>}
           </div>
         </Button>
         <Button
           size="icon"
           variant="ghost"
           className="absolute top-0 right-0 w-6 h-6"
-          onClick={() => handleAbsenceToggle(student.id!)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleAbsenceToggle(student.id!);
+          }}
         >
           <UserX className="w-4 h-4 text-muted-foreground hover:text-destructive" />
           <span className="sr-only">Meld fravær</span>
@@ -395,20 +423,43 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className="w-[280px] justify-start text-left font-normal"
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP", { locale: nb }) : <span>Velg en dato</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar locale={nb} mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
-              </PopoverContent>
-            </Popover>
+            <div className="flex items-center gap-2">
+              {/* Manual check-in buttons - only show in check-in mode */}
+              {mode === 'checkin' && (
+                <>
+                  <Button
+                    onClick={() => startManualCheckIn('morgen', 10)}
+                    disabled={!!activeCheckIn}
+                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50"
+                  >
+                    <Bell className="w-4 h-4 mr-2" />
+                    Start morgen-innsjekk
+                  </Button>
+                  <Button
+                    onClick={() => startManualCheckIn('ordinær', 10)}
+                    disabled={!!activeCheckIn}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    <Bell className="w-4 h-4 mr-2" />
+                    Start ordinær innsjekk
+                  </Button>
+                </>
+              )}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className="w-[280px] justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "PPP", { locale: nb }) : <span>Velg en dato</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar locale={nb} mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
           {/* Check-in Status Banner */}
