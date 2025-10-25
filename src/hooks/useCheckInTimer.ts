@@ -48,11 +48,13 @@ export function useCheckInTimer() {
   };
   
   useEffect(() => {
+    console.log('[CHECK-IN TIMER] Effect running, settings:', !!settings, 'checkInSettings:', !!settings?.checkInSettings, 'manualSession:', manualSession);
     if (!settings?.checkInSettings) return;
 
     const checkForBellTime = async () => {
       // Prioritize manual session
       if (manualSession) {
+        console.log('[CHECK-IN TIMER] Processing manual session:', manualSession);
         const minutesElapsed = getMinutesSince(manualSession.time);
         const shouldStop = shouldStopListening(
           minutesElapsed,
