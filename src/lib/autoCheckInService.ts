@@ -6,18 +6,38 @@
 import { db } from './db';
 import type { BellTime, CheckInSettings as CheckInSettingsType } from './types';
 
+// Dev mode overrides (stored in localStorage)
+function getDevWeekdayOverride(): 'mandag' | 'tirsdag' | 'onsdag' | 'torsdag' | 'fredag' | null {
+  if (typeof window === 'undefined') return null;
+  const override = window.localStorage?.getItem('dev_weekday_override');
+  return override as any;
+}
+
+function getDevTimeOverride(): string | null {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage?.getItem('dev_time_override');
+}
+
 // Get current weekday in Norwegian
 export function getCurrentWeekday(): 'mandag' | 'tirsdag' | 'onsdag' | 'torsdag' | 'fredag' | null {
+  // Check for dev override first
+  const devOverride = getDevWeekdayOverride();
+  if (devOverride) return devOverride;
+
   const days = ['søndag', 'mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag'];
   const dayIndex = new Date().getDay();
   const dayName = days[dayIndex];
-  
+
   if (dayName === 'lørdag' || dayName === 'søndag') return null;
   return dayName as 'mandag' | 'tirsdag' | 'onsdag' | 'torsdag' | 'fredag';
 }
 
 // Get current time in HH:MM format
 export function getCurrentTime(): string {
+  // Check for dev override first
+  const devOverride = getDevTimeOverride();
+  if (devOverride) return devOverride;
+
   const now = new Date();
   return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 }
@@ -37,14 +57,15 @@ export async function getActiveBellTime(): Promise<BellTime | null> {
 
 // Calculate minutes since bell time
 export function getMinutesSince(bellTime: string): number {
-  const now = new Date();
-  const [hours, minutes] = bellTime.split(':').map(Number);
-  
-  const bellDate = new Date();
-  bellDate.setHours(hours, minutes, 0, 0);
-  
-  const diff = now.getTime() - bellDate.getTime();
-  return Math.floor(diff / 60000); // Convert ms to minutes
+  // Use dev time override if set, otherwise use actual time
+  const currentTime = getCurrentTime();
+  const [currentHours, currentMinutes] = currentTime.split(':').map(Number);
+  const [bellHours, bellMinutes] = bellTime.split(':').map(Number);
+
+  const currentTotalMinutes = currentHours * 60 + currentMinutes;
+  const bellTotalMinutes = bellHours * 60 + bellMinutes;
+
+  return currentTotalMinutes - bellTotalMinutes;
 }
 
 // Calculate points percentage based on time elapsed
