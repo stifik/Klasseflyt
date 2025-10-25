@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings, WelcomeMessage, InstructionMessage, ScheduleTemplate, ThemeHistory, MorningDisplaySettings, LessonPlan, Theme, UserThemePreference } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -17,7 +17,7 @@ export type PositiveAction = {
 
 // Define the database schema
 export class MySubClassedDexie extends Dexie {
-    students!: Table<Student, string>;
+    students!: Table<Student, number>;
     subjects!: Table<Subject, string>;
     homework!: Table<Homework, number>;
     submissions!: Table<Submission, number>;
@@ -41,8 +41,19 @@ export class MySubClassedDexie extends Dexie {
     purchasedRewards!: Table<PurchasedReward, number>;
     rewards!: Table<Reward, number>;
     actions!: Table<PositiveAction, number>;
-    secretAgent!: Table<{ id: string; studentId: string; studentName: string; mission: string; date: Date; status: 'pending' | 'analyzing' | 'passed' | 'failed' }, string>;
-    secretAgentHistory!: Table<{ id?: number; studentId: string; studentName: string; mission: string; date: Date; status: 'passed' | 'failed' }, number>;
+    rfidCards!: Table<RFIDCard, number>;
+    secretAgent!: Table<{ id: string; studentId: number; studentName: string; mission: string; date: Date; status: 'pending' | 'analyzing' | 'passed' | 'failed' }, string>;
+    secretAgentHistory!: Table<{ id?: number; studentId: number; studentName: string; mission: string; date: Date; status: 'passed' | 'failed' }, number>;
+    nfcRegistrationSessions!: Table<NFCRegistrationSession, string>;
+    bellTimes!: Table<BellTime, number>;
+    checkInLogs!: Table<CheckInLog, number>;
+    welcomeMessages!: Table<WelcomeMessage, number>;
+    instructionMessages!: Table<InstructionMessage, number>;
+    scheduleTemplates!: Table<ScheduleTemplate, number>;
+    themes!: Table<Theme, number>;
+    userThemePreferences!: Table<UserThemePreference, number>;
+    themeHistory!: Table<ThemeHistory, number>;
+    lessonPlans!: Table<LessonPlan, number>;
 
 
     constructor() {
@@ -385,7 +396,7 @@ export class MySubClassedDexie extends Dexie {
 
         // Version 26: Add actions table for positive actions (POD)
         this.version(26).stores({
-            actions: '++id, name',
+            actions: '++id, name, actionKey',
         }).upgrade(async (tx) => {
             // Import default positive actions
             const { positiveActions } = await import('./positiveActions');
@@ -430,8 +441,88 @@ export class MySubClassedDexie extends Dexie {
             });
         });
 
-        // Version 31: Add missing "Hemmelig Agent" action if it doesn't exist
-        this.version(31).stores({}).upgrade(async (tx) => {
+        // Version 31: Add RFID card support
+        this.version(31).stores({
+            rfidCards: '++id, &cardId, studentId, status',
+        });
+
+        // Version 32: Add NFC registration sessions table for iPad check-in
+        this.version(32).stores({
+            nfcRegistrationSessions: 'id, date, isActive, isCompleted',
+        });
+
+        // Version 33: Add auto check-in system (bell times and check-in logs)
+        this.version(33).stores({
+            bellTimes: '++id, weekday, time, [weekday+time]',
+            checkInLogs: '++id, &[studentId+bellTimeId+date], studentId, bellTimeId, date',
+        }).upgrade(async (tx) => {
+            const userSettings = await tx.table('settings').get('userSettings');
+            if (userSettings && !userSettings.checkInSettings) {
+                userSettings.checkInSettings = defaultCheckInSettings;
+                await tx.table('settings').put(userSettings);
+            }
+        });
+
+        // Version 34: Add morning display tables
+        this.version(34).stores({
+            welcomeMessages: '++id, createdAt',
+            instructionMessages: '++id, createdAt',
+            scheduleTemplates: '++id, name, dayOfWeek',
+            themeHistory: '++id, date',
+        }).upgrade(async (tx) => {
+            const userSettings = await tx.table('settings').get('userSettings');
+            if (userSettings && !userSettings.morningDisplaySettings) {
+                userSettings.morningDisplaySettings = defaultMorningDisplaySettings;
+                await tx.table('settings').put(userSettings);
+            }
+        });
+
+        // Version 35: Add lesson plans table
+        this.version(35).stores({
+            lessonPlans: '++id, [templateId+sessionId+date], templateId, sessionId, date, subject',
+        });
+
+        // Version 36: Add themes and userThemePreferences tables
+        this.version(36).stores({
+            themes: '++id, name, type, isSystem',
+            userThemePreferences: '++id, themeId, isActive',
+        }).upgrade(async (tx) => {
+            // Seed predefined themes
+            const predefinedThemes = [
+                { name: 'Ocean Breeze', type: 'predefined', colors: ['#667eea', '#764ba2', '#f093fb'], isSystem: true },
+                { name: 'Sunset', type: 'predefined', colors: ['#f093fb', '#f5576c', '#fa709a'], isSystem: true },
+                { name: 'Forest', type: 'predefined', colors: ['#4facfe', '#00f2fe', '#43e97b'], isSystem: true },
+                { name: 'Lavender', type: 'predefined', colors: ['#c471f5', '#fa71cd', '#e0c3fc'], isSystem: true },
+                { name: 'Peach', type: 'predefined', colors: ['#fa709a', '#fee140', '#ffecd2'], isSystem: true },
+                { name: 'Mint', type: 'predefined', colors: ['#30cfd0', '#330867', '#667eea'], isSystem: true },
+                { name: 'Fire', type: 'predefined', colors: ['#ff9a56', '#ff6a88', '#ff7eb3'], isSystem: true },
+                { name: 'Sky', type: 'predefined', colors: ['#a1c4fd', '#c2e9fb', '#e0f9ff'], isSystem: true },
+                { name: 'Rose', type: 'predefined', colors: ['#ffecd2', '#fcb69f', '#ff9a9e'], isSystem: true },
+                { name: 'Northern Lights', type: 'predefined', colors: ['#00c6ff', '#0072ff', '#667eea'], isSystem: true },
+                { name: 'Tropical', type: 'predefined', colors: ['#f857a6', '#ff5858', '#feca57'], isSystem: true },
+                { name: 'Emerald', type: 'predefined', colors: ['#11998e', '#38ef7d', '#a8ff78'], isSystem: true },
+                { name: 'Purple Dream', type: 'predefined', colors: ['#9d50bb', '#6e48aa', '#a8c0ff'], isSystem: true },
+                { name: 'Coral', type: 'predefined', colors: ['#ff6b6b', '#feca57', '#ee5a6f'], isSystem: true },
+                { name: 'Arctic', type: 'predefined', colors: ['#00d2ff', '#3a7bd5', '#00d2ff'], isSystem: true },
+            ];
+
+            // Add all predefined themes
+            for (const theme of predefinedThemes) {
+                const themeId = await tx.table('themes').add({
+                    ...theme,
+                    createdAt: new Date(),
+                });
+
+                // Activate all predefined themes by default
+                await tx.table('userThemePreferences').add({
+                    themeId,
+                    isActive: true,
+                });
+            }
+        });
+
+        // Version 37: Add missing "Hemmelig Agent" action if it doesn't exist
+        this.version(37).stores({}).upgrade(async (tx) => {
             // Check if SECRET_AGENT_PASSED action exists
             const actions = await tx.table('actions').toArray();
             const hasSecretAgent = actions.some((action: any) => action.actionKey === 'SECRET_AGENT_PASSED');
@@ -450,10 +541,10 @@ export class MySubClassedDexie extends Dexie {
             }
         });
 
-        // Version 32: Ensure actions.actionKey is indexed so queries like
+        // Version 38: Ensure actions.actionKey is indexed so queries like
         // db.actions.where('actionKey') work without throwing SchemaError.
         // This creates the missing index in existing databases during upgrade.
-        this.version(32).stores({
+        this.version(38).stores({
             actions: '++id, name, actionKey'
         }).upgrade(async (tx) => {
             // No special migration required — adding the index is sufficient.
@@ -507,6 +598,7 @@ const defaultDashboardTools: DashboardConfig[] = [
     { key: 'reports.summary', visible: false },
     { key: 'reports.studentReports', visible: false },
     { key: 'reports.analysis', visible: false },
+    { key: 'morning-display', visible: true },
 ];
 
 const defaultDPIAAnalysis: DPIAAnalysis = {
@@ -521,7 +613,26 @@ const defaultDPIAAnalysis: DPIAAnalysis = {
     riskMeasures: "- Tekniske tiltak: Bruk av Microsofts sikre autentiseringsløsning (MSAL). Data isoleres i app-spesifikk mappe på OneDrive. Appen kjører helt på klienten.\n- Organisatoriske tiltak: Personvernerklæring er tilgjengelig. Ansvaret som behandlingsansvarlig er tydeliggjort. Anbefaling om bruk av sikre enheter og 2FA.\n- Juridiske tiltak: En klar personvernerklæring forklarer databehandlingen. Appen legger seg under skolens eksisterende databehandleravtale med Microsoft, og introduserer ingen nye tredjeparter.",
 };
 
-const defaultSettings: AppSettings = {
+const defaultCheckInSettings: CheckInSettings = {
+  morning: {
+    percent100Minutes: 3,
+    percent50Minutes: 5,
+    percent10Minutes: 7,
+    absenceMinutes: 7,
+  },
+  regular: {
+    percent100Minutes: 3,
+    stopMinutes: 3,
+  },
+};
+
+const defaultMorningDisplaySettings: MorningDisplaySettings = {
+  className: 'klassen',
+  messageRotationMode: 'daily',
+  instructionRotationMode: 'daily',
+  lastThemeId: undefined,
+  lastThemeDate: undefined,
+};const defaultSettings: AppSettings = {
   tabs: {
     overview: true, assessments: true, dailyCheck: true, observations: true, reports: true,
     classroomTools: true,
@@ -574,6 +685,8 @@ const defaultSettings: AppSettings = {
         priceCeilingPercent: 200,
     },
     nfcEnabled: false, // NFC disabled by default
+    checkInSettings: defaultCheckInSettings, // Auto check-in system settings
+    morningDisplaySettings: defaultMorningDisplaySettings, // Morning display settings
 };
 
 // Function to clear all data from the database

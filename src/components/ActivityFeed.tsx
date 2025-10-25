@@ -18,19 +18,8 @@ function ActivityFeed() {
     // Få studentnavn for hver transaksjon
     const transactionsWithStudentNames = await Promise.all(
       transactions.map(async (transaction) => {
-        // Bruk samme fleksible ID-søk som i rewardService
-        let student = await db.students.get(transaction.studentId);
-        
-        // Hvis ikke funnet som string, prøv som number
-        if (!student && /^\d+$/.test(transaction.studentId)) {
-          student = await db.students.get(Number(transaction.studentId) as any);
-        }
-        
-        // Hvis ikke funnet som number, prøv som string
-        if (!student && typeof transaction.studentId === 'number') {
-          student = await db.students.get(String(transaction.studentId));
-        }
-        
+        const student = await db.students.get(transaction.studentId);
+
         return {
           ...transaction,
           studentName: student?.name || 'Ukjent elev'

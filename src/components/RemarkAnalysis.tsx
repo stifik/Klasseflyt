@@ -40,7 +40,7 @@ const CustomTick = (props: any) => {
 
 
 export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnalysisProps) {
-  const [selectedStudentId, setSelectedStudentId] = useState<string>("whole-class");
+  const [selectedStudentId, setSelectedStudentId] = useState<number | "whole-class">("whole-class");
   const [filter, setFilter] = useState<FilterState>({});
   const [dateFilter, setDateFilter] = useState<string>("all-time");
 
@@ -175,14 +175,14 @@ export default function RemarkAnalysis({ students, initialRemarks }: RemarkAnaly
                       <SelectItem value="7-days">Siste 7 dager</SelectItem>
                   </SelectContent>
               </Select>
-              <Select value={selectedStudentId} onValueChange={(id) => { setSelectedStudentId(id); setFilter({}); }}>
+              <Select value={selectedStudentId === "whole-class" ? "whole-class" : String(selectedStudentId)} onValueChange={(id) => { setSelectedStudentId(id === "whole-class" ? "whole-class" : Number(id)); setFilter({}); }}>
                 <SelectTrigger className="w-full sm:w-[280px]">
                   <SelectValue placeholder="Velg elev..." />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="whole-class">Hele Klassen</SelectItem>
                   {students.map(student => (
-                    <SelectItem key={student.id} value={student.id!}>{student.name}</SelectItem>
+                    <SelectItem key={student.id} value={String(student.id!)}>{student.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

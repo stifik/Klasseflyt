@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
@@ -10,12 +10,22 @@ import PosView from './PosView';
 import PodView from './PodView';
 import ActivityFeed from './ActivityFeed';
 import RewardDashboard from './RewardDashboard';
+import { NFCPaymentModal } from './NFCPaymentModal';
+import { ManualPaymentModal } from './ManualPaymentModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { useCardScanner } from '@/hooks/useNFCReader';
+import { useNFCPolling } from '@/hooks/useNFCPolling';
+import { formatCardUID, setProcessing as setNFCProcessing } from '@/lib/nfcReader';
+import { soundEffects } from '@/lib/soundEffects';
+import { Loader2, CheckCircle2 } from 'lucide-react';
 
 type TerminalMode = 'idle' | 'pos' | 'pod';
+type PaymentMode = 'manual' | 'nfc';
+type NFCStatus = 'idle' | 'waiting' | 'processing' | 'success' | 'error';
+
 type ActiveTransaction = { 
   type: 'reward'; 
   id: number; 
@@ -46,15 +56,191 @@ const Terminal: React.FC = () => {
   
   const [activeTransaction, setActiveTransaction] = useState<ActiveTransaction>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>('manual');
+  const [nfcStatus, setNfcStatus] = useState<NFCStatus>('idle');
+  const [nfcMessage, setNfcMessage] = useState('');
+  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   
   // Custom action dialog state
   const [showCustomDialog, setShowCustomDialog] = useState(false);
   const [customActionName, setCustomActionName] = useState('');
   const [customActionPoints, setCustomActionPoints] = useState('');
 
-  // Hent studenter og belønninger fra database
+  // Hent studenter, belønninger og RFID-kort fra database
   const students = useLiveQuery(() => db.students.toArray()) || [];
   const rewards = useLiveQuery(() => db.rewards.toArray()) || [];
+  const rfidCards = useLiveQuery(() => db.rfidCards.toArray()) || [];
+
+  const nfc = useCardScanner();
+
+  // Handle NFC card scanning
+  const handleNFCCard = useCallback(async (cardUid: string) => {
+    console.log('🔵 handleNFCCard called with UID:', cardUid);
+    setNfcStatus('processing');
+    setNfcMessage('Behandler...');
+    setNFCProcessing(true);
+
+    // Find RFID card
+    const rfidCard = rfidCards.find(c => c.cardId === cardUid);
+    console.log('🔍 Looking for card:', cardUid, 'Found:', rfidCard, 'Total cards:', rfidCards.length);
+
+    if (!rfidCard) {
+      soundEffects.play('error');
+      setNfcStatus('error');
+      setNfcMessage(`Kort ${formatCardUID(cardUid)} er ikke registrert.`);
+      setNFCProcessing(false);
+      setTimeout(() => {
+        setNfcStatus('waiting');
+      }, 3000);
+      return;
+    }
+
+    if (rfidCard.status === 'blocked') {
+      soundEffects.play('error');
+      setNfcStatus('error');
+      setNfcMessage('Dette kortet er blokkert. Kontakt lærer.');
+      setNFCProcessing(false);
+      setTimeout(() => {
+        setNfcStatus('waiting');
+      }, 3000);
+      return;
+    }
+
+    // Find student
+    const student = students.find(s => s.id === rfidCard.studentId);
+    console.log('🔍 Looking for student with ID:', rfidCard.studentId, 'Type:', typeof rfidCard.studentId, 'Found:', student);
+    
+    if (!student) {
+      soundEffects.play('error');
+      setNfcStatus('error');
+      setNfcMessage('Finner ikke eleven tilknyttet dette kortet.');
+      setNFCProcessing(false);
+      setTimeout(() => {
+        setNfcStatus('waiting');
+      }, 3000);
+      return;
+    }
+
+    // Process transaction
+    console.log('💳 Processing transaction for student:', student.id, 'with card:', rfidCard.cardId);
+    await processTransaction(student.id!, rfidCard.cardId);
+  }, [rfidCards, students, activeTransaction]);
+
+  // NFC card detection handler
+  const handleCardDetected = useCallback(async (card: any) => {
+    console.log('✅ Card detected:', card.uid);
+    await handleNFCCard(card.uid);
+  }, [handleNFCCard]);
+
+  // Use polling for NFC (simpler and more stable)
+  useNFCPolling({
+    enabled: nfcStatus === 'waiting' && !!activeTransaction,
+    onCardDetected: handleCardDetected
+  });
+
+  // Process transaction (both manual and NFC)
+  const processTransaction = async (studentId: number, cardId?: string) => {
+    console.log('💰 processTransaction called - studentId:', studentId, 'cardId:', cardId, 'activeTransaction:', activeTransaction);
+
+    if (!activeTransaction) return;
+
+    let result: RewardResult;
+
+    if (activeTransaction.type === 'reward') {
+      // Check balance first for rewards
+      const student = students.find(s => s.id === studentId);
+      console.log('🔍 Finding student in processTransaction - searching for:', studentId, 'found:', student);
+
+      if (!student || !student.name) {
+        const message = 'Kunne ikke finne eleven. Vennligst prøv igjen.';
+        soundEffects.play('error');
+        if (cardId) {
+          setNfcStatus('error');
+          setNfcMessage(message);
+          setNFCProcessing(false);
+          setTimeout(() => {
+            setNfcStatus('waiting');
+          }, 4000);
+        } else {
+          showNotification(message, 'error');
+          setActiveTransaction(null);
+        }
+        return;
+      }
+
+      const currentPoints = student.points || 0;
+
+      if (currentPoints < activeTransaction.cost) {
+        const message = `${student.name} har kun ${currentPoints} poeng, men ${activeTransaction.name} koster ${activeTransaction.cost} poeng.`;
+
+        soundEffects.play('error');
+
+        if (cardId) {
+          setNfcStatus('error');
+          setNfcMessage(message);
+          setNFCProcessing(false);
+          setTimeout(() => {
+            setNfcStatus('waiting');
+          }, 4000);
+        } else {
+          showNotification(message, 'error');
+          setActiveTransaction(null);
+        }
+        return;
+      }
+
+      // Buy reward (now handles all NFC metadata internally)
+      result = await buyReward(studentId, activeTransaction.id, cardId);
+    } else if (activeTransaction.type === 'custom_action') {
+      // Give points for custom action (now handles NFC metadata internally)
+      result = await givePoints(studentId, activeTransaction.points, activeTransaction.name, cardId);
+    } else {
+      // Give points for predefined action (now handles NFC metadata internally)
+      result = await givePoints(studentId, activeTransaction.amount, activeTransaction.description, cardId);
+    }
+
+    // Show result
+    if (cardId) {
+      if (result.success) {
+        const student = students.find(s => s.id === studentId);
+        
+        // SUCCESS - Play sound and show overlay
+        soundEffects.play('success');
+        setNfcStatus('success');
+        setNfcMessage(`✅ ${student?.name}: ${result.message}`);
+        setShowSuccessOverlay(true);
+        
+        // Hide overlay after 2 seconds
+        setTimeout(() => {
+          setShowSuccessOverlay(false);
+          setNFCProcessing(false);
+        }, 2000);
+        
+        // Reset to waiting for next card
+        setTimeout(() => {
+          setNfcStatus('waiting');
+          setNfcMessage('Klar for neste kort...');
+        }, 2500);
+      } else {
+        soundEffects.play('error');
+        setNfcStatus('error');
+        setNfcMessage(result.message);
+        setNFCProcessing(false);
+        setTimeout(() => {
+          setNfcStatus('waiting');
+        }, 3000);
+      }
+    } else {
+      if (result.success) {
+        soundEffects.play('success');
+      } else {
+        soundEffects.play('error');
+      }
+      showNotification(result.message, result.success ? 'success' : 'error');
+      setActiveTransaction(null);
+      setPaymentMode('manual');
+    }
+  };
 
   // Vis notifikasjon i 3 sekunder
   const showNotification = (message: string, type: 'success' | 'error') => {
@@ -71,7 +257,29 @@ const Terminal: React.FC = () => {
         name: reward.name, 
         cost: reward.currentPrice || reward.cost 
       });
+      setPaymentMode('manual'); // Default to manual
+      setNfcStatus('idle');
     }
+  };
+
+  const handleStartNFCMode = async () => {
+    setPaymentMode('nfc');
+    setNfcStatus('waiting');
+    setNfcMessage('Kobler til kortleser...');
+    
+    // Ensure connection is established before scanning
+    try {
+      await nfc.connect();
+      setNfcMessage('Klar! Tæpp kort for å betale...');
+    } catch (error) {
+      console.error('Failed to connect to NFC reader:', error);
+      setNfcMessage('Klar! Tæpp kort for å betale...');
+    }
+  };
+
+  const handleCancelNFC = () => {
+    setNfcStatus('idle');
+    setPaymentMode('manual');
   };
 
   const handleCustomActionInitiation = () => {
@@ -111,44 +319,18 @@ const Terminal: React.FC = () => {
     }
   };
 
-  const handleManualStudentSelect = async (studentId: string) => {
+  const handleManualStudentSelect = async (studentId: number) => {
     if (!studentId || !activeTransaction) return;
 
-    console.log('🎯 Fullfører transaksjon for elev:', studentId, 'med data:', activeTransaction);
+    const student = students.find(s => s.id === studentId);
+    console.log('Manual select - studentId:', studentId, 'found:', student);
 
-    let result: RewardResult;
-
-    if (activeTransaction.type === 'reward') {
-      result = await buyReward(studentId, activeTransaction.id);
-    } else if (activeTransaction.type === 'custom_action') {
-      console.log('🎯 Custom action - gir poeng:', {
-        studentId,
-        points: activeTransaction.points,
-        pointsType: typeof activeTransaction.points,
-        name: activeTransaction.name
-      });
-      result = await givePoints(studentId, activeTransaction.points, activeTransaction.name);
-      if (result.success) {
-        showNotification(`Ga ${activeTransaction.points} poeng til eleven for '${activeTransaction.name}'.`, 'success');
-      }
-    } else if (activeTransaction.type === 'points') {
-      console.log('🎯 Forhåndsdefinert handling - gir poeng:', {
-        studentId,
-        amount: activeTransaction.amount,
-        amountType: typeof activeTransaction.amount,
-        description: activeTransaction.description
-      });
-      result = await givePoints(studentId, activeTransaction.amount, activeTransaction.description);
-    } else {
+    if (!student || !student.name) {
+      showNotification(`Kunne ikke finne eleven med ID: ${studentId}. Prøv igjen.`, 'error');
       return;
     }
 
-    if (!result.success || activeTransaction.type !== 'custom_action') {
-      showNotification(result.message, result.success ? 'success' : 'error');
-    }
-    
-    // Nullstill for neste transaksjon
-    setActiveTransaction(null);
+    await processTransaction(studentId);
   };
 
   let content;
@@ -204,31 +386,35 @@ const Terminal: React.FC = () => {
               </React.Fragment>
             )}
           </div>
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Vennligst identifiser elev
-            </h3>
-            <select 
-              defaultValue="" 
-              onChange={(e) => handleManualStudentSelect(e.target.value)}
-              className="w-full p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg"
-            >
-              <option value="" disabled>Velg elev fra listen...</option>
-              {students.map((student) => (
-                <option key={student.id} value={student.id}>
-                  {student.name} ({student.points || 0} poeng)
-                </option>
-              ))}
-            </select>
-            <div className="flex gap-3 pt-4">
-              <button 
-                onClick={() => setActiveTransaction(null)}
-                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-medium transition-colors"
-              >
-                Avbryt transaksjon
-              </button>
-            </div>
-          </div>
+
+          {/* NFC Mode */}
+          {paymentMode === 'nfc' && (
+            <NFCPaymentModal
+              nfcStatus={nfcStatus}
+              nfcMessage={nfcMessage}
+              onCancel={handleCancelNFC}
+              onAbort={() => {
+                setActiveTransaction(null);
+                setPaymentMode('manual');
+                setNfcStatus('idle');
+              }}
+            />
+          )}
+
+          {/* Manual Mode */}
+          {paymentMode === 'manual' && (
+            <ManualPaymentModal
+              students={students}
+              rfidCards={rfidCards}
+              isNFCSupported={nfc.isSupported}
+              onNFCMode={handleStartNFCMode}
+              onManualSelect={handleManualStudentSelect}
+              onCancel={() => {
+                setActiveTransaction(null);
+                setPaymentMode('manual');
+              }}
+            />
+          )}
         </div>
       </div>
     );
@@ -312,9 +498,20 @@ const Terminal: React.FC = () => {
         </div>
 
         <div className="text-center mt-8">
-          <p className="text-gray-500 dark:text-gray-400">
-            💡 Tip: NFC-støtte kommer som en snarvei senere
-          </p>
+          {typeof window !== 'undefined' && nfc.isSupported && rfidCards.length > 0 ? (
+            <p className="text-green-600 dark:text-green-400 font-medium flex items-center justify-center gap-2">
+              <CheckCircle2 className="w-5 h-5" />
+              NFC-støtte aktivert ({rfidCards.length} kort registrert)
+            </p>
+          ) : typeof window !== 'undefined' && !nfc.isSupported ? (
+            <p className="text-gray-500 dark:text-gray-400">
+              💡 Start NFC Bridge Server for kortlesing
+            </p>
+          ) : (
+            <p className="text-gray-500 dark:text-gray-400">
+              💡 Registrer RFID-kort i innstillinger
+            </p>
+          )}
         </div>
         
         {/* ActivityFeed og RewardDashboard side ved side */}
@@ -401,6 +598,33 @@ const Terminal: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Processing Overlay - shown while NFC transaction is being processed */}
+      {nfc.isProcessing && nfcStatus === 'processing' && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center shadow-2xl max-w-md">
+            <Loader2 className="h-20 w-20 text-blue-600 animate-spin mx-auto mb-6" />
+            <p className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              Prosesserer...
+            </p>
+            <p className="text-lg text-gray-600 dark:text-gray-400">
+              Ikke fjern kortet
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Success Overlay - shown for 2 seconds after successful transaction */}
+      {showSuccessOverlay && (
+        <div className="fixed inset-0 bg-green-600/95 flex items-center justify-center z-50 animate-fade-in">
+          <div className="text-center text-white px-8">
+            <div className="text-9xl mb-6 animate-bounce">✓</div>
+            <p className="text-4xl font-bold mb-3">Kjøp vellykket!</p>
+            <p className="text-2xl opacity-90">Du kan fjerne kortet nå</p>
+            <p className="text-xl opacity-75 mt-4">Klar for neste elev...</p>
+          </div>
+        </div>
+      )}
       
       {content}
     </div>

@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import type { Student, SeatingLayout, AppSettings, SeatingChartDataType } from "@/lib/types";
+import type { Student, SeatingLayout, AppSettings, SeatingChartData } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Lock, Unlock, Users } from "lucide-react";
@@ -17,7 +17,7 @@ interface NewSeatingChartProps {
   students: Student[];
   appSettings: AppSettings;
   onAppSettingsChange: (newSettings: AppSettings) => void;
-  onSeatingChartChange: (chart: SeatingChartDataType | null, source: 'generation' | 'drag' | 'load') => void;
+  onSeatingChartChange: (chart: SeatingChartData | null, source: 'generation' | 'drag' | 'load') => void;
 }
 
 const DraggableStudent = ({ studentName, deskId, isLocked, isUnplaced = false }: { studentName: string; deskId?: string; isLocked?: boolean, isUnplaced?: boolean }) => {
@@ -106,12 +106,12 @@ export default function NewSeatingChart({ students, appSettings, onAppSettingsCh
   const { toast } = useToast();
   const [activeDragItem, setActiveDragItem] = useState<{ name: string, isUnplaced: boolean } | null>(null);
   
-  const activeLayout = useLiveQuery(() => {
+  const activeLayout: SeatingLayout | undefined = useLiveQuery(() => {
     if (appSettings.selectedSeatingLayoutId) {
       return db.seatingLayouts.get(appSettings.selectedSeatingLayoutId);
     }
     return Promise.resolve(undefined);
-  }, [appSettings.selectedSeatingLayoutId]);
+  }, [appSettings.selectedSeatingLayoutId]) as SeatingLayout | undefined;
 
   const seatingChart = useLiveQuery(async () => {
     const latest = await db.seatingChartHistory.orderBy('createdAt').last();

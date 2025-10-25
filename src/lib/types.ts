@@ -1,23 +1,25 @@
 
 
 export type Student = {
-  id?: string;
+  id?: number;
   name: string;
   points?: number; // Antall poeng, default 0 hvis ikke satt
 };
 
 export type Transaction = {
   id?: number;
-  studentId: string;
+  studentId: number;
   date: Date;
   pointsChange: number;
   description: string;
+  paymentMethod?: 'manual' | 'nfc'; // How the transaction was made
+  cardId?: string; // RFID card ID if paid with NFC
 };
 
 export type PurchasedReward = {
   id?: number;
   purchaseId: string;
-  studentId: string;
+  studentId: number;
   rewardId: number;
   rewardName: string;
   purchaseDate: Date;
@@ -31,6 +33,15 @@ export type Reward = {
   basePrice: number; // Base/starting price
   currentPrice: number; // Dynamic price that changes with demand
   emoji?: string;
+};
+
+export type RFIDCard = {
+  id?: number;
+  cardId: string; // The RFID UID (unique identifier)
+  studentId: number;
+  status: 'active' | 'blocked';
+  createdAt: Date;
+  lastUsed?: Date;
 };
 
 export type Subject = {
@@ -52,7 +63,7 @@ export type Homework = {
 // Represents a "folder" for a student's submissions for a specific homework
 export type Submission = {
   id?: number;
-  studentId: string;
+  studentId: number;
   homeworkId: number;
 };
 
@@ -67,21 +78,139 @@ export type SubmissionAttempt = {
 
 export type DailyCheck = {
   id?: number;
-  studentId: string;
+  studentId: number;
   date: Date;
   ipadCharged: boolean;
   ipadBrought: boolean;
+  registrationMethod?: 'manual' | 'nfc';
+  registeredAt?: Date;
+};
+
+export type NFCRegistrationSession = {
+  id: string; // Date string: YYYY-MM-DD
+  date: Date;
+  startTime: Date;
+  endTime?: Date;
+  isActive: boolean;
+  isCompleted: boolean;
+};
+
+// Check-in system types
+export type BellTime = {
+  id?: number;
+  weekday: 'mandag' | 'tirsdag' | 'onsdag' | 'torsdag' | 'fredag';
+  time: string; // HH:MM format
+  points: number;
+  type: 'morgen' | 'ordinær';
+};
+
+export type CheckInLog = {
+  id?: number;
+  studentId: number;
+  bellTimeId: number;
+  timestamp: Date;
+  pointsPercent: 100 | 50 | 10;
+  pointsAwarded: number;
+  date: Date; // For easy filtering by date
+};
+
+export type CheckInSettings = {
+  // Morning check-in (with absence registration)
+  morning: {
+    percent100Minutes: number; // Default: 3
+    percent50Minutes: number;  // Default: 5
+    percent10Minutes: number;  // Default: 7
+    absenceMinutes: number;    // Default: 7
+  };
+  // Regular check-in
+  regular: {
+    percent100Minutes: number; // Default: 3
+    stopMinutes: number;       // Default: 3
+  };
+};
+
+// Morning Display types
+export type WelcomeMessage = {
+  id?: number;
+  message: string;
+  createdAt?: Date;
+};
+
+export type InstructionMessage = {
+  id?: number;
+  message: string;
+  createdAt?: Date;
+};
+
+export type ScheduleSession = {
+  id: number;
+  time: string; // HH:MM format
+  subject: string;
+  topic: string;
+};
+
+export type ScheduleTemplate = {
+  id?: number;
+  name: string;
+  dayOfWeek?: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
+  sessions: ScheduleSession[];
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+export type LessonPlan = {
+  id?: number;
+  sessionId: number; // Links to the session ID
+  templateId: number; // Links to which template this belongs to
+  date: string; // YYYY-MM-DD format
+  subject: string; // Snapshot from session
+  topic: string; // Snapshot from session
+  time: string; // Snapshot from session
+  objectives: string[]; // Learning objectives for the lesson
+  activities: string[]; // Activities/flow without timestamps
+  notes?: string; // Optional teacher notes
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+export type Theme = {
+  id?: number;
+  name: string;
+  type: 'predefined' | 'custom';
+  colors: string[]; // Array of hex colors
+  isSystem: boolean; // true for predefined themes
+  createdAt?: Date;
+};
+
+export type UserThemePreference = {
+  id?: number;
+  themeId: number;
+  isActive: boolean; // Whether this theme is active for rotation
+};
+
+export type ThemeHistory = {
+  id?: number;
+  themeId: number;
+  date: string; // YYYY-MM-DD
+};
+
+export type MorningDisplaySettings = {
+  className: string;
+  messageRotationMode: 'daily' | 'per-ringetid';
+  instructionRotationMode: 'daily' | 'per-ringetid';
+  lastThemeId?: number;
+  lastThemeDate?: string;
 };
 
 export type Absence = {
   id?: number;
-  studentId: string;
+  studentId: number;
   date: Date;
 };
 
 export type Remark = {
   id?: number;
-  studentId: string;
+  studentId: number;
   date: Date;
   period: number;
   type: string;
@@ -98,7 +227,7 @@ export type BehaviorType = {
 
 export type HourlyCheck = {
     id?: number;
-    studentId: string;
+    studentId: number;
     date: Date;
     period: number;
     behaviorId: string;
@@ -115,7 +244,7 @@ export type Test = {
 
 export type TestResult = {
   id?: number;
-  studentId: string;
+  studentId: number;
   testId: number;
   score: number | null;
   comment?: string;
@@ -134,7 +263,7 @@ export type GoalStatus = 'NotAchieved' | 'InProgress' | 'Achieved';
 
 export type GoalAchievement = {
   id: string;
-  studentId: string;
+  studentId: number;
   goalId: string;
   status: GoalStatus;
   updatedAt: Date;
@@ -146,9 +275,10 @@ export type SeatingChartData = (string[] | null)[][];
 export type SeatingChartRecord = {
   id?: number;
   chartJson: string; // Stored as a JSON string
-  rows: number;
-  cols: number;
+  rows?: number;
+  cols?: number;
   createdAt: Date;
+  source?: 'generation' | 'drag' | 'load';
 };
 
 export type LockedDesk = {
@@ -202,7 +332,8 @@ export type DashboardToolKey =
   | 'rewardDashboard'
   | 'rewardStore'
   | 'activityFeed'
-  | 'terminal';
+  | 'terminal'
+  | 'morning-display';
 
 export type DashboardConfig = {
     key: DashboardToolKey;
@@ -263,7 +394,7 @@ export type Workstation = {
 
 export type GroupInSet = {
   id: string; // Unique ID for this group within this set
-  studentIds: string[];
+  studentIds: number[];
 };
 
 export type GroupSet = {
@@ -275,7 +406,7 @@ export type GroupSet = {
 
 export type StationAssignmentLog = {
   id?: number;
-  studentId: string;
+  studentId: number;
   stationId: string;
   date: Date;
   groupSetId?: string; // Optional: ID of the GroupSet
@@ -285,14 +416,14 @@ export type StationAssignmentLog = {
 export type PickerGroup = {
   id?: string;
   name: string;
-  studentIds: string[];
+  studentIds: number[];
   createdAt: Date;
 };
 
 export type PickerLog = {
   id?: number;
   groupId: string;
-  studentId: string;
+  studentId: number;
   date: Date;
 };
 
@@ -337,4 +468,6 @@ export type AppSettings = {
   communityGoalTitle?: string;
   rewardSystem?: RewardSystemSettings;
   nfcEnabled?: boolean; // Enable/disable NFC scanning feature
+  checkInSettings?: CheckInSettings; // Auto check-in system settings
+  morningDisplaySettings?: MorningDisplaySettings; // Morning display settings
 };

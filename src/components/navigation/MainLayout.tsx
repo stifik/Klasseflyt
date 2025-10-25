@@ -12,11 +12,13 @@ interface MainLayoutProps {
 }
 
 // Pages that should not show the sidebar/header
+// Add routes here that need a fullscreen, header-less view (e.g. storskjerm displays)
 const publicPages = ['/login', '/privacy', '/agent-reveal', '/bors', '/rewarddashboard'];
+const publicPrefixes = ['/morning-display'];
 
 export function MainLayout({ children }: MainLayoutProps) {
     const pathname = usePathname();
-    const isPublicPage = publicPages.includes(pathname);
+    const isPublicPage = publicPages.includes(pathname) || publicPrefixes.some(prefix => pathname.startsWith(prefix));
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
     if (isPublicPage) {

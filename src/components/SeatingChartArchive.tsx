@@ -182,10 +182,10 @@ export default function SeatingChartArchive({ onLoadChart }: SeatingChartArchive
                             Klassekart fra {formatDate(record.createdAt)}
                           </DialogTitle>
                         </DialogHeader>
-                        <ChartPreview 
-                          chart={chart} 
-                          rows={record.rows} 
-                          cols={record.cols} 
+                        <ChartPreview
+                          chart={chart}
+                          rows={record.rows ?? chart.length}
+                          cols={record.cols ?? (chart[0]?.length ?? 0)}
                         />
                         <div className="flex justify-center gap-2 pt-4">
                           <Button 

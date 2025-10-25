@@ -46,7 +46,7 @@ const statusIcons: Record<HomeworkStatus, React.ReactElement> = {
 
 type AwardAction = Pick<DBPositiveAction, 'name' | 'points'>;
 
-const HomeworkCell: FC<{ studentId: string; homework: Homework; allSubmissions: Submission[]; allAttempts: SubmissionAttempt[]; awardAction: AwardAction }> = ({ studentId, homework, allSubmissions, allAttempts, awardAction }) => {
+const HomeworkCell: FC<{ studentId: number; homework: Homework; allSubmissions: Submission[]; allAttempts: SubmissionAttempt[]; awardAction: AwardAction }> = ({ studentId, homework, allSubmissions, allAttempts, awardAction }) => {
     const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
     const { toast } = useToast();
@@ -288,7 +288,7 @@ const AddHomeworkDialog: FC<{ subjects: Subject[]; onAddHomework: (title: string
 
 export default function HomeworkOverview({ students, subjects, homework: homeworkList, submissions, onUpdate }: HomeworkOverviewProps) {
   const [filters, setFilters] = useState<{ subject: string; week: string; showProblems: boolean }>({ subject: "all", week: "all", showProblems: false });
-  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+  const [selectedStudents, setSelectedStudents] = useState<Set<number>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<HomeworkStatus>('Godkjent');
   const [remainingStatus, setRemainingStatus] = useState<HomeworkStatus>('Godkjent');
   const [currentHomeworkId, setCurrentHomeworkId] = useState<number | null>(null);
@@ -298,7 +298,6 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
   
   const allSubmissions = useLiveQuery(() => db.submissions.toArray(), [], []);
   const allAttempts = useLiveQuery(() => db.submissionAttempts.toArray(), [], []);
-
   // Hent konfigurerte poeng for "Godkjent lekse" fra database (POD), med fallback til default
   const homeworkApprovedFromDb = useLiveQuery(() => db.actions.where('actionKey').equals('HOMEWORK_APPROVED').first(), [], undefined) as (DBPositiveAction | undefined);
   const homeworkApproved = useMemo<AwardAction>(() => {
@@ -352,13 +351,13 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
     }
   };
 
-  const executeBulkAction = async (homeworkId: number, status: HomeworkStatus, studentIds: string[]) => {
+  const executeBulkAction = async (homeworkId: number, status: HomeworkStatus, studentIds: number[]) => {
     try {
       const homeworkAction = homeworkApproved;
       const now = new Date();
-      
+
       // Batch process: first find/create all submissions
-      const submissionMap = new Map<string, number>();
+      const submissionMap = new Map<number, number>();
       const newSubmissions: Omit<Submission, 'id'>[] = [];
       
       for (const studentId of studentIds) {
@@ -434,7 +433,7 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
     }
   };
 
-  const getStudentsWithoutStatus = (homeworkId: number): string[] => {
+  const getStudentsWithoutStatus = (homeworkId: number): number[] => {
     if (!allSubmissions || !allAttempts) return [];
 
     return students
@@ -448,7 +447,7 @@ export default function HomeworkOverview({ students, subjects, homework: homewor
       .map(s => s.id!);
   };
 
-  const toggleStudentSelection = (studentId: string) => {
+  const toggleStudentSelection = (studentId: number) => {
     const newSet = new Set(selectedStudents);
     if (newSet.has(studentId)) {
       newSet.delete(studentId);

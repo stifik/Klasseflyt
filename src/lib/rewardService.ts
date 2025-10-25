@@ -97,47 +97,30 @@ async function syncPricesWithApi(rewards: Reward[]) {
 }
 
 // Funksjon for å gi poeng til en elev
-// Hjelpefunksjon: Forsøk å hente elev med både streng- og tall-ID (Dexie PK er typesensitiv)
-async function getStudentByFlexibleId(studentId: string | number) {
-  // 1) Prøv som mottatt
-  let student = await db.students.get(studentId as any);
-  if (student) return { student, key: studentId };
-
-  // 2) Hvis mottatt ID er string som kun består av siffer, prøv tall
-  if (typeof studentId === 'string' && /^\d+$/.test(studentId)) {
-    const numericId = Number(studentId);
-    student = await db.students.get(numericId as any);
-    if (student) return { student, key: numericId };
-  }
-
-  // 3) Hvis mottatt ID er number, prøv string-varianten
-  if (typeof studentId === 'number') {
-    const stringId = String(studentId);
-    student = await db.students.get(stringId as any);
-    if (student) return { student, key: stringId };
-  }
-
-  return { student: undefined, key: studentId } as const;
-}
-
-export async function givePoints(studentId: string | number, amount: number, description: string): Promise<RewardResult> {
+export async function givePoints(
+  studentId: number,
+  amount: number,
+  description: string,
+  cardId?: string
+): Promise<RewardResult> {
   try {
-    // Hent student fra database med fleksibel ID-håndtering
-    const { student, key } = await getStudentByFlexibleId(studentId);
+    const student = await db.students.get(studentId);
     if (!student) {
       return { success: false, message: `Student med ID ${studentId} ikke funnet` };
     }
 
-    // Oppdater student med nye poeng (reaktiv oppdatering)
+    // Oppdater student med nye poeng
     const newPoints = (student.points || 0) + amount;
-    await db.students.update(key as any, { points: newPoints });
+    await db.students.update(studentId, { points: newPoints });
 
-    // Legg til transaksjon i database
+    // Legg til transaksjon i database med NFC metadata hvis tilgjengelig
     await db.transactions.add({
-      studentId: String(key),
+      studentId: studentId,
       date: new Date(),
       pointsChange: amount,
       description,
+      paymentMethod: cardId ? 'nfc' : 'manual',
+      cardId: cardId,
     });
 
     return { success: true, message: 'Poeng gitt!' };
@@ -148,19 +131,23 @@ export async function givePoints(studentId: string | number, amount: number, des
 }
 
 // Funksjon for å bruke poeng på en belønning (direkte kjøp, ikke gavekort)
-export async function buyReward(studentId: string | number, rewardId: number): Promise<RewardResult> {
+export async function buyReward(
+  studentId: number,
+  rewardId: number,
+  cardId?: string
+): Promise<RewardResult> {
   try {
     // Hent alle belønninger fra database
     const allRewards = await db.rewards.toArray();
-    
+
     // Finn belønning
     const reward = allRewards.find((r: Reward) => r.id === rewardId);
     if (!reward) {
       return { success: false, message: `Belønning med ID ${rewardId} ikke funnet` };
     }
 
-    // Hent student fra database med fleksibel ID-håndtering
-    const { student, key } = await getStudentByFlexibleId(studentId);
+    // Hent student fra database
+    const student = await db.students.get(studentId);
     if (!student) {
       return { success: false, message: `Student med ID ${studentId} ikke funnet` };
     }
@@ -170,25 +157,46 @@ export async function buyReward(studentId: string | number, rewardId: number): P
     const priceToCharge = reward.currentPrice || reward.cost;
     if (currentPoints < priceToCharge) {
       const missingPoints = priceToCharge - currentPoints;
-      return { 
-        success: false, 
-        message: `Ikke nok poeng. Mangler ${missingPoints} poeng` 
+      return {
+        success: false,
+        message: `Ikke nok poeng. Mangler ${missingPoints} poeng`
       };
     }
 
     // 1. Trekk poeng fra studenten
     const newPoints = currentPoints - priceToCharge;
-    await db.students.update(key as any, { points: newPoints });
+    await db.students.update(studentId, { points: newPoints });
 
-    // 2. Logg transaksjonen
+    // 2. Logg transaksjonen med NFC metadata hvis tilgjengelig
     await db.transactions.add({
-      studentId: String(key),
+      studentId: studentId,
       date: new Date(),
       pointsChange: -priceToCharge,
       description: reward.name,
+      paymentMethod: cardId ? 'nfc' : 'manual',
+      cardId: cardId,
     });
 
-    // 3. Check if dynamic pricing is enabled
+    // 3. Add purchased reward record
+    const { v4: uuidv4 } = await import('uuid');
+    await db.purchasedRewards.add({
+      purchaseId: uuidv4(),
+      studentId,
+      rewardId,
+      rewardName: reward.name,
+      purchaseDate: new Date(),
+      status: 'unused'
+    });
+
+    // 4. Update card last used if NFC payment
+    if (cardId) {
+      const rfidCard = await db.rfidCards.where('cardId').equals(cardId).first();
+      if (rfidCard?.id) {
+        await db.rfidCards.update(rfidCard.id, { lastUsed: new Date() });
+      }
+    }
+
+    // 5. Check if dynamic pricing is enabled
     const settings = await db.settings.get('userSettings');
     const rewardSystem = settings?.rewardSystem || {
       mode: 'simple',
@@ -198,7 +206,56 @@ export async function buyReward(studentId: string | number, rewardId: number): P
       priceCeilingPercent: 200,
     };
 
-    // 4. Only calculate and update prices if in dynamic mode
+    // 6. Only calculate and update prices if in dynamic mode
+    if (rewardSystem.mode === 'dynamic') {
+      const updatedRewards = calculateNewPrices(
+        allRewards,
+        rewardId,
+        rewardSystem.priceIncreasePercent,
+        rewardSystem.priceDecreasePercent,
+        rewardSystem.priceFloorPercent,
+        rewardSystem.priceCeilingPercent
+      );
+
+      // Update all rewards in database
+      await Promise.all(
+        updatedRewards.map(r => db.rewards.update(r.id, {
+          currentPrice: r.currentPrice,
+          cost: r.cost
+        }))
+      );
+
+      // Synchronize prices to API (non-blocking)
+      syncPricesWithApi(updatedRewards);
+    }
+
+    return {
+      success: true,
+      message: `Kjøp vellykket! "${reward.name}" er kjøpt.`
+    };
+  } catch (error) {
+    console.error('Feil ved kjøp av belønning:', error);
+    return {
+      success: false,
+      message: 'Teknisk feil ved kjøp av belønning. Prøv igjen senere.'
+    };
+  }
+}
+
+// Update prices after a purchase (for external use, e.g., POS)
+export async function updatePricesAfterPurchase(rewardId: number): Promise<void> {
+  try {
+    const allRewards = await db.rewards.toArray();
+    const settings = await db.settings.get('userSettings');
+    const rewardSystem = settings?.rewardSystem || {
+      mode: 'simple',
+      priceIncreasePercent: 5,
+      priceDecreasePercent: 2,
+      priceFloorPercent: 50,
+      priceCeilingPercent: 200,
+    };
+
+    // Only update if in dynamic mode
     if (rewardSystem.mode === 'dynamic') {
       const updatedRewards = calculateNewPrices(
         allRewards, 
@@ -220,17 +277,8 @@ export async function buyReward(studentId: string | number, rewardId: number): P
       // Synchronize prices to API (non-blocking)
       syncPricesWithApi(updatedRewards);
     }
-
-    return { 
-      success: true, 
-      message: `Kjøp vellykket! "${reward.name}" er kjøpt.` 
-    };
   } catch (error) {
-    console.error('Feil ved kjøp av belønning:', error);
-    return { 
-      success: false, 
-      message: 'Teknisk feil ved kjøp av belønning. Prøv igjen senere.' 
-    };
+    console.error('Error updating prices after purchase:', error);
   }
 }
 

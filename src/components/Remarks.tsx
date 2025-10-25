@@ -87,7 +87,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
            d1.getDate() === d2.getDate();
   }
   
-  const getRemarksForStudent = (studentId: string, checkDate: Date, period: number, type: string): Remark[] => {
+  const getRemarksForStudent = (studentId: number, checkDate: Date, period: number, type: string): Remark[] => {
     return localRemarks.filter(
       (r) =>
         r.studentId === studentId &&
@@ -97,7 +97,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
     );
   };
 
-  const handleAddRemark = async (studentId: string) => {
+  const handleAddRemark = async (studentId: number) => {
     if (!activeRemarkType) return;
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
     const dateStartOfDay = new Date(date);
@@ -121,7 +121,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
     }
   };
 
-  const handleRemoveRemark = async (studentId: string) => {
+  const handleRemoveRemark = async (studentId: number) => {
     if (!activeRemarkType) return;
     const studentName = students.find(s => s.id === studentId)?.name || 'Eleven';
     const dateStartOfDay = new Date(date);
@@ -145,15 +145,15 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
 
 
   const StudentButton = ({ student }: { student: Student }) => {
-    const remarks = getRemarksForStudent(student.id, date, currentPeriod, activeRemarkType || '');
+    const remarks = getRemarksForStudent(student.id!, date, currentPeriod, activeRemarkType || '');
     const count = remarks.length;
 
     return (
         <div
             role="button"
             tabIndex={0}
-            onClick={() => handleAddRemark(student.id)}
-            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleAddRemark(student.id)}
+            onClick={() => handleAddRemark(student.id!)}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleAddRemark(student.id!)}
             className={cn(
                 "relative flex flex-col items-center justify-center p-2 text-center border rounded-lg w-full aspect-[7/5] transition-all cursor-pointer",
                 count > 0 ? "bg-yellow-100 border-yellow-300" : "bg-secondary hover:bg-muted"
@@ -169,7 +169,7 @@ export default function Remarks({ students, initialRemarks, onUpdate, seatingCha
                 <button
                     onClick={(e) => {
                         e.stopPropagation(); // Prevent adding another remark
-                        handleRemoveRemark(student.id);
+                        handleRemoveRemark(student.id!);
                     }}
                     className="absolute top-1 right-1 flex items-center justify-center w-5 h-5 rounded-full bg-yellow-200 hover:bg-yellow-300"
                     aria-label="Fjern en anmerkning"

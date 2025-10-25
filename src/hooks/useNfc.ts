@@ -190,7 +190,7 @@ export function useNfc(): NFCHookReturn {
         records: [
           {
             recordType: 'text',
-            data: new TextEncoder().encode(text).buffer,
+            data: new TextEncoder().encode(text).buffer as ArrayBuffer,
             encoding: 'utf-8'
           }
         ]

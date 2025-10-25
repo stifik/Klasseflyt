@@ -139,6 +139,14 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
     href: '/terminal',
   },
+  {
+    key: 'morning-display',
+    label: 'Morning Display',
+    description: 'Dynamisk morgenvisning med innsjekking og dagsplan.',
+    icon: Eye,
+    color: 'bg-gradient-to-br from-purple-100 to-pink-100 text-purple-600 dark:from-purple-900/30 dark:to-pink-900/30 dark:text-purple-400',
+    href: '/morning-display',
+  },
 ];
 
 

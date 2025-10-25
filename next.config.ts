@@ -19,6 +19,13 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      // Compatibility rewrites for sound files if WAV versions are present
+      { source: '/sounds/success.mp3', destination: '/sounds/success.wav' },
+      { source: '/sounds/error.mp3', destination: '/sounds/error.wav' },
+    ];
+  },
 };
 
 export default nextConfig;
