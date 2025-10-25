@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import RewardSystemLayout from '@/components/RewardSystemLayout';
-import { Plus, Trash2, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
 import type { WelcomeMessage, InstructionMessage, ScheduleTemplate } from '@/lib/types';
 
 export default function MorningDisplaySettingsPage() {
@@ -16,8 +16,8 @@ export default function MorningDisplaySettingsPage() {
   const [className, setClassName] = useState('');
   const [messageRotationMode, setMessageRotationMode] = useState<'daily' | 'per-ringetid'>('daily');
   const [instructionRotationMode, setInstructionRotationMode] = useState<'daily' | 'per-ringetid'>('daily');
-  const [bulkMessages, setBulkMessages] = useState('');
-  const [bulkInstructions, setBulkInstructions] = useState('');
+  const [messagesText, setMessagesText] = useState('');
+  const [instructionsText, setInstructionsText] = useState('');
 
   useEffect(() => {
     if (settings?.morningDisplaySettings) {
@@ -26,6 +26,22 @@ export default function MorningDisplaySettingsPage() {
       setInstructionRotationMode(settings.morningDisplaySettings.instructionRotationMode);
     }
   }, [settings]);
+
+  // Load welcome messages into textarea
+  useEffect(() => {
+    if (welcomeMessages) {
+      const text = welcomeMessages.map(msg => msg.message).join('\n');
+      setMessagesText(text);
+    }
+  }, [welcomeMessages]);
+
+  // Load instruction messages into textarea
+  useEffect(() => {
+    if (instructionMessages) {
+      const text = instructionMessages.map(instr => instr.message).join('\n');
+      setInstructionsText(text);
+    }
+  }, [instructionMessages]);
 
   const handleSaveClassName = async () => {
     if (settings && settings.morningDisplaySettings) {
@@ -57,43 +73,47 @@ export default function MorningDisplaySettingsPage() {
     }
   };
 
-  const handleImportMessages = async () => {
-    const lines = bulkMessages.split('\n').filter(line => line.trim() !== '');
-    
-    for (const line of lines) {
-      await db.welcomeMessages.add({
-        message: line.trim(),
-        createdAt: new Date(),
-      });
-    }
-    
-    setBulkMessages('');
-    alert(`${lines.length} meldinger importert!`);
-  };
-
-  const handleImportInstructions = async () => {
-    const lines = bulkInstructions.split('\n').filter(line => line.trim() !== '');
-    
-    for (const line of lines) {
-      await db.instructionMessages.add({
-        message: line.trim(),
-        createdAt: new Date(),
-      });
-    }
-    
-    setBulkInstructions('');
-    alert(`${lines.length} instruksjoner importert!`);
-  };
-
-  const handleDeleteMessage = async (id: number) => {
-    if (confirm('Er du sikker på at du vil slette denne meldingen?')) {
-      await db.welcomeMessages.delete(id);
+  const handleSaveMessages = async () => {
+    try {
+      // Clear all existing messages
+      await db.welcomeMessages.clear();
+      
+      // Add new messages from textarea (one per line)
+      const lines = messagesText.split('\n').filter(line => line.trim() !== '');
+      
+      for (const line of lines) {
+        await db.welcomeMessages.add({
+          message: line.trim(),
+          createdAt: new Date(),
+        });
+      }
+      
+      alert(`${lines.length} meldinger lagret!`);
+    } catch (error) {
+      console.error('Error saving messages:', error);
+      alert('Feil ved lagring av meldinger');
     }
   };
 
-  const handleDeleteInstruction = async (id: number) => {
-    if (confirm('Er du sikker på at du vil slette denne instruksjonen?')) {
-      await db.instructionMessages.delete(id);
+  const handleSaveInstructions = async () => {
+    try {
+      // Clear all existing instructions
+      await db.instructionMessages.clear();
+      
+      // Add new instructions from textarea (one per line)
+      const lines = instructionsText.split('\n').filter(line => line.trim() !== '');
+      
+      for (const line of lines) {
+        await db.instructionMessages.add({
+          message: line.trim(),
+          createdAt: new Date(),
+        });
+      }
+      
+      alert(`${lines.length} instruksjoner lagret!`);
+    } catch (error) {
+      console.error('Error saving instructions:', error);
+      alert('Feil ved lagring av instruksjoner');
     }
   };
 
@@ -193,49 +213,30 @@ export default function MorningDisplaySettingsPage() {
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <h2 className="text-xl font-semibold mb-4">Velkomstmeldinger</h2>
           <p className="text-gray-600 mb-4">
-            Disse meldingene vil vises tilfeldig på morgenvisningen.
+            Skriv inn meldinger, én per linje. Disse vil vises tilfeldig på morgenvisningen.
+            <br />
+            <span className="text-sm text-gray-500">
+              Antall meldinger: {welcomeMessages?.length || 0}
+            </span>
           </p>
 
           <div className="space-y-4">
             <div>
-              <label className="block font-medium mb-2">Importer meldinger (én per linje)</label>
+              <label className="block font-medium mb-2">Meldinger (én per linje)</label>
               <textarea
-                rows={6}
-                value={bulkMessages}
-                onChange={(e) => setBulkMessages(e.target.value)}
-                placeholder={'God morgen, {klassenavn}!\nVelkommen til en ny dag!\nHei igjen! Klar for læring?'}
-                className="w-full px-4 py-2 border rounded-lg"
+                rows={10}
+                value={messagesText}
+                onChange={(e) => setMessagesText(e.target.value)}
+                placeholder={'God morgen, {klassenavn}!\nVelkommen til en ny dag!\nHei igjen! Klar for læring?\nFlott å se dere!\nLa oss gjøre i dag til en fantastisk dag!'}
+                className="w-full px-4 py-2 border rounded-lg font-mono text-sm"
               />
               <button
-                onClick={handleImportMessages}
-                className="mt-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2"
+                onClick={handleSaveMessages}
+                className="mt-2 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2"
               >
-                <Plus className="w-4 h-4" />
-                Importer meldinger
+                <Save className="w-4 h-4" />
+                Lagre meldinger
               </button>
-            </div>
-
-            <div>
-              <h3 className="font-medium mb-2">Nåværende meldinger ({welcomeMessages?.length || 0})</h3>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {welcomeMessages?.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                  >
-                    <span className="flex-1">{msg.message}</span>
-                    <button
-                      onClick={() => handleDeleteMessage(msg.id!)}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-                {(!welcomeMessages || welcomeMessages.length === 0) && (
-                  <p className="text-gray-500 italic">Ingen meldinger lagt til enda.</p>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -244,49 +245,30 @@ export default function MorningDisplaySettingsPage() {
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <h2 className="text-xl font-semibold mb-4">Instruksjoner</h2>
           <p className="text-gray-600 mb-4">
-            Disse instruksjonene vises under velkomstmeldingen.
+            Skriv inn instruksjoner, én per linje. Disse vises under velkomstmeldingen.
+            <br />
+            <span className="text-sm text-gray-500">
+              Antall instruksjoner: {instructionMessages?.length || 0}
+            </span>
           </p>
 
           <div className="space-y-4">
             <div>
-              <label className="block font-medium mb-2">Importer instruksjoner (én per linje)</label>
+              <label className="block font-medium mb-2">Instruksjoner (én per linje)</label>
               <textarea
-                rows={6}
-                value={bulkInstructions}
-                onChange={(e) => setBulkInstructions(e.target.value)}
-                placeholder="Sjekk inn på Teams, hent mikrofon og les stille i boka di\nLogg på PC-en, åpne dagens oppgaver og kom i gang\nFinn frem bøkene til dagens fag og gjør deg klar"
-                className="w-full px-4 py-2 border rounded-lg"
+                rows={8}
+                value={instructionsText}
+                onChange={(e) => setInstructionsText(e.target.value)}
+                placeholder="Sjekk inn på Teams, hent mikrofon og les stille i boka di\nLogg på PC-en, åpne dagens oppgaver og kom i gang\nFinn frem bøkene til dagens fag og gjør deg klar\nHusk å levere lekser før klokka 10"
+                className="w-full px-4 py-2 border rounded-lg font-mono text-sm"
               />
               <button
-                onClick={handleImportInstructions}
-                className="mt-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2"
+                onClick={handleSaveInstructions}
+                className="mt-2 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2"
               >
-                <Plus className="w-4 h-4" />
-                Importer instruksjoner
+                <Save className="w-4 h-4" />
+                Lagre instruksjoner
               </button>
-            </div>
-
-            <div>
-              <h3 className="font-medium mb-2">Nåværende instruksjoner ({instructionMessages?.length || 0})</h3>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {instructionMessages?.map((instr) => (
-                  <div
-                    key={instr.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                  >
-                    <span className="flex-1">{instr.message}</span>
-                    <button
-                      onClick={() => handleDeleteInstruction(instr.id!)}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-                {(!instructionMessages || instructionMessages.length === 0) && (
-                  <p className="text-gray-500 italic">Ingen instruksjoner lagt til enda.</p>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -296,11 +278,14 @@ export default function MorningDisplaySettingsPage() {
           <h2 className="text-xl font-semibold mb-3 text-blue-900">📖 Hurtigstart</h2>
           <ol className="space-y-2 text-blue-900">
             <li>1. Sett klassenavn (f.eks. &quot;Superklassen&quot;)</li>
-            <li>2. Importer 10-20 velkomstmeldinger (bruk ChatGPT for inspirasjon!)</li>
-            <li>3. Importer 5-10 instruksjoner</li>
+            <li>2. Skriv inn 10-20 velkomstmeldinger (bruk gjerne ChatGPT for inspirasjon!)</li>
+            <li>3. Skriv inn 5-10 instruksjoner</li>
             <li>4. Åpne <a href="/morning-display" target="_blank" className="underline font-semibold">/morning-display</a> på storskjermen</li>
             <li>5. Trykk F11 for fullskjerm</li>
           </ol>
+          <p className="mt-3 text-sm text-blue-800">
+            💡 Tips: Du kan enkelt redigere tekstene direkte i tekstboksene - legg til, fjern eller endre linjer som du vil!
+          </p>
         </div>
       </div>
     </RewardSystemLayout>
