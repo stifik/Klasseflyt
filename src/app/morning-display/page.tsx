@@ -163,16 +163,24 @@ export default function MorningDisplayPage() {
         return absDate === todayString;
       });
 
+      // Get updated student data with current points
+      const updatedStudents = await db.students.toArray();
+      const studentsMap = new Map(updatedStudents.map(s => [s.id, s]));
+
       setStudents(prev =>
         prev.map(student => {
           const isCheckedIn = todaysCheckIns.some(log => log.studentId === student.id);
           const isAbsent = todaysAbsences.some(a => a.studentId === student.id);
+          
+          // Get current points from database
+          const currentStudent = studentsMap.get(student.id);
+          const currentPoints = currentStudent?.points || student.points;
 
           let status: 'waiting' | 'checked-in' | 'absent' = 'waiting';
           if (isAbsent) status = 'absent';
           else if (isCheckedIn) status = 'checked-in';
 
-          return { ...student, status };
+          return { ...student, points: currentPoints, status };
         })
       );
     }, 2000);
