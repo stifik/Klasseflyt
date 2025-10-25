@@ -541,7 +541,10 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
               {mode === 'checkin' && (
                 <>
                   <Button
-                    onClick={() => startManualCheckIn('morgen', 10)}
+                    onClick={() => {
+                      console.log('[DAILY-CHECK] Start morgen button clicked, activeCheckIn:', activeCheckIn);
+                      startManualCheckIn('morgen', 10);
+                    }}
                     disabled={!!activeCheckIn}
                     className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50"
                   >

@@ -30,6 +30,7 @@ export function useCheckInTimer() {
 
   // Function to manually start a check-in session
   const startManualCheckIn = (type: 'morgen' | 'ordinær', points: number = 10) => {
+    console.log('[CHECK-IN] Starting manual check-in:', type, 'points:', points);
     const manualBell: BellTime = {
       id: -1, // Temporary ID for manual session
       weekday: 'mandag', // Doesn't matter for manual
@@ -37,6 +38,7 @@ export function useCheckInTimer() {
       points,
       type,
     };
+    console.log('[CHECK-IN] Created manual bell:', manualBell);
     setManualSession(manualBell);
   };
 
