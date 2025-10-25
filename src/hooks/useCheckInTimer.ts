@@ -61,11 +61,11 @@ export function useCheckInTimer() {
         // Calculate points percentage based on session type
         let pointsPercent: 100 | 50 | 10 | 0 = 0;
         if (manualSession.type === 'morgen') {
-          if (minutesElapsed <= settings.checkInSettings!.morning.percent100Minutes) pointsPercent = 100;
-          else if (minutesElapsed <= settings.checkInSettings!.morning.percent50Minutes) pointsPercent = 50;
-          else if (minutesElapsed <= settings.checkInSettings!.morning.percent10Minutes) pointsPercent = 10;
+          if (minutesElapsed < settings.checkInSettings!.morning.percent100Minutes) pointsPercent = 100;
+          else if (minutesElapsed < settings.checkInSettings!.morning.percent50Minutes) pointsPercent = 50;
+          else if (minutesElapsed < settings.checkInSettings!.morning.percent10Minutes) pointsPercent = 10;
         } else {
-          if (minutesElapsed <= settings.checkInSettings!.regular.percent100Minutes) pointsPercent = 100;
+          if (minutesElapsed < settings.checkInSettings!.regular.percent100Minutes) pointsPercent = 100;
         }
 
         setActiveSession({
@@ -96,11 +96,11 @@ export function useCheckInTimer() {
         // Calculate points percentage
         let pointsPercent: 100 | 50 | 10 | 0 = 0;
         if (activeBell.type === 'morgen') {
-          if (minutesElapsed <= settings.checkInSettings!.morning.percent100Minutes) pointsPercent = 100;
-          else if (minutesElapsed <= settings.checkInSettings!.morning.percent50Minutes) pointsPercent = 50;
-          else if (minutesElapsed <= settings.checkInSettings!.morning.percent10Minutes) pointsPercent = 10;
+          if (minutesElapsed < settings.checkInSettings!.morning.percent100Minutes) pointsPercent = 100;
+          else if (minutesElapsed < settings.checkInSettings!.morning.percent50Minutes) pointsPercent = 50;
+          else if (minutesElapsed < settings.checkInSettings!.morning.percent10Minutes) pointsPercent = 10;
         } else {
-          if (minutesElapsed <= settings.checkInSettings!.regular.percent100Minutes) pointsPercent = 100;
+          if (minutesElapsed < settings.checkInSettings!.regular.percent100Minutes) pointsPercent = 100;
         }
         
         setActiveSession({

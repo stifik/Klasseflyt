@@ -97,12 +97,12 @@ export function calculatePointsPercent(
   settings: CheckInSettingsType
 ): 100 | 50 | 10 | 0 {
   if (bellType === 'morgen') {
-    if (minutesElapsed <= settings.morning.percent100Minutes) return 100;
-    if (minutesElapsed <= settings.morning.percent50Minutes) return 50;
-    if (minutesElapsed <= settings.morning.percent10Minutes) return 10;
+    if (minutesElapsed < settings.morning.percent100Minutes) return 100;
+    if (minutesElapsed < settings.morning.percent50Minutes) return 50;
+    if (minutesElapsed < settings.morning.percent10Minutes) return 10;
     return 0;
   } else {
-    if (minutesElapsed <= settings.regular.percent100Minutes) return 100;
+    if (minutesElapsed < settings.regular.percent100Minutes) return 100;
     return 0;
   }
 }

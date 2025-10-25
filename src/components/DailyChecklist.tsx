@@ -125,12 +125,25 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
         if (log.id) await db.checkInLogs.delete(log.id);
       }
 
+      // Delete today's absences (that were auto-registered from check-in)
+      const absencesToDelete = await db.absences
+        .filter(absence => {
+          const absDate = new Date(absence.date);
+          absDate.setHours(0, 0, 0, 0);
+          return absDate.getTime() === today.getTime();
+        })
+        .toArray();
+
+      for (const absence of absencesToDelete) {
+        if (absence.id) await db.absences.delete(absence.id);
+      }
+
       // Force refresh
       setForceUpdate(prev => prev + 1);
 
       toast({
         title: "Innsjekking nullstilt",
-        description: `${logsToDelete.length} innsjekking-logger ble slettet.`,
+        description: `${logsToDelete.length} innsjekking-logger og ${absencesToDelete.length} fravær ble slettet.`,
       });
     } catch (error) {
       console.error('Reset check-ins error:', error);
