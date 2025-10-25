@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { db } from '@/lib/db';
 import { getTodayTheme, getThemeGradient } from '@/lib/themes';
@@ -17,7 +17,7 @@ type StudentWithStatus = {
   status: 'waiting' | 'checked-in' | 'absent';
 };
 
-export default function MorningDisplayPage() {
+function MorningDisplayContent() {
   const searchParams = useSearchParams();
   const [currentSlide, setCurrentSlide] = useState(1);
   const [students, setStudents] = useState<StudentWithStatus[]>([]);
@@ -223,5 +223,13 @@ export default function MorningDisplayPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function MorningDisplayPage() {
+  return (
+    <Suspense fallback={<div className="morning-display" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>Laster...</div>}>
+      <MorningDisplayContent />
+    </Suspense>
   );
 }

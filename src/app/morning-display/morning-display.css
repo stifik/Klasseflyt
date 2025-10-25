@@ -54,7 +54,7 @@
 /* Clock Styles */
 .clock-container {
   position: absolute;
-  top: 20px;
+  top: 30px; /* Increased from 20px for more spacing */
   right: 30px;
   z-index: 100;
 }
@@ -118,7 +118,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px 12px;
-  align-content: start;
+  align-content: center; /* Changed from start to center for vertical centering */
   overflow: hidden;
   padding: 10px;
 }
@@ -196,10 +196,22 @@
   padding: 10px 12px;
 }
 
+/* Increase gap for smaller classes to stretch vertically */
+.student-list[data-count="10"],
+.student-list[data-count="12"],
+.student-list[data-count="15"] {
+  gap: 16px 12px; /* Increased vertical gap */
+}
+
 .student-list[data-count="18"] .student-card,
 .student-list[data-count="20"] .student-card {
   font-size: 1rem;
   padding: 8px 10px;
+}
+
+.student-list[data-count="18"],
+.student-list[data-count="20"] {
+  gap: 12px 12px; /* Medium vertical gap */
 }
 
 .student-list[data-count="22"] .student-card,
@@ -208,10 +220,20 @@
   padding: 7px 9px;
 }
 
+.student-list[data-count="22"],
+.student-list[data-count="25"] {
+  gap: 10px 12px; /* Slightly smaller vertical gap */
+}
+
 .student-list[data-count="28"] .student-card,
 .student-list[data-count="30"] .student-card {
   font-size: 0.85rem;
   padding: 6px 8px;
+}
+
+.student-list[data-count="28"],
+.student-list[data-count="30"] {
+  gap: 8px 12px; /* Original vertical gap */
 }
 
 /* Adjust grid columns for small student counts */
@@ -238,7 +260,8 @@
   z-index: 10;
   max-width: 90%;
   position: relative;
-  padding-bottom: 60px; /* Add space for Dagsplan button */
+  padding-top: 80px; /* Add space for clock */
+  padding-bottom: 80px; /* Increased from 60px for Dagsplan button */
 }
 
 .welcome-section::before {
@@ -248,7 +271,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
   width: 110%;
-  height: 120%; /* Reduced from 140% to avoid overlap with clock */
+  height: 110%; /* Reduced from 120% to avoid overlap */
   background: rgba(0, 0, 0, 0.1);
   border-radius: 30px;
   z-index: -1;
@@ -447,7 +470,7 @@
 /* Slide Controls */
 .slide-controls {
   position: absolute;
-  bottom: 30px; /* Increased from 20px */
+  bottom: 40px; /* Increased from 30px for more spacing */
   right: 30px;
   z-index: 100;
 }
