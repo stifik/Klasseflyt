@@ -238,6 +238,7 @@
   z-index: 10;
   max-width: 90%;
   position: relative;
+  padding-bottom: 60px; /* Add space for Dagsplan button */
 }
 
 .welcome-section::before {
@@ -247,7 +248,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
   width: 110%;
-  height: 140%;
+  height: 120%; /* Reduced from 140% to avoid overlap with clock */
   background: rgba(0, 0, 0, 0.1);
   border-radius: 30px;
   z-index: -1;
@@ -255,20 +256,20 @@
 }
 
 .welcome-message {
-  font-size: 4.5rem;
+  font-size: 3.8rem; /* Reduced from 4.5rem */
   font-weight: 800;
-  margin-bottom: 40px;
+  margin-bottom: 30px; /* Reduced from 40px */
   color: white;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 0, 0, 0.2);
   line-height: 1.2;
 }
 
 .instructions {
-  font-size: 2.2rem;
-  line-height: 1.6;
+  font-size: 1.9rem; /* Reduced from 2.2rem */
+  line-height: 1.5; /* Reduced from 1.6 for tighter spacing */
   color: white;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
-  max-width: 800px;
+  max-width: 750px; /* Reduced from 800px */
 }
 
 /* Slide 2 - Schedule */
@@ -446,29 +447,29 @@
 /* Slide Controls */
 .slide-controls {
   position: absolute;
-  bottom: 20px;
+  bottom: 30px; /* Increased from 20px */
   right: 30px;
   z-index: 100;
 }
 
 .slide-button {
-  padding: 10px 20px;
-  font-size: 1rem;
+  padding: 12px 24px; /* Increased padding slightly */
+  font-size: 1.1rem; /* Increased from 1rem */
   border: 2px solid rgba(255, 255, 255, 0.8);
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.5); /* Slightly more opaque */
   color: white;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
   font-weight: 600;
-  opacity: 0.75;
+  opacity: 0.85; /* Increased from 0.75 */
   backdrop-filter: blur(10px);
 }
 
 .slide-button:hover {
   opacity: 1;
   transform: scale(1.05);
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.7); /* More opaque on hover */
 }
 
 .slide-button.active {

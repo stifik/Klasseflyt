@@ -576,7 +576,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
           </div>
 
           {/* Check-in Status Banner */}
-          {mode === 'checkin' && activeCheckIn && (
+          {mode === 'checkin' && activeCheckIn && activeCheckIn.bellTime && (
             <div className={cn(
               "p-4 rounded-lg border-2",
               activeCheckIn.shouldStop ? "bg-gray-100 border-gray-300" : "bg-green-50 border-green-300"

@@ -21,6 +21,12 @@ export interface CheckInTapResult {
   soundType: 'success' | 'error';
 }
 
+// Helper function to get today's date at noon (avoids timezone issues)
+function getTodayAtNoon(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
+}
+
 /**
  * Handle NFC card tap during check-in session
  */
@@ -51,15 +57,16 @@ export async function handleCheckInTap(
   }
 
   // Check if student is marked as absent
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = getTodayAtNoon();
+  const todayString = today.toISOString().split('T')[0];
+  
   const absence = await db.absences
     .where('studentId')
     .equals(student.id)
     .and(a => {
       const absDate = new Date(a.date);
-      absDate.setHours(0, 0, 0, 0);
-      return absDate.getTime() === today.getTime();
+      const absDateString = absDate.toISOString().split('T')[0];
+      return absDateString === todayString;
     })
     .first();
 
@@ -111,7 +118,7 @@ export async function handleCheckInTap(
       timestamp: new Date(),
       pointsPercent,
       pointsAwarded,
-      date: today,
+      date: today, // Use noon date to match absence system
     });
 
     // Award points
@@ -169,15 +176,16 @@ export async function handleManualCheckIn(
   }
 
   // Check if student is marked as absent
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = getTodayAtNoon();
+  const todayString = today.toISOString().split('T')[0];
+  
   const absence = await db.absences
     .where('studentId')
     .equals(student.id)
     .and(a => {
       const absDate = new Date(a.date);
-      absDate.setHours(0, 0, 0, 0);
-      return absDate.getTime() === today.getTime();
+      const absDateString = absDate.toISOString().split('T')[0];
+      return absDateString === todayString;
     })
     .first();
 
@@ -229,7 +237,7 @@ export async function handleManualCheckIn(
       timestamp: new Date(),
       pointsPercent,
       pointsAwarded,
-      date: today,
+      date: today, // Use noon date to match absence system
     });
 
     // Award points

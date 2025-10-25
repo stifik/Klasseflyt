@@ -64,6 +64,7 @@ export default function MorningDisplayPage() {
       if (settings) {
         setClassName(settings.morningDisplaySettings?.className || 'klassen');
         setCheckInSettings(settings.checkInSettings?.morning);
+        console.log('[MORNING-DISPLAY] Check-in settings loaded:', settings.checkInSettings?.morning);
 
         // Load today's theme
         const theme = await getTodayTheme();
@@ -92,7 +93,13 @@ export default function MorningDisplayPage() {
       // Load bell time for today
       const today = new Date();
       const weekdayNames = ['søndag', 'mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag'];
-      const weekday = weekdayNames[today.getDay()];
+      
+      // Check for dev mode weekday override
+      const devWeekdayOverride = typeof window !== 'undefined' 
+        ? window.localStorage?.getItem('dev_weekday_override') 
+        : null;
+      
+      const weekday = devWeekdayOverride || weekdayNames[today.getDay()];
 
       const bellTimes = await db.bellTimes
         .where('weekday')
@@ -100,8 +107,13 @@ export default function MorningDisplayPage() {
         .and(bt => bt.type === 'morgen')
         .toArray();
 
+      console.log('[MORNING-DISPLAY] Weekday:', weekday, '(dev override:', devWeekdayOverride, ') | Bell times found:', bellTimes);
+
       if (bellTimes.length > 0) {
         setBellTime(bellTimes[0].time);
+        console.log('[MORNING-DISPLAY] Set bellTime to:', bellTimes[0].time);
+      } else {
+        console.log('[MORNING-DISPLAY] No morning bell time found for', weekday);
       }
 
       // Setup live updates listener
@@ -132,28 +144,35 @@ export default function MorningDisplayPage() {
   const setupLiveUpdates = () => {
     // Poll for check-in updates every 2 seconds
     const interval = setInterval(async () => {
-      const todayString = new Date().toISOString().split('T')[0];
-      const todayDate = new Date(todayString);
+      // Create date at noon to match the check-in system date format
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
+      const todayString = today.toISOString().split('T')[0];
 
       // Get check-ins from the new NFC check-in system
-      const checkInLogs = await db.checkInLogs
-        .where('date')
-        .equals(todayDate)
-        .toArray();
+      const checkInLogs = await db.checkInLogs.toArray();
+      const todaysCheckIns = checkInLogs.filter(log => {
+        const logDate = new Date(log.date).toISOString().split('T')[0];
+        return logDate === todayString;
+      });
 
-      const absentStudents = await db.absences
-        .where('date')
-        .equals(todayDate)
-        .toArray();
+      // Get absences
+      const allAbsences = await db.absences.toArray();
+      const todaysAbsences = allAbsences.filter(a => {
+        const absDate = new Date(a.date).toISOString().split('T')[0];
+        return absDate === todayString;
+      });
 
       setStudents(prev =>
         prev.map(student => {
-          const isCheckedIn = checkInLogs.some(log => log.studentId === student.id);
-          const isAbsent = absentStudents.some(a => a.studentId === student.id);
+          const isCheckedIn = todaysCheckIns.some(log => log.studentId === student.id);
+          const isAbsent = todaysAbsences.some(a => a.studentId === student.id);
 
-          if (isAbsent) return { ...student, status: 'absent' as const };
-          if (isCheckedIn) return { ...student, status: 'checked-in' as const };
-          return { ...student, status: 'waiting' as const };
+          let status: 'waiting' | 'checked-in' | 'absent' = 'waiting';
+          if (isAbsent) status = 'absent';
+          else if (isCheckedIn) status = 'checked-in';
+
+          return { ...student, status };
         })
       );
     }, 2000);

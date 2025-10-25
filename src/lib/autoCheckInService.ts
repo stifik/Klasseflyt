@@ -172,21 +172,37 @@ export async function getStudentsNotCheckedIn(bellTimeId: number): Promise<numbe
 
 // Register students as absent
 export async function registerAbsences(studentIds: number[]): Promise<void> {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Create a date at noon local time to avoid timezone issues
+  // When converted to UTC, noon will always be on the correct date
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
 
-  console.log(`[ABSENCE] Registering ${studentIds.length} absences for date:`, today);
+  let successCount = 0;
+  let skipCount = 0;
 
-  const absences = studentIds.map(studentId => ({
-    studentId,
-    date: today,
-  }));
+  for (const studentId of studentIds) {
+    try {
+      // Check if absence already exists for this student today
+      const todayString = today.toISOString().split("T")[0];
+      const existing = await db.absences
+        .where('studentId')
+        .equals(studentId)
+        .and(a => new Date(a.date).toISOString().split("T")[0] === todayString)
+        .first();
 
-  try {
-    await db.absences.bulkAdd(absences as any);
-    console.log(`[ABSENCE] Successfully added ${absences.length} absences to database`);
-  } catch (error) {
-    console.error('[ABSENCE] Error adding absences:', error);
-    throw error;
+      if (!existing) {
+        await db.absences.add({
+          studentId,
+          date: today,
+        });
+        successCount++;
+      } else {
+        skipCount++;
+      }
+    } catch (error) {
+      console.error(`[ABSENCE] Error adding absence for student ${studentId}:`, error);
+    }
   }
+
+  console.log(`[ABSENCE] Registered ${successCount} new absences, skipped ${skipCount} existing`);
 }

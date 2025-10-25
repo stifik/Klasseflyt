@@ -117,10 +117,8 @@ export function useCheckInTimer() {
             minutesElapsed >= settings.checkInSettings!.morning.absenceMinutes &&
             minutesElapsed <= settings.checkInSettings!.morning.absenceMinutes + 1) {
           const notCheckedIn = await getStudentsNotCheckedIn(activeBell.id!);
-          console.log(`[CHECK-IN] Registering absences: ${notCheckedIn.length} students not checked in`);
           if (notCheckedIn.length > 0) {
             await registerAbsences(notCheckedIn);
-            console.log(`[CHECK-IN] Absences registered for ${notCheckedIn.length} students`);
           }
         }
         
