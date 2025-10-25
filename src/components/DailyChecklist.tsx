@@ -156,9 +156,9 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
   };
   
   // Get all data and filter in useMemo to ensure proper reactivity
-  const allChecks = useLiveQuery(() => db.dailyChecks.toArray(), [forceUpdate]);
-  const allAbsences = useLiveQuery(() => db.absences.toArray(), [forceUpdate]);
   // useLiveQuery auto-updates when DB changes, no need for forceUpdate dependency
+  const allChecks = useLiveQuery(() => db.dailyChecks.toArray());
+  const allAbsences = useLiveQuery(() => db.absences.toArray());
   const allCheckInLogs = useLiveQuery(() => db.checkInLogs.toArray());
   
   // Get date string for filtering

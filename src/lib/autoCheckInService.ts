@@ -127,7 +127,8 @@ export function shouldStopListening(
   settings: CheckInSettingsType
 ): boolean {
   if (bellType === 'morgen') {
-    return minutesElapsed > settings.morning.absenceMinutes;
+    // Stop 2 minutes after absence registration to give time for the absence logic to run
+    return minutesElapsed > settings.morning.absenceMinutes + 2;
   } else {
     return minutesElapsed > settings.regular.stopMinutes;
   }
@@ -173,11 +174,19 @@ export async function getStudentsNotCheckedIn(bellTimeId: number): Promise<numbe
 export async function registerAbsences(studentIds: number[]): Promise<void> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
+  console.log(`[ABSENCE] Registering ${studentIds.length} absences for date:`, today);
+
   const absences = studentIds.map(studentId => ({
     studentId,
     date: today,
   }));
-  
-  await db.absences.bulkAdd(absences as any);
+
+  try {
+    await db.absences.bulkAdd(absences as any);
+    console.log(`[ABSENCE] Successfully added ${absences.length} absences to database`);
+  } catch (error) {
+    console.error('[ABSENCE] Error adding absences:', error);
+    throw error;
+  }
 }

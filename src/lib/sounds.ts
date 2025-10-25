@@ -16,7 +16,7 @@
 
 export type SoundCategory = 'success' | 'error';
 
-const MAX_VARIANTS = 10;
+const MAX_VARIANTS = 4; // We have success/error -1 through -4
 
 const cache: Record<SoundCategory, string[] | null> = {
   success: null,
