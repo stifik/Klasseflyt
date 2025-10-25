@@ -27,6 +27,7 @@ const defaultSettings: AppSettings = {
     { key: 'overview', visible: true },
     { key: 'assessments', visible: true },
     { key: 'dailyCheck', visible: true },
+    { key: 'morning-display', visible: true },
     { key: 'observations', visible: true },
     { key: 'classroomTools', visible: true },
     { key: 'reports', visible: true },

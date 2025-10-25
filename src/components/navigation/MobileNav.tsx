@@ -28,6 +28,7 @@ import {
     TrendingUp,
     Store,
     ShieldCheck,
+    Monitor,
     DollarSign
 } from "lucide-react";
 import { SidebarSection } from "./SidebarSection";
@@ -75,6 +76,12 @@ export function MobileNav() {
                                 href="/daily-check"
                                 icon={ClipboardCheck}
                                 label="Daglig sjekk"
+                            />
+                            <SidebarItem
+                                href="/morning-display"
+                                icon={Monitor}
+                                label="Morgen-display"
+                                openInNewTab={true}
                             />
                             <SidebarItem
                                 href="/observations"

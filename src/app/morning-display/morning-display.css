@@ -66,6 +66,8 @@
   border-radius: 12px;
   transition: background-color 0.5s ease;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  background-color: rgba(255, 255, 255, 0.2); /* Default neutral background */
+  color: white;
 }
 
 .clock-green {
@@ -258,10 +260,10 @@
   align-items: center;
   text-align: center;
   z-index: 10;
-  max-width: 90%;
+  max-width: 85%; /* Reduced from 90% to give more margin */
   position: relative;
-  padding-top: 80px; /* Add space for clock */
-  padding-bottom: 80px; /* Increased from 60px for Dagsplan button */
+  padding-top: 100px; /* Increased from 80px for more clock spacing */
+  padding-bottom: 100px; /* Increased from 80px for more Dagsplan spacing */
 }
 
 .welcome-section::before {
@@ -270,8 +272,8 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 110%;
-  height: 110%; /* Reduced from 120% to avoid overlap */
+  width: 100%; /* Reduced from 110% to avoid overlap */
+  height: 100%; /* Reduced from 110% to avoid overlap */
   background: rgba(0, 0, 0, 0.1);
   border-radius: 30px;
   z-index: -1;

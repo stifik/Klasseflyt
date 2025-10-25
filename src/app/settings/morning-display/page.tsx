@@ -133,7 +133,7 @@ export default function MorningDisplaySettingsPage() {
           <p className="text-gray-600 mb-4">
             Dette navnet brukes i velkomstmeldinger (f.eks. &quot;God morgen, &#123;klassenavn&#125;!&quot;).
           </p>
-          <div className="flex gap-3">
+          <div className="flex gap-3" suppressHydrationWarning>
             <input
               type="text"
               value={className}

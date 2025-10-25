@@ -8,7 +8,7 @@ import {Card, CardHeader, CardTitle, CardDescription} from '@/components/ui/card
 import {
     BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed,
     Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2, Award,
-    Terminal
+    Terminal, Monitor
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
 import Link from 'next/link';
@@ -42,6 +42,14 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     icon: CalendarCheck,
     color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
     href: '/daily-check',
+  },
+  {
+    key: 'morning-display',
+    label: 'Morgen-Display',
+    description: 'Vis velkommen og innsjekk-status for elevene.',
+    icon: Monitor,
+    color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+    href: '/morning-display',
   },
   {
     key: 'observations',
@@ -172,10 +180,20 @@ const Dashboard: FC<DashboardProps> = ({settings}) => {
         {visibleTools.map((tool) => {
           if (!tool) return null;
           const Icon = tool.icon;
+          
+          // Open morning-display in new window, others use router
+          const handleClick = () => {
+            if (tool.key === 'morning-display') {
+              window.open(tool.href, '_blank');
+            } else {
+              router.push(tool.href);
+            }
+          };
+          
           return (
             <Card
               key={tool.key}
-              onClick={() => router.push(tool.href)}
+              onClick={handleClick}
               className="cursor-pointer hover:border-primary/50 hover:shadow-lg transition-all"
             >
               <CardHeader className="flex flex-row items-center gap-4">

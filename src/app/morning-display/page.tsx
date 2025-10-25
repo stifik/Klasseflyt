@@ -64,7 +64,6 @@ function MorningDisplayContent() {
       if (settings) {
         setClassName(settings.morningDisplaySettings?.className || 'klassen');
         setCheckInSettings(settings.checkInSettings?.morning);
-        console.log('[MORNING-DISPLAY] Check-in settings loaded:', settings.checkInSettings?.morning);
 
         // Load today's theme
         const theme = await getTodayTheme();
@@ -107,13 +106,8 @@ function MorningDisplayContent() {
         .and(bt => bt.type === 'morgen')
         .toArray();
 
-      console.log('[MORNING-DISPLAY] Weekday:', weekday, '(dev override:', devWeekdayOverride, ') | Bell times found:', bellTimes);
-
       if (bellTimes.length > 0) {
         setBellTime(bellTimes[0].time);
-        console.log('[MORNING-DISPLAY] Set bellTime to:', bellTimes[0].time);
-      } else {
-        console.log('[MORNING-DISPLAY] No morning bell time found for', weekday);
       }
 
       // Setup live updates listener

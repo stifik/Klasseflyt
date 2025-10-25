@@ -14,7 +14,7 @@ type ClockColor = 'green' | 'yellow' | 'orange' | 'red';
 export default function Clock({ bellTime, checkInSettings }: ClockProps) {
   const [time, setTime] = useState<Date | null>(null);
   const [displayTime, setDisplayTime] = useState<string>('');
-  const [clockColor, setClockColor] = useState<ClockColor>('green');
+  const [clockColor, setClockColor] = useState<ClockColor | null>(null); // null når ingen bellTime
 
   // Initialize time on client side only
   useEffect(() => {
@@ -51,22 +51,24 @@ export default function Clock({ bellTime, checkInSettings }: ClockProps) {
     if (time && bellTime && checkInSettings) {
       const minutesSinceBell = getMinutesSinceBellTime(bellTime);
       const color = getClockColor(minutesSinceBell, checkInSettings);
-      console.log('[CLOCK] bellTime:', bellTime, '| minutes:', minutesSinceBell, '| color:', color, '| settings:', checkInSettings);
       setClockColor(color);
+    } else {
+      // No bellTime or checkInSettings - show clock without color
+      setClockColor(null);
     }
   }, [time, bellTime, checkInSettings]);
 
   // Prevent hydration mismatch by not rendering until client-side
   if (!time) {
     return (
-      <div className={`clock clock-${clockColor}`}>
+      <div className="clock">
         --:--:--
       </div>
     );
   }
 
   return (
-    <div className={`clock clock-${clockColor}`}>
+    <div className={`clock ${clockColor ? `clock-${clockColor}` : ''}`}>
       {displayTime}
     </div>
   );

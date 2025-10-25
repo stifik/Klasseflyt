@@ -21,7 +21,8 @@ import {
     Store,
     ShieldCheck,
     DollarSign,
-    Settings as SettingsIcon
+    Settings as SettingsIcon,
+    Monitor
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarSection } from "./SidebarSection";
@@ -98,6 +99,13 @@ export function SidebarNav({ className, onCollapseChange }: SidebarNavProps) {
                             icon={ClipboardCheck}
                             label="Daglig sjekk"
                             isCollapsed={isCollapsed}
+                        />
+                        <SidebarItem
+                            href="/morning-display"
+                            icon={Monitor}
+                            label="Morgen-display"
+                            isCollapsed={isCollapsed}
+                            openInNewTab={true}
                         />
                         <SidebarItem
                             href="/observations"
