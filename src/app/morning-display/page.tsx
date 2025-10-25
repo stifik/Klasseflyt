@@ -65,25 +65,13 @@ export default function MorningDisplayPage() {
         setClassName(settings.morningDisplaySettings?.className || 'klassen');
         setCheckInSettings(settings.checkInSettings?.morning);
 
-        // Load theme
-        const theme = getTodayTheme(
-          settings.morningDisplaySettings?.lastThemeId,
-          settings.morningDisplaySettings?.lastThemeDate
-        );
-        setThemeGradient(getThemeGradient(theme));
-
-        // Save theme for today
-        const today = new Date().toISOString().split('T')[0];
-        if (settings.morningDisplaySettings?.lastThemeDate !== today) {
-          await db.settings.update('userSettings', {
-            morningDisplaySettings: {
-              className: settings.morningDisplaySettings?.className || 'klassen',
-              messageRotationMode: settings.morningDisplaySettings?.messageRotationMode || 'daily',
-              instructionRotationMode: settings.morningDisplaySettings?.instructionRotationMode || 'daily',
-              lastThemeId: theme.id,
-              lastThemeDate: today,
-            },
-          });
+        // Load today's theme
+        const theme = await getTodayTheme();
+        if (theme) {
+          setThemeGradient(getThemeGradient(theme));
+        } else {
+          // Fallback gradient if no themes
+          setThemeGradient('linear-gradient(45deg, #667eea, #764ba2, #f093fb, #667eea)');
         }
       }
 

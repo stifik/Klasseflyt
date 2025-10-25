@@ -78,6 +78,13 @@ export default function SettingsRoute() {
                 Meldinger og klassenavn
               </Link>
               <Link
+                href="/settings/themes"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition w-fit"
+              >
+                🎨
+                Temaer og bakgrunner
+              </Link>
+              <Link
                 href="/settings/weekly-schedule"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition w-fit"
               >

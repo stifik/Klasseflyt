@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings, WelcomeMessage, InstructionMessage, ScheduleTemplate, ThemeHistory, MorningDisplaySettings, LessonPlan } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings, WelcomeMessage, InstructionMessage, ScheduleTemplate, ThemeHistory, MorningDisplaySettings, LessonPlan, Theme, UserThemePreference } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -50,6 +50,8 @@ export class MySubClassedDexie extends Dexie {
     welcomeMessages!: Table<WelcomeMessage, number>;
     instructionMessages!: Table<InstructionMessage, number>;
     scheduleTemplates!: Table<ScheduleTemplate, number>;
+    themes!: Table<Theme, number>;
+    userThemePreferences!: Table<UserThemePreference, number>;
     themeHistory!: Table<ThemeHistory, number>;
     lessonPlans!: Table<LessonPlan, number>;
 
@@ -478,6 +480,45 @@ export class MySubClassedDexie extends Dexie {
         // Version 35: Add lesson plans table
         this.version(35).stores({
             lessonPlans: '++id, [templateId+sessionId+date], templateId, sessionId, date, subject',
+        });
+
+        // Version 36: Add themes and userThemePreferences tables
+        this.version(36).stores({
+            themes: '++id, name, type, isSystem',
+            userThemePreferences: '++id, themeId, isActive',
+        }).upgrade(async (tx) => {
+            // Seed predefined themes
+            const predefinedThemes = [
+                { name: 'Ocean Breeze', type: 'predefined', colors: ['#667eea', '#764ba2', '#f093fb'], isSystem: true },
+                { name: 'Sunset', type: 'predefined', colors: ['#f093fb', '#f5576c', '#fa709a'], isSystem: true },
+                { name: 'Forest', type: 'predefined', colors: ['#4facfe', '#00f2fe', '#43e97b'], isSystem: true },
+                { name: 'Lavender', type: 'predefined', colors: ['#c471f5', '#fa71cd', '#e0c3fc'], isSystem: true },
+                { name: 'Peach', type: 'predefined', colors: ['#fa709a', '#fee140', '#ffecd2'], isSystem: true },
+                { name: 'Mint', type: 'predefined', colors: ['#30cfd0', '#330867', '#667eea'], isSystem: true },
+                { name: 'Fire', type: 'predefined', colors: ['#ff9a56', '#ff6a88', '#ff7eb3'], isSystem: true },
+                { name: 'Sky', type: 'predefined', colors: ['#a1c4fd', '#c2e9fb', '#e0f9ff'], isSystem: true },
+                { name: 'Rose', type: 'predefined', colors: ['#ffecd2', '#fcb69f', '#ff9a9e'], isSystem: true },
+                { name: 'Northern Lights', type: 'predefined', colors: ['#00c6ff', '#0072ff', '#667eea'], isSystem: true },
+                { name: 'Tropical', type: 'predefined', colors: ['#f857a6', '#ff5858', '#feca57'], isSystem: true },
+                { name: 'Emerald', type: 'predefined', colors: ['#11998e', '#38ef7d', '#a8ff78'], isSystem: true },
+                { name: 'Purple Dream', type: 'predefined', colors: ['#9d50bb', '#6e48aa', '#a8c0ff'], isSystem: true },
+                { name: 'Coral', type: 'predefined', colors: ['#ff6b6b', '#feca57', '#ee5a6f'], isSystem: true },
+                { name: 'Arctic', type: 'predefined', colors: ['#00d2ff', '#3a7bd5', '#00d2ff'], isSystem: true },
+            ];
+
+            // Add all predefined themes
+            for (const theme of predefinedThemes) {
+                const themeId = await tx.table('themes').add({
+                    ...theme,
+                    createdAt: new Date(),
+                });
+
+                // Activate all predefined themes by default
+                await tx.table('userThemePreferences').add({
+                    themeId,
+                    isActive: true,
+                });
+            }
         });
 
         this.on('populate', async () => {

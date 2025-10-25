@@ -173,6 +173,21 @@ export type LessonPlan = {
   updatedAt?: Date;
 };
 
+export type Theme = {
+  id?: number;
+  name: string;
+  type: 'predefined' | 'custom';
+  colors: string[]; // Array of hex colors
+  isSystem: boolean; // true for predefined themes
+  createdAt?: Date;
+};
+
+export type UserThemePreference = {
+  id?: number;
+  themeId: number;
+  isActive: boolean; // Whether this theme is active for rotation
+};
+
 export type ThemeHistory = {
   id?: number;
   themeId: number;
