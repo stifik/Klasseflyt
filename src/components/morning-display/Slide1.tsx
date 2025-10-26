@@ -19,6 +19,7 @@ type Slide1Props = {
   className: string;
   bellTime?: string;
   checkInSettings?: CheckInSettings['morning'];
+  onNavigateToDagsplan: () => void;
 };
 
 export default function Slide1({
@@ -28,6 +29,7 @@ export default function Slide1({
   className,
   bellTime,
   checkInSettings,
+  onNavigateToDagsplan,
 }: Slide1Props) {
   return (
     <div className="slide slide-1">
@@ -35,16 +37,33 @@ export default function Slide1({
         <StudentList students={students} />
       </div>
 
-      <div className="right-column">
-        <div className="clock-container">
-          <Clock bellTime={bellTime} checkInSettings={checkInSettings} />
+      <div className="right-side">
+        {/* HEADER SEKSJON */}
+        <div className="welcome-header">
+          <div className="clock-display-wrapper">
+            <Clock bellTime={bellTime} checkInSettings={checkInSettings} />
+          </div>
+          <button 
+            className="dagsplan-btn"
+            onClick={onNavigateToDagsplan}
+          >
+            Dagsplan →
+          </button>
         </div>
 
-        <WelcomeSection
-          message={welcomeMessage}
-          instructions={instructions}
-          className={className}
-        />
+        {/* MAIN SEKSJON (tekst) */}
+        <div className="welcome-main">
+          <WelcomeSection
+            message={welcomeMessage}
+            instructions={instructions}
+            className={className}
+          />
+        </div>
+
+        {/* FOOTER SEKSJON (tom for nå) */}
+        <div className="welcome-footer">
+          {/* Tom for nå - plass for fremtidige knapper */}
+        </div>
       </div>
     </div>
   );

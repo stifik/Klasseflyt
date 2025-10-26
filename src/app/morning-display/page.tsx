@@ -191,20 +191,15 @@ function MorningDisplayContent() {
       }}
     >
       {currentSlide === 1 && (
-        <>
-          <Slide1
-            students={students}
-            welcomeMessage={welcomeMessage}
-            instructions={instructions}
-            className={className}
-            bellTime={bellTime}
-            checkInSettings={checkInSettings}
-          />
-          <SlideControls
-            currentSlide={currentSlide}
-            onSlideChange={setCurrentSlide}
-          />
-        </>
+        <Slide1
+          students={students}
+          welcomeMessage={welcomeMessage}
+          instructions={instructions}
+          className={className}
+          bellTime={bellTime}
+          checkInSettings={checkInSettings}
+          onNavigateToDagsplan={() => setCurrentSlide(2)}
+        />
       )}
 
       {currentSlide === 2 && (

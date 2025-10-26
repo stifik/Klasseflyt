@@ -419,14 +419,10 @@ const Terminal: React.FC = () => {
       </div>
     );
   } else if (mode === 'pos') {
-    // POS mode - vis belønninger
+    // POS mode - vis belønninger (uten ekstra tittellinje for bedre vertikal plass)
     content = (
       <div className="max-w-2xl mx-auto">
-        <div className="flex flex-col gap-8">
-          <div className="text-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">🛒 Butikk</h2>
-            <p className="text-gray-600 dark:text-gray-400">Velg en belønning</p>
-          </div>
+        <div className="flex flex-col gap-6">
           <PosView rewards={rewards} onSelectReward={handleSelectReward} />
           <button
             className="w-full py-3 px-6 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-semibold text-lg shadow-md transition-colors"
@@ -438,14 +434,10 @@ const Terminal: React.FC = () => {
       </div>
     );
   } else if (mode === 'pod') {
-    // POD mode - vis handlinger
+    // POD mode - vis handlinger (uten ekstra tittellinje for bedre vertikal plass)
     content = (
       <div className="max-w-2xl mx-auto">
-        <div className="flex flex-col gap-8">
-          <div className="text-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">⭐ Handlinger</h2>
-            <p className="text-gray-600 dark:text-gray-400">Velg en positiv handling</p>
-          </div>
+        <div className="flex flex-col gap-6">
           <PodView onSelectAction={handleSelectAction} />
           <button
             className="w-full py-3 px-6 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-semibold text-lg shadow-md transition-colors"
