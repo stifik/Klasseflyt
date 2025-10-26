@@ -28,6 +28,7 @@
   height: 100%;
   display: flex;
   overflow: hidden;
+  position: relative;
 }
 
 /* Two-column layout for Slide 1 */
@@ -422,8 +423,9 @@
 
 .schedule-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: center; /* center the title while nav buttons are absolutely positioned */
+  position: relative;
   padding: 25px 30px;
   background-color: rgba(0, 0, 0, 0.3);
   border-radius: 15px;
@@ -446,6 +448,31 @@
   transition: transform 0.2s;
   font-weight: 600;
 }
+
+/* Navigation arrows inside the header */
+.schedule-nav-left,
+.schedule-nav-right {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: clamp(1.2rem, 2.2vw, 2rem);
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+
+.schedule-nav-left:hover,
+.schedule-nav-right:hover {
+  background: rgba(255,255,255,0.06);
+  transform: translateY(-50%) scale(1.05);
+}
+
+.schedule-nav-left { left: 18px; }
+.schedule-nav-right { right: 18px; }
 
 .schedule-controls button:hover {
   transform: scale(1.05);
@@ -473,7 +500,8 @@
 
 .schedule-content {
   flex: 1;
-  overflow-y: auto;
+  /* Disable scrolling: layout must fit within viewport. Columns will stretch items to fit. */
+  overflow: hidden;
   padding: 20px;
 }
 
@@ -497,9 +525,50 @@
 }
 
 .schedule-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+  width: 100%;
+}
+
+.schedule-grid {
+  display: grid;
+  gap: 18px;
+  width: 100%;
+  align-items: start;
+}
+
+/* Ensure columns get equal fractional width (prevents a single visible card from
+   appearing to stretch across the whole container while other columns are empty) */
+.schedule-grid {
+  grid-auto-columns: 1fr;
+}
+
+.schedule-list.edit-mode {
+  display: block;
+}
+
+/* Discreet lock button placed in the lower-right of the schedule slide */
+.schedule-lock {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 140;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent; /* no background, very discreet */
+  color: rgba(255,255,255,0.95);
+  border: none;
+  border-radius: 10px;
+  box-shadow: none;
+  opacity: 0.6;
+  cursor: pointer;
+  transition: opacity 160ms ease, transform 120ms ease;
+}
+
+.schedule-lock:hover {
+  opacity: 1;
+  transform: translateY(-2px);
 }
 
 .empty-schedule {
@@ -516,32 +585,54 @@
 }
 
 .schedule-session {
-  padding: 20px 30px;
+  display: block;
+  width: 100%;
+  padding: 10px 16px; /* reduced vertical space so more fits in viewport */
   background-color: rgba(255, 255, 255, 0.95);
   border-radius: 12px;
-  font-size: clamp(1.2rem, 1.8vw, 1.8rem);
+  font-size: clamp(1rem, 1.6vw, 1.25rem);
   color: #333;
+  min-height: 0;
+  /* Use the measured tallest session height when present so all cards match.
+     This reduces visual jank and makes the layout more consistent. */
+  height: var(--session-height, auto);
+  overflow: hidden;
+  transition: height 180ms ease; /* avoid width/transform transitions that look like stretching */
+}
+
+.session-display {
+  height: 100%;
   display: flex;
-  align-items: center;
-  gap: 15px;
+  flex-direction: column;
+  justify-content: flex-start; /* keep header and topic close together */
+  gap: 6px;
+}
+
+.session-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px; /* reduce gap so subject sits closer to time */
 }
 
 .session-time {
   font-weight: bold;
   color: #1976d2;
-}
-
-.session-separator {
-  color: #999;
+  min-width: 80px;
 }
 
 .session-subject {
-  font-weight: 600;
+  font-weight: 700;
+  color: #222;
 }
 
 .session-topic {
+  margin-top: 6px; /* smaller gap to subject */
   font-style: italic;
   color: #666;
+  opacity: 0.95;
+  font-size: 0.95em;
+  /* Ensure topic text wraps within the session card */
+  word-break: break-word;
 }
 
 .session-edit-row {
