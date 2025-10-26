@@ -81,17 +81,36 @@ export default function MorningDisplaySettingsPage() {
   };
 
   const handleSaveRotationMode = async () => {
-    if (settings && settings.morningDisplaySettings) {
-      await db.settings.update('userSettings', {
-        morningDisplaySettings: {
-          className: settings.morningDisplaySettings.className,
+    try {
+      const current = await db.settings.get('userSettings');
+      if (current) {
+        const updatedMorning = {
+          className: current.morningDisplaySettings?.className ?? className,
           messageRotationMode,
           instructionRotationMode,
-          lastThemeId: settings.morningDisplaySettings.lastThemeId,
-          lastThemeDate: settings.morningDisplaySettings.lastThemeDate,
-        },
-      });
+          lastThemeId: current.morningDisplaySettings?.lastThemeId,
+          lastThemeDate: current.morningDisplaySettings?.lastThemeDate,
+        };
+
+        await db.settings.update('userSettings', {
+          morningDisplaySettings: updatedMorning,
+        });
+      } else {
+        // Edge case: create minimal settings row
+        await db.settings.put({
+          id: 'userSettings',
+          morningDisplaySettings: {
+            className,
+            messageRotationMode,
+            instructionRotationMode,
+          },
+        } as any);
+      }
+
       alert('Rotasjonsinnstillinger lagret!');
+    } catch (error) {
+      console.error('Error saving rotation mode:', error);
+      alert('Feil ved lagring av rotasjonsinnstillinger');
     }
   };
 
