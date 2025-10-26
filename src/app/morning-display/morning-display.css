@@ -608,6 +608,43 @@
   backdrop-filter: blur(10px);
 }
 
+/* When the slide-controls are rendered next to Slide 2 (.slide-2 + .slide-controls),
+   position the control ("← Innsjekking") near the top-left and reuse the dagsplan
+   button styling where appropriate. We target sibling selectors because SlideControls
+   is rendered as a sibling of the Slide2 element in the DOM. */
+.slide-2 + .slide-controls,
+.slide-2 ~ .slide-controls {
+  position: absolute;
+  /* Place in the lower-left (footer) so the control appears in the bottom-left corner when Slide 2 is active */
+  bottom: 24px;
+  left: 24px;
+  top: auto;
+  right: auto;
+  z-index: 120;
+}
+
+.slide-2 + .slide-controls .dagsplan-btn,
+.slide-2 ~ .slide-controls .dagsplan-btn {
+  /* Reuse the dagsplan visual style but slightly smaller to fit footer spacing */
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.28);
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+}
+
+.slide-2 + .slide-controls .dagsplan-btn:hover,
+.slide-2 ~ .slide-controls .dagsplan-btn:hover {
+  /* Move slightly left on hover to indicate interactivity in the bottom-left position */
+  transform: translateX(-4px);
+  background: rgba(255,255,255,0.36);
+}
+
 .slide-button:hover {
   opacity: 1;
   transform: scale(1.05);

@@ -214,11 +214,11 @@ export default function WeeklyPlannerPage() {
                         className={`session-card ${hasLessonPlan ? 'has-plan' : ''}`}
                         onClick={() => handleSessionClick(session, template.id!, dayData.date, lessonPlan)}
                       >
-                        <div className="session-time">{session.time}</div>
+                        <div className="session-time">{lessonPlan?.time || session.time}</div>
                         <div className="session-info">
-                          <div className="session-subject">{session.subject}</div>
-                          {session.topic && (
-                            <div className="session-topic">{session.topic}</div>
+                          <div className="session-subject">{lessonPlan?.subject || session.subject}</div>
+                          { (lessonPlan?.topic || session.topic) && (
+                            <div className="session-topic">{lessonPlan?.topic || session.topic}</div>
                           )}
                         </div>
                         {hasLessonPlan && (

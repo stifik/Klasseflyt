@@ -20,6 +20,9 @@ export default function LessonPlanModal({
   onClose,
 }: LessonPlanModalProps) {
   const [date, setDate] = useState(initialDate);
+  const [time, setTime] = useState<string>(existingPlan?.time || session.time);
+  const [subjectOverride, setSubjectOverride] = useState<string>(existingPlan?.subject || session.subject);
+  const [topicOverride, setTopicOverride] = useState<string>(existingPlan?.topic || session.topic);
   const [objectives, setObjectives] = useState<string[]>([]);
   const [activities, setActivities] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
@@ -32,6 +35,9 @@ export default function LessonPlanModal({
       setObjectives(existingPlan.objectives || []);
       setActivities(existingPlan.activities || []);
       setNotes(existingPlan.notes || '');
+      setTime(existingPlan.time || session.time);
+      setSubjectOverride(existingPlan.subject || session.subject);
+      setTopicOverride(existingPlan.topic || session.topic);
     }
     loadPreviousPlans();
   }, [existingPlan]);
@@ -55,9 +61,9 @@ export default function LessonPlanModal({
         sessionId: session.id,
         templateId,
         date,
-        subject: session.subject,
-        topic: session.topic,
-        time: session.time,
+        subject: subjectOverride,
+        topic: topicOverride,
+        time: time,
         objectives,
         activities,
         notes,
@@ -136,8 +142,22 @@ export default function LessonPlanModal({
       <div className="modal-content lesson-plan-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div>
-            <h2>{session.subject} - {session.topic}</h2>
-            <p className="session-time">{session.time}</p>
+            <h2>
+              <input
+                value={subjectOverride}
+                onChange={(e) => setSubjectOverride(e.target.value)}
+                className="inline-subject-input"
+                aria-label="Fag"
+              />
+              {" - "}
+              <input
+                value={topicOverride}
+                onChange={(e) => setTopicOverride(e.target.value)}
+                className="inline-topic-input"
+                aria-label="Tema"
+              />
+            </h2>
+            <p className="session-time">{time}</p>
           </div>
           <button className="close-btn" onClick={onClose}>
             ✕
@@ -153,6 +173,15 @@ export default function LessonPlanModal({
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 className="date-input"
+              />
+            </label>
+            <label style={{ marginLeft: 16 }}>
+              <strong>Tid:</strong>
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="time-input"
               />
             </label>
             <span className="date-display">{formatDate(date)}</span>
