@@ -177,12 +177,15 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
 
   const todaysCheckInLogs = useMemo(() => {
     if (!allCheckInLogs || !activeCheckIn) return [];
+    
+    // Use noon-based date to match the storage format
+    const selectedDate = new Date(date);
+    const selectedDateAtNoon = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 12, 0, 0, 0);
+    const selectedDateString = selectedDateAtNoon.toISOString().split('T')[0];
+    
     const filtered = allCheckInLogs.filter(log => {
-      const logDate = new Date(log.date);
-      logDate.setHours(0, 0, 0, 0);
-      const selectedDate = new Date(date);
-      selectedDate.setHours(0, 0, 0, 0);
-      const dateMatch = logDate.getTime() === selectedDate.getTime();
+      const logDateString = new Date(log.date).toISOString().split('T')[0];
+      const dateMatch = logDateString === selectedDateString;
       const bellMatch = log.bellTimeId === activeCheckIn.bellTime.id;
       return dateMatch && bellMatch;
     });
