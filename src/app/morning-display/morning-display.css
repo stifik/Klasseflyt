@@ -260,10 +260,10 @@
   align-items: center;
   text-align: center;
   z-index: 10;
-  max-width: 85%; /* Reduced from 90% to give more margin */
+  max-width: 80%; /* Reduced from 85% for more side margin */
   position: relative;
-  padding-top: 100px; /* Increased from 80px for more clock spacing */
-  padding-bottom: 100px; /* Increased from 80px for more Dagsplan spacing */
+  padding-top: 120px; /* Increased from 100px for more clock spacing */
+  padding-bottom: 120px; /* Increased from 100px for more Dagsplan spacing */
 }
 
 .welcome-section::before {
@@ -272,8 +272,8 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 100%; /* Reduced from 110% to avoid overlap */
-  height: 100%; /* Reduced from 110% to avoid overlap */
+  width: calc(100% + 60px); /* Add 30px padding on each side */
+  height: calc(100% + 40px); /* Add 20px padding top/bottom */
   background: rgba(0, 0, 0, 0.1);
   border-radius: 30px;
   z-index: -1;
@@ -281,20 +281,24 @@
 }
 
 .welcome-message {
-  font-size: 3.8rem; /* Reduced from 4.5rem */
+  font-size: clamp(2.5rem, 5vw, 3.8rem); /* Dynamic size: min 2.5rem, max 3.8rem, scales with viewport */
   font-weight: 800;
-  margin-bottom: 30px; /* Reduced from 40px */
+  margin-bottom: 30px;
   color: white;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 0, 0, 0.2);
   line-height: 1.2;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .instructions {
-  font-size: 1.9rem; /* Reduced from 2.2rem */
-  line-height: 1.5; /* Reduced from 1.6 for tighter spacing */
+  font-size: clamp(1.2rem, 3vw, 1.9rem); /* Dynamic size: min 1.2rem, max 1.9rem, scales with viewport */
+  line-height: 1.5;
   color: white;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
-  max-width: 750px; /* Reduced from 800px */
+  max-width: 90%; /* Allow text to use more width */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Slide 2 - Schedule */
