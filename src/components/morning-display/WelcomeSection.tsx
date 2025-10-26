@@ -96,10 +96,14 @@ export default function WelcomeSection({
   };
 
   return (
-    <p className="welcome-message" ref={messageRef} id="welcomeMessage">
-      {renderWithLineBreaks(processedMessage)}
-      <br />
-      <span className="instructions-inline">{renderWithLineBreaks(processedInstructions)}</span>
-    </p>
+    <div className="welcome-message" ref={messageRef} id="welcomeMessage">
+      <div className="welcome-main-text">
+        {renderWithLineBreaks(processedMessage)}
+      </div>
+
+      <div className="welcome-instructions">
+        <span className="instructions-inline">{renderWithLineBreaks(processedInstructions)}</span>
+      </div>
+    </div>
   );
 }

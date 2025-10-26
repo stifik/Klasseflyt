@@ -98,21 +98,55 @@
   text-align: center;
   color: white;
   line-height: 1.6;
-  max-width: 90%;
+  /* Allow the panel to grow when there is room, but cap to a comfortable reading width */
+  /* Wider: use most of the right-side column so lines can be longer */
+  width: clamp(640px, 92%, 1600px);
+  max-width: 98%;
+  /* Use more vertical space on large viewports so text can be bigger and not wrap too early */
+  min-height: 56vh;
+  max-height: 88vh;
+  overflow-y: auto;
   /* Font-size settes dynamisk via JavaScript/React */
   transition: font-size 0.3s ease, background-color 0.3s ease, padding 0.2s ease;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 0, 0, 0.2);
   word-wrap: break-word;
   overflow-wrap: break-word;
   font-weight: 700;
-
   /* Translucent panel behind the text */
   background: rgba(0, 0, 0, 0.25);
-  padding: 1.5rem 2rem;
-  border-radius: 16px;
+  padding: 3rem 3.5rem;
+  border-radius: 18px;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+/* Layout: anchor instructions to bottom and keep main text at top */
+.welcome-message {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.welcome-main-text {
+  /* allow the main text to take available space */
+  flex: 1 1 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.welcome-instructions {
+  flex: 0 0 auto;
+  margin-top: 1.2rem;
+}
+
+.instructions-inline {
+  display: block;
+  margin-top: 0;
+  font-size: 0.9em; /* a bit larger than before but still smaller than main */
+  opacity: 0.95;
+  font-weight: 500;
 }
 
 .instructions-inline {
