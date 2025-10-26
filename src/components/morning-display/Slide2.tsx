@@ -59,25 +59,36 @@ export default function Slide2({ showAllSessions = false }: Slide2Props) {
 
     // Use rAF to wait for layout to stabilise after render
     const raf = requestAnimationFrame(() => {
-      const items = Array.from(grid.querySelectorAll<HTMLElement>('.schedule-session'))
-        // only consider visible items
-        .filter(el => {
-          const style = window.getComputedStyle(el);
-          return style.display !== 'none';
-        });
+      const items = Array.from(grid.querySelectorAll<HTMLElement>('.schedule-session'));
 
       if (items.length === 0) {
         grid.style.removeProperty('--session-height');
         return;
       }
 
-      const max = items.reduce((m, el) => Math.max(m, el.offsetHeight), 0);
-      // add a tiny padding to avoid clipping text due to rounding
-      grid.style.setProperty('--session-height', `${max + 4}px`);
+      // Temporarily show all items to measure them (but keep them invisible)
+      const originalDisplays = items.map(el => el.style.display);
+      const originalVisibilities = items.map(el => el.style.visibility);
+      items.forEach(el => { 
+        el.style.display = 'block'; 
+        el.style.visibility = 'hidden'; // Hide visually but still measure
+      });
+
+      // Measure after forcing all to be visible
+      requestAnimationFrame(() => {
+        const max = items.reduce((m, el) => Math.max(m, el.offsetHeight), 0);
+        // Restore original display and visibility states
+        items.forEach((el, idx) => { 
+          el.style.display = originalDisplays[idx]; 
+          el.style.visibility = originalVisibilities[idx];
+        });
+        // Set the max height (add padding to avoid clipping)
+        grid.style.setProperty('--session-height', `${max + 4}px`);
+      });
     });
 
     return () => cancelAnimationFrame(raf);
-  }, [sessions, visibleSessionCount, isEditMode]);
+  }, [sessions, isEditMode]);
 
   const getDayOfWeekForDate = (date: Date): DayOfWeek | null => {
     const days: (DayOfWeek | null)[] = [null, 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', null];
@@ -89,6 +100,7 @@ export default function Slide2({ showAllSessions = false }: Slide2Props) {
     setIsLoading(true);
     try {
       const dateToUse = displayedDate;
+      const isoDate = dateToUse.toISOString().split('T')[0];
       const dayOfWeek = getDayOfWeekForDate(dateToUse);
 
       if (!dayOfWeek) {
@@ -107,7 +119,24 @@ export default function Slide2({ showAllSessions = false }: Slide2Props) {
 
       if (template) {
         setTemplateId(template.id);
-        const sessionsList = template.sessions || [];
+        const baseSessions = template.sessions || [];
+
+        // Load any lessonPlan overrides for this date and apply them to the base sessions
+        const plansForDate = await db.lessonPlans.where('date').equals(isoDate).toArray();
+        const plansMap = new Map<number, any>();
+        for (const p of plansForDate) plansMap.set(p.sessionId, p);
+
+        const sessionsList = baseSessions.map(s => {
+          const override = plansMap.get(s.id);
+          if (!override) return s;
+          return {
+            ...s,
+            subject: override.subject || s.subject,
+            topic: override.topic || s.topic,
+            time: override.time || s.time,
+          } as ScheduleSession;
+        });
+
         setSessions(sessionsList);
         // If showAllSessions is true, show all immediately
         setVisibleSessionCount(showAllSessions ? sessionsList.length : 0);
@@ -122,6 +151,66 @@ export default function Slide2({ showAllSessions = false }: Slide2Props) {
       setIsLoading(false);
     }
   };
+
+  // Listen for external changes to lesson plans (saved via weekly-planner or lesson page)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      try {
+        const custom = e as CustomEvent;
+        const updatedDate = custom?.detail?.date;
+        if (!updatedDate) {
+          // No date specified - reload anyway
+          loadTodaySchedule();
+          return;
+        }
+        const d = new Date(updatedDate);
+        // If the updated date matches the currently displayed date, reload
+        const currentIso = displayedDate.toISOString().split('T')[0];
+        const updatedIso = d.toISOString().split('T')[0];
+        if (currentIso === updatedIso) {
+          loadTodaySchedule();
+        }
+      } catch (err) {
+        // best-effort: reload
+        loadTodaySchedule();
+      }
+    };
+
+    window.addEventListener('lessonPlansUpdated', handler as EventListener);
+
+    // Also listen on BroadcastChannel for cross-tab updates
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        bc = new BroadcastChannel('klasseflyt-lessonplans');
+        bc.onmessage = (msg) => {
+          try {
+            const data = msg?.data;
+            if (data?.type === 'lessonPlansUpdated') {
+              const updatedDate = data.date;
+              if (!updatedDate) {
+                loadTodaySchedule();
+                return;
+              }
+              const d = new Date(updatedDate);
+              const currentIso = displayedDate.toISOString().split('T')[0];
+              const updatedIso = d.toISOString().split('T')[0];
+              if (currentIso === updatedIso) loadTodaySchedule();
+            }
+          } catch (err) {
+            loadTodaySchedule();
+          }
+        };
+      }
+    } catch (err) {
+      // ignore
+    }
+
+    return () => {
+      window.removeEventListener('lessonPlansUpdated', handler as EventListener);
+      try { if (bc) bc.close(); } catch (e) {/* ignore */}
+    };
+  }, [displayedDate]);
 
   const changeDisplayedDate = (deltaDays: number) => {
     setDisplayedDate(prev => {
@@ -224,8 +313,43 @@ export default function Slide2({ showAllSessions = false }: Slide2Props) {
   const handleSessionClick = (e: React.MouseEvent, sessionId: number) => {
     e.stopPropagation(); // Prevent slide click
     if (!isEditMode) {
-      router.push(`/morning-display/lesson/${sessionId}`);
+      // Include the currently displayed date so the lesson page looks up the
+      // correct day's template instead of always using the real current date.
+      const dateParam = displayedDate.toISOString().split('T')[0];
+      router.push(`/morning-display/lesson/${sessionId}?date=${dateParam}`);
     }
+  };
+
+  // Normalize various time string formats to 24-hour "HH:MM"
+  const formatTo24 = (t?: string) => {
+    if (!t) return '';
+    const s = t.trim();
+    // If string already like HH:MM (24h), return first 5 chars
+    const hhmm = s.match(/^(\d{1,2}):(\d{2})/);
+    if (hhmm && !/[AaPp][Mm]/.test(s)) {
+      const h = String(Number(hhmm[1])).padStart(2, '0');
+      const m = hhmm[2];
+      return `${h}:${m}`;
+    }
+    // Handle AM/PM forms
+    const ampm = s.match(/^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/);
+    if (ampm) {
+      let h = Number(ampm[1]);
+      const m = ampm[2];
+      const mer = ampm[3].toUpperCase();
+      if (mer === 'AM') {
+        if (h === 12) h = 0;
+      } else {
+        if (h !== 12) h = h + 12;
+      }
+      return `${String(h).padStart(2, '0')}:${m}`;
+    }
+    // Fallback: try Date parsing
+    const parsed = new Date(`1970-01-01T${s}`);
+    if (!isNaN(parsed.getTime())) {
+      return `${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`;
+    }
+    return s;
   };
 
   const isWeekend = getDayOfWeekForDate(displayedDate) === null;
@@ -277,7 +401,7 @@ export default function Slide2({ showAllSessions = false }: Slide2Props) {
   }
 
   return (
-    <div className="slide slide-2" onClick={handleSlideClick} style={{ cursor: !isEditMode && visibleSessionCount < sessions.length ? 'pointer' : 'default' }}>
+    <div className={`slide slide-2 ${isEditMode ? 'editing' : ''}`} onClick={handleSlideClick} style={{ cursor: !isEditMode && visibleSessionCount < sessions.length ? 'pointer' : 'default' }}>
       <div className="schedule-header">
         <button
           className="schedule-nav-left"
@@ -349,20 +473,36 @@ export default function Slide2({ showAllSessions = false }: Slide2Props) {
           ) : (
             (() => {
               const total = sessions.length;
-              // Determine number of columns: use 3 columns for larger lists to avoid
-              // overflowing the viewport. Use 3 when there are more than 6 items,
-              // 2 for moderate lists (5-6), otherwise 1.
-              const cols = total > 6 ? 3 : total >= 5 ? 2 : 1;
-              const rows = Math.ceil(total / cols);
-
-              const gridStyle: React.CSSProperties = {
+              
+              // In edit mode: use single column (CSS handles this)
+              // In display mode: use 3 columns for larger lists to avoid overflowing the viewport
+              let gridStyle: React.CSSProperties = {
                 display: 'grid',
                 gap: '18px',
-                gridAutoFlow: 'column',
-                gridAutoColumns: '1fr', // ensure columns have equal width and prevent odd stretching
-                gridTemplateRows: `repeat(${rows}, auto)`,
                 width: '100%'
               };
+
+              if (!isEditMode) {
+                // Determine number of columns: use 3 when there are more than 6 items,
+                // 2 for moderate lists (5-6), otherwise 1.
+                const cols = total > 6 ? 3 : total >= 5 ? 2 : 1;
+                const rows = Math.ceil(total / cols);
+                
+                gridStyle = {
+                  ...gridStyle,
+                  gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                  gridAutoFlow: 'column',
+                  gridTemplateRows: `repeat(${rows}, auto)`,
+                };
+              } else {
+                // Edit mode: single column (also enforced by CSS)
+                gridStyle = {
+                  ...gridStyle,
+                  gridAutoFlow: 'row',
+                  gridTemplateColumns: '1fr',
+                  gap: '12px'
+                };
+              }
 
               return (
                 <div ref={gridRef} className="schedule-grid" style={gridStyle}>
@@ -380,7 +520,7 @@ export default function Slide2({ showAllSessions = false }: Slide2Props) {
                             onClick={(e) => handleSessionClick(e, session.id)}
                           >
                             <div className="session-header">
-                              <span className="session-time">{session.time}</span>
+                              <span className="session-time">{formatTo24(session.time)}</span>
                               <span className="session-subject">{session.subject}</span>
                             </div>
                             {session.topic && (

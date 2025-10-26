@@ -43,6 +43,43 @@ export default function WeeklyPlannerPage() {
     loadWeekData();
   }, [currentWeekOffset]);
 
+  // Listen for external updates to lesson plans (from lesson page or other modals)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      try {
+        // Could inspect e.detail.date to decide if reload is necessary,
+        // but for simplicity refresh the week view whenever lessonPlans change.
+        loadWeekData();
+      } catch (err) {
+        loadWeekData();
+      }
+    };
+
+    window.addEventListener('lessonPlansUpdated', handler as EventListener);
+
+    // Also listen via BroadcastChannel for cross-tab updates
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        bc = new BroadcastChannel('klasseflyt-lessonplans');
+        bc.onmessage = (msg) => {
+          try {
+            if (msg?.data?.type === 'lessonPlansUpdated') loadWeekData();
+          } catch (err) {
+            loadWeekData();
+          }
+        };
+      }
+    } catch (err) {
+      // ignore
+    }
+
+    return () => {
+      window.removeEventListener('lessonPlansUpdated', handler as EventListener);
+      try { if (bc) bc.close(); } catch (e) {/* ignore */}
+    };
+  }, [currentWeekOffset]);
+
   const getWeekDates = (offset: number = 0) => {
     const today = new Date();
     const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
@@ -58,6 +95,28 @@ export default function WeeklyPlannerPage() {
     friday.setDate(monday.getDate() + 4);
 
     return { monday, friday };
+  };
+
+  const normalizeToHHMM = (t?: string) => {
+    if (!t) return '';
+    const s = t.trim();
+    const ampm = s.match(/^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/);
+    if (ampm) {
+      let h = Number(ampm[1]);
+      const m = ampm[2];
+      const mer = ampm[3].toUpperCase();
+      if (mer === 'AM') {
+        if (h === 12) h = 0;
+      } else {
+        if (h !== 12) h = h + 12;
+      }
+      return `${String(h).padStart(2, '0')}:${m}`;
+    }
+    const hhmm = s.match(/^(\d{1,2}):(\d{2})/);
+    if (hhmm) {
+      return `${String(Number(hhmm[1])).padStart(2, '0')}:${hhmm[2]}`;
+    }
+    return s;
   };
 
   const getWeekNumber = (date: Date): number => {
@@ -214,7 +273,7 @@ export default function WeeklyPlannerPage() {
                         className={`session-card ${hasLessonPlan ? 'has-plan' : ''}`}
                         onClick={() => handleSessionClick(session, template.id!, dayData.date, lessonPlan)}
                       >
-                        <div className="session-time">{lessonPlan?.time || session.time}</div>
+                        <div className="session-time">{normalizeToHHMM(lessonPlan?.time) || normalizeToHHMM(session.time)}</div>
                         <div className="session-info">
                           <div className="session-subject">{lessonPlan?.subject || session.subject}</div>
                           { (lessonPlan?.topic || session.topic) && (

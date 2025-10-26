@@ -20,7 +20,29 @@ export default function LessonPlanModal({
   onClose,
 }: LessonPlanModalProps) {
   const [date, setDate] = useState(initialDate);
-  const [time, setTime] = useState<string>(existingPlan?.time || session.time);
+  const normalizeToHHMM = (t?: string) => {
+    if (!t) return '';
+    const s = t.trim();
+    const ampm = s.match(/^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/);
+    if (ampm) {
+      let h = Number(ampm[1]);
+      const m = ampm[2];
+      const mer = ampm[3].toUpperCase();
+      if (mer === 'AM') {
+        if (h === 12) h = 0;
+      } else {
+        if (h !== 12) h = h + 12;
+      }
+      return `${String(h).padStart(2, '0')}:${m}`;
+    }
+    const hhmm = s.match(/^(\d{1,2}):(\d{2})/);
+    if (hhmm) {
+      return `${String(Number(hhmm[1])).padStart(2, '0')}:${hhmm[2]}`;
+    }
+    return s;
+  };
+
+  const [time, setTime] = useState<string>(normalizeToHHMM(existingPlan?.time || session.time));
   const [subjectOverride, setSubjectOverride] = useState<string>(existingPlan?.subject || session.subject);
   const [topicOverride, setTopicOverride] = useState<string>(existingPlan?.topic || session.topic);
   const [objectives, setObjectives] = useState<string[]>([]);
@@ -35,7 +57,7 @@ export default function LessonPlanModal({
       setObjectives(existingPlan.objectives || []);
       setActivities(existingPlan.activities || []);
       setNotes(existingPlan.notes || '');
-      setTime(existingPlan.time || session.time);
+      setTime(normalizeToHHMM(existingPlan.time || session.time));
       setSubjectOverride(existingPlan.subject || session.subject);
       setTopicOverride(existingPlan.topic || session.topic);
     }
@@ -100,6 +122,22 @@ export default function LessonPlanModal({
       }
 
       onClose();
+        // Notify other views that lesson plans changed (date passed in `date` state)
+        try {
+          window.dispatchEvent(new CustomEvent('lessonPlansUpdated', { detail: { date } }));
+          // Broadcast to other tabs/windows using BroadcastChannel when available
+          try {
+            if (typeof BroadcastChannel !== 'undefined') {
+              const bc = new BroadcastChannel('klasseflyt-lessonplans');
+              bc.postMessage({ type: 'lessonPlansUpdated', date });
+              bc.close();
+            }
+          } catch (e) {
+            // ignore broadcast failures
+          }
+        } catch (e) {
+          // ignore if dispatch not supported
+        }
     } catch (error) {
       console.error('Error saving lesson plan:', error);
       alert('Feil ved lagring av timeplan');

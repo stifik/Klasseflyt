@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { db } from '@/lib/db';
 import type { LessonPlan } from '@/lib/types';
 import './lesson-plan.css';
@@ -15,9 +15,11 @@ export default function LessonPlanPage() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const searchParams = useSearchParams();
+
   useEffect(() => {
     loadLessonPlan();
-  }, [sessionId]);
+  }, [sessionId, searchParams]);
 
   // Reload when window regains focus (e.g., coming back from another tab)
   useEffect(() => {
@@ -32,9 +34,11 @@ export default function LessonPlanPage() {
   const loadLessonPlan = async () => {
     setIsLoading(true);
     try {
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      // Prefer date passed as query param (from Slide2). Fallback to real today.
+      const paramDate = searchParams?.get('date');
+      const today = paramDate ?? new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-      // Try to find existing lesson plan for today and this session
+      // Try to find existing lesson plan for the requested date and this session
       const existingPlan = await db.lessonPlans
         .where('date')
         .equals(today)
@@ -46,7 +50,7 @@ export default function LessonPlanPage() {
       } else {
         // Create a new lesson plan from the session data
         // First, find the template for today
-        const dayOfWeek = getDayOfWeek();
+        const dayOfWeek = getDayOfWeek(today);
         if (!dayOfWeek) {
           setLessonPlan(null);
           setIsLoading(false);
@@ -94,11 +98,12 @@ export default function LessonPlanPage() {
     }
   };
 
-  const getDayOfWeek = (): 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | null => {
+  const getDayOfWeek = (isoDate?: string): 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | null => {
     const days: ('monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | null)[] = [
       null, 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', null
     ];
-    return days[new Date().getDay()];
+    const d = isoDate ? new Date(isoDate) : new Date();
+    return days[d.getDay()];
   };
 
   const handleSave = async () => {
@@ -121,6 +126,24 @@ export default function LessonPlanPage() {
         setLessonPlan({ ...lessonPlan, id: newId as number });
       }
       setIsEditMode(false);
+      // Notify other views (morning display / weekly planner) that lesson plans changed
+      try {
+        const date = lessonPlan.date;
+        const sessionIdNum = lessonPlan.sessionId;
+        window.dispatchEvent(new CustomEvent('lessonPlansUpdated', { detail: { date, sessionId: sessionIdNum } }));
+        // Broadcast to other tabs/windows
+        try {
+          if (typeof BroadcastChannel !== 'undefined') {
+            const bc = new BroadcastChannel('klasseflyt-lessonplans');
+            bc.postMessage({ type: 'lessonPlansUpdated', date, sessionId: sessionIdNum });
+            bc.close();
+          }
+        } catch (e) {
+          // ignore broadcast failures
+        }
+      } catch (e) {
+        // ignore in non-browser environments
+      }
     } catch (error) {
       console.error('Error saving lesson plan:', error);
       alert('Feil ved lagring av timeplan');
@@ -165,11 +188,18 @@ export default function LessonPlanPage() {
     return (
       <div className="lesson-plan-page">
         <div className="lesson-plan-error">
-          <h2>Fant ikke økten</h2>
-          <button onClick={() => router.push('/morning-display?slide=2&showAll=true')} className="back-button">
-            ← Tilbake til dagsplan
-          </button>
-        </div>
+            <h2>Fant ikke økten</h2>
+            <button
+              onClick={() => {
+                const paramDate = new URLSearchParams(window.location.search).get('date');
+                const backUrl = `/morning-display?slide=2&showAll=true${paramDate ? `&date=${paramDate}` : ''}`;
+                router.push(backUrl);
+              }}
+              className="back-button"
+            >
+              ← Tilbake til dagsplan
+            </button>
+          </div>
       </div>
     );
   }
@@ -177,7 +207,14 @@ export default function LessonPlanPage() {
   return (
     <div className="lesson-plan-page">
       <div className="lesson-plan-header">
-        <button onClick={() => router.push('/morning-display?slide=2&showAll=true')} className="back-button">
+        <button
+          onClick={() => {
+            const paramDate = new URLSearchParams(window.location.search).get('date');
+            const backUrl = `/morning-display?slide=2&showAll=true${paramDate ? `&date=${paramDate}` : ''}`;
+            router.push(backUrl);
+          }}
+          className="back-button"
+        >
           ← Tilbake til dagsplan
         </button>
         <div className="lesson-plan-controls">
