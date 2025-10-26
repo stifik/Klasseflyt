@@ -28,17 +28,22 @@ function MorningDisplayContent() {
   const [checkInSettings, setCheckInSettings] = useState<any>();
   const [themeGradient, setThemeGradient] = useState<string>('');
   const [showAllSessions, setShowAllSessions] = useState(false);
+  const [initialDate, setInitialDate] = useState<string | null>(null);
 
   useEffect(() => {
     // Check URL parameters
     const slideParam = searchParams.get('slide');
     const showAllParam = searchParams.get('showAll');
+    const dateParam = searchParams.get('date');
 
     if (slideParam === '2') {
       setCurrentSlide(2);
     }
     if (showAllParam === 'true') {
       setShowAllSessions(true);
+    }
+    if (dateParam) {
+      setInitialDate(dateParam);
     }
 
     loadData();
@@ -252,7 +257,7 @@ function MorningDisplayContent() {
 
       {currentSlide === 2 && (
         <>
-          <Slide2 showAllSessions={showAllSessions} />
+          <Slide2 showAllSessions={showAllSessions} initialDate={initialDate} />
           <SlideControls
             currentSlide={currentSlide}
             onSlideChange={setCurrentSlide}

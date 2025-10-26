@@ -9,9 +9,10 @@ type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
 
 interface Slide2Props {
   showAllSessions?: boolean;
+  initialDate?: string | null;
 }
 
-export default function Slide2({ showAllSessions = false }: Slide2Props) {
+export default function Slide2({ showAllSessions = false, initialDate = null }: Slide2Props) {
   const router = useRouter();
   const [isEditMode, setIsEditMode] = useState(false);
   const [sessions, setSessions] = useState<ScheduleSession[]>([]);
@@ -20,6 +21,16 @@ export default function Slide2({ showAllSessions = false }: Slide2Props) {
   const [visibleSessionCount, setVisibleSessionCount] = useState(0);
   const [displayedDate, setDisplayedDate] = useState<Date>(new Date());
   const gridRef = useRef<HTMLDivElement | null>(null);
+
+  // Set initial date from prop if provided
+  useEffect(() => {
+    if (initialDate) {
+      const date = new Date(initialDate);
+      if (!isNaN(date.getTime())) {
+        setDisplayedDate(date);
+      }
+    }
+  }, [initialDate]);
 
   useEffect(() => {
     loadTodaySchedule();

@@ -10,16 +10,28 @@ export default function LessonPlanPage() {
   const params = useParams();
   const router = useRouter();
   const sessionId = parseInt(params.sessionId as string);
+  const searchParams = useSearchParams();
 
   const [lessonPlan, setLessonPlan] = useState<LessonPlan | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [displayDate, setDisplayDate] = useState<string>('');
 
-  const searchParams = useSearchParams();
+  useEffect(() => {
+    // Get date from URL search params
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const date = urlParams.get('date');
+      if (date) {
+        setDisplayDate(date);
+        console.log('Set displayDate from URL:', date);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     loadLessonPlan();
-  }, [sessionId, searchParams]);
+  }, [sessionId, displayDate]);
 
   // Reload when window regains focus (e.g., coming back from another tab)
   useEffect(() => {
@@ -34,9 +46,8 @@ export default function LessonPlanPage() {
   const loadLessonPlan = async () => {
     setIsLoading(true);
     try {
-      // Prefer date passed as query param (from Slide2). Fallback to real today.
-      const paramDate = searchParams?.get('date');
-      const today = paramDate ?? new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      // Use stored displayDate or fallback to today
+      const today = displayDate || new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
       // Try to find existing lesson plan for the requested date and this session
       const existingPlan = await db.lessonPlans
@@ -191,8 +202,7 @@ export default function LessonPlanPage() {
             <h2>Fant ikke økten</h2>
             <button
               onClick={() => {
-                const paramDate = new URLSearchParams(window.location.search).get('date');
-                const backUrl = `/morning-display?slide=2&showAll=true${paramDate ? `&date=${paramDate}` : ''}`;
+                const backUrl = `/morning-display?slide=2&showAll=true${displayDate ? `&date=${displayDate}` : ''}`;
                 router.push(backUrl);
               }}
               className="back-button"
@@ -209,8 +219,7 @@ export default function LessonPlanPage() {
       <div className="lesson-plan-header">
         <button
           onClick={() => {
-            const paramDate = new URLSearchParams(window.location.search).get('date');
-            const backUrl = `/morning-display?slide=2&showAll=true${paramDate ? `&date=${paramDate}` : ''}`;
+            const backUrl = `/morning-display?slide=2&showAll=true${displayDate ? `&date=${displayDate}` : ''}`;
             router.push(backUrl);
           }}
           className="back-button"
@@ -237,78 +246,83 @@ export default function LessonPlanPage() {
 
       <div className="lesson-plan-content">
         <div className="lesson-plan-title">
-          <h1>{lessonPlan.subject} - {lessonPlan.topic}</h1>
-          <p className="lesson-time">{lessonPlan.time}</p>
+          <div className="title-row">
+            <span className="lesson-time">{lessonPlan.time}</span>
+            <h1>{lessonPlan.subject}</h1>
+            {lessonPlan.topic && <span className="lesson-topic">{lessonPlan.topic}</span>}
+          </div>
         </div>
 
-        <div className="lesson-plan-section">
-          <h2>📌 MÅL FOR TIMEN</h2>
-          {!isEditMode ? (
-            <ul className="objectives-list">
-              {lessonPlan.objectives.length === 0 ? (
-                <li className="empty-message">Ingen mål lagt til enda</li>
-              ) : (
-                lessonPlan.objectives.map((objective, index) => (
-                  <li key={index} className="objective-item">
-                    <span>{objective}</span>
-                  </li>
-                ))
-              )}
-            </ul>
-          ) : (
-            <>
-              <p className="help-text">Ett mål per linje</p>
-              <textarea
-                value={lessonPlan.objectives.join('\n')}
-                onChange={(e) => handleObjectivesTextChange(e.target.value)}
-                onKeyPress={(e) => {
-                  // Allow Enter key for line breaks - don't prevent default
-                  if (e.key === 'Enter') {
-                    e.stopPropagation();
-                    // Don't call e.preventDefault() - let the textarea handle Enter naturally
-                  }
-                }}
-                placeholder="Skriv hvert læringsmål på en ny linje...&#10;For eksempel:&#10;Forstå hvordan man multipliserer med tocifrede tall&#10;Kunne bruke standardalgoritmen&#10;Løse praktiske oppgaver"
-                className="bulk-textarea"
-                rows={6}
-              />
-            </>
-          )}
-        </div>
+        <div className="lesson-plan-sections">
+          <div className="lesson-plan-section">
+            <h2>📌 MÅL FOR TIMEN</h2>
+            {!isEditMode ? (
+              <ul className="objectives-list">
+                {lessonPlan.objectives.length === 0 ? (
+                  <li className="empty-message">Ingen mål lagt til enda</li>
+                ) : (
+                  lessonPlan.objectives.map((objective, index) => (
+                    <li key={index} className="objective-item">
+                      <span>{objective}</span>
+                    </li>
+                  ))
+                )}
+              </ul>
+            ) : (
+              <>
+                <p className="help-text">Ett mål per linje</p>
+                <textarea
+                  value={lessonPlan.objectives.join('\n')}
+                  onChange={(e) => handleObjectivesTextChange(e.target.value)}
+                  onKeyPress={(e) => {
+                    // Allow Enter key for line breaks - don't prevent default
+                    if (e.key === 'Enter') {
+                      e.stopPropagation();
+                      // Don't call e.preventDefault() - let the textarea handle Enter naturally
+                    }
+                  }}
+                  placeholder="Skriv hvert læringsmål på en ny linje...&#10;For eksempel:&#10;Forstå hvordan man multipliserer med tocifrede tall&#10;Kunne bruke standardalgoritmen&#10;Løse praktiske oppgaver"
+                  className="bulk-textarea"
+                  rows={6}
+                />
+              </>
+            )}
+          </div>
 
-        <div className="lesson-plan-section">
-          <h2>📝 TIMENS GANG</h2>
-          {!isEditMode ? (
-            <ul className="activities-list">
-              {lessonPlan.activities.length === 0 ? (
-                <li className="empty-message">Ingen aktiviteter lagt til enda</li>
-              ) : (
-                lessonPlan.activities.map((activity, index) => (
-                  <li key={index} className="activity-item">
-                    <span>{activity}</span>
-                  </li>
-                ))
-              )}
-            </ul>
-          ) : (
-            <>
-              <p className="help-text">Én aktivitet per linje</p>
-              <textarea
-                value={lessonPlan.activities.join('\n')}
-                onChange={(e) => handleActivitiesTextChange(e.target.value)}
-                onKeyPress={(e) => {
-                  // Allow Enter key for line breaks - don't prevent default
-                  if (e.key === 'Enter') {
-                    e.stopPropagation();
-                    // Don't call e.preventDefault() - let the textarea handle Enter naturally
-                  }
-                }}
-                placeholder="Skriv hver aktivitet på en ny linje...&#10;For eksempel:&#10;Oppstart og oppmøte&#10;Repetisjon av forrige time&#10;Gjennomgang på tavla&#10;Elevene jobber med oppgaver&#10;Oppsummering"
-                className="bulk-textarea"
-                rows={8}
-              />
-            </>
-          )}
+          <div className="lesson-plan-section">
+            <h2>📝 TIMENS GANG</h2>
+            {!isEditMode ? (
+              <ul className="activities-list">
+                {lessonPlan.activities.length === 0 ? (
+                  <li className="empty-message">Ingen aktiviteter lagt til enda</li>
+                ) : (
+                  lessonPlan.activities.map((activity, index) => (
+                    <li key={index} className="activity-item">
+                      <span>{activity}</span>
+                    </li>
+                  ))
+                )}
+              </ul>
+            ) : (
+              <>
+                <p className="help-text">Én aktivitet per linje</p>
+                <textarea
+                  value={lessonPlan.activities.join('\n')}
+                  onChange={(e) => handleActivitiesTextChange(e.target.value)}
+                  onKeyPress={(e) => {
+                    // Allow Enter key for line breaks - don't prevent default
+                    if (e.key === 'Enter') {
+                      e.stopPropagation();
+                      // Don't call e.preventDefault() - let the textarea handle Enter naturally
+                    }
+                  }}
+                  placeholder="Skriv hver aktivitet på en ny linje...&#10;For eksempel:&#10;Oppstart og oppmøte&#10;Repetisjon av forrige time&#10;Gjennomgang på tavla&#10;Elevene jobber med oppgaver&#10;Oppsummering"
+                  className="bulk-textarea"
+                  rows={8}
+                />
+              </>
+            )}
+          </div>
         </div>
 
         <div className="lesson-plan-section">
