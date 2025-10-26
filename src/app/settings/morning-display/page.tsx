@@ -44,17 +44,39 @@ export default function MorningDisplaySettingsPage() {
   }, [instructionMessages]);
 
   const handleSaveClassName = async () => {
-    if (settings && settings.morningDisplaySettings) {
-      await db.settings.update('userSettings', {
-        morningDisplaySettings: {
+    try {
+      // Load current settings from DB to avoid issues in production where `settings` may be stale
+      const current = await db.settings.get('userSettings');
+      if (current) {
+        const updatedMorning = {
           className,
-          messageRotationMode: settings.morningDisplaySettings.messageRotationMode,
-          instructionRotationMode: settings.morningDisplaySettings.instructionRotationMode,
-          lastThemeId: settings.morningDisplaySettings.lastThemeId,
-          lastThemeDate: settings.morningDisplaySettings.lastThemeDate,
-        },
-      });
+          messageRotationMode: current.morningDisplaySettings?.messageRotationMode ?? 'daily',
+          instructionRotationMode: current.morningDisplaySettings?.instructionRotationMode ?? 'daily',
+          lastThemeId: current.morningDisplaySettings?.lastThemeId,
+          lastThemeDate: current.morningDisplaySettings?.lastThemeDate,
+        };
+
+        // Use update to only replace the nested morningDisplaySettings field
+        await db.settings.update('userSettings', {
+          morningDisplaySettings: updatedMorning,
+        });
+      } else {
+        // If no settings row exists (edge case), insert a minimal settings object.
+        // Cast to any to avoid needing to construct the full AppSettings shape here.
+        await db.settings.put({
+          id: 'userSettings',
+          morningDisplaySettings: {
+            className,
+            messageRotationMode: 'daily',
+            instructionRotationMode: 'daily',
+          },
+        } as any);
+      }
+
       alert('Klassenavn lagret!');
+    } catch (error) {
+      console.error('Error saving class name:', error);
+      alert('Feil ved lagring av klassenavn');
     }
   };
 
