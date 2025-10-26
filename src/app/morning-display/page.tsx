@@ -78,14 +78,14 @@ function MorningDisplayContent() {
       // Load welcome message
       const messages = await db.welcomeMessages.toArray();
       if (messages.length > 0) {
-        const randomMessage = getRandomMessage(messages);
+        const randomMessage = getRandomMessage(messages, 'morning_display_welcome_v1');
         setWelcomeMessage(randomMessage.message);
       }
 
       // Load instructions
       const instructionsList = await db.instructionMessages.toArray();
       if (instructionsList.length > 0) {
-        const randomInstruction = getRandomMessage(instructionsList);
+        const randomInstruction = getRandomMessage(instructionsList, 'morning_display_instruction_v1');
         setInstructions(randomInstruction.message);
       }
 
@@ -117,9 +117,57 @@ function MorningDisplayContent() {
     }
   };
 
-  const getRandomMessage = (messages: (WelcomeMessage | InstructionMessage)[]) => {
-    const randomIndex = Math.floor(Math.random() * messages.length);
-    return messages[randomIndex];
+  const getRandomMessage = (messages: (WelcomeMessage | InstructionMessage)[], storageKey?: string) => {
+    // Smart random: keep a rotation queue in localStorage so each message is shown once before repeating
+    // storageKey: optional key to separate welcome vs instruction rotations
+    const key = storageKey || 'morning_display_rotation_v1';
+
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) {
+        // Fallback to pure random if no localStorage
+        const idx = Math.floor(Math.random() * messages.length);
+        return messages[idx];
+      }
+
+      // Ensure we have message ids
+      const ids = messages.map(m => (m as any).id).filter(Boolean) as number[];
+      if (ids.length === 0) {
+        const idx = Math.floor(Math.random() * messages.length);
+        return messages[idx];
+      }
+
+      const raw = localStorage.getItem(key);
+      let queue: number[] = raw ? JSON.parse(raw) : [];
+
+      // If queue is empty or contains ids not matching current set, rebuild a shuffled queue
+      const idSet = new Set(ids);
+      const queueValid = queue.length > 0 && queue.every(id => idSet.has(id));
+      if (!queueValid) {
+        // Build new shuffled queue
+        queue = ids.slice();
+        for (let i = queue.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [queue[i], queue[j]] = [queue[j], queue[i]];
+        }
+      }
+
+      // Pop the next id
+      const nextId = queue.shift();
+      // Save updated queue
+      localStorage.setItem(key, JSON.stringify(queue));
+
+      // Find message with that id
+      const found = messages.find(m => (m as any).id === nextId);
+      if (found) return found;
+
+      // Fallback: random
+      const idx = Math.floor(Math.random() * messages.length);
+      return messages[idx];
+    } catch (e) {
+      // On any error, fallback to pure random
+      const idx = Math.floor(Math.random() * messages.length);
+      return messages[idx];
+    }
   };
 
   const setupKeyboardNavigation = () => {

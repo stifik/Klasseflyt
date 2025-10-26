@@ -132,6 +132,46 @@
   padding-top: 1rem;
 }
 
+/* Fullscreen toggle button (subtle icon in bottom-right) */
+.fullscreen-toggle {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 60;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent; /* Removed background so it sits on its own */
+  color: rgba(255,255,255,0.95);
+  border-radius: 10px;
+  border: none;
+  box-shadow: none;
+  opacity: 0.55;
+  transition: opacity 160ms ease, transform 160ms ease;
+  cursor: pointer;
+}
+
+.fullscreen-toggle:hover {
+  opacity: 1;
+}
+
+/* No focus/active visuals: keep the icon completely discreet */
+.fullscreen-toggle:focus,
+.fullscreen-toggle:active,
+.fullscreen-toggle:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.fullscreen-toggle svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+}
+
 /* Legacy styles (for bakoverkompatibilitet) */
 .right-column {
   width: 65%;
