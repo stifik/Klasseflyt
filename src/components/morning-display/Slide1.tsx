@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import Clock from './Clock';
 import StudentList from './StudentList';
 import WelcomeSection from './WelcomeSection';
+import ClassGoalProgressBar from '@/components/ClassGoalProgressBar';
+import { db } from '@/lib/db';
+import { getCurrentTime } from '@/lib/autoCheckInService';
 import type { CheckInSettings } from '@/lib/types';
 
 type Student = {
@@ -23,6 +26,8 @@ type Slide1Props = {
   onNavigateToDagsplan: () => void;
 };
 
+type ClockColor = 'green' | 'yellow' | 'orange' | 'red';
+
 export default function Slide1({
   students,
   welcomeMessage,
@@ -33,6 +38,62 @@ export default function Slide1({
   onNavigateToDagsplan,
 }: Slide1Props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [classTotal, setClassTotal] = useState<number>(0);
+  const [goal, setGoal] = useState<{ target: number; lastAchieved?: string }>({ target: 200 });
+  const [goalTitle, setGoalTitle] = useState<string>('Felles belønning');
+  const [showReset, setShowReset] = useState(false);
+  const [headerColor, setHeaderColor] = useState<ClockColor>('green');
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
+
+  // Oppdater tid hvert sekund
+  useEffect(() => {
+    const updateTime = () => setCurrentTime(new Date());
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Beregn header-farge basert på tid siden bellTime
+  useEffect(() => {
+    if (currentTime && bellTime && checkInSettings) {
+      const minutesSinceBell = getMinutesSinceBellTime(bellTime);
+      const color = getClockColor(minutesSinceBell);
+      setHeaderColor(color);
+    }
+  }, [currentTime, bellTime, checkInSettings]);
+
+  // Hent klassens totale poeng og mål
+  useEffect(() => {
+    let mounted = true;
+    
+    async function getClassTotalPoints() {
+      const transactions = await db.transactions.toArray();
+      return transactions.reduce((sum, t) => {
+        const change = t.pointsChange || 0;
+        return change > 0 ? sum + change : sum;
+      }, 0);
+    }
+
+    async function getClassGoal() {
+      const settings = await db.settings.get('userSettings');
+      return settings?.classGoal || { target: 200 };
+    }
+
+    async function fetchData() {
+      const [total, g] = await Promise.all([getClassTotalPoints(), getClassGoal()]);
+      const settings = await db.settings.get('userSettings');
+      if (mounted) {
+        setClassTotal(total);
+        setGoal(g);
+        setGoalTitle(settings?.communityGoalTitle || 'Felles belønning');
+        setShowReset(total >= (g.target || 1));
+      }
+    }
+
+    fetchData();
+    const interval = setInterval(fetchData, 2000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, []);
 
   useEffect(() => {
     const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -63,54 +124,109 @@ export default function Slide1({
       // ignore
     }
   };
+
+  const handleReset = async () => {
+    const settings = await db.settings.get('userSettings');
+    if (settings) {
+      const target = settings.classGoal?.target ?? 200;
+      settings.classGoal = { target, lastAchieved: new Date().toISOString() };
+      await db.settings.put(settings);
+      await db.transactions.clear();
+      setClassTotal(0);
+      setShowReset(false);
+    }
+  };
+
+  // Hjelpefunksjoner for å beregne tid siden bellTime og farge
+  function getMinutesSinceBellTime(bellTime: string): number {
+    const currentTime = getCurrentTime();
+    const [currentHours, currentMinutes] = currentTime.split(':').map(Number);
+    const [bellHours, bellMinutes] = bellTime.split(':').map(Number);
+
+    const currentTotalMinutes = currentHours * 60 + currentMinutes;
+    const bellTotalMinutes = bellHours * 60 + bellMinutes;
+
+    return currentTotalMinutes - bellTotalMinutes;
+  }
+
+  function getClockColor(minutesSinceBell: number): ClockColor {
+    if (minutesSinceBell < 0) return 'green'; // Before bell time
+    if (minutesSinceBell <= 2) return 'green'; // 0-2 minutes
+    if (minutesSinceBell <= 4) return 'yellow'; // 3-4 minutes
+    if (minutesSinceBell <= 6) return 'orange'; // 5-6 minutes
+    return 'red'; // 7+ minutes
+  }
+
+  // Beregn bakgrunnsfarge for header basert på clockColor
+  const getHeaderBackgroundColor = () => {
+    const colorMap = {
+      'green': 'rgba(34, 197, 94, 0.8)',
+      'yellow': 'rgba(234, 179, 8, 0.8)',
+      'orange': 'rgba(249, 115, 22, 0.8)',
+      'red': 'rgba(239, 68, 68, 0.8)',
+    };
+    return colorMap[headerColor];
+  };
+
   return (
     <div className="slide slide-1">
-      <div className="left-column">
-        <StudentList students={students} />
-      </div>
-
-      <div className="right-side">
-        {/* HEADER SEKSJON */}
-        <div className="welcome-header">
-          <div className="clock-display-wrapper">
-            <Clock bellTime={bellTime} checkInSettings={checkInSettings} />
-          </div>
+      {/* HEADER - spenner over begge kolonner */}
+      <div className="slide-1-header" style={{ backgroundColor: getHeaderBackgroundColor() }}>
+        <div className="header-left"></div>
+        <div className="header-center">
+          <Clock bellTime={bellTime} checkInSettings={checkInSettings} />
+        </div>
+        <div className="header-right">
           <button 
-            className="dagsplan-btn"
+            className="dagsplan-btn-header"
             onClick={onNavigateToDagsplan}
           >
             Dagsplan →
           </button>
         </div>
+      </div>
 
-        {/* MAIN SEKSJON (tekst) */}
-        <div className="welcome-main">
+      {/* PROGRESS BAR - går hele bredden */}
+      <div className="slide-1-progress">
+        <ClassGoalProgressBar
+          title={goalTitle}
+          current={classTotal}
+          goal={goal.target}
+          showReset={showReset}
+          onReset={handleReset}
+          fullBleed={true}
+        />
+      </div>
+
+      {/* CONTENT - to kolonner */}
+      <div className="slide-1-content">
+        <div className="left-column">
+          <StudentList students={students} />
+        </div>
+
+        <div className="right-column">
           <WelcomeSection
             message={welcomeMessage}
             instructions={instructions}
             className={className}
           />
         </div>
-
-        {/* FOOTER SEKSJON (tom for nå) */}
-        <div className="welcome-footer">
-          {/* Tom for nå - plass for fremtidige knapper */}
-        </div>
-        {/* Subtil fullskjerm-knapp nederst til høyre */}
-        <button
-          className="fullscreen-toggle"
-          onClick={toggleFullscreen}
-          aria-pressed={isFullscreen}
-          aria-label={isFullscreen ? 'Avslutt fullskjerm' : 'Fullskjerm'}
-        >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-            <path d="M3 9 V3 H9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M21 9 V3 H15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M3 15 V21 H9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M21 15 V21 H15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
       </div>
+
+      {/* Fullskjerm-knapp */}
+      <button
+        className="fullscreen-toggle"
+        onClick={toggleFullscreen}
+        aria-pressed={isFullscreen}
+        aria-label={isFullscreen ? 'Avslutt fullskjerm' : 'Fullskjerm'}
+      >
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+          <path d="M3 9 V3 H9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M21 9 V3 H15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M3 15 V21 H9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M21 15 V21 H15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
     </div>
   );
 }

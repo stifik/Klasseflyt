@@ -27,20 +27,109 @@
   width: 100%;
   height: 100%;
   display: flex;
+  flex-direction: column;
   overflow: hidden;
   position: relative;
+}
+
+/* NEW: Header for Slide 1 - spenner over begge kolonner */
+.slide-1-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 2rem;
+  padding: 1rem 2rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: background-color 0.5s ease;
+  z-index: 10;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Progress bar - går hele skjermbredden */
+.slide-1-progress {
+  width: 100%;
+  padding: 0.5rem 1rem;
+    padding-top: 0rem;
+    padding-right: 1rem;
+    padding-bottom: 0rem;
+    padding-left: 1rem;
+  background: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Style teksten i progress bar */
+.slide-1-progress .text-sm,
+.slide-1-progress .text-xs {
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Dagsplan-knapp i header - ren tekst */
+.dagsplan-btn-header {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+  padding: 0.5rem 1rem;
+  opacity: 0.9;
+}
+
+.dagsplan-btn-header:hover {
+  opacity: 1;
+  transform: translateX(5px);
+}
+
+/* NEW: Content area for Slide 1 */
+.slide-1-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
 }
 
 /* Two-column layout for Slide 1 */
 .left-column {
   width: 35%;
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 20px 15px;
+  padding: 10px;
   overflow: hidden;
 }
 
+.right-column {
+  width: 65%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;  /* Denne bør sentrere innholdet */
+  padding: 0;  /* Fjern all padding */
+  overflow: hidden;
+}
+
+/* DEPRECATED - gamle klasser som ikke brukes lenger */
 .right-side {
   width: 65%;
   height: 100vh;
@@ -49,13 +138,12 @@
   padding: 2rem;
 }
 
-/* HEADER SEKSJON */
+/* HEADER SEKSJON - DEPRECATED */
 .welcome-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding-bottom: 2rem;
-  /* IKKE flex-grow - tar minimalt med plass */
 }
 
 .clock {
@@ -64,11 +152,12 @@
   padding: 0.75rem 1.5rem;
   border-radius: 12px;
   transition: background-color 0.5s ease;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  background-color: rgba(255, 255, 255, 0.2); /* Default neutral background */
+  background-color: transparent; /* Ingen bakgrunn - header har bakgrunn */
+  box-shadow: none;
   color: white;
 }
 
+/* DEPRECATED - gamle klasser */
 .dagsplan-btn {
   padding: 0.75rem 1.5rem;
   background: rgba(255, 255, 255, 0.3);
@@ -86,54 +175,44 @@
   transform: translateX(5px);
 }
 
-/* MAIN SEKSJON (tekst-område) */
 .welcome-main {
-  flex: 1; /* TAR ALL TILGJENGELIG PLASS */
+  flex: 0 1 auto;  /* La den ikke ta opp all tilgjengelig plass */
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem 0;
+  padding: 0;
 }
 
+/* Welcome message - tar full høyde i høyre kolonne */
 .welcome-message {
   text-align: center;
   color: white;
   line-height: 1.6;
-  /* Allow the panel to grow when there is room, but cap to a comfortable reading width */
-  /* Wider: use most of the right-side column so lines can be longer */
   width: clamp(640px, 92%, 1600px);
   max-width: 98%;
-  /* Use more vertical space on large viewports so text can be bigger and not wrap too early */
-  min-height: 56vh;
-  max-height: 88vh;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   overflow-y: auto;
-  /* Font-size settes dynamisk via JavaScript/React */
   transition: font-size 0.3s ease, background-color 0.3s ease, padding 0.2s ease;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 0, 0, 0.2);
   word-wrap: break-word;
   overflow-wrap: break-word;
   font-weight: 700;
-  /* Translucent panel behind the text */
   background: rgba(0, 0, 0, 0.25);
-  padding: 3rem 3.5rem;
+  padding: 2rem 3rem;
   border-radius: 18px;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
 }
 
-/* Layout: anchor instructions to bottom and keep main text at top */
-.welcome-message {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
 .welcome-main-text {
   /* allow the main text to take available space */
   flex: 1 1 auto;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
 }
 
@@ -228,22 +307,22 @@
 }
 
 .clock-green {
-  background-color: #4caf50;
+  background-color: transparent;
   color: white;
 }
 
 .clock-yellow {
-  background-color: #ffc107;
-  color: black;
+  background-color: transparent;
+  color: white;
 }
 
 .clock-orange {
-  background-color: #ff9800;
+  background-color: transparent;
   color: white;
 }
 
 .clock-red {
-  background-color: #f44336;
+  background-color: transparent;
   color: white;
 }
 
@@ -274,12 +353,13 @@
 .student-list {
   width: 100%;
   height: 100%;
+  max-height: 100%;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px 12px;
-  align-content: center; /* Changed from start to center for vertical centering */
+  gap: 6px 8px;
+  align-content: center;
   overflow: hidden;
-  padding: 10px;
+  padding: 5px;
 }
 
 .student-card {
