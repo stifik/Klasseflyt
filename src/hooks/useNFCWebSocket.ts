@@ -60,6 +60,7 @@ export function useNFCWebSocket({
   const reconnectTimerRef = useRef<number | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const manualDisconnectRef = useRef(false);
+  const pendingCommandsRef = useRef<string[]>([]);
   const isMonitoringRef = useRef<boolean>(false); // desired monitoring state across reconnects
 
   const [status, setStatus] = useState<NFCWebSocketStatus>('disconnected');
@@ -154,6 +155,16 @@ export function useNFCWebSocket({
             }
           }, 100);
         }
+
+        // Flush any queued commands that were requested while disconnected
+        if (pendingCommandsRef.current.length > 0) {
+          for (const cmd of pendingCommandsRef.current) {
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+              wsRef.current.send(JSON.stringify({ command: cmd }));
+            }
+          }
+          pendingCommandsRef.current = [];
+        }
       };
 
       ws.onmessage = handleMessage;
@@ -207,9 +218,37 @@ export function useNFCWebSocket({
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ command }));
     } else {
-      console.warn('⚠️ WebSocket not connected, cannot send command:', command);
+      // Deduplicate/resolve queued commands to avoid contradictory pairs
+      const pending = pendingCommandsRef.current;
+
+      // If exact same command already queued, skip
+      if (pending[pending.length - 1] === command) {
+        return;
+      }
+
+      // If we're queuing start_monitoring but last queued is stop_monitoring, remove it (they cancel)
+      if (command === 'start_monitoring' && pending[pending.length - 1] === 'stop_monitoring') {
+        pending.pop();
+      }
+
+      // If we're queuing stop_monitoring but last queued is start_monitoring, remove it
+      if (command === 'stop_monitoring' && pending[pending.length - 1] === 'start_monitoring') {
+        pending.pop();
+      }
+
+      // For scan_once, coalesce multiple into single latest
+      if (command === 'scan_once') {
+        // remove existing scan_once entries
+        pendingCommandsRef.current = pending.filter(p => p !== 'scan_once');
+      }
+
+      pendingCommandsRef.current.push(command);
+      console.log('ℹ️ WebSocket not open yet, queued command:', command);
+      if (enabled && autoConnect) {
+        connect();
+      }
     }
-  }, []);
+  }, [connect, enabled, autoConnect]);
 
   const startMonitoring = useCallback(() => {
     console.log('👁️ Starting card monitoring...');

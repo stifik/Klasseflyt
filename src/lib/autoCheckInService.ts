@@ -109,14 +109,15 @@ export function calculatePointsPercent(
 
 // Check if student has already checked in for this bell time today
 export async function hasStudentCheckedIn(studentId: number, bellTimeId: number): Promise<boolean> {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
+  const todayString = new Date().toISOString().split('T')[0];
+
+  // Search for any check-in log for this student and bellTime where the stored date matches today's date string
   const log = await db.checkInLogs
-    .where('[studentId+bellTimeId+date]')
-    .equals([studentId, bellTimeId, today])
+    .where('studentId')
+    .equals(studentId)
+    .and(l => l.bellTimeId === bellTimeId && new Date((l as any).date).toISOString().split('T')[0] === todayString)
     .first();
-  
+
   return !!log;
 }
 

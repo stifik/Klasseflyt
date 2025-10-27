@@ -600,6 +600,14 @@ export class MySubClassedDexie extends Dexie {
             }
         });
 
+        // Version 40: Add nfcCard index on students so we can lookup students by NFC UID
+        this.version(40).stores({
+            students: '++id, name, nfcCard'
+        }).upgrade(async (tx) => {
+            // No special migration required — existing student rows will have undefined nfcCard
+            // but adding the index ensures db.students.where('nfcCard') queries work without SchemaError.
+        });
+
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
         });

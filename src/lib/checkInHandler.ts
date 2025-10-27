@@ -35,7 +35,35 @@ export async function handleCheckInTap(
   activeSession: ActiveCheckInSession
 ): Promise<CheckInTapResult> {
   // Find student by card UID
-  const student = await db.students.where('nfcCard').equals(cardUid).first();
+  // Normalize UID for comparison (strip separators, lowercase)
+  const normalizeUid = (u?: string | null) => (u || '').toString().replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  const normalizedUid = normalizeUid(cardUid);
+
+  // Try direct indexed lookup first
+  let student: any = await db.students.where('nfcCard').equals(cardUid).first();
+
+  // If not found, try normalized search across students (covers stored formats like without colons)
+  if (!student) {
+    try {
+      student = await db.students.filter(s => normalizeUid((s as any).nfcCard) === normalizedUid).first();
+    } catch (err) {
+      console.warn('Normalized student lookup failed, falling back to rfidCards', err);
+    }
+  }
+
+  // As a last resort, try rfidCards mapping (some setups store card->student in rfidCards table)
+  if (!student) {
+    const linked = await db.rfidCards.where('cardId').equals(cardUid).first();
+    if (linked && linked.studentId) {
+      student = await db.students.get(linked.studentId);
+    } else {
+      // try normalized match on rfidCards
+      const linked2 = await db.rfidCards.filter(c => normalizeUid(c.cardId) === normalizedUid).first();
+      if (linked2 && linked2.studentId) {
+        student = await db.students.get(linked2.studentId);
+      }
+    }
+  }
 
   if (!student || !student.id) {
     return {
@@ -136,6 +164,18 @@ export async function handleCheckInTap(
       soundType,
     };
   } catch (error) {
+    // Handle Dexie ConstraintError when a duplicate unique index prevents inserting
+    const errAny = error as any;
+    if (errAny && (errAny.name === 'ConstraintError' || (errAny.message && String(errAny.message).includes('Unable to add key to index')))) {
+      console.warn('Duplicate check-in prevented by DB unique index:', errAny);
+      return {
+        success: false,
+        message: `${student.name} er allerede registrert.`,
+        studentName: student.name,
+        soundType: 'error',
+      };
+    }
+
     console.error('Check-in error:', error);
     return {
       success: false,
