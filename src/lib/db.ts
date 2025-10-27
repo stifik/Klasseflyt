@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings, WelcomeMessage, InstructionMessage, ScheduleTemplate, ThemeHistory, MorningDisplaySettings, LessonPlan, Theme, UserThemePreference } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings, WelcomeMessage, InstructionMessage, ScheduleTemplate, ThemeHistory, MorningDisplaySettings, LessonPlan, Theme, UserThemePreference, TimePeriod, TimeBasedMessage, DefaultMessage } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -54,6 +54,9 @@ export class MySubClassedDexie extends Dexie {
     userThemePreferences!: Table<UserThemePreference, number>;
     themeHistory!: Table<ThemeHistory, number>;
     lessonPlans!: Table<LessonPlan, number>;
+    timePeriods!: Table<TimePeriod, number>;
+    timeBasedMessages!: Table<TimeBasedMessage, number>;
+    defaultMessages!: Table<DefaultMessage, number>;
 
 
     constructor() {
@@ -556,6 +559,47 @@ export class MySubClassedDexie extends Dexie {
             });
         });
 
+        // Version 39: Add time-based message system tables
+        this.version(39).stores({
+            timePeriods: '++id, order',
+            timeBasedMessages: '++id, [weekday+timePeriodId+messageType], weekday, timePeriodId, messageType',
+            defaultMessages: '++id, messageType',
+        }).upgrade(async (tx) => {
+            // Initialize with default time periods
+            const defaultPeriods = [
+                { name: 'Morgen', startTime: '08:00', order: 1 },
+                { name: 'Etter 1. friminutt', startTime: '09:45', order: 2 },
+                { name: 'Etter 2. friminutt', startTime: '11:30', order: 3 },
+            ];
+
+            for (const period of defaultPeriods) {
+                await tx.table('timePeriods').add({
+                    ...period,
+                    createdAt: new Date(),
+                });
+            }
+
+            // Initialize default fallback messages
+            await tx.table('defaultMessages').add({
+                messageType: 'welcome',
+                messages: 'Velkommen til skolen!\nGod dag!',
+                createdAt: new Date(),
+            });
+
+            await tx.table('defaultMessages').add({
+                messageType: 'instruction',
+                messages: 'Ta fram bøkene dine\nBegynn på oppgavene',
+                createdAt: new Date(),
+            });
+
+            // Update settings to include useTimeBasedMessages flag
+            const userSettings = await tx.table('settings').get('userSettings');
+            if (userSettings && userSettings.morningDisplaySettings) {
+                userSettings.morningDisplaySettings.useTimeBasedMessages = false; // Disabled by default
+                await tx.table('settings').put(userSettings);
+            }
+        });
+
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
         });
@@ -632,6 +676,7 @@ const defaultMorningDisplaySettings: MorningDisplaySettings = {
   instructionRotationMode: 'daily',
   lastThemeId: undefined,
   lastThemeDate: undefined,
+  useTimeBasedMessages: false,
 };const defaultSettings: AppSettings = {
   tabs: {
     overview: true, assessments: true, dailyCheck: true, observations: true, reports: true,

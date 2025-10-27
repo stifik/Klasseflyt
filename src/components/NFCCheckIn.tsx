@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ import {
   handleCardTap,
   type CheckInResult
 } from "@/lib/nfcCheckInService";
-import { useNFCPolling } from "@/hooks/useNFCPolling";
+import { useNFCWebSocket } from "@/hooks/useNFCWebSocket";
 import { format } from "date-fns";
 
 interface NFCCheckInProps {
@@ -38,6 +38,9 @@ export default function NFCCheckIn({ showOnlyButton, showOnlyPanel }: NFCCheckIn
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastCheckInResult, setLastCheckInResult] = useState<CheckInResult | null>(null);
+
+  // Ref to track if we're actively waiting for registration cards
+  const isWaitingForCardRef = React.useRef(false);
 
   // Live query for active session
   const activeSession = useLiveQuery(async () => {
@@ -55,11 +58,16 @@ export default function NFCCheckIn({ showOnlyButton, showOnlyPanel }: NFCCheckIn
     return await getRegisteredStudentsToday();
   }, []);
 
-  // Set up NFC polling
-  const { nfc } = useNFCPolling({
-    enabled: !!activeSession,
+  // Set up WebSocket NFC for real-time card detection
+  const nfcWebSocket = useNFCWebSocket({
+    enabled: true,
+    autoConnect: true,
     onCardDetected: async (card) => {
+      if (!activeSession || isProcessing || !isWaitingForCardRef.current) return;
+
+      console.log('✅ iPad registration card detected:', card.uid);
       setIsProcessing(true);
+      isWaitingForCardRef.current = false; // Temporarily disable while processing
       setLastCheckInResult(null);
 
       const result = await handleCardTap(card.uid);
@@ -79,8 +87,35 @@ export default function NFCCheckIn({ showOnlyButton, showOnlyPanel }: NFCCheckIn
       }
 
       setIsProcessing(false);
+      isWaitingForCardRef.current = true; // Re-enable card detection
     },
+    onError: (error, message) => {
+      if (isWaitingForCardRef.current) {
+        console.error('❌ WebSocket error during iPad registration:', error, message);
+        // Don't show error toast for minor connection issues
+      }
+    }
   });
+
+  // Start/stop monitoring based on active session
+  React.useEffect(() => {
+    if (activeSession) {
+      // Start monitoring for registration session
+      console.log('🎯 Starting NFC monitoring for iPad registration');
+      isWaitingForCardRef.current = true;
+      nfcWebSocket.startMonitoring();
+    } else {
+      // Stop monitoring when no active session
+      console.log('⏸️ Stopping NFC monitoring');
+      isWaitingForCardRef.current = false;
+      nfcWebSocket.stopMonitoring();
+    }
+
+    return () => {
+      isWaitingForCardRef.current = false;
+      nfcWebSocket.stopMonitoring();
+    };
+  }, [activeSession]);
 
   const handleStartRegistration = async () => {
     setIsProcessing(true);
@@ -228,14 +263,6 @@ export default function NFCCheckIn({ showOnlyButton, showOnlyPanel }: NFCCheckIn
             </div>
           )}
 
-          {/* NFC status - only show critical errors */}
-          {nfc.error && !nfc.error.includes('No card') && !nfc.error.includes('Ingen kort') && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{nfc.error}</AlertDescription>
-            </Alert>
-          )}
-
           {/* End button */}
           <div className="flex gap-2 pt-4 border-t">
             <Button
@@ -280,8 +307,8 @@ export default function NFCCheckIn({ showOnlyButton, showOnlyPanel }: NFCCheckIn
             <strong>Oppsummering:</strong>
             <ul className="mt-2 space-y-1">
               <li>✅ Registrert: {stats?.registered || 0} elever</li>
-              {stats && stats.notCharged > 0 && (
-                <li>⚠️ Ikke ladet: {stats.notCharged} elever</li>
+              {stats && stats.notRegistered > 0 && (
+                <li>⚠️ Ikke registrert: {stats.notRegistered} elever</li>
               )}
               {stats && stats.absent > 0 && (
                 <li>👤 Fraværende: {stats.absent} elever</li>

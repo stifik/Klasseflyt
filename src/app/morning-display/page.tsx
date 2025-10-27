@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { db } from '@/lib/db';
 import { getTodayTheme, getThemeGradient } from '@/lib/themes';
+import { getTimeBasedMessage, isTimeBasedMessagesEnabled } from '@/lib/timeBasedMessages';
 import Slide1 from '@/components/morning-display/Slide1';
 import Slide2 from '@/components/morning-display/Slide2';
 import SlideControls from '@/components/morning-display/SlideControls';
@@ -80,18 +81,29 @@ function MorningDisplayContent() {
         }
       }
 
-      // Load welcome message
-      const messages = await db.welcomeMessages.toArray();
-      if (messages.length > 0) {
-        const randomMessage = getRandomMessage(messages, 'morning_display_welcome_v1');
-        setWelcomeMessage(randomMessage.message);
-      }
+      // Check if time-based messages are enabled
+      const useTimeBased = await isTimeBasedMessagesEnabled();
 
-      // Load instructions
-      const instructionsList = await db.instructionMessages.toArray();
-      if (instructionsList.length > 0) {
-        const randomInstruction = getRandomMessage(instructionsList, 'morning_display_instruction_v1');
-        setInstructions(randomInstruction.message);
+      if (useTimeBased) {
+        // Load time-based messages
+        const welcomeMsg = await getTimeBasedMessage('welcome');
+        setWelcomeMessage(welcomeMsg);
+
+        const instructionMsg = await getTimeBasedMessage('instruction');
+        setInstructions(instructionMsg);
+      } else {
+        // Load traditional random messages
+        const messages = await db.welcomeMessages.toArray();
+        if (messages.length > 0) {
+          const randomMessage = getRandomMessage(messages, 'morning_display_welcome_v1');
+          setWelcomeMessage(randomMessage.message);
+        }
+
+        const instructionsList = await db.instructionMessages.toArray();
+        if (instructionsList.length > 0) {
+          const randomInstruction = getRandomMessage(instructionsList, 'morning_display_instruction_v1');
+          setInstructions(randomInstruction.message);
+        }
       }
 
       // Load bell time for today

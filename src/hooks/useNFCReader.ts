@@ -212,14 +212,33 @@ export function useCardScanner() {
           return null;
         }
         // Wait for state to settle
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
 
-      console.log('📡 Calling nfc.scan()...');
-      const card = await nfc.scan();
-      console.log('📡 Scan result:', card);
-      setIsScanning(false);
-      return card;
+      // Direct call to readCard instead of scan() to avoid double processing lock
+      console.log('📡 Calling readCard() directly...');
+      setProcessing(true);
+
+      try {
+        const card = await readCard();
+        console.log('📡 readCard() returned:', card);
+
+        if (card) {
+          // Keep processing for 1 second to prevent rapid re-scanning
+          setTimeout(() => setProcessing(false), 1000);
+          setIsScanning(false);
+          return card;
+        } else {
+          setProcessing(false);
+          setIsScanning(false);
+          return null;
+        }
+      } catch (err) {
+        console.log('❌ Error reading card:', err);
+        setProcessing(false);
+        setIsScanning(false);
+        return null;
+      }
     } catch (err) {
       console.log('❌ Error in scanCard:', err);
       setIsScanning(false);

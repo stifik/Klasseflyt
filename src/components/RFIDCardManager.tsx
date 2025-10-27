@@ -24,20 +24,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
-import { 
-  CreditCard, 
-  Plus, 
-  Trash2, 
-  Lock, 
-  Unlock, 
+import {
+  CreditCard,
+  Plus,
+  Trash2,
+  Lock,
+  Unlock,
   Loader2,
   AlertCircle,
   CheckCircle2,
   UserPlus,
-  Scan
+  Scan,
+  RotateCcw
 } from 'lucide-react';
-import { useCardScanner } from '@/hooks/useNFCReader';
-import { formatCardUID, isValidCardUID } from '@/lib/nfcReader';
+import { useNFCWebSocket } from '@/hooks/useNFCWebSocket';
+import { formatCardUID, isValidCardUID, resetCooldown } from '@/lib/nfcReader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function RFIDCardManager() {
@@ -47,11 +48,48 @@ export default function RFIDCardManager() {
   const [manualCardId, setManualCardId] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState<number | ''>('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [isWaitingForCard, setIsWaitingForCard] = useState(false);
+  const isWaitingForCardRef = React.useRef(false);
 
   const cards = useLiveQuery(() => db.rfidCards.toArray(), []) || [];
   const students = useLiveQuery(() => db.students.toArray(), []) || [];
-  
-  const nfc = useCardScanner();
+
+  // Use WebSocket for real-time card detection
+  const nfc = useNFCWebSocket({
+    enabled: true,
+    autoConnect: true,
+    onCardDetected: (card) => {
+      console.log('✅ Card detected callback called:', card.uid);
+      console.log('   isWaitingForCard state:', isWaitingForCard);
+      console.log('   isWaitingForCardRef.current:', isWaitingForCardRef.current);
+
+      if (isWaitingForCardRef.current) {
+        console.log('✅ Processing card:', card.uid);
+        setManualCardId(card.uid);
+        setFeedback({
+          type: 'success',
+          message: `Kort lest: ${formatCardUID(card.uid)}`
+        });
+        setIsWaitingForCard(false);
+        isWaitingForCardRef.current = false;
+        nfc.stopMonitoring();
+      } else {
+        console.log('⚠️ Not waiting for card, ignoring');
+      }
+    },
+    onError: (error, message) => {
+      if (isWaitingForCardRef.current) {
+        console.error('❌ WebSocket error:', error, message);
+        setFeedback({
+          type: 'error',
+          message: message || 'Feil ved kortlesing'
+        });
+        setIsWaitingForCard(false);
+        isWaitingForCardRef.current = false;
+        nfc.stopMonitoring();
+      }
+    }
+  });
 
   // Get student name for a card
   const getStudentName = (studentId: number) => {
@@ -59,32 +97,59 @@ export default function RFIDCardManager() {
     return student?.name || 'Ukjent elev';
   };
 
+  // Handle NFC reset
+  const handleResetNFC = () => {
+    resetCooldown();
+    setFeedback({
+      type: 'success',
+      message: 'NFC-leser tilbakestilt. Du kan nå skanne kort på nytt.'
+    });
+  };
+
   // Handle scanning a new card
-  const handleScanNewCard = async () => {
+  const handleScanNewCard = () => {
     setFeedback(null);
-    
-    if (!nfc.isSupported) {
-      setFeedback({ 
-        type: 'error', 
-        message: 'NFC/RFID lesing støttes ikke i denne nettleseren. Bruk manuell registrering.' 
+
+    if (nfc.status === 'disconnected' || nfc.status === 'error') {
+      setFeedback({
+        type: 'error',
+        message: 'NFC Bridge Server er ikke tilkoblet. Sjekk at bridge-serveren kjører.'
       });
       return;
     }
 
-    const card = await nfc.scanCard();
-    
-    if (card) {
-      setManualCardId(card.uid);
-      setFeedback({ 
-        type: 'success', 
-        message: `Kort lest: ${formatCardUID(card.uid)}` 
+    if (nfc.readersConnected === 0) {
+      setFeedback({
+        type: 'error',
+        message: 'Ingen kortleser funnet. Sjekk at kortleseren er tilkoblet.'
       });
-    } else {
-      setFeedback({ 
-        type: 'error', 
-        message: nfc.error || 'Kunne ikke lese kort. Prøv igjen.' 
-      });
+      return;
     }
+
+    // Start monitoring for cards
+    setIsWaitingForCard(true);
+    isWaitingForCardRef.current = true; // Set ref to avoid closure issue
+    setFeedback({
+      type: 'success',
+      message: 'Venter på kort... Legg kortet på leseren nå.'
+    });
+
+    nfc.startMonitoring();
+
+    // Auto-stop after 10 seconds if no card detected
+    setTimeout(() => {
+      if (isWaitingForCardRef.current) { // Check ref instead of state
+        setIsWaitingForCard(false);
+        isWaitingForCardRef.current = false; // Reset ref
+        nfc.stopMonitoring();
+        if (!manualCardId) {
+          setFeedback({
+            type: 'error',
+            message: 'Ingen kort oppdaget. Prøv igjen.'
+          });
+        }
+      }
+    }, 10000);
   };
 
   // Add a new card
@@ -222,10 +287,20 @@ export default function RFIDCardManager() {
                 Administrer RFID/NFC-kort for elever
               </CardDescription>
             </div>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Registrer nytt kort
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handleResetNFC}
+                title="Tilbakestill NFC-leser hvis skanning har hengt seg"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Tilbakestill leser
+              </Button>
+              <Button onClick={() => setIsAddDialogOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Registrer nytt kort
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -337,16 +412,16 @@ export default function RFIDCardManager() {
             {/* NFC Scanner Section */}
             <div className="space-y-2">
               <Label>Skann kort</Label>
-              <Button 
-                onClick={handleScanNewCard} 
-                disabled={nfc.isScanning || !nfc.isSupported}
+              <Button
+                onClick={handleScanNewCard}
+                disabled={isWaitingForCard || nfc.status === 'disconnected'}
                 className="w-full"
                 variant="outline"
               >
-                {nfc.isScanning ? (
+                {isWaitingForCard ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Lytter etter kort...
+                    Venter på kort...
                   </>
                 ) : (
                   <>
@@ -355,9 +430,14 @@ export default function RFIDCardManager() {
                   </>
                 )}
               </Button>
-              {!nfc.isSupported && (
-                <p className="text-xs text-muted-foreground">
-                  NFC-skanning støttes ikke i denne nettleseren. Bruk manuell registrering.
+              {nfc.status === 'disconnected' && (
+                <p className="text-xs text-amber-600">
+                  NFC Bridge Server er ikke tilkoblet. Sjekk at bridge-serveren kjører på port 3001.
+                </p>
+              )}
+              {nfc.status === 'connected' && nfc.readersConnected === 0 && (
+                <p className="text-xs text-amber-600">
+                  Ingen kortleser funnet. Sjekk at kortleseren er tilkoblet via USB.
                 </p>
               )}
             </div>

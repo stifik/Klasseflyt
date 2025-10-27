@@ -5,9 +5,9 @@
 
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useNFCPolling } from "@/hooks/useNFCPolling";
+import { useNFCWebSocket } from "@/hooks/useNFCWebSocket";
 import { handleCheckInTap } from "@/lib/checkInHandler";
 import type { ActiveCheckInSession } from "@/hooks/useCheckInTimer";
 import type { Student } from "@/lib/types";
@@ -41,16 +41,22 @@ export default function CheckInNFC({
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastCheckIn, setLastCheckIn] = useState<{ studentName: string; points: number; percent: number } | null>(null);
 
+  // Ref to track if we're actively waiting for check-in cards
+  const isWaitingForCardRef = React.useRef(false);
+
   // Check if NFC is disabled in dev mode
   const nfcDisabled = typeof window !== 'undefined' && window.localStorage?.getItem('dev_nfc_disabled') === 'true';
 
-  // Set up NFC polling when session is active (only for NFC sessions, not manual)
-  useNFCPolling({
-    enabled: !!activeSession && !activeSession.isManual && !activeSession.shouldStop && !nfcDisabled,
+  // Set up WebSocket NFC for real-time card detection
+  const nfcWebSocket = useNFCWebSocket({
+    enabled: !nfcDisabled,
+    autoConnect: true,
     onCardDetected: async (card) => {
-      if (!activeSession || isProcessing) return;
+      if (!activeSession || isProcessing || !isWaitingForCardRef.current) return;
 
+      console.log('✅ Check-in card detected:', card.uid);
       setIsProcessing(true);
+      isWaitingForCardRef.current = false; // Temporarily disable while processing
 
       const result = await handleCheckInTap(card.uid, activeSession);
 
@@ -83,8 +89,35 @@ export default function CheckInNFC({
       }
 
       setIsProcessing(false);
+      isWaitingForCardRef.current = true; // Re-enable card detection
     },
+    onError: (error, message) => {
+      if (isWaitingForCardRef.current) {
+        console.error('❌ WebSocket error during check-in:', error, message);
+        // Don't show error toast for minor connection issues during check-in
+      }
+    }
   });
+
+  // Start/stop monitoring based on active session
+  React.useEffect(() => {
+    if (activeSession && !activeSession.isManual && !activeSession.shouldStop && !nfcDisabled) {
+      // Start monitoring for check-in session
+      console.log('🎯 Starting NFC monitoring for check-in session');
+      isWaitingForCardRef.current = true;
+      nfcWebSocket.startMonitoring();
+    } else {
+      // Stop monitoring when session ends or is manual
+      console.log('⏸️ Stopping NFC monitoring');
+      isWaitingForCardRef.current = false;
+      nfcWebSocket.stopMonitoring();
+    }
+
+    return () => {
+      isWaitingForCardRef.current = false;
+      nfcWebSocket.stopMonitoring();
+    };
+  }, [activeSession, nfcDisabled]);
 
   // Render different content based on session state
   const renderContent = () => {

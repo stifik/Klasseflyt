@@ -19,11 +19,23 @@ const BRIDGE_URL = typeof window !== 'undefined'
 let lastReadTime: number = 0;
 let lastCardId: string | null = null;
 let processingTransaction: boolean = false;
+let processingStartTime: number = 0;
 const DEBOUNCE_MS: number = 3000; // 3 seconds cooldown
+const PROCESSING_TIMEOUT_MS: number = 10000; // 10 seconds max processing time
 
 // Centralized debounce check (for legacy mode only)
 function shouldDebounceCard(cardId: string): boolean {
   const now = Date.now();
+
+  // Check if processing has timed out
+  if (processingTransaction && processingStartTime > 0) {
+    const processingDuration = now - processingStartTime;
+    if (processingDuration > PROCESSING_TIMEOUT_MS) {
+      console.log(`⚠️ Processing timeout (${processingDuration}ms) - forcing reset`);
+      processingTransaction = false;
+      processingStartTime = 0;
+    }
+  }
 
   // Ignore if processing another transaction
   if (processingTransaction) {
@@ -372,6 +384,7 @@ export const resetCooldown = (): void => {
   lastReadTime = 0;
   lastCardId = null;
   processingTransaction = false;
+  processingStartTime = 0;
   console.log('🔄 NFC cooldown reset');
 };
 
@@ -380,9 +393,12 @@ export const resetCooldown = (): void => {
  */
 export const setProcessing = (processing: boolean): void => {
   processingTransaction = processing;
-  // Only log when locking (starting transaction), not when unlocking
+  // Track when processing started
   if (processing) {
+    processingStartTime = Date.now();
     console.log('🔒 Transaction processing started');
+  } else {
+    processingStartTime = 0;
   }
 };
 

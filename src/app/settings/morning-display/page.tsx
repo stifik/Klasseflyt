@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import RewardSystemLayout from '@/components/RewardSystemLayout';
-import { Save } from 'lucide-react';
+import { Save, Calendar } from 'lucide-react';
+import Link from 'next/link';
 import type { WelcomeMessage, InstructionMessage, ScheduleTemplate } from '@/lib/types';
 
 export default function MorningDisplaySettingsPage() {
@@ -167,6 +168,27 @@ export default function MorningDisplaySettingsPage() {
             Konfigurer meldinger, instruksjoner og dagsplaner for morgenvisningen.
           </p>
         </div>
+
+        {/* Time-based Messages Link */}
+        <Link
+          href="/settings/time-based-messages"
+          className="block bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow"
+        >
+          <div className="flex items-center gap-4">
+            <div className="bg-white/20 p-3 rounded-lg">
+              <Calendar size={32} />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold mb-1">Tidsbaserte meldinger</h3>
+              <p className="text-white/90">
+                Konfigurer forskjellige meldinger for hver ukedag og tidsperiode
+              </p>
+            </div>
+            <div className="text-white/80">
+              →
+            </div>
+          </div>
+        </Link>
 
         {/* Class Name */}
         <div className="bg-white p-6 rounded-lg shadow-sm border">

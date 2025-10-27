@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useCardScanner } from '@/hooks/useNFCReader';
-import { useNFCPolling } from '@/hooks/useNFCPolling';
+import { useNFCWebSocket } from '@/hooks/useNFCWebSocket';
 import { formatCardUID, setProcessing as setNFCProcessing } from '@/lib/nfcReader';
 import { soundEffects } from '@/lib/soundEffects';
 import { Loader2, CheckCircle2 } from 'lucide-react';
@@ -66,6 +66,15 @@ const Terminal: React.FC = () => {
   const [customActionName, setCustomActionName] = useState('');
   const [customActionPoints, setCustomActionPoints] = useState('');
 
+  // Add ref to track waiting state for WebSocket callback closure
+  const isWaitingForCardRef = React.useRef(false);
+  // Mirror activeTransaction in a ref so callbacks see the latest value (avoid closure staleness)
+  const activeTransactionRef = React.useRef<ActiveTransaction | null>(activeTransaction);
+
+  React.useEffect(() => {
+    activeTransactionRef.current = activeTransaction;
+  }, [activeTransaction]);
+
   // Hent studenter, belønninger og RFID-kort fra database
   const students = useLiveQuery(() => db.students.toArray()) || [];
   const rewards = useLiveQuery(() => db.rewards.toArray()) || [];
@@ -73,16 +82,65 @@ const Terminal: React.FC = () => {
 
   const nfc = useCardScanner();
 
+  // WebSocket NFC setup for real-time card detection
+  const nfcWebSocket = useNFCWebSocket({
+    enabled: true,
+    autoConnect: true,
+    onCardDetected: (card) => {
+      console.log('✅ Card detected callback called:', card.uid);
+      console.log('   isWaitingForCardRef.current:', isWaitingForCardRef.current);
+
+      if (isWaitingForCardRef.current) {
+        console.log('✅ Processing card:', card.uid);
+        handleNFCCard(card.uid);
+      } else {
+        console.log('⚠️ Not waiting for card, ignoring');
+      }
+    },
+    onError: (error, message) => {
+      if (isWaitingForCardRef.current) {
+        console.error('❌ WebSocket error:', error, message);
+        soundEffects.play('error');
+        setNfcStatus('error');
+        setNfcMessage(message || 'Feil ved kortlesing');
+        setNFCProcessing(false);
+        setTimeout(() => {
+          setNfcStatus('waiting');
+        }, 3000);
+      }
+    }
+  });
+
   // Handle NFC card scanning
   const handleNFCCard = useCallback(async (cardUid: string) => {
     console.log('🔵 handleNFCCard called with UID:', cardUid);
+    
+    // Temporarily disable card detection while processing
+    isWaitingForCardRef.current = false;
+    
     setNfcStatus('processing');
     setNfcMessage('Behandler...');
     setNFCProcessing(true);
 
-    // Find RFID card
-    const rfidCard = rfidCards.find(c => c.cardId === cardUid);
-    console.log('🔍 Looking for card:', cardUid, 'Found:', rfidCard, 'Total cards:', rfidCards.length);
+    // Find RFID card (prefer in-memory list, but fallback to DB lookup if not present)
+    let rfidCard = rfidCards.find(c => (c.cardId || '').toLowerCase() === cardUid.toLowerCase());
+    console.log('🔍 Looking for card in-memory:', cardUid, 'Found:', rfidCard, 'Total cards:', rfidCards.length);
+
+    if (!rfidCard) {
+      // Sometimes the live query may not be populated yet or another tab just wrote the card.
+      // Do a direct DB query (case-insensitive) as a fallback.
+      try {
+        const found = await db.rfidCards.filter(c => (c.cardId || '').toLowerCase() === cardUid.toLowerCase()).first();
+        if (found) {
+          rfidCard = found;
+          console.log('🔍 Found card via direct DB lookup:', found);
+        } else {
+          console.log('🔍 Card not found in DB either:', cardUid);
+        }
+      } catch (err) {
+        console.error('❌ Error querying DB for RFID card:', err);
+      }
+    }
 
     if (!rfidCard) {
       soundEffects.play('error');
@@ -90,6 +148,7 @@ const Terminal: React.FC = () => {
       setNfcMessage(`Kort ${formatCardUID(cardUid)} er ikke registrert.`);
       setNFCProcessing(false);
       setTimeout(() => {
+        isWaitingForCardRef.current = true; // Re-enable card detection
         setNfcStatus('waiting');
       }, 3000);
       return;
@@ -101,21 +160,35 @@ const Terminal: React.FC = () => {
       setNfcMessage('Dette kortet er blokkert. Kontakt lærer.');
       setNFCProcessing(false);
       setTimeout(() => {
+        isWaitingForCardRef.current = true; // Re-enable card detection
         setNfcStatus('waiting');
       }, 3000);
       return;
     }
 
-    // Find student
-    const student = students.find(s => s.id === rfidCard.studentId);
-    console.log('🔍 Looking for student with ID:', rfidCard.studentId, 'Type:', typeof rfidCard.studentId, 'Found:', student);
-    
+    // Find student (prefer in-memory, fallback to DB lookup if necessary)
+    let student = students.find(s => s.id === rfidCard.studentId);
+    console.log('🔍 Looking for student with ID:', rfidCard.studentId, 'Type:', typeof rfidCard.studentId, 'Found (in-memory):', student);
+
+    if (!student) {
+      try {
+        const foundStudent = await db.students.get(rfidCard.studentId as number);
+        if (foundStudent) {
+          student = foundStudent as any;
+          console.log('🔍 Found student via direct DB lookup:', foundStudent);
+        }
+      } catch (err) {
+        console.error('❌ Error querying DB for student:', err);
+      }
+    }
+
     if (!student) {
       soundEffects.play('error');
       setNfcStatus('error');
       setNfcMessage('Finner ikke eleven tilknyttet dette kortet.');
       setNFCProcessing(false);
       setTimeout(() => {
+        isWaitingForCardRef.current = true; // Re-enable card detection
         setNfcStatus('waiting');
       }, 3000);
       return;
@@ -124,7 +197,7 @@ const Terminal: React.FC = () => {
     // Process transaction
     console.log('💳 Processing transaction for student:', student.id, 'with card:', rfidCard.cardId);
     await processTransaction(student.id!, rfidCard.cardId);
-  }, [rfidCards, students, activeTransaction]);
+  }, [rfidCards, students]);
 
   // NFC card detection handler
   const handleCardDetected = useCallback(async (card: any) => {
@@ -132,24 +205,31 @@ const Terminal: React.FC = () => {
     await handleNFCCard(card.uid);
   }, [handleNFCCard]);
 
-  // Use polling for NFC (simpler and more stable)
-  useNFCPolling({
-    enabled: nfcStatus === 'waiting' && !!activeTransaction,
-    onCardDetected: handleCardDetected
-  });
-
   // Process transaction (both manual and NFC)
   const processTransaction = async (studentId: number, cardId?: string) => {
-    console.log('💰 processTransaction called - studentId:', studentId, 'cardId:', cardId, 'activeTransaction:', activeTransaction);
+    const currentTransaction = activeTransactionRef.current;
+    console.log('💰 processTransaction called - studentId:', studentId, 'cardId:', cardId, 'activeTransaction:', currentTransaction);
 
-    if (!activeTransaction) return;
+    if (!currentTransaction) return;
 
     let result: RewardResult;
 
-    if (activeTransaction.type === 'reward') {
+    if (currentTransaction.type === 'reward') {
       // Check balance first for rewards
-      const student = students.find(s => s.id === studentId);
-      console.log('🔍 Finding student in processTransaction - searching for:', studentId, 'found:', student);
+      let student = students.find(s => s.id === studentId);
+      console.log('🔍 Finding student in processTransaction - searching for:', studentId, 'found (in-memory):', student);
+
+      if (!student) {
+        try {
+          const found = await db.students.get(studentId);
+          if (found) {
+            student = found as any;
+            console.log('🔍 Found student via direct DB lookup in processTransaction:', found);
+          }
+        } catch (err) {
+          console.error('❌ Error querying DB for student in processTransaction:', err);
+        }
+      }
 
       if (!student || !student.name) {
         const message = 'Kunne ikke finne eleven. Vennligst prøv igjen.';
@@ -170,8 +250,8 @@ const Terminal: React.FC = () => {
 
       const currentPoints = student.points || 0;
 
-      if (currentPoints < activeTransaction.cost) {
-        const message = `${student.name} har kun ${currentPoints} poeng, men ${activeTransaction.name} koster ${activeTransaction.cost} poeng.`;
+      if (currentPoints < currentTransaction.cost) {
+        const message = `${student.name} har kun ${currentPoints} poeng, men ${currentTransaction.name} koster ${currentTransaction.cost} poeng.`;
 
         soundEffects.play('error');
 
@@ -190,13 +270,13 @@ const Terminal: React.FC = () => {
       }
 
       // Buy reward (now handles all NFC metadata internally)
-      result = await buyReward(studentId, activeTransaction.id, cardId);
-    } else if (activeTransaction.type === 'custom_action') {
+      result = await buyReward(studentId, currentTransaction.id, cardId);
+    } else if (currentTransaction.type === 'custom_action') {
       // Give points for custom action (now handles NFC metadata internally)
-      result = await givePoints(studentId, activeTransaction.points, activeTransaction.name, cardId);
+      result = await givePoints(studentId, currentTransaction.points, currentTransaction.name, cardId);
     } else {
       // Give points for predefined action (now handles NFC metadata internally)
-      result = await givePoints(studentId, activeTransaction.amount, activeTransaction.description, cardId);
+      result = await givePoints(studentId, currentTransaction.amount, currentTransaction.description, cardId);
     }
 
     // Show result
@@ -218,6 +298,7 @@ const Terminal: React.FC = () => {
         
         // Reset to waiting for next card
         setTimeout(() => {
+          isWaitingForCardRef.current = true; // Re-enable card detection
           setNfcStatus('waiting');
           setNfcMessage('Klar for neste kort...');
         }, 2500);
@@ -227,6 +308,7 @@ const Terminal: React.FC = () => {
         setNfcMessage(result.message);
         setNFCProcessing(false);
         setTimeout(() => {
+          isWaitingForCardRef.current = true; // Re-enable card detection
           setNfcStatus('waiting');
         }, 3000);
       }
@@ -267,17 +349,36 @@ const Terminal: React.FC = () => {
     setNfcStatus('waiting');
     setNfcMessage('Kobler til kortleser...');
     
-    // Ensure connection is established before scanning
-    try {
-      await nfc.connect();
-      setNfcMessage('Klar! Tæpp kort for å betale...');
-    } catch (error) {
-      console.error('Failed to connect to NFC reader:', error);
-      setNfcMessage('Klar! Tæpp kort for å betale...');
+    // Check WebSocket status
+    if (nfcWebSocket.status === 'disconnected' || nfcWebSocket.status === 'error') {
+      setNfcMessage('NFC Bridge Server er ikke tilkoblet. Sjekk at bridge-serveren kjører.');
+      soundEffects.play('error');
+      setTimeout(() => {
+        setNfcStatus('idle');
+        setPaymentMode('manual');
+      }, 3000);
+      return;
     }
+
+    if (nfcWebSocket.readersConnected === 0) {
+      setNfcMessage('Ingen kortleser funnet. Sjekk at kortleseren er tilkoblet.');
+      soundEffects.play('error');
+      setTimeout(() => {
+        setNfcStatus('idle');
+        setPaymentMode('manual');
+      }, 3000);
+      return;
+    }
+
+    // Start monitoring for cards
+    isWaitingForCardRef.current = true;
+    setNfcMessage('Klar! Tæpp kort for å betale...');
+    nfcWebSocket.startMonitoring();
   };
 
   const handleCancelNFC = () => {
+    isWaitingForCardRef.current = false;
+    nfcWebSocket.stopMonitoring();
     setNfcStatus('idle');
     setPaymentMode('manual');
   };

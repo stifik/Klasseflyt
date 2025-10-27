@@ -200,6 +200,36 @@ export type MorningDisplaySettings = {
   instructionRotationMode: 'daily' | 'per-ringetid';
   lastThemeId?: number;
   lastThemeDate?: string;
+  useTimeBasedMessages?: boolean; // Enable/disable time-based message system
+};
+
+// Time-based message system types
+export type TimePeriod = {
+  id?: number;
+  name: string; // e.g., "Morgen", "Etter 1. friminutt"
+  startTime: string; // HH:MM format
+  order: number; // For sorting (1, 2, 3...)
+  createdAt?: Date;
+};
+
+export type Weekday = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
+
+export type TimeBasedMessage = {
+  id?: number;
+  weekday: Weekday;
+  timePeriodId: number;
+  messageType: 'welcome' | 'instruction';
+  messages: string; // One message per line
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+export type DefaultMessage = {
+  id?: number;
+  messageType: 'welcome' | 'instruction';
+  messages: string; // One message per line
+  createdAt?: Date;
+  updatedAt?: Date;
 };
 
 export type Absence = {
