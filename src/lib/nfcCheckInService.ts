@@ -357,7 +357,7 @@ export async function getRegisteredStudentsToday(): Promise<Array<{
     .filter(c =>
       new Date(c.date).toISOString().split('T')[0] === todayString &&
       c.registrationMethod === 'nfc' &&
-      c.registeredAt
+      !!c.registeredAt
     )
     .toArray();
 
