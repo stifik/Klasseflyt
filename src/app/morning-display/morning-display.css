@@ -120,12 +120,12 @@
 
 .right-column {
   width: 65%;
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;  /* Denne bør sentrere innholdet */
-  padding: 0;  /* Fjern all padding */
+  justify-content: center;
+  padding: 0;
   overflow: hidden;
 }
 
@@ -176,7 +176,7 @@
 }
 
 .welcome-main {
-  flex: 0 1 auto;  /* La den ikke ta opp all tilgjengelig plass */
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -212,7 +212,7 @@
   /* allow the main text to take available space */
   flex: 1 1 auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
 }
 
@@ -287,16 +287,6 @@
 }
 
 /* Legacy styles (for bakoverkompatibilitet) */
-.right-column {
-  width: 65%;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  padding: 40px;
-}
 
 /* Old Clock Styles (beholdes for bakoverkompatibilitet) */
 .clock-container {
