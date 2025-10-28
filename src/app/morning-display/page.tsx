@@ -7,6 +7,7 @@ import { getTodayTheme, getThemeGradient } from '@/lib/themes';
 import { getTimeBasedMessage, isTimeBasedMessagesEnabled } from '@/lib/timeBasedMessages';
 import Slide1 from '@/components/morning-display/Slide1';
 import Slide2 from '@/components/morning-display/Slide2';
+import Slide3 from '@/components/morning-display/Slide3';
 import SlideControls from '@/components/morning-display/SlideControls';
 import type { Student, WelcomeMessage, InstructionMessage, BellTime } from '@/lib/types';
 import './morning-display.css';
@@ -39,6 +40,9 @@ function MorningDisplayContent() {
 
     if (slideParam === '2') {
       setCurrentSlide(2);
+    }
+    if (slideParam === '3') {
+      setCurrentSlide(3);
     }
     if (showAllParam === 'true') {
       setShowAllSessions(true);
@@ -270,6 +274,16 @@ function MorningDisplayContent() {
       {currentSlide === 2 && (
         <>
           <Slide2 showAllSessions={showAllSessions} initialDate={initialDate} />
+          <SlideControls
+            currentSlide={currentSlide}
+            onSlideChange={setCurrentSlide}
+          />
+        </>
+      )}
+
+      {currentSlide === 3 && (
+        <>
+          <Slide3 />
           <SlideControls
             currentSlide={currentSlide}
             onSlideChange={setCurrentSlide}
