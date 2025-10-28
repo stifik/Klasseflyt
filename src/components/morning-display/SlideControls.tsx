@@ -18,7 +18,7 @@ export default function SlideControls({ currentSlide, onSlideChange }: SlideCont
       )}
 
       {currentSlide === 2 && (
-        <div className="slide-controls-row">
+        <div className="slide-controls-row flex items-center gap-4">
           <button
             onClick={() => onSlideChange(1)}
             className="dagsplan-btn slide-button slide-controls-top"

@@ -196,7 +196,10 @@ function MorningDisplayContent() {
       if (e.key === 'ArrowLeft') {
         setCurrentSlide(1);
       } else if (e.key === 'ArrowRight') {
-        setCurrentSlide(2);
+        // Only navigate to slide 2 if we're not already on slide 2; when on slide 2
+        // the Slide2 component handles ArrowRight to reveal sessions and can
+        // call back to advance to slide 3 when fully revealed.
+        setCurrentSlide(prev => (prev === 2 ? prev : 2));
       }
     };
 
@@ -273,7 +276,7 @@ function MorningDisplayContent() {
 
       {currentSlide === 2 && (
         <>
-          <Slide2 showAllSessions={showAllSessions} initialDate={initialDate} />
+          <Slide2 showAllSessions={showAllSessions} initialDate={initialDate} onAdvanceToNext={() => setCurrentSlide(3)} />
           <SlideControls
             currentSlide={currentSlide}
             onSlideChange={setCurrentSlide}

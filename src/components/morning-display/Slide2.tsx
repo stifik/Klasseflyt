@@ -10,9 +10,10 @@ type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
 interface Slide2Props {
   showAllSessions?: boolean;
   initialDate?: string | null;
+  onAdvanceToNext?: () => void;
 }
 
-export default function Slide2({ showAllSessions = false, initialDate = null }: Slide2Props) {
+export default function Slide2({ showAllSessions = false, initialDate = null, onAdvanceToNext }: Slide2Props) {
   const router = useRouter();
   const [isEditMode, setIsEditMode] = useState(false);
   const [sessions, setSessions] = useState<ScheduleSession[]>([]);
@@ -44,16 +45,26 @@ export default function Slide2({ showAllSessions = false, initialDate = null }: 
   }, [showAllSessions, sessions.length]);
 
   useEffect(() => {
-    // Add keyboard navigation
+    // Add keyboard navigation: reveal sessions with ArrowRight, and when all
+    // sessions are already revealed, call onAdvanceToNext (to navigate to agent reveal)
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' && !isEditMode && visibleSessionCount < sessions.length) {
+      if (e.key !== 'ArrowRight' || isEditMode) return;
+
+      if (visibleSessionCount < sessions.length) {
         setVisibleSessionCount(prev => prev + 1);
+      } else {
+        // Fully revealed: ask parent to advance (if provided)
+        try {
+          onAdvanceToNext?.();
+        } catch (err) {
+          // swallow
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isEditMode, visibleSessionCount, sessions.length]);
+  }, [isEditMode, visibleSessionCount, sessions.length, onAdvanceToNext]);
 
   // Measure visible session cards and set a CSS variable so all cards can share the
   // same height (the tallest). This prevents the jarring horizontal stretch/shrink
