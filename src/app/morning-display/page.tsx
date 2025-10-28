@@ -27,6 +27,7 @@ function MorningDisplayContent() {
   const [instructions, setInstructions] = useState('Velkommen til en ny dag!');
   const [className, setClassName] = useState('klassen');
   const [bellTime, setBellTime] = useState<string | undefined>();
+  const [bellType, setBellType] = useState<'morgen' | 'ordinær' | undefined>();
   const [checkInSettings, setCheckInSettings] = useState<any>();
   const [themeGradient, setThemeGradient] = useState<string>('');
   const [showAllSessions, setShowAllSessions] = useState(false);
@@ -124,11 +125,32 @@ function MorningDisplayContent() {
       const bellTimes = await db.bellTimes
         .where('weekday')
         .equals(weekday as any)
-        .and(bt => bt.type === 'morgen')
         .toArray();
 
       if (bellTimes.length > 0) {
-        setBellTime(bellTimes[0].time);
+        // Find the most relevant bell time for current time
+        const currentTime = new Date();
+        const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+
+        // Sort bell times by time
+        const sortedBellTimes = bellTimes.sort((a, b) => {
+          const [aH, aM] = a.time.split(':').map(Number);
+          const [bH, bM] = b.time.split(':').map(Number);
+          return (aH * 60 + aM) - (bH * 60 + bM);
+        });
+
+        // Find the most recent bell time that has passed or the next upcoming one
+        let selectedBellTime = sortedBellTimes[0];
+        for (const bt of sortedBellTimes) {
+          const [h, m] = bt.time.split(':').map(Number);
+          const bellMinutes = h * 60 + m;
+          if (bellMinutes <= currentMinutes) {
+            selectedBellTime = bt;
+          }
+        }
+
+        setBellTime(selectedBellTime.time);
+        setBellType(selectedBellTime.type);
       }
 
       // Setup live updates listener
@@ -271,6 +293,7 @@ function MorningDisplayContent() {
           className={className}
           bellTime={bellTime}
           checkInSettings={checkInSettings}
+          bellType={bellType}
           onNavigateToDagsplan={() => setCurrentSlide(2)}
         />
       )}

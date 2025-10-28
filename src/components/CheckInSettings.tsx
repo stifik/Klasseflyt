@@ -53,10 +53,12 @@ export default function CheckInSettings() {
       percent50Minutes: 5,
       percent10Minutes: 7,
       absenceMinutes: 7,
+      postCloseGraceMinutes: 2,
     },
     regular: {
       percent100Minutes: 3,
       stopMinutes: 3,
+      postCloseGraceMinutes: 2,
     },
   });
 
@@ -560,6 +562,24 @@ export default function CheckInSettings() {
                   }
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label>Behold rød i etter (minutter)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={checkInSettings.morning.postCloseGraceMinutes ?? 2}
+                  onChange={(e) =>
+                    setCheckInSettings({
+                      ...checkInSettings,
+                      morning: {
+                        ...checkInSettings.morning,
+                        postCloseGraceMinutes: parseInt(e.target.value) || 0,
+                      },
+                    })
+                  }
+                />
+              </div>
             </div>
           </div>
 
@@ -598,6 +618,24 @@ export default function CheckInSettings() {
                       regular: {
                         ...checkInSettings.regular,
                         stopMinutes: parseInt(e.target.value) || 1,
+                      },
+                    })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Behold rød i etter (minutter)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={checkInSettings.regular.postCloseGraceMinutes ?? 2}
+                  onChange={(e) =>
+                    setCheckInSettings({
+                      ...checkInSettings,
+                      regular: {
+                        ...checkInSettings.regular,
+                        postCloseGraceMinutes: parseInt(e.target.value) || 0,
                       },
                     })
                   }

@@ -186,13 +186,15 @@ export default function Slide1({
 
     // ordinær
     const regular = settings.regular;
-    if (minutesSinceBell < 0) return 'transparent';
+    // For ordinary check-in we show green slightly before the bell (match Clock behaviour)
+    if (minutesSinceBell < 0) return 'green';
     const { percent100Minutes, stopMinutes, postCloseGraceMinutes } = regular;
     if (minutesSinceBell <= percent100Minutes) return 'green';
     if (minutesSinceBell <= stopMinutes) return 'yellow';
     // > stopMinutes => red until postCloseGrace
     const postCloseGrace = postCloseGraceMinutes ?? 2;
     if (minutesSinceBell <= stopMinutes + postCloseGrace) return 'red';
+    // After grace period ends, return transparent
     return 'transparent';
   }
 
