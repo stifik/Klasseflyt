@@ -30,29 +30,25 @@ export async function startRegistrationSession(): Promise<{ success: boolean; me
   const todayString = getTodayString();
 
   try {
-    // Check if there's already a session for today
-    const existingSession = await db.nfcRegistrationSessions.get(todayString);
+    // Find any sessions for today
+    const todayDate = new Date(todayString);
+    const sessionsToday = await db.nfcRegistrationSessions
+      .filter(s => new Date(s.date).toISOString().split('T')[0] === todayString)
+      .toArray();
 
-    if (existingSession && !isDevMode()) {
-      if (existingSession.isActive) {
-        return { success: false, message: "En registrering er allerede aktiv for i dag." };
-      }
-      if (existingSession.isCompleted) {
-        return { success: false, message: "Registreringen for i dag er allerede fullført." };
-      }
-
-      // Reactivate the session
-      await db.nfcRegistrationSessions.update(todayString, {
-        isActive: true,
-        startTime: new Date(),
-      });
-
-      return { success: true, message: "NFC-registrering gjenopptatt" };
+    const activeSession = sessionsToday.find(s => s.isActive && !s.isCompleted);
+    if (activeSession && !isDevMode()) {
+      return { success: false, message: "En registrering er allerede aktiv for i dag." };
     }
 
-    // Create new session
+    // If there is a completed session earlier today, we allow starting a new session.
+    // We no longer delete today's checks. Instead checks are scoped to a sessionId so
+    // multiple sessions per day can coexist and historical data is preserved.
+
+    // Create a new session with a unique id so multiple sessions can exist per day
+    const newSessionId = `${todayString}_${Date.now()}`;
     const newSession: NFCRegistrationSession = {
-      id: todayString,
+      id: newSessionId,
       date: new Date(),
       startTime: new Date(),
       isActive: true,
@@ -78,13 +74,12 @@ export async function startRegistrationSession(): Promise<{ success: boolean; me
  */
 export async function getActiveSession(): Promise<NFCRegistrationSession | null> {
   const todayString = getTodayString();
-  const session = await db.nfcRegistrationSessions.get(todayString);
+  // Find any active session for today (there may be multiple sessions across the day)
+  const session = await db.nfcRegistrationSessions
+    .filter(s => new Date(s.date).toISOString().split('T')[0] === todayString && s.isActive && !s.isCompleted)
+    .first();
 
-  if (session && session.isActive && !session.isCompleted) {
-    return session;
-  }
-
-  return null;
+  return session || null;
 }
 
 /**
@@ -141,11 +136,12 @@ export async function handleCardTap(cardId: string): Promise<CheckInResult> {
       };
     }
 
-    // 5. Check if student already registered today (skip in dev mode)
+    // 5. Check if student already registered in current session (skip in dev mode)
     if (!isDevMode()) {
+      const sessionId = activeSession.id;
       const existingCheck = await db.dailyChecks
         .where('studentId').equals(card.studentId)
-        .and(c => new Date(c.date).toISOString().split('T')[0] === todayString)
+        .and(c => new Date(c.date).toISOString().split('T')[0] === todayString && c.sessionId === sessionId)
         .first();
 
       if (existingCheck) {
@@ -175,7 +171,7 @@ export async function handleCardTap(cardId: string): Promise<CheckInResult> {
       ipadAction = fallback;
     }
 
-    // 7. Create daily check entry
+    // 7. Create daily check entry (scoped to current session)
     await db.dailyChecks.add({
       studentId: card.studentId,
       date: todayDate,
@@ -183,6 +179,7 @@ export async function handleCardTap(cardId: string): Promise<CheckInResult> {
       ipadBrought: true,
       registrationMethod: 'nfc',
       registeredAt: new Date(),
+      sessionId: activeSession.id,
     });
 
     // 8. Give points
@@ -249,7 +246,7 @@ export async function endRegistrationSession(): Promise<{
 
     // Get today's checks
     const todaysChecks = await db.dailyChecks
-      .filter(c => new Date(c.date).toISOString().split('T')[0] === todayString)
+      .filter(c => new Date(c.date).toISOString().split('T')[0] === todayString && c.sessionId === activeSession.id)
       .toArray();
     const registeredIds = new Set(todaysChecks.map(c => c.studentId));
 
@@ -266,6 +263,7 @@ export async function endRegistrationSession(): Promise<{
         ipadCharged: false,
         ipadBrought: true,
         registrationMethod: 'manual' as const,
+        sessionId: activeSession.id,
       }));
 
       // Use bulkAdd with allKeys option to skip duplicates in dev mode
@@ -289,8 +287,8 @@ export async function endRegistrationSession(): Promise<{
       endTime: new Date(),
     });
 
-    // Count only students who actually got points (ipadCharged: true)
-    const studentsWhoGotPoints = todaysChecks.filter(c => c.ipadCharged && c.ipadBrought).length;
+  // Count only students who actually got points (ipadCharged: true)
+  const studentsWhoGotPoints = todaysChecks.filter(c => c.ipadCharged && c.ipadBrought).length;
 
     return {
       success: true,
@@ -328,9 +326,11 @@ export async function getRegistrationStats(): Promise<{
     .toArray();
   const absent = todaysAbsences.length;
 
-  const todaysChecks = await db.dailyChecks
-    .filter(c => new Date(c.date).toISOString().split('T')[0] === todayString)
-    .toArray();
+  // If there's an active session, show stats for that session; otherwise fall back to date-wide checks
+  const activeSession = await getActiveSession();
+  const todaysChecks = activeSession
+    ? await db.dailyChecks.filter(c => new Date(c.date).toISOString().split('T')[0] === todayString && c.sessionId === activeSession.id).toArray()
+    : await db.dailyChecks.filter(c => new Date(c.date).toISOString().split('T')[0] === todayString).toArray();
   const registered = todaysChecks.filter(c => c.ipadCharged && c.ipadBrought).length;
 
   const notRegistered = totalStudents - registered - absent;
@@ -353,11 +353,14 @@ export async function getRegisteredStudentsToday(): Promise<Array<{
 }>> {
   const todayString = getTodayString();
 
+  const activeSession = await getActiveSession();
+
   const todaysChecks = await db.dailyChecks
     .filter(c =>
       new Date(c.date).toISOString().split('T')[0] === todayString &&
       c.registrationMethod === 'nfc' &&
-      !!c.registeredAt
+      !!c.registeredAt &&
+      (activeSession ? c.sessionId === activeSession.id : true)
     )
     .toArray();
 

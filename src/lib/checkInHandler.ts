@@ -74,8 +74,23 @@ export async function handleCheckInTap(
   }
 
   // Check if already checked in
+  console.debug('[handleCheckInTap] Checking existing check-in', { studentId: student.id, bellTimeId: activeSession.bellTime.id });
   const alreadyCheckedIn = await hasStudentCheckedIn(student.id, activeSession.bellTime.id!);
   if (alreadyCheckedIn) {
+    // Query and log any matching logs for diagnostics
+    try {
+      const today = getTodayAtNoon();
+      const todayString = today.toISOString().split('T')[0];
+      const matching = await db.checkInLogs
+        .where('studentId')
+        .equals(student.id)
+        .and(l => l.bellTimeId === activeSession.bellTime.id! && new Date((l as any).date).toISOString().split('T')[0] === todayString)
+        .toArray();
+      console.warn('[handleCheckInTap] Blocking check-in because existing logs found', { studentId: student.id, bellTimeId: activeSession.bellTime.id, matching });
+    } catch (err) {
+      console.error('[handleCheckInTap] Failed to query matching checkInLogs for diagnostics', err);
+    }
+
     return {
       success: false,
       message: `${student.name} har allerede sjekket inn`,
@@ -168,6 +183,18 @@ export async function handleCheckInTap(
     const errAny = error as any;
     if (errAny && (errAny.name === 'ConstraintError' || (errAny.message && String(errAny.message).includes('Unable to add key to index')))) {
       console.warn('Duplicate check-in prevented by DB unique index:', errAny);
+      try {
+        const today = getTodayAtNoon();
+        const todayString = today.toISOString().split('T')[0];
+        const matching = await db.checkInLogs
+          .where('studentId')
+          .equals(student.id)
+          .and(l => l.bellTimeId === activeSession.bellTime.id! && new Date((l as any).date).toISOString().split('T')[0] === todayString)
+          .toArray();
+        console.warn('[handleCheckInTap] Existing logs causing ConstraintError', { studentId: student.id, bellTimeId: activeSession.bellTime.id, matching });
+      } catch (err) {
+        console.error('[handleCheckInTap] Failed to query matching checkInLogs after ConstraintError', err);
+      }
       return {
         success: false,
         message: `${student.name} er allerede registrert.`,
@@ -205,8 +232,22 @@ export async function handleManualCheckIn(
   }
 
   // Check if already checked in
+  console.debug('[handleManualCheckIn] Checking existing check-in', { studentId: student.id, bellTimeId: activeSession.bellTime.id });
   const alreadyCheckedIn = await hasStudentCheckedIn(student.id, activeSession.bellTime.id!);
   if (alreadyCheckedIn) {
+    try {
+      const today = getTodayAtNoon();
+      const todayString = today.toISOString().split('T')[0];
+      const matching = await db.checkInLogs
+        .where('studentId')
+        .equals(student.id)
+        .and(l => l.bellTimeId === activeSession.bellTime.id! && new Date((l as any).date).toISOString().split('T')[0] === todayString)
+        .toArray();
+      console.warn('[handleManualCheckIn] Blocking manual check-in because existing logs found', { studentId: student.id, bellTimeId: activeSession.bellTime.id, matching });
+    } catch (err) {
+      console.error('[handleManualCheckIn] Failed to query matching checkInLogs for diagnostics', err);
+    }
+
     return {
       success: false,
       message: `${student.name} har allerede sjekket inn`,

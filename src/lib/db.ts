@@ -559,6 +559,25 @@ export class MySubClassedDexie extends Dexie {
             });
         });
 
+        // Version 39: Add sessionId to dailyChecks so multiple registration sessions can exist per day
+        this.version(39).stores({
+            dailyChecks: '++id, &[studentId+date+sessionId], studentId, date, sessionId'
+        }).upgrade(async (tx) => {
+            // Migrate existing dailyChecks to include a sessionId so legacy data is preserved.
+            const allChecks = await tx.table('dailyChecks').toArray();
+            for (const chk of allChecks) {
+                if (!('sessionId' in chk) || !chk.sessionId) {
+                    const dateStr = new Date(chk.date).toISOString().split('T')[0];
+                    chk.sessionId = `${dateStr}_legacy`;
+                    try {
+                        await tx.table('dailyChecks').put(chk);
+                    } catch (err) {
+                        console.error('Failed to migrate dailyCheck', chk, err);
+                    }
+                }
+            }
+        });
+
         // Version 39: Add time-based message system tables
         this.version(39).stores({
             timePeriods: '++id, order',

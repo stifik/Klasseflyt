@@ -84,6 +84,7 @@ export type DailyCheck = {
   ipadBrought: boolean;
   registrationMethod?: 'manual' | 'nfc';
   registeredAt?: Date;
+  sessionId?: string; // optional session identifier to support multiple check-in periods per day
 };
 
 export type NFCRegistrationSession = {

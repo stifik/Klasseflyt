@@ -32,7 +32,7 @@ export function useCheckInTimer() {
   const startManualCheckIn = (type: 'morgen' | 'ordinær', points: number = 10) => {
     console.log('[CHECK-IN] Starting manual check-in:', type, 'points:', points);
     const manualBell: BellTime = {
-      id: -1, // Temporary ID for manual session
+      id: -Date.now(), // Unique temporary negative ID for manual session
       weekday: 'mandag', // Doesn't matter for manual
       time: new Date().toTimeString().substring(0, 5),
       points,

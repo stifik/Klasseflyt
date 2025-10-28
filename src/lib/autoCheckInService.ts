@@ -56,7 +56,12 @@ export async function getActiveBellTime(): Promise<BellTime | null> {
 
   // Find bell time that we're currently within the active window for
   // Check each bell time to see if current time is within its active period
-  for (const bellTime of bellTimes) {
+  // Sort bell times by time (HH:MM) so we can pick the most recently started bell
+  bellTimes.sort((a, b) => a.time.localeCompare(b.time));
+
+  // Iterate from newest to oldest and return the first bellTime that has started and hasn't stopped
+  for (let i = bellTimes.length - 1; i >= 0; i--) {
+    const bellTime = bellTimes[i];
     const minutesSince = getMinutesSince(bellTime.time);
 
     // Only consider bell times that have started (minutesSince >= 0)
@@ -112,13 +117,19 @@ export async function hasStudentCheckedIn(studentId: number, bellTimeId: number)
   const todayString = new Date().toISOString().split('T')[0];
 
   // Search for any check-in log for this student and bellTime where the stored date matches today's date string
-  const log = await db.checkInLogs
+  const logs = await db.checkInLogs
     .where('studentId')
     .equals(studentId)
     .and(l => l.bellTimeId === bellTimeId && new Date((l as any).date).toISOString().split('T')[0] === todayString)
-    .first();
+    .toArray();
 
-  return !!log;
+  if (logs && logs.length > 0) {
+    console.debug('[hasStudentCheckedIn] Found existing check-in logs', { studentId, bellTimeId, todayString, logs });
+    return true;
+  }
+
+  console.debug('[hasStudentCheckedIn] No existing check-in for', { studentId, bellTimeId, todayString });
+  return false;
 }
 
 // Check if listening should stop
