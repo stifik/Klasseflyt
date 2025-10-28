@@ -29,16 +29,41 @@ export function useCheckInTimer() {
   const settings = useLiveQuery(() => db.settings.get('userSettings'));
 
   // Function to manually start a check-in session
-  const startManualCheckIn = (type: 'morgen' | 'ordinær', points: number = 10) => {
+  const startManualCheckIn = async (type: 'morgen' | 'ordinær', points: number = 10) => {
     console.log('[CHECK-IN] Starting manual check-in:', type, 'points:', points);
-    const manualBell: BellTime = {
-      id: -Date.now(), // Unique temporary negative ID for manual session
-      weekday: 'mandag', // Doesn't matter for manual
-      time: new Date().toTimeString().substring(0, 5),
-      points,
-      type,
-    };
-    console.log('[CHECK-IN] Created manual bell:', manualBell);
+
+    // Try to find matching bell time from database for today
+    const weekdayNames = ['søndag', 'mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag'];
+    const today = new Date();
+    const weekday = weekdayNames[today.getDay()];
+
+    const bellTimes = await db.bellTimes
+      .where('weekday')
+      .equals(weekday as any)
+      .and(bt => bt.type === type)
+      .toArray();
+
+    let manualBell: BellTime;
+
+    if (bellTimes.length > 0) {
+      // Use the first matching bell time from database (with real ID)
+      manualBell = {
+        ...bellTimes[0],
+        time: new Date().toTimeString().substring(0, 5), // Use current time
+      };
+      console.log('[CHECK-IN] Using existing bell time from DB:', manualBell);
+    } else {
+      // Create temporary bell time if none exists
+      manualBell = {
+        id: -Date.now(), // Unique temporary negative ID for manual session
+        weekday: weekday as any,
+        time: new Date().toTimeString().substring(0, 5),
+        points,
+        type,
+      };
+      console.log('[CHECK-IN] Created temporary manual bell:', manualBell);
+    }
+
     setManualSession(manualBell);
   };
 

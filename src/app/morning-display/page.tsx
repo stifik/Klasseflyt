@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { db } from '@/lib/db';
 import { getTodayTheme, getThemeGradient } from '@/lib/themes';
 import { getTimeBasedMessage, isTimeBasedMessagesEnabled } from '@/lib/timeBasedMessages';
+import { getCurrentTime } from '@/lib/autoCheckInService';
 import Slide1 from '@/components/morning-display/Slide1';
 import Slide2 from '@/components/morning-display/Slide2';
 import Slide3 from '@/components/morning-display/Slide3';
@@ -28,6 +29,7 @@ function MorningDisplayContent() {
   const [className, setClassName] = useState('klassen');
   const [bellTime, setBellTime] = useState<string | undefined>();
   const [bellType, setBellType] = useState<'morgen' | 'ordinær' | undefined>();
+  const [bellTimeId, setBellTimeId] = useState<number | undefined>();
   const [checkInSettings, setCheckInSettings] = useState<any>();
   const [themeGradient, setThemeGradient] = useState<string>('');
   const [showAllSessions, setShowAllSessions] = useState(false);
@@ -55,6 +57,80 @@ function MorningDisplayContent() {
     loadData();
     setupKeyboardNavigation();
   }, [searchParams]);
+
+  // Update active bell time every minute to handle transitions
+  useEffect(() => {
+    const updateActiveBellTime = async () => {
+      try {
+        const settings = await db.settings.get('userSettings');
+        if (!settings?.checkInSettings) return;
+
+        const today = new Date();
+        const weekdayNames = ['søndag', 'mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag'];
+
+        const devWeekdayOverride = typeof window !== 'undefined'
+          ? window.localStorage?.getItem('dev_weekday_override')
+          : null;
+
+        const weekday = devWeekdayOverride || weekdayNames[today.getDay()];
+
+        const bellTimes = await db.bellTimes
+          .where('weekday')
+          .equals(weekday as any)
+          .toArray();
+
+        if (bellTimes.length > 0) {
+          const currentTimeStr = getCurrentTime();
+          const [currentHours, currentMinutesInHour] = currentTimeStr.split(':').map(Number);
+          const currentMinutes = currentHours * 60 + currentMinutesInHour;
+
+          const isCheckInActive = (bt: any) => {
+            if (!settings?.checkInSettings) return false;
+
+            const [h, m] = bt.time.split(':').map(Number);
+            const bellMinutes = h * 60 + m;
+            const minutesSinceBell = currentMinutes - bellMinutes;
+
+            if (bt.type === 'morgen') {
+              const { absenceMinutes, postCloseGraceMinutes } = settings.checkInSettings.morning;
+              const grace = postCloseGraceMinutes ?? 2;
+              return minutesSinceBell >= 0 && minutesSinceBell <= absenceMinutes + grace;
+            } else {
+              const { stopMinutes, postCloseGraceMinutes } = settings.checkInSettings.regular;
+              const grace = postCloseGraceMinutes ?? 2;
+              return minutesSinceBell >= -5 && minutesSinceBell <= stopMinutes + grace;
+            }
+          };
+
+          const activeBellTime = bellTimes.find(isCheckInActive);
+
+          if (activeBellTime) {
+            console.debug('[MorningDisplay] Active bell time found:', {
+              time: activeBellTime.time,
+              type: activeBellTime.type,
+              id: activeBellTime.id
+            });
+            setBellTime(activeBellTime.time);
+            setBellType(activeBellTime.type);
+            setBellTimeId(activeBellTime.id);
+          } else {
+            console.debug('[MorningDisplay] No active bell time - clearing');
+            setBellTime(undefined);
+            setBellType(undefined);
+            setBellTimeId(undefined);
+          }
+        }
+      } catch (error) {
+        console.error('Error updating active bell time:', error);
+      }
+    };
+
+    // Update immediately and then every 5 seconds for faster response
+    updateActiveBellTime();
+    const interval = setInterval(updateActiveBellTime, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const loadData = async () => {
     try {
@@ -127,34 +203,48 @@ function MorningDisplayContent() {
         .equals(weekday as any)
         .toArray();
 
-      if (bellTimes.length > 0) {
-        // Find the most relevant bell time for current time
-        const currentTime = new Date();
-        const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+      if (bellTimes.length > 0 && settings?.checkInSettings) {
+        // Find active check-in session (if any)
+        const currentTimeStr = getCurrentTime();
+        const [currentHours, currentMinutesInHour] = currentTimeStr.split(':').map(Number);
+        const currentMinutes = currentHours * 60 + currentMinutesInHour;
 
-        // Sort bell times by time
-        const sortedBellTimes = bellTimes.sort((a, b) => {
-          const [aH, aM] = a.time.split(':').map(Number);
-          const [bH, bM] = b.time.split(':').map(Number);
-          return (aH * 60 + aM) - (bH * 60 + bM);
-        });
+        // Helper to check if a bellTime is currently active
+        const isCheckInActive = (bt: any) => {
+          if (!settings?.checkInSettings) return false;
 
-        // Find the most recent bell time that has passed or the next upcoming one
-        let selectedBellTime = sortedBellTimes[0];
-        for (const bt of sortedBellTimes) {
           const [h, m] = bt.time.split(':').map(Number);
           const bellMinutes = h * 60 + m;
-          if (bellMinutes <= currentMinutes) {
-            selectedBellTime = bt;
-          }
-        }
+          const minutesSinceBell = currentMinutes - bellMinutes;
 
-        setBellTime(selectedBellTime.time);
-        setBellType(selectedBellTime.type);
+          if (bt.type === 'morgen') {
+            const { absenceMinutes, postCloseGraceMinutes } = settings.checkInSettings.morning;
+            const grace = postCloseGraceMinutes ?? 2;
+            // Active from bell time until absenceMinutes + grace
+            return minutesSinceBell >= 0 && minutesSinceBell <= absenceMinutes + grace;
+          } else {
+            const { stopMinutes, postCloseGraceMinutes } = settings.checkInSettings.regular;
+            const grace = postCloseGraceMinutes ?? 2;
+            // Active from 5 minutes before bell until stopMinutes + grace
+            return minutesSinceBell >= -5 && minutesSinceBell <= stopMinutes + grace;
+          }
+        };
+
+        // Find active bell time
+        const activeBellTime = bellTimes.find(isCheckInActive);
+
+        if (activeBellTime) {
+          setBellTime(activeBellTime.time);
+          setBellType(activeBellTime.type);
+          setBellTimeId(activeBellTime.id);
+        } else {
+          // No active check-in session - clear bell time to make header transparent
+          setBellTime(undefined);
+          setBellType(undefined);
+          setBellTimeId(undefined);
+        }
       }
 
-      // Setup live updates listener
-      setupLiveUpdates();
     } catch (error) {
       console.error('Error loading morning display data:', error);
     }
@@ -230,7 +320,10 @@ function MorningDisplayContent() {
     return () => window.removeEventListener('keydown', handleKeyPress);
   };
 
-  const setupLiveUpdates = () => {
+  // Setup live updates listener - runs when bellTimeId changes
+  useEffect(() => {
+    console.debug('[MorningDisplay] Student status useEffect triggered with bellTimeId:', bellTimeId);
+
     // Poll for check-in updates every 2 seconds
     const interval = setInterval(async () => {
       // Create date at noon to match the check-in system date format
@@ -242,8 +335,11 @@ function MorningDisplayContent() {
       const checkInLogs = await db.checkInLogs.toArray();
       const todaysCheckIns = checkInLogs.filter(log => {
         const logDate = new Date(log.date).toISOString().split('T')[0];
-        return logDate === todayString;
+        // Filter by today AND current bellTimeId to only show check-ins for active session
+        return logDate === todayString && (bellTimeId ? log.bellTimeId === bellTimeId : true);
       });
+
+      console.debug('[MorningDisplay] Filtered check-ins for bellTimeId', bellTimeId, ':', todaysCheckIns.length);
 
       // Get absences
       const allAbsences = await db.absences.toArray();
@@ -260,7 +356,7 @@ function MorningDisplayContent() {
         prev.map(student => {
           const isCheckedIn = todaysCheckIns.some(log => log.studentId === student.id);
           const isAbsent = todaysAbsences.some(a => a.studentId === student.id);
-          
+
           // Get current points from database
           const currentStudent = studentsMap.get(student.id);
           const currentPoints = currentStudent?.points || student.points;
@@ -275,7 +371,7 @@ function MorningDisplayContent() {
     }, 2000);
 
     return () => clearInterval(interval);
-  };
+  }, [bellTimeId]); // Re-run when bellTimeId changes to reset student status
 
   return (
     <div
