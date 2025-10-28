@@ -28,7 +28,7 @@ export default function SlideControls({ currentSlide, onSlideChange }: SlideCont
 
           <button
             onClick={() => onSlideChange(3)}
-            className="slide-button"
+            className="dagsplan-btn slide-button"
           >
             Agent Reveal →
           </button>
