@@ -6,12 +6,13 @@ import type { CheckInSettings } from '@/lib/types';
 
 type ClockProps = {
   bellTime?: string; // HH:MM format
-  checkInSettings?: CheckInSettings['morning'];
+  checkInSettings?: CheckInSettings; // full settings so we can use morning or regular
+  bellType?: 'morgen' | 'ordinær';
 };
 
 type ClockColor = 'green' | 'yellow' | 'orange' | 'red';
 
-export default function Clock({ bellTime, checkInSettings }: ClockProps) {
+export default function Clock({ bellTime, checkInSettings, bellType }: ClockProps) {
   const [time, setTime] = useState<Date | null>(null);
   const [displayTime, setDisplayTime] = useState<string>('');
   const [clockColor, setClockColor] = useState<ClockColor | null>(null); // null når ingen bellTime
@@ -51,13 +52,14 @@ export default function Clock({ bellTime, checkInSettings }: ClockProps) {
   useEffect(() => {
     if (time && bellTime && checkInSettings) {
       const minutesSinceBell = getMinutesSinceBellTime(bellTime);
-      const color = getClockColor(minutesSinceBell, checkInSettings);
+      const type = (typeof (checkInSettings as any).morning !== 'undefined' && (!bellType || bellType === 'morgen')) ? 'morgen' : 'ordinær';
+      const color = getClockColor(minutesSinceBell, checkInSettings, type);
       setClockColor(color);
     } else {
       // No bellTime or checkInSettings - show clock without color
       setClockColor(null);
     }
-  }, [time, bellTime, checkInSettings]);
+  }, [time, bellTime, checkInSettings, bellType]);
 
   // Prevent hydration mismatch by not rendering until client-side
   if (!time) {
@@ -89,15 +91,22 @@ function getMinutesSinceBellTime(bellTime: string): number {
 
 function getClockColor(
   minutesSinceBell: number,
-  settings: {
-    percent100Minutes: number;
-    percent50Minutes: number;
-    percent10Minutes: number;
-  }
+  settings: CheckInSettings,
+  type: 'morgen' | 'ordinær'
 ): ClockColor {
-  if (minutesSinceBell < 0) return 'green'; // Before bell time
-  if (minutesSinceBell <= 2) return 'green'; // 0-2 minutes
-  if (minutesSinceBell <= 4) return 'yellow'; // 3-4 minutes
-  if (minutesSinceBell <= 6) return 'orange'; // 5-6 minutes
-  return 'red'; // 7+ minutes
+  if (type === 'morgen') {
+    const morning = settings.morning;
+    if (minutesSinceBell < 0) return 'green'; // Before bell time - show green on clock
+    if (minutesSinceBell <= morning.percent100Minutes) return 'green';
+    if (minutesSinceBell <= morning.percent50Minutes) return 'yellow';
+    if (minutesSinceBell <= morning.percent10Minutes) return 'orange';
+    return 'red';
+  }
+
+  // ordinær
+  const regular = settings.regular;
+  if (minutesSinceBell < 0) return 'green';
+  if (minutesSinceBell <= regular.percent100Minutes) return 'green';
+  if (minutesSinceBell <= regular.stopMinutes) return 'yellow';
+  return 'red';
 }

@@ -22,7 +22,8 @@ type Slide1Props = {
   instructions: string;
   className: string;
   bellTime?: string;
-  checkInSettings?: CheckInSettings['morning'];
+  checkInSettings?: CheckInSettings; // pass full settings so we can support morning and regular
+  bellType?: 'morgen' | 'ordinær';
   onNavigateToDagsplan: () => void;
 };
 
@@ -38,6 +39,7 @@ export default function Slide1({
   className,
   bellTime,
   checkInSettings,
+  bellType,
   onNavigateToDagsplan,
 }: Slide1Props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -60,12 +62,13 @@ export default function Slide1({
   useEffect(() => {
     if (currentTime && bellTime && checkInSettings) {
       const minutesSinceBell = getMinutesSinceBellTime(bellTime);
-      const color = getClockColor(minutesSinceBell, checkInSettings);
+      const type = (typeof (checkInSettings as any).morning !== 'undefined' && (!bellType || bellType === 'morgen')) ? 'morgen' : 'ordinær';
+      const color = getClockColor(minutesSinceBell, checkInSettings, type);
       setHeaderColor(color);
     } else {
       setHeaderColor('transparent');
     }
-  }, [currentTime, bellTime, checkInSettings]);
+  }, [currentTime, bellTime, checkInSettings, bellType]);
 
   // Hent klassens totale poeng og mål
   useEffect(() => {
@@ -157,23 +160,39 @@ export default function Slide1({
   // Use morning check-in settings to compute color, and return 'transparent' when outside period
   function getClockColor(
     minutesSinceBell: number,
-    morning: { percent100Minutes: number; percent50Minutes: number; percent10Minutes: number; absenceMinutes: number }
+    settings: CheckInSettings,
+    type: 'morgen' | 'ordinær'
   ): HeaderColor {
-    // If before bell time, keep transparent
+    // Choose thresholds based on type
+    if (type === 'morgen') {
+      const morning = settings.morning;
+
+      // If before bell time, keep transparent
+      if (minutesSinceBell < 0) return 'transparent';
+
+      const { percent100Minutes, percent50Minutes, percent10Minutes, absenceMinutes, postCloseGraceMinutes } = morning;
+
+      if (minutesSinceBell <= percent100Minutes) return 'green';
+      if (minutesSinceBell <= percent50Minutes) return 'yellow';
+      if (minutesSinceBell <= percent10Minutes) return 'orange';
+      if (minutesSinceBell <= absenceMinutes) return 'red';
+
+      // Keep red for configured grace or default 2 minutes
+      const postCloseGrace = postCloseGraceMinutes ?? 2;
+      if (minutesSinceBell <= absenceMinutes + postCloseGrace) return 'red';
+
+      return 'transparent';
+    }
+
+    // ordinær
+    const regular = settings.regular;
     if (minutesSinceBell < 0) return 'transparent';
-
-    const { percent100Minutes, percent50Minutes, percent10Minutes, absenceMinutes } = morning;
-
+    const { percent100Minutes, stopMinutes, postCloseGraceMinutes } = regular;
     if (minutesSinceBell <= percent100Minutes) return 'green';
-    if (minutesSinceBell <= percent50Minutes) return 'yellow';
-    if (minutesSinceBell <= percent10Minutes) return 'orange';
-    if (minutesSinceBell <= absenceMinutes) return 'red';
-
-    // Keep red for 2 minutes after absence window (grace period)
-    const postCloseGrace = 2; // minutes to remain red after check-in closes
-    if (minutesSinceBell <= absenceMinutes + postCloseGrace) return 'red';
-
-    // Outside check-in + grace period -> transparent
+    if (minutesSinceBell <= stopMinutes) return 'yellow';
+    // > stopMinutes => red until postCloseGrace
+    const postCloseGrace = postCloseGraceMinutes ?? 2;
+    if (minutesSinceBell <= stopMinutes + postCloseGrace) return 'red';
     return 'transparent';
   }
 
@@ -195,7 +214,7 @@ export default function Slide1({
       <div className="slide-1-header" style={{ backgroundColor: getHeaderBackgroundColor() }}>
         <div className="header-left"></div>
         <div className="header-center">
-          <Clock bellTime={bellTime} checkInSettings={checkInSettings} />
+          <Clock bellTime={bellTime} checkInSettings={checkInSettings} bellType={bellType} />
         </div>
         <div className="header-right">
           <button 

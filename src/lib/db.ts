@@ -690,10 +690,12 @@ const defaultCheckInSettings: CheckInSettings = {
     percent50Minutes: 5,
     percent10Minutes: 7,
     absenceMinutes: 7,
+        postCloseGraceMinutes: 2,
   },
   regular: {
     percent100Minutes: 3,
     stopMinutes: 3,
+        postCloseGraceMinutes: 2,
   },
 };
 

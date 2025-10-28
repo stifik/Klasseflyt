@@ -71,9 +71,9 @@ function MorningDisplayContent() {
 
       // Load settings
       const settings = await db.settings.get('userSettings');
-      if (settings) {
-        setClassName(settings.morningDisplaySettings?.className || 'klassen');
-        setCheckInSettings(settings.checkInSettings?.morning);
+  if (settings) {
+  setClassName(settings.morningDisplaySettings?.className || 'klassen');
+  setCheckInSettings(settings.checkInSettings);
 
         // Load today's theme
         const theme = await getTodayTheme();

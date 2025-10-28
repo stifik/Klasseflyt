@@ -122,11 +122,13 @@ export type CheckInSettings = {
     percent50Minutes: number;  // Default: 5
     percent10Minutes: number;  // Default: 7
     absenceMinutes: number;    // Default: 7
+    postCloseGraceMinutes?: number; // Optional grace period to keep red after absence window
   };
   // Regular check-in
   regular: {
     percent100Minutes: number; // Default: 3
     stopMinutes: number;       // Default: 3
+    postCloseGraceMinutes?: number; // Optional grace period to keep red after stop
   };
 };
 
