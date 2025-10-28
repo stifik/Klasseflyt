@@ -192,6 +192,17 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
     return filtered;
   }, [allCheckInLogs, date, activeCheckIn]);
 
+  // Debug logging to trace which session the UI thinks is active and which students are marked as checked-in
+  useEffect(() => {
+    try {
+      const activeId = activeCheckIn?.bellTime?.id ?? null;
+      console.debug('[DailyChecklist] activeCheckIn id:', activeId, 'todaysCheckInLogs count:', todaysCheckInLogs.length, 'date:', dateString);
+      console.debug('[DailyChecklist] todaysCheckInLogs:', todaysCheckInLogs.map(l => ({ studentId: l.studentId, bellTimeId: l.bellTimeId, id: (l as any).id })));
+    } catch (err) {
+      // ignore
+    }
+  }, [todaysCheckInLogs, activeCheckIn, dateString]);
+
   // Memoize these functions with proper dependencies
   const getAbsenceForDate = useMemo(() => {
     return (studentId: number) => {

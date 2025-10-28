@@ -284,6 +284,17 @@ export function useNFCWebSocket({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Keep ws.onmessage in sync if the handler changes after connection
+  useEffect(() => {
+    if (wsRef.current) {
+      try {
+        wsRef.current.onmessage = handleMessage;
+      } catch (err) {
+        // ignore
+      }
+    }
+  }, [handleMessage]);
+
   return {
     status,
     isMonitoring,

@@ -103,12 +103,12 @@ export default function CheckInNFC({
   React.useEffect(() => {
     if (activeSession && !activeSession.isManual && !activeSession.shouldStop && !nfcDisabled) {
       // Start monitoring for check-in session
-      console.log('🎯 Starting NFC monitoring for check-in session');
+      console.log('🎯 Starting NFC monitoring for check-in session', { bellTimeId: activeSession.bellTime.id });
       isWaitingForCardRef.current = true;
       nfcWebSocket.startMonitoring();
     } else {
       // Stop monitoring when session ends or is manual
-      console.log('⏸️ Stopping NFC monitoring');
+      console.log('⏸️ Stopping NFC monitoring', { activeSessionId: activeSession?.bellTime?.id ?? null });
       isWaitingForCardRef.current = false;
       nfcWebSocket.stopMonitoring();
     }

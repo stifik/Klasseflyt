@@ -155,7 +155,16 @@ export async function handleCheckInTap(
 
   // Record check-in log
   try {
-    await db.checkInLogs.add({
+    console.debug('[handleCheckInTap] Adding checkInLog', {
+      studentId: student.id,
+      bellTimeId: activeSession.bellTime.id,
+      timestamp: new Date().toISOString(),
+      pointsPercent,
+      pointsAwarded,
+      date: today.toISOString(),
+    });
+
+    const newId = await db.checkInLogs.add({
       studentId: student.id,
       bellTimeId: activeSession.bellTime.id!,
       timestamp: new Date(),
@@ -163,6 +172,7 @@ export async function handleCheckInTap(
       pointsAwarded,
       date: today, // Use noon date to match absence system
     });
+    console.debug('[handleCheckInTap] checkInLog added id=', newId);
 
     // Award points
     await givePoints(student.id, pointsAwarded, `Innsjekking (${pointsPercent}%)`);
@@ -312,7 +322,16 @@ export async function handleManualCheckIn(
 
   // Record check-in log
   try {
-    await db.checkInLogs.add({
+    console.debug('[handleManualCheckIn] Adding checkInLog', {
+      studentId: student.id,
+      bellTimeId: activeSession.bellTime.id,
+      timestamp: new Date().toISOString(),
+      pointsPercent,
+      pointsAwarded,
+      date: today.toISOString(),
+    });
+
+    const newId = await db.checkInLogs.add({
       studentId: student.id,
       bellTimeId: activeSession.bellTime.id!,
       timestamp: new Date(),
@@ -320,6 +339,7 @@ export async function handleManualCheckIn(
       pointsAwarded,
       date: today, // Use noon date to match absence system
     });
+    console.debug('[handleManualCheckIn] checkInLog added id=', newId);
 
     // Award points
     await givePoints(student.id, pointsAwarded, `Innsjekking (${pointsPercent}%)`);

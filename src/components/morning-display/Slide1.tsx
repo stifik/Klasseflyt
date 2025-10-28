@@ -28,6 +28,9 @@ type Slide1Props = {
 
 type ClockColor = 'green' | 'yellow' | 'orange' | 'red';
 
+// include transparent when outside check-in
+type HeaderColor = ClockColor | 'transparent';
+
 export default function Slide1({
   students,
   welcomeMessage,
@@ -42,7 +45,7 @@ export default function Slide1({
   const [goal, setGoal] = useState<{ target: number; lastAchieved?: string }>({ target: 200 });
   const [goalTitle, setGoalTitle] = useState<string>('Felles belønning');
   const [showReset, setShowReset] = useState(false);
-  const [headerColor, setHeaderColor] = useState<ClockColor>('green');
+  const [headerColor, setHeaderColor] = useState<HeaderColor>('transparent');
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
 
   // Oppdater tid hvert sekund
@@ -53,12 +56,14 @@ export default function Slide1({
     return () => clearInterval(interval);
   }, []);
 
-  // Beregn header-farge basert på tid siden bellTime
+  // Beregn header-farge basert på tid siden bellTime og check-in settings
   useEffect(() => {
     if (currentTime && bellTime && checkInSettings) {
       const minutesSinceBell = getMinutesSinceBellTime(bellTime);
-      const color = getClockColor(minutesSinceBell);
+      const color = getClockColor(minutesSinceBell, checkInSettings);
       setHeaderColor(color);
+    } else {
+      setHeaderColor('transparent');
     }
   }, [currentTime, bellTime, checkInSettings]);
 
@@ -149,21 +154,37 @@ export default function Slide1({
     return currentTotalMinutes - bellTotalMinutes;
   }
 
-  function getClockColor(minutesSinceBell: number): ClockColor {
-    if (minutesSinceBell < 0) return 'green'; // Before bell time
-    if (minutesSinceBell <= 2) return 'green'; // 0-2 minutes
-    if (minutesSinceBell <= 4) return 'yellow'; // 3-4 minutes
-    if (minutesSinceBell <= 6) return 'orange'; // 5-6 minutes
-    return 'red'; // 7+ minutes
+  // Use morning check-in settings to compute color, and return 'transparent' when outside period
+  function getClockColor(
+    minutesSinceBell: number,
+    morning: { percent100Minutes: number; percent50Minutes: number; percent10Minutes: number; absenceMinutes: number }
+  ): HeaderColor {
+    // If before bell time, keep transparent
+    if (minutesSinceBell < 0) return 'transparent';
+
+    const { percent100Minutes, percent50Minutes, percent10Minutes, absenceMinutes } = morning;
+
+    if (minutesSinceBell <= percent100Minutes) return 'green';
+    if (minutesSinceBell <= percent50Minutes) return 'yellow';
+    if (minutesSinceBell <= percent10Minutes) return 'orange';
+    if (minutesSinceBell <= absenceMinutes) return 'red';
+
+    // Keep red for 2 minutes after absence window (grace period)
+    const postCloseGrace = 2; // minutes to remain red after check-in closes
+    if (minutesSinceBell <= absenceMinutes + postCloseGrace) return 'red';
+
+    // Outside check-in + grace period -> transparent
+    return 'transparent';
   }
 
   // Beregn bakgrunnsfarge for header basert på clockColor
   const getHeaderBackgroundColor = () => {
-    const colorMap = {
+    const colorMap: Record<HeaderColor, string> = {
       'green': 'rgba(34, 197, 94, 0.8)',
       'yellow': 'rgba(234, 179, 8, 0.8)',
       'orange': 'rgba(249, 115, 22, 0.8)',
       'red': 'rgba(239, 68, 68, 0.8)',
+      'transparent': 'transparent',
     };
     return colorMap[headerColor];
   };
