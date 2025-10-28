@@ -194,7 +194,8 @@ function MorningDisplayContent() {
   const setupKeyboardNavigation = () => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') {
-        setCurrentSlide(1);
+        // If we're on slide 3 (Agent Reveal), go back to slide 2 (dagsplan) to keep chronological order.
+        setCurrentSlide(prev => (prev === 3 ? 2 : 1));
       } else if (e.key === 'ArrowRight') {
         // Only navigate to slide 2 if we're not already on slide 2; when on slide 2
         // the Slide2 component handles ArrowRight to reveal sessions and can
