@@ -28,14 +28,14 @@ interface CheckInNFCProps {
   onStopManual: () => void;
 }
 
-export default function CheckInNFC({ 
-  activeSession, 
-  checkInCount, 
-  totalStudents, 
-  students, 
+export default function CheckInNFC({
+  activeSession,
+  checkInCount,
+  totalStudents,
+  students,
   checkedInStudentIds,
   onStartManual,
-  onStopManual 
+  onStopManual
 }: CheckInNFCProps) {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -43,6 +43,14 @@ export default function CheckInNFC({
 
   // Ref to track if we're actively waiting for check-in cards
   const isWaitingForCardRef = React.useRef(false);
+
+  // Ref to always have the latest activeSession value
+  const activeSessionRef = React.useRef(activeSession);
+
+  // Update ref whenever activeSession changes
+  React.useEffect(() => {
+    activeSessionRef.current = activeSession;
+  }, [activeSession]);
 
   // Check if NFC is disabled in dev mode
   const nfcDisabled = typeof window !== 'undefined' && window.localStorage?.getItem('dev_nfc_disabled') === 'true';
@@ -52,13 +60,21 @@ export default function CheckInNFC({
     enabled: !nfcDisabled,
     autoConnect: true,
     onCardDetected: async (card) => {
-      if (!activeSession || isProcessing || !isWaitingForCardRef.current) return;
+      // Use ref to get the latest activeSession value
+      const currentSession = activeSessionRef.current;
+
+      if (!currentSession || isProcessing || !isWaitingForCardRef.current) return;
 
       console.log('✅ Check-in card detected:', card.uid);
+      console.log('[CheckInNFC] Active session:', {
+        bellTimeId: currentSession.bellTime.id,
+        type: currentSession.bellTime.type,
+        time: currentSession.bellTime.time
+      });
       setIsProcessing(true);
       isWaitingForCardRef.current = false; // Temporarily disable while processing
 
-      const result = await handleCheckInTap(card.uid, activeSession);
+      const result = await handleCheckInTap(card.uid, currentSession);
 
       if (result.success) {
         setLastCheckIn({

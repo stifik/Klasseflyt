@@ -74,7 +74,13 @@ export async function handleCheckInTap(
   }
 
   // Check if already checked in
-  console.debug('[handleCheckInTap] Checking existing check-in', { studentId: student.id, bellTimeId: activeSession.bellTime.id });
+  console.debug('[handleCheckInTap] Checking existing check-in', {
+    studentId: student.id,
+    studentName: student.name,
+    bellTimeId: activeSession.bellTime.id,
+    bellTimeType: activeSession.bellTime.type,
+    bellTimeTime: activeSession.bellTime.time
+  });
   const alreadyCheckedIn = await hasStudentCheckedIn(student.id, activeSession.bellTime.id!);
   if (alreadyCheckedIn) {
     // Query and log any matching logs for diagnostics
@@ -86,7 +92,13 @@ export async function handleCheckInTap(
         .equals(student.id)
         .and(l => l.bellTimeId === activeSession.bellTime.id! && new Date((l as any).date).toISOString().split('T')[0] === todayString)
         .toArray();
-      console.warn('[handleCheckInTap] Blocking check-in because existing logs found', { studentId: student.id, bellTimeId: activeSession.bellTime.id, matching });
+      console.warn('[handleCheckInTap] Blocking check-in because existing logs found', {
+        studentId: student.id,
+        studentName: student.name,
+        bellTimeId: activeSession.bellTime.id,
+        bellTimeType: activeSession.bellTime.type,
+        matching: matching.map(m => ({ id: m.id, bellTimeId: m.bellTimeId, timestamp: m.timestamp }))
+      });
     } catch (err) {
       console.error('[handleCheckInTap] Failed to query matching checkInLogs for diagnostics', err);
     }

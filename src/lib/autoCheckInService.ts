@@ -124,7 +124,12 @@ export async function hasStudentCheckedIn(studentId: number, bellTimeId: number)
     .toArray();
 
   if (logs && logs.length > 0) {
-    console.debug('[hasStudentCheckedIn] Found existing check-in logs', { studentId, bellTimeId, todayString, logs });
+    console.debug('[hasStudentCheckedIn] Found existing check-in logs', {
+      studentId,
+      bellTimeId,
+      todayString,
+      count: logs.length
+    });
     return true;
   }
 
