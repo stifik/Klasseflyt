@@ -480,6 +480,7 @@ export type RewardSystemSettings = {
   priceDecreasePercent: number; // Default 2 - hvor mye andre varer synker
   priceFloorPercent: number; // Default 50 - minimum pris som % av basePrice
   priceCeilingPercent: number; // Default 200 - maksimum pris som % av basePrice
+  transferFeePercent: number; // Default 10 - kostnad ved overføring av poeng mellom elever
 };
 
 export type AppSettings = {

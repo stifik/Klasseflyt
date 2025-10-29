@@ -5,9 +5,10 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import type { Reward } from '@/lib/types';
-import { buyReward, givePoints, type RewardResult } from '@/lib/rewardService';
+import { buyReward, givePoints, transferPoints, type RewardResult } from '@/lib/rewardService';
 import PosView from './PosView';
 import PodView from './PodView';
+import TransferView from './TransferView';
 import ActivityFeed from './ActivityFeed';
 import RewardDashboard from './RewardDashboard';
 import { NFCPaymentModal } from './NFCPaymentModal';
@@ -22,23 +23,32 @@ import { formatCardUID, setProcessing as setNFCProcessing } from '@/lib/nfcReade
 import { soundEffects } from '@/lib/soundEffects';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 
-type TerminalMode = 'idle' | 'pos' | 'pod';
+type TerminalMode = 'idle' | 'pos' | 'pod' | 'transfer';
 type PaymentMode = 'manual' | 'nfc';
 type NFCStatus = 'idle' | 'waiting' | 'processing' | 'success' | 'error';
 
-type ActiveTransaction = { 
-  type: 'reward'; 
-  id: number; 
-  name: string; 
-  cost: number; 
-} | { 
-  type: 'points'; 
-  amount: number; 
-  description: string; 
+type ActiveTransaction = {
+  type: 'reward';
+  id: number;
+  name: string;
+  cost: number;
+} | {
+  type: 'points';
+  amount: number;
+  description: string;
 } | {
   type: 'custom_action';
   name: string;
   points: number;
+} | {
+  type: 'transfer';
+  amount: number;
+  fee: number;
+  totalCost: number;
+  fromStudentId?: number;
+  fromStudentName?: string;
+  toStudentId?: number;
+  toStudentName?: string;
 } | null;
 
 const Terminal: React.FC = () => {
@@ -49,6 +59,7 @@ const Terminal: React.FC = () => {
   const getCurrentMode = (): TerminalMode => {
     if (pathname.includes('/terminal/pos')) return 'pos';
     if (pathname.includes('/terminal/pod')) return 'pod';
+    if (pathname.includes('/terminal/transfer')) return 'transfer';
     return 'idle';
   };
   
@@ -79,8 +90,12 @@ const Terminal: React.FC = () => {
   const students = useLiveQuery(() => db.students.toArray()) || [];
   const rewards = useLiveQuery(() => db.rewards.toArray()) || [];
   const rfidCards = useLiveQuery(() => db.rfidCards.toArray()) || [];
+  const dbSettings = useLiveQuery(() => db.settings.get('userSettings'));
 
   const nfc = useCardScanner();
+
+  // Get transfer fee percentage from settings
+  const transferFeePercent = dbSettings?.rewardSystem?.transferFeePercent ?? 10;
 
   // WebSocket NFC setup for real-time card detection
   const nfcWebSocket = useNFCWebSocket({
@@ -274,9 +289,68 @@ const Terminal: React.FC = () => {
     } else if (currentTransaction.type === 'custom_action') {
       // Give points for custom action (now handles NFC metadata internally)
       result = await givePoints(studentId, currentTransaction.points, currentTransaction.name, cardId);
-    } else {
+    } else if (currentTransaction.type === 'transfer') {
+      // Handle transfer transaction
+      if (!currentTransaction.fromStudentId) {
+        // This is the first student (from)
+        const student = students.find(s => s.id === studentId);
+        if (student) {
+          setActiveTransaction({
+            ...currentTransaction,
+            fromStudentId: studentId,
+            fromStudentName: student.name,
+          });
+          if (cardId) {
+            setNfcStatus('success');
+            setNfcMessage(`✅ ${student.name} valgt som avsender. Klar for mottaker...`);
+            setTimeout(() => {
+              setNfcStatus('waiting');
+              setNfcMessage('Tæpp kort for mottaker...');
+              isWaitingForCardRef.current = true;
+            }, 2000);
+          } else {
+            showNotification(`${student.name} valgt som avsender. Velg nå mottaker.`, 'success');
+          }
+        }
+        return;
+      } else if (!currentTransaction.toStudentId) {
+        // This is the second student (to)
+        if (studentId === currentTransaction.fromStudentId) {
+          const message = 'Kan ikke overføre poeng til seg selv!';
+          soundEffects.play('error');
+          if (cardId) {
+            setNfcStatus('error');
+            setNfcMessage(message);
+            setNFCProcessing(false);
+            setTimeout(() => {
+              setNfcStatus('waiting');
+              setNfcMessage('Tæpp kort for mottaker...');
+              isWaitingForCardRef.current = true;
+            }, 3000);
+          } else {
+            showNotification(message, 'error');
+          }
+          return;
+        }
+
+        // Process the transfer
+        result = await transferPoints(
+          currentTransaction.fromStudentId,
+          studentId,
+          currentTransaction.amount,
+          transferFeePercent,
+          undefined, // fromCardId - not tracked separately in current flow
+          cardId
+        );
+      } else {
+        // Should not reach here
+        return;
+      }
+    } else if (currentTransaction.type === 'points') {
       // Give points for predefined action (now handles NFC metadata internally)
       result = await givePoints(studentId, currentTransaction.amount, currentTransaction.description, cardId);
+    } else {
+      return;
     }
 
     // Show result
@@ -420,6 +494,20 @@ const Terminal: React.FC = () => {
     }
   };
 
+  const handleStartTransfer = (amount: number) => {
+    const fee = Math.ceil(amount * (transferFeePercent / 100));
+    const totalCost = amount + fee;
+
+    setActiveTransaction({
+      type: 'transfer',
+      amount,
+      fee,
+      totalCost,
+    });
+    setPaymentMode('manual');
+    setNfcStatus('idle');
+  };
+
   const handleManualStudentSelect = async (studentId: number) => {
     if (!studentId || !activeTransaction) return;
 
@@ -441,7 +529,7 @@ const Terminal: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8">
           <div className="text-center mb-6">
             <div className="text-6xl mb-4">
-              {activeTransaction.type === 'reward' ? '🛒' : '⭐'}
+              {activeTransaction.type === 'reward' ? '🛒' : activeTransaction.type === 'transfer' ? '💸' : '⭐'}
             </div>
             {activeTransaction.type === 'reward' ? (
               <React.Fragment>
@@ -471,7 +559,36 @@ const Terminal: React.FC = () => {
                   </p>
                 </div>
               </React.Fragment>
-            ) : (
+            ) : activeTransaction.type === 'transfer' ? (
+              <React.Fragment>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                  Overfør poeng
+                </h2>
+                <div className="bg-purple-100 dark:bg-purple-900/30 rounded-lg p-4 mb-4">
+                  <h3 className="text-xl font-semibold text-purple-900 dark:text-purple-100">
+                    {activeTransaction.amount} poeng
+                  </h3>
+                  <p className="text-purple-700 dark:text-purple-300 text-sm">
+                    Kostnad: {activeTransaction.totalCost} poeng (inkl. {activeTransaction.fee} poeng gebyr)
+                  </p>
+                  {activeTransaction.fromStudentName && (
+                    <p className="text-purple-600 dark:text-purple-400 text-sm mt-2">
+                      Fra: {activeTransaction.fromStudentName}
+                    </p>
+                  )}
+                  {!activeTransaction.fromStudentId && (
+                    <p className="text-purple-600 dark:text-purple-400 text-sm mt-2">
+                      Velg avsender (elev som betaler)
+                    </p>
+                  )}
+                  {activeTransaction.fromStudentId && !activeTransaction.toStudentId && (
+                    <p className="text-purple-600 dark:text-purple-400 text-sm mt-2">
+                      Velg mottaker (elev som får poeng)
+                    </p>
+                  )}
+                </div>
+              </React.Fragment>
+            ) : activeTransaction.type === 'points' ? (
               <React.Fragment>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                   Tildel poeng
@@ -485,7 +602,7 @@ const Terminal: React.FC = () => {
                   </p>
                 </div>
               </React.Fragment>
-            )}
+            ) : null}
           </div>
 
           {/* NFC Mode */}
@@ -514,6 +631,18 @@ const Terminal: React.FC = () => {
                 setActiveTransaction(null);
                 setPaymentMode('manual');
               }}
+              transferMode={
+                activeTransaction?.type === 'transfer'
+                  ? !activeTransaction.fromStudentId
+                    ? 'from'
+                    : 'to'
+                  : null
+              }
+              fromStudentId={
+                activeTransaction?.type === 'transfer'
+                  ? activeTransaction.fromStudentId
+                  : undefined
+              }
             />
           )}
         </div>
@@ -549,6 +678,24 @@ const Terminal: React.FC = () => {
         </div>
       </div>
     );
+  } else if (mode === 'transfer') {
+    // Transfer mode - vis overføringsvisning
+    content = (
+      <div className="max-w-2xl mx-auto">
+        <div className="flex flex-col gap-6">
+          <TransferView
+            transferFeePercent={transferFeePercent}
+            onStartTransfer={handleStartTransfer}
+          />
+          <button
+            className="w-full py-3 px-6 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-semibold text-lg shadow-md transition-colors"
+            onClick={() => router.push('/terminal')}
+          >
+            Tilbake til Terminal
+          </button>
+        </div>
+      </div>
+    );
   } else {
     // Idle mode - vis hovedmeny
     content = (
@@ -562,9 +709,9 @@ const Terminal: React.FC = () => {
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
           {/* POS-knapp */}
-          <button 
+          <button
             onClick={() => router.push('/terminal/pos')}
             className="group bg-blue-500 hover:bg-blue-600 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
           >
@@ -577,7 +724,7 @@ const Terminal: React.FC = () => {
           </button>
 
           {/* POD-knapp */}
-          <button 
+          <button
             onClick={() => router.push('/terminal/pod')}
             className="group bg-green-500 hover:bg-green-600 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
           >
@@ -586,6 +733,19 @@ const Terminal: React.FC = () => {
             <p className="text-green-100 mb-3">Point of Deposit (POD)</p>
             <p className="text-sm text-green-200">
               Gi poeng for positive handlinger
+            </p>
+          </button>
+
+          {/* Transfer-knapp */}
+          <button
+            onClick={() => router.push('/terminal/transfer')}
+            className="group bg-purple-500 hover:bg-purple-600 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+          >
+            <div className="text-6xl mb-4">💸</div>
+            <h2 className="text-2xl font-bold mb-2">Overfør</h2>
+            <p className="text-purple-100 mb-3">Point Transfer</p>
+            <p className="text-sm text-purple-200">
+              Overfør poeng mellom elever
             </p>
           </button>
         </div>

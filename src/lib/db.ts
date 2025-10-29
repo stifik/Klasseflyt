@@ -757,6 +757,7 @@ const defaultMorningDisplaySettings: MorningDisplaySettings = {
         priceDecreasePercent: 2,
         priceFloorPercent: 50,
         priceCeilingPercent: 200,
+        transferFeePercent: 10,
     },
     nfcEnabled: false, // NFC disabled by default
     checkInSettings: defaultCheckInSettings, // Auto check-in system settings

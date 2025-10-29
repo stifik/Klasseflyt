@@ -36,6 +36,7 @@ export default function RewardSettings() {
     priceDecreasePercent: 2,
     priceFloorPercent: 50,
     priceCeilingPercent: 200,
+    transferFeePercent: 10,
   });
 
   // Load settings from DB
@@ -430,21 +431,50 @@ export default function RewardSettings() {
                       Høyeste pris en belønning kan ha
                     </p>
                   </div>
+                </>
+              )}
 
-                  {/* Action buttons */}
-                  <div className="flex gap-3 pt-4">
-                    <Button onClick={handleSaveRewardSystem} className="flex-1">
-                      Lagre innstillinger
-                    </Button>
-                    <Button 
-                      onClick={handleResetPrices} 
-                      variant="outline"
-                      className="flex-1"
-                    >
-                      Tilbakestill priser
-                    </Button>
-                  </div>
+              {/* Transfer fee setting - always visible */}
+              <div className="space-y-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between">
+                  <Label>Overføringskostnad</Label>
+                  <span className="text-sm font-semibold text-purple-600">
+                    {rewardSystem.transferFeePercent}%
+                  </span>
+                </div>
+                <Slider
+                  value={[rewardSystem.transferFeePercent]}
+                  onValueChange={([value]) =>
+                    setRewardSystem({ ...rewardSystem, transferFeePercent: value })
+                  }
+                  min={0}
+                  max={50}
+                  step={1}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Kostnad når elever overfører poeng til hverandre (0% = gratis overføring)
+                </p>
+              </div>
 
+              {/* Action buttons */}
+              <div className="flex gap-3 pt-4">
+                <Button onClick={handleSaveRewardSystem} className="flex-1">
+                  Lagre innstillinger
+                </Button>
+                {rewardSystem.mode === 'dynamic' && (
+                  <Button
+                    onClick={handleResetPrices}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Tilbakestill priser
+                  </Button>
+                )}
+              </div>
+
+              {rewardSystem.mode === 'dynamic' && (
+                <React.Fragment>
                   {/* Link to public børs */}
                   <div className="p-4 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-lg">
                     <div className="flex items-center justify-between">
@@ -456,8 +486,8 @@ export default function RewardSettings() {
                           Se sanntidspriser på en offentlig visning
                         </p>
                       </div>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => window.open('/bors', '_blank')}
                       >
@@ -465,7 +495,7 @@ export default function RewardSettings() {
                       </Button>
                     </div>
                   </div>
-                </>
+                </React.Fragment>
               )}
             </CardContent>
           </Card>

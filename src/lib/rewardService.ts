@@ -96,6 +96,104 @@ async function syncPricesWithApi(rewards: Reward[]) {
   }
 }
 
+// Funksjon for å overføre poeng mellom elever med kostnad
+export async function transferPoints(
+  fromStudentId: number,
+  toStudentId: number,
+  amount: number,
+  feePercent: number,
+  fromCardId?: string,
+  toCardId?: string
+): Promise<RewardResult> {
+  try {
+    // Validering
+    if (fromStudentId === toStudentId) {
+      return { success: false, message: 'Kan ikke overføre poeng til seg selv' };
+    }
+
+    if (amount <= 0) {
+      return { success: false, message: 'Beløp må være større enn 0' };
+    }
+
+    // Hent studenter
+    const fromStudent = await db.students.get(fromStudentId);
+    const toStudent = await db.students.get(toStudentId);
+
+    if (!fromStudent) {
+      return { success: false, message: `Avsender med ID ${fromStudentId} ikke funnet` };
+    }
+
+    if (!toStudent) {
+      return { success: false, message: `Mottaker med ID ${toStudentId} ikke funnet` };
+    }
+
+    // Beregn totalkostnad for avsender (beløp + gebyr)
+    const totalCost = Math.ceil(amount * (1 + feePercent / 100));
+    const fee = totalCost - amount;
+
+    // Sjekk at avsender har nok poeng
+    const fromPoints = fromStudent.points || 0;
+    if (fromPoints < totalCost) {
+      const missing = totalCost - fromPoints;
+      return {
+        success: false,
+        message: `${fromStudent.name} har kun ${fromPoints} poeng, men trenger ${totalCost} poeng (${amount} + ${fee} gebyr). Mangler ${missing} poeng.`
+      };
+    }
+
+    // Trekk fra avsender
+    const newFromPoints = fromPoints - totalCost;
+    await db.students.update(fromStudentId, { points: newFromPoints });
+
+    // Gi til mottaker
+    const toPoints = toStudent.points || 0;
+    const newToPoints = toPoints + amount;
+    await db.students.update(toStudentId, { points: newToPoints });
+
+    // Logg transaksjon for avsender
+    await db.transactions.add({
+      studentId: fromStudentId,
+      date: new Date(),
+      pointsChange: -totalCost,
+      description: `Overført ${amount} poeng til ${toStudent.name} (inkl. ${fee} poeng gebyr)`,
+      paymentMethod: fromCardId ? 'nfc' : 'manual',
+      cardId: fromCardId,
+    });
+
+    // Logg transaksjon for mottaker
+    await db.transactions.add({
+      studentId: toStudentId,
+      date: new Date(),
+      pointsChange: amount,
+      description: `Mottatt ${amount} poeng fra ${fromStudent.name}`,
+      paymentMethod: toCardId ? 'nfc' : 'manual',
+      cardId: toCardId,
+    });
+
+    // Oppdater kort sist brukt hvis NFC
+    if (fromCardId) {
+      const rfidCard = await db.rfidCards.where('cardId').equals(fromCardId).first();
+      if (rfidCard?.id) {
+        await db.rfidCards.update(rfidCard.id, { lastUsed: new Date() });
+      }
+    }
+    if (toCardId) {
+      const rfidCard = await db.rfidCards.where('cardId').equals(toCardId).first();
+      if (rfidCard?.id) {
+        await db.rfidCards.update(rfidCard.id, { lastUsed: new Date() });
+      }
+    }
+
+    return {
+      success: true,
+      message: `Overføring vellykket! ${fromStudent.name} har overført ${amount} poeng til ${toStudent.name} (kostnad: ${totalCost} poeng)`
+    };
+  } catch (error) {
+    console.error('Feil ved overføring av poeng:', error);
+    return { success: false, message: 'Teknisk feil ved overføring av poeng' };
+  }
+}
+
 // Funksjon for å gi poeng til en elev
 export async function givePoints(
   studentId: number,
@@ -204,6 +302,7 @@ export async function buyReward(
       priceDecreasePercent: 2,
       priceFloorPercent: 50,
       priceCeilingPercent: 200,
+      transferFeePercent: 10,
     };
 
     // 6. Only calculate and update prices if in dynamic mode
@@ -253,6 +352,7 @@ export async function updatePricesAfterPurchase(rewardId: number): Promise<void>
       priceDecreasePercent: 2,
       priceFloorPercent: 50,
       priceCeilingPercent: 200,
+      transferFeePercent: 10,
     };
 
     // Only update if in dynamic mode

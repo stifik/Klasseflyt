@@ -14,6 +14,8 @@ interface ManualPaymentModalProps {
   onNFCMode: () => void;
   onManualSelect: (studentId: number) => void;
   onCancel: () => void;
+  transferMode?: 'from' | 'to' | null; // For transfer transactions
+  fromStudentId?: number; // ID of the sender (for filtering in 'to' mode)
 }
 
 export function ManualPaymentModal({
@@ -22,12 +24,34 @@ export function ManualPaymentModal({
   isNFCSupported,
   onNFCMode,
   onManualSelect,
-  onCancel
+  onCancel,
+  transferMode = null,
+  fromStudentId
 }: ManualPaymentModalProps) {
+  // Determine title based on transfer mode
+  let title = 'Velg betalingsmåte';
+  let selectLabel = 'Eller velg elev manuelt:';
+  let nfcButtonText = 'Tæpp NFC-kort (anbefalt)';
+
+  if (transferMode === 'from') {
+    title = 'Velg avsender';
+    selectLabel = 'Velg elev som skal overføre poeng:';
+    nfcButtonText = 'Tæpp kort for avsender';
+  } else if (transferMode === 'to') {
+    title = 'Velg mottaker';
+    selectLabel = 'Velg elev som skal motta poeng:';
+    nfcButtonText = 'Tæpp kort for mottaker';
+  }
+
+  // Filter students for 'to' mode to exclude the sender
+  const availableStudents = transferMode === 'to'
+    ? students.filter(s => s.id !== fromStudentId)
+    : students;
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-        Velg betalingsmåte
+        {title}
       </h3>
 
       {/* NFC Button */}
@@ -38,14 +62,14 @@ export function ManualPaymentModal({
           variant="default"
         >
           <CreditCard className="w-5 h-5 mr-2" />
-          Tæpp NFC-kort (anbefalt)
+          {nfcButtonText}
         </Button>
       )}
 
       {/* Manual Selection */}
       <div className="space-y-2">
         <Label htmlFor="manual-select" className="text-base">
-          Eller velg elev manuelt:
+          {selectLabel}
         </Label>
         <select
           id="manual-select"
@@ -59,7 +83,7 @@ export function ManualPaymentModal({
           className="w-full p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg"
         >
           <option value="" disabled>Velg elev fra listen...</option>
-          {students
+          {availableStudents
             .filter(student => student.name && student.id)
             .map((student) => (
               <option key={student.id} value={student.id}>
