@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { Providers } from '@/components/Providers';
 import { MainLayout } from '@/components/navigation/MainLayout';
+import { BackupReminderToast } from '@/components/BackupReminderToast';
 
 export const metadata: Metadata = {
   title: 'Klasseflyt',
@@ -26,6 +27,7 @@ export default function RootLayout({
           <MainLayout>
             {children}
           </MainLayout>
+          <BackupReminderToast />
           <Toaster />
         </Providers>
       </body>

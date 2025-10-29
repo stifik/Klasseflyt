@@ -39,7 +39,9 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Separator } from "./ui/separator";
-import { db, resetDatabase, clearDatabase, exportDatabase, importDatabase } from "@/lib/db";
+import { db, resetDatabase, clearDatabase, exportDatabase, importDatabase, isEncryptedBackup } from "@/lib/db";
+import { setLastBackupDate, getLastBackupDescription } from "@/lib/backupReminder";
+import { BackupPasswordDialog } from "./BackupPasswordDialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { v4 as uuidv4 } from 'uuid';
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -141,6 +143,12 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [localSettings, setLocalSettings] = useState(initialSettings);
+
+  // Backup encryption state
+  const [encryptBackup, setEncryptBackup] = useState(true); // Default to encrypted
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [passwordDialogMode, setPasswordDialogMode] = useState<'export' | 'import'>('export');
+  const [pendingImportData, setPendingImportData] = useState<any>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -373,20 +381,44 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
   };
   
   const handleExport = async () => {
+    if (encryptBackup) {
+      // Show password dialog for encryption
+      setPasswordDialogMode('export');
+      setShowPasswordDialog(true);
+    } else {
+      // Export without encryption
+      await performExport();
+    }
+  };
+
+  const performExport = async (password?: string) => {
     try {
-        const data = await exportDatabase();
-        const jsonString = JSON.stringify(data, null, 2);
+        const data = await exportDatabase(password);
+        const jsonString = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         const date = format(new Date(), 'yyyy-MM-dd');
+        const filename = password
+          ? `klasseflyt_backup_encrypted_${date}.json`
+          : `klasseflyt_backup_${date}.json`;
         a.href = url;
-        a.download = `klasseflyt_backup_${date}.json`;
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        toast({ title: "Database eksportert", description: "En backup-fil er lastet ned." });
+
+        // Update last backup date
+        setLastBackupDate();
+
+        const lockIcon = password ? ' 🔒' : '';
+        toast({
+          title: "Database eksportert" + lockIcon,
+          description: password
+            ? "En kryptert backup-fil er lastet ned."
+            : "En backup-fil er lastet ned."
+        });
     } catch (error) {
         console.error("Export failed:", error);
         toast({ title: "Eksport feilet", description: "Kunne ikke eksportere databasen.", variant: "destructive" });
@@ -403,9 +435,16 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
             const text = e.target?.result;
             if (typeof text !== 'string') throw new Error("File is not readable");
             const data = JSON.parse(text);
-            await importDatabase(data);
-            toast({ title: "Database importert!", description: "Siden vil nå lastes på nytt." });
-            setTimeout(() => window.location.reload(), 1000);
+
+            // Check if encrypted
+            if (isEncryptedBackup(data)) {
+              setPendingImportData(data);
+              setPasswordDialogMode('import');
+              setShowPasswordDialog(true);
+            } else {
+              // Import without password
+              await performImport(data);
+            }
         } catch (error) {
             console.error("Import failed:", error);
             toast({ title: "Import feilet", description: "Filen er ugyldig eller korrupt.", variant: "destructive" });
@@ -418,8 +457,39 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
     }
   };
 
+  const performImport = async (data: any, password?: string) => {
+    try {
+      await importDatabase(data, password);
+      toast({ title: "Database importert!", description: "Siden vil nå lastes på nytt." });
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (error: any) {
+      console.error("Import failed:", error);
+      const message = error?.message || "Filen er ugyldig eller korrupt.";
+      toast({ title: "Import feilet", description: message, variant: "destructive" });
+    }
+  };
+
+  // Handle password confirmation
+  const handlePasswordConfirm = async (password: string) => {
+    if (passwordDialogMode === 'export') {
+      await performExport(password);
+    } else {
+      await performImport(pendingImportData, password);
+      setPendingImportData(null);
+    }
+  };
+
   return (
-    <Accordion type="multiple" defaultValue={['dashboard']} className="w-full space-y-4">
+    <>
+      <BackupPasswordDialog
+        open={showPasswordDialog}
+        onOpenChange={setShowPasswordDialog}
+        mode={passwordDialogMode}
+        onConfirm={handlePasswordConfirm}
+        isEncrypted={passwordDialogMode === 'import' && isEncryptedBackup(pendingImportData)}
+      />
+
+      <Accordion type="multiple" defaultValue={['dashboard']} className="w-full space-y-4">
         <AccordionItem value="dashboard" className="border-b-0">
              <Card>
                 <CardHeader>
@@ -948,9 +1018,54 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
                             <p className="mb-2 text-sm text-muted-foreground">
                                 Last ned en backup-fil av all data, eller gjenopprett fra en tidligere backup.
                             </p>
+
+                            {/* Encryption toggle */}
+                            <div className="flex items-center justify-between p-3 mb-3 border rounded-lg bg-blue-50 dark:bg-blue-950">
+                                <div className="flex items-center gap-2">
+                                    <Label htmlFor="encrypt-backup" className="font-medium cursor-pointer">
+                                        🔒 Krypter backup (anbefalt)
+                                    </Label>
+                                </div>
+                                <Switch
+                                    id="encrypt-backup"
+                                    checked={encryptBackup}
+                                    onCheckedChange={setEncryptBackup}
+                                />
+                            </div>
+
+                            {/* Backup reminder settings */}
+                            <div className="p-3 mb-3 border rounded-lg space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="backup-reminder" className="font-medium">
+                                        Backup-påminnelse
+                                    </Label>
+                                    <select
+                                        id="backup-reminder"
+                                        value={localSettings.backupReminderDays || 0}
+                                        onChange={(e) => {
+                                            const days = parseInt(e.target.value);
+                                            handleSettingChange(current => ({
+                                                ...current,
+                                                backupReminderDays: days
+                                            }));
+                                        }}
+                                        className="px-3 py-1 border rounded-md dark:bg-gray-800"
+                                    >
+                                        <option value={0}>Av</option>
+                                        <option value={1}>Daglig</option>
+                                        <option value={7}>Ukentlig (7 dager)</option>
+                                        <option value={14}>Hver 14. dag</option>
+                                        <option value={30}>Månedlig (30 dager)</option>
+                                    </select>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Siste backup: <strong>{getLastBackupDescription()}</strong>
+                                </p>
+                            </div>
+
                             <div className="flex gap-2">
                                 <Button onClick={handleExport} variant="outline" className="w-full">
-                                    <Download className="mr-2" /> Eksporter
+                                    <Download className="mr-2" /> Eksporter {encryptBackup && '🔒'}
                                 </Button>
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
@@ -1062,6 +1177,7 @@ export default function Settings({ initialStudents, initialSubjects, settings: i
             </Card>
         </AccordionItem>
     </Accordion>
+    </>
   );
 }
 

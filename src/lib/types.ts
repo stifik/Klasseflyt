@@ -504,4 +504,5 @@ export type AppSettings = {
   nfcEnabled?: boolean; // Enable/disable NFC scanning feature
   checkInSettings?: CheckInSettings; // Auto check-in system settings
   morningDisplaySettings?: MorningDisplaySettings; // Morning display settings
+  backupReminderDays?: number; // Backup reminder interval in days (0 = disabled, 1 = daily, 7 = weekly, etc.)
 };

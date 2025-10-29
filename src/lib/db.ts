@@ -953,25 +953,159 @@ export async function ensureActionsInitialized() {
     }
 }
 
+// --- ENCRYPTION HELPERS ---
+
+/**
+ * Derive an encryption key from a password using PBKDF2
+ */
+async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+  const encoder = new TextEncoder();
+  const passwordKey = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits', 'deriveKey']
+  );
+
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: salt as BufferSource,
+      iterations: 100000,
+      hash: 'SHA-256',
+    },
+    passwordKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+/**
+ * Encrypt backup data with AES-256-GCM
+ */
+export async function encryptBackup(data: any, password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const jsonString = JSON.stringify(data);
+
+  // Generate random salt and IV
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+
+  // Derive key from password
+  const key = await deriveKey(password, salt);
+
+  // Encrypt data
+  const encryptedData = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: iv },
+    key,
+    encoder.encode(jsonString)
+  );
+
+  // Convert to base64 for JSON storage
+  // Use chunked conversion to avoid stack overflow on large arrays
+  const arrayToBase64 = (array: Uint8Array): string => {
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < array.length; i += chunkSize) {
+      const chunk = array.slice(i, i + chunkSize);
+      binary += String.fromCharCode(...chunk);
+    }
+    return btoa(binary);
+  };
+
+  return JSON.stringify({
+    version: 1,
+    encrypted: arrayToBase64(new Uint8Array(encryptedData)),
+    salt: arrayToBase64(salt),
+    iv: arrayToBase64(iv),
+  });
+}
+
+/**
+ * Decrypt backup data with AES-256-GCM
+ */
+export async function decryptBackup(encryptedString: string, password: string): Promise<any> {
+  try {
+    const { version, encrypted, salt, iv } = JSON.parse(encryptedString);
+
+    if (version !== 1) {
+      throw new Error('Ukjent krypteringsversjon');
+    }
+
+    // Convert from base64
+    const encryptedData = Uint8Array.from(atob(encrypted), c => c.charCodeAt(0));
+    const saltArray = Uint8Array.from(atob(salt), c => c.charCodeAt(0));
+    const ivArray = Uint8Array.from(atob(iv), c => c.charCodeAt(0));
+
+    // Derive key from password
+    const key = await deriveKey(password, saltArray);
+
+    // Decrypt data
+    const decryptedData = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: ivArray },
+      key,
+      encryptedData
+    );
+
+    const decoder = new TextDecoder();
+    const jsonString = decoder.decode(decryptedData);
+
+    return JSON.parse(jsonString);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Ukjent krypteringsversjon') {
+      throw error;
+    }
+    throw new Error('Feil passord eller korrupt fil');
+  }
+}
+
+/**
+ * Check if a backup file is encrypted
+ */
+export function isEncryptedBackup(data: any): boolean {
+  return typeof data === 'object' && data !== null && 'encrypted' in data && 'version' in data;
+}
+
 // --- EXPORT/IMPORT LOGIC ---
-export async function exportDatabase() {
+export async function exportDatabase(password?: string) {
   const data: { [key: string]: any[] } = {};
   for (const table of db.tables) {
     data[table.name] = await table.toArray();
   }
+
+  // Encrypt if password provided
+  if (password && password.length > 0) {
+    return await encryptBackup(data, password);
+  }
+
   return data;
 }
 
-export async function importDatabase(data: { [key: string]: any[] }) {
+export async function importDatabase(data: { [key: string]: any[] } | string, password?: string) {
+    let parsedData: { [key: string]: any[] };
+
+    // Check if data is encrypted
+    if (typeof data === 'string' || isEncryptedBackup(data)) {
+      if (!password) {
+        throw new Error('Denne filen er kryptert. Vennligst oppgi passord.');
+      }
+      const encryptedString = typeof data === 'string' ? data : JSON.stringify(data);
+      parsedData = await decryptBackup(encryptedString, password);
+    } else {
+      parsedData = data as { [key: string]: any[] };
+    }
+
     await db.transaction('rw', db.tables, async () => {
         // Clear all tables
         await Promise.all(db.tables.map(table => table.clear()));
 
         // Import data table by table
-        for (const tableName in data) {
+        for (const tableName in parsedData) {
             if (db.table(tableName)) {
                 // For date fields, we need to ensure they are Date objects
-                const tableData = data[tableName].map(item => {
+                const tableData = parsedData[tableName].map(item => {
                     if (item.date) item.date = new Date(item.date);
                     if (item.createdAt) item.createdAt = new Date(item.createdAt);
                     if (item.updatedAt) item.updatedAt = new Date(item.updatedAt);
