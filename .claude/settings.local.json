@@ -6,7 +6,8 @@
       "Bash(npm install:*)",
       "Bash(find:*)",
       "Bash(npm run build:*)",
-      "Read(//c/Dev/Klasseflyt-display/components/**)"
+      "Read(//c/Dev/Klasseflyt-display/components/**)",
+      "Read(//c/Dev/Klasseflyt-display/**)"
     ],
     "deny": [],
     "ask": []

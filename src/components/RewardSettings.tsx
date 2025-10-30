@@ -39,12 +39,28 @@ export default function RewardSettings() {
     transferFeePercent: 10,
   });
 
+  // Børs-ID registration state
+  const [borsId, setBorsId] = useState('');
+  const [currentBorsId, setCurrentBorsId] = useState<string | null>(null);
+  const [checkingBorsId, setCheckingBorsId] = useState(false);
+  const [borsIdAvailable, setBorsIdAvailable] = useState<boolean | null>(null);
+  const [borsIdSuggestions, setBorsIdSuggestions] = useState<string[]>([]);
+
   // Load settings from DB
   useEffect(() => {
     if (dbSettings?.rewardSystem) {
       setRewardSystem(dbSettings.rewardSystem);
     }
   }, [dbSettings]);
+
+  // Load current børs-ID from localStorage
+  useEffect(() => {
+    const savedBorsId = localStorage.getItem('klasseflyt_bors_id');
+    if (savedBorsId) {
+      setCurrentBorsId(savedBorsId);
+      setBorsId(savedBorsId);
+    }
+  }, []);
 
   // Save reward system settings
   const handleSaveRewardSystem = async () => {
@@ -142,11 +158,113 @@ export default function RewardSettings() {
   const handleDeleteReward = async (id: number) => {
     const reward = localRewards.find(r => r.id === id);
     await db.rewards.delete(id);
-    
+
     toast({
       title: "Slettet",
       description: `Belønning "${reward?.name}" fjernet`,
     });
+  };
+
+  // Check if børs-ID is available
+  const checkBorsIdAvailability = async (id: string) => {
+    if (!id || id.length < 3) {
+      setBorsIdAvailable(null);
+      return;
+    }
+
+    setCheckingBorsId(true);
+    try {
+      const response = await fetch(`/api/bors-registry/check?id=${encodeURIComponent(id)}`);
+      const data = await response.json();
+
+      setBorsIdAvailable(data.available);
+      setBorsIdSuggestions(data.suggestions || []);
+    } catch (error) {
+      console.error('Error checking børs-ID:', error);
+      toast({
+        title: "Feil",
+        description: "Kunne ikke sjekke børs-ID",
+        variant: "destructive",
+      });
+    } finally {
+      setCheckingBorsId(false);
+    }
+  };
+
+  // Debounced check when user types
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (borsId && borsId !== currentBorsId) {
+        checkBorsIdAvailability(borsId);
+      } else if (borsId === currentBorsId) {
+        setBorsIdAvailable(null);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [borsId, currentBorsId]);
+
+  // Register børs-ID
+  const handleRegisterBorsId = async () => {
+    if (!borsId || !borsIdAvailable) return;
+
+    try {
+      const response = await fetch('/api/bors-registry/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ borsId }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        localStorage.setItem('klasseflyt_bors_id', data.borsId);
+        setCurrentBorsId(data.borsId);
+        setBorsIdAvailable(null);
+
+        toast({
+          title: "Registrert!",
+          description: `Børs-ID "${data.borsId}" er nå din. URL: https://${data.borsId}.klasseflyt.no`,
+        });
+      } else {
+        toast({
+          title: "Feil",
+          description: data.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error registering børs-ID:', error);
+      toast({
+        title: "Feil",
+        description: "Kunne ikke registrere børs-ID",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Release current børs-ID and register new one
+  const handleChangeBorsId = async () => {
+    if (!currentBorsId || !borsId || !borsIdAvailable) return;
+
+    try {
+      // Release old ID
+      await fetch('/api/bors-registry/release', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ borsId: currentBorsId }),
+      });
+
+      // Register new ID
+      await handleRegisterBorsId();
+    } catch (error) {
+      console.error('Error changing børs-ID:', error);
+      toast({
+        title: "Feil",
+        description: "Kunne ikke endre børs-ID",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -456,6 +574,155 @@ export default function RewardSettings() {
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Kostnad når elever overfører poeng til hverandre (0% = gratis overføring)
                 </p>
+              </div>
+
+              {/* Børs-ID Registration */}
+              <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div>
+                  <Label htmlFor="bors-id" className="text-base font-semibold">
+                    Børs-ID (Subdomain)
+                  </Label>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    Registrer en unik ID for å få din egen børs-URL
+                  </p>
+                </div>
+
+                {currentBorsId ? (
+                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-green-800 dark:text-green-200">
+                          Din børs-ID: {currentBorsId}
+                        </p>
+                        <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                          URL: https://{currentBorsId}.klasseflyt.no
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`https://${currentBorsId}.klasseflyt.no`);
+                          toast({ title: "Kopiert!", description: "URL kopiert til utklippstavle" });
+                        }}
+                      >
+                        Kopier URL
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="new-bors-id">Endre til ny børs-ID</Label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            id="new-bors-id"
+                            value={borsId}
+                            onChange={(e) => setBorsId(e.target.value.toLowerCase())}
+                            placeholder="ny-bors-id"
+                            className={
+                              borsId && borsId !== currentBorsId
+                                ? borsIdAvailable
+                                  ? 'border-green-500'
+                                  : borsIdAvailable === false
+                                  ? 'border-red-500'
+                                  : ''
+                                : ''
+                            }
+                          />
+                          {checkingBorsId && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <div className="animate-spin h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full" />
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          onClick={handleChangeBorsId}
+                          disabled={!borsIdAvailable || checkingBorsId || borsId === currentBorsId}
+                        >
+                          Endre
+                        </Button>
+                      </div>
+                      {borsIdAvailable === true && borsId !== currentBorsId && (
+                        <p className="text-sm text-green-600">✓ Ledig!</p>
+                      )}
+                      {borsIdAvailable === false && borsId !== currentBorsId && (
+                        <div className="text-sm text-red-600">
+                          <p>✗ Opptatt</p>
+                          {borsIdSuggestions.length > 0 && (
+                            <p className="mt-1">
+                              Forslag:{' '}
+                              {borsIdSuggestions.map((s, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => setBorsId(s)}
+                                  className="underline hover:no-underline mr-2"
+                                >
+                                  {s}
+                                </button>
+                              ))}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          id="bors-id"
+                          value={borsId}
+                          onChange={(e) => setBorsId(e.target.value.toLowerCase())}
+                          placeholder="7klasse"
+                          className={
+                            borsIdAvailable
+                              ? 'border-green-500'
+                              : borsIdAvailable === false
+                              ? 'border-red-500'
+                              : ''
+                          }
+                        />
+                        {checkingBorsId && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <div className="animate-spin h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full" />
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        onClick={handleRegisterBorsId}
+                        disabled={!borsIdAvailable || checkingBorsId}
+                      >
+                        Registrer
+                      </Button>
+                    </div>
+                    {borsIdAvailable === true && (
+                      <p className="text-sm text-green-600">✓ Ledig! Klikk "Registrer" for å reservere.</p>
+                    )}
+                    {borsIdAvailable === false && (
+                      <div className="text-sm text-red-600">
+                        <p>✗ Opptatt</p>
+                        {borsIdSuggestions.length > 0 && (
+                          <p className="mt-1">
+                            Forslag:{' '}
+                            {borsIdSuggestions.map((s, i) => (
+                              <button
+                                key={i}
+                                onClick={() => setBorsId(s)}
+                                className="underline hover:no-underline mr-2"
+                              >
+                                {s}
+                              </button>
+                            ))}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      3-30 tegn, kun bokstaver, tall og bindestrek
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Action buttons */}
