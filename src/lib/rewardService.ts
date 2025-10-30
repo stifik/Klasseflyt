@@ -207,16 +207,27 @@ export async function givePoints(
       return { success: false, message: `Student med ID ${studentId} ikke funnet` };
     }
 
-    // Oppdater student med nye poeng
-    const newPoints = (student.points || 0) + amount;
+    // Process auto-contribution to community rewards (if enabled)
+    const { processAutoContribution } = await import('./communityRewardService');
+    const autoDeducted = await processAutoContribution(studentId, amount);
+
+    // Calculate net points after auto-contribution
+    const netPoints = amount - autoDeducted;
+
+    // Oppdater student med nye poeng (after auto-deduction)
+    const newPoints = (student.points || 0) + netPoints;
     await db.students.update(studentId, { points: newPoints });
 
     // Legg til transaksjon i database med NFC metadata hvis tilgjengelig
+    const transactionDescription = autoDeducted > 0
+      ? `${description} (${amount} poeng, ${autoDeducted} auto-donert til fellespot)`
+      : description;
+
     await db.transactions.add({
       studentId: studentId,
       date: new Date(),
-      pointsChange: amount,
-      description,
+      pointsChange: netPoints,
+      description: transactionDescription,
       paymentMethod: cardId ? 'nfc' : 'manual',
       cardId: cardId,
     });

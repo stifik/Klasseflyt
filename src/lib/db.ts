@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings, WelcomeMessage, InstructionMessage, ScheduleTemplate, ThemeHistory, MorningDisplaySettings, LessonPlan, Theme, UserThemePreference, TimePeriod, TimeBasedMessage, DefaultMessage } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings, WelcomeMessage, InstructionMessage, ScheduleTemplate, ThemeHistory, MorningDisplaySettings, LessonPlan, Theme, UserThemePreference, TimePeriod, TimeBasedMessage, DefaultMessage, CommunityReward, CommunityDonation } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -57,6 +57,8 @@ export class MySubClassedDexie extends Dexie {
     timePeriods!: Table<TimePeriod, number>;
     timeBasedMessages!: Table<TimeBasedMessage, number>;
     defaultMessages!: Table<DefaultMessage, number>;
+    communityRewards!: Table<CommunityReward, number>;
+    communityDonations!: Table<CommunityDonation, number>;
 
 
     constructor() {
@@ -625,6 +627,12 @@ export class MySubClassedDexie extends Dexie {
         }).upgrade(async (tx) => {
             // No special migration required — existing student rows will have undefined nfcCard
             // but adding the index ensures db.students.where('nfcCard') queries work without SchemaError.
+        });
+
+        // Version 41: Add community rewards system (shared class goals)
+        this.version(41).stores({
+            communityRewards: '++id, status, priority',
+            communityDonations: '++id, studentId, rewardId, date'
         });
 
         this.on('populate', async () => {

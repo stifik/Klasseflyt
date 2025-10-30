@@ -49,6 +49,11 @@ type ActiveTransaction = {
   fromStudentName?: string;
   toStudentId?: number;
   toStudentName?: string;
+} | {
+  type: 'donation';
+  rewardId: number;
+  rewardTitle: string;
+  amount?: number;
 } | null;
 
 const Terminal: React.FC = () => {
@@ -349,6 +354,40 @@ const Terminal: React.FC = () => {
     } else if (currentTransaction.type === 'points') {
       // Give points for predefined action (now handles NFC metadata internally)
       result = await givePoints(studentId, currentTransaction.amount, currentTransaction.description, cardId);
+    } else if (currentTransaction.type === 'donation') {
+      // Handle community reward donation
+      const { makeDonation } = await import('@/lib/communityRewardService');
+      const { CommunityRewardAchievedModal } = await import('./CommunityRewardAchievedModal');
+
+      // If no amount set yet, we need to ask for it (only happens in manual mode)
+      if (!currentTransaction.amount) {
+        // This shouldn't happen as we handle amount in the dialog, but just in case
+        result = { success: false, message: 'Beløp mangler' };
+      } else {
+        const donationResult = await makeDonation(
+          studentId,
+          currentTransaction.rewardId,
+          currentTransaction.amount,
+          cardId
+        );
+
+        result = {
+          success: donationResult.success,
+          message: donationResult.message,
+        };
+
+        // Show celebration if reward was achieved
+        if (donationResult.rewardAchieved && donationResult.rewardTitle) {
+          const reward = await db.communityRewards.get(currentTransaction.rewardId);
+          if (reward) {
+            // Import and show achievement modal dynamically
+            setTimeout(() => {
+              // We'll handle this via a state in the UI instead
+              showNotification(`🎉 MÅLET "${donationResult.rewardTitle}" ER OPPNÅDD! 🎉`, 'success');
+            }, 1000);
+          }
+        }
+      }
     } else {
       return;
     }
@@ -407,11 +446,25 @@ const Terminal: React.FC = () => {
   const handleSelectReward = (rewardId: number) => {
     const reward = rewards.find((r: Reward) => r.id === rewardId);
     if (reward) {
-      setActiveTransaction({ 
-        type: 'reward', 
-        id: reward.id, 
-        name: reward.name, 
-        cost: reward.currentPrice || reward.cost 
+      setActiveTransaction({
+        type: 'reward',
+        id: reward.id,
+        name: reward.name,
+        cost: reward.currentPrice || reward.cost
+      });
+      setPaymentMode('manual'); // Default to manual
+      setNfcStatus('idle');
+    }
+  };
+
+  const handleSelectCommunityReward = async (rewardId: number) => {
+    // Load the community reward from database
+    const communityReward = await db.communityRewards.get(rewardId);
+    if (communityReward && communityReward.status === 'active') {
+      setActiveTransaction({
+        type: 'donation',
+        rewardId: communityReward.id!,
+        rewardTitle: communityReward.title,
       });
       setPaymentMode('manual'); // Default to manual
       setNfcStatus('idle');
@@ -620,7 +673,7 @@ const Terminal: React.FC = () => {
           )}
 
           {/* Manual Mode */}
-          {paymentMode === 'manual' && (
+          {paymentMode === 'manual' && activeTransaction?.type !== 'donation' && (
             <ManualPaymentModal
               students={students}
               rfidCards={rfidCards}
@@ -645,6 +698,55 @@ const Terminal: React.FC = () => {
               }
             />
           )}
+
+          {/* Donation Dialog */}
+          {paymentMode === 'manual' && activeTransaction?.type === 'donation' && (
+            <DonationDialogWrapper
+              activeTransaction={activeTransaction}
+              students={students}
+              onConfirm={async (studentId: number, amount: number) => {
+                // Set the amount in the transaction
+                const updatedTransaction = {
+                  ...activeTransaction,
+                  amount,
+                };
+                // Update both state and ref
+                setActiveTransaction(updatedTransaction);
+                activeTransactionRef.current = updatedTransaction;
+
+                // Process the donation directly with the amount
+                const { makeDonation } = await import('@/lib/communityRewardService');
+                const result = await makeDonation(
+                  studentId,
+                  activeTransaction.rewardId,
+                  amount
+                );
+
+                if (result.success) {
+                  soundEffects.play('success');
+                  showNotification(result.message, 'success');
+
+                  // Show celebration if goal achieved
+                  if (result.rewardAchieved) {
+                    setTimeout(() => {
+                      showNotification(`🎉 MÅLET "${result.rewardTitle}" ER OPPNÅDD! 🎉`, 'success');
+                    }, 1000);
+                  }
+                } else {
+                  soundEffects.play('error');
+                  showNotification(result.message, 'error');
+                }
+
+                // Reset transaction
+                setActiveTransaction(null);
+                setPaymentMode('manual');
+              }}
+              onCancel={() => {
+                setActiveTransaction(null);
+                setPaymentMode('manual');
+              }}
+            />
+          )}
         </div>
       </div>
     );
@@ -653,7 +755,11 @@ const Terminal: React.FC = () => {
     content = (
       <div className="max-w-2xl mx-auto">
         <div className="flex flex-col gap-6">
-          <PosView rewards={rewards} onSelectReward={handleSelectReward} />
+          <PosView
+            rewards={rewards}
+            onSelectReward={handleSelectReward}
+            onSelectCommunityReward={handleSelectCommunityReward}
+          />
           <button
             className="w-full py-3 px-6 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-semibold text-lg shadow-md transition-colors"
             onClick={() => router.push('/terminal')}
@@ -883,5 +989,107 @@ const Terminal: React.FC = () => {
     </div>
   );
 };
+
+// Wrapper component for donation dialog with student selection
+function DonationDialogWrapper({
+  activeTransaction,
+  students,
+  onConfirm,
+  onCancel,
+}: {
+  activeTransaction: Extract<ActiveTransaction, { type: 'donation' }>;
+  students: any[];
+  onConfirm: (studentId: number, amount: number) => void;
+  onCancel: () => void;
+}) {
+  const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
+  const [showDonationDialog, setShowDonationDialog] = useState(false);
+  const [communityReward, setCommunityReward] = useState<any>(null);
+
+  // Load community reward
+  React.useEffect(() => {
+    const loadReward = async () => {
+      const reward = await db.communityRewards.get(activeTransaction.rewardId);
+      setCommunityReward(reward);
+    };
+    loadReward();
+  }, [activeTransaction.rewardId]);
+
+  const selectedStudent = students.find((s) => s.id === selectedStudentId);
+
+  // Import donation dialog dynamically
+  const [DonationDialog, setDonationDialog] = useState<any>(null);
+
+  React.useEffect(() => {
+    import('./CommunityRewardDonationDialog').then((mod) => {
+      setDonationDialog(() => mod.CommunityRewardDonationDialog);
+    });
+  }, []);
+
+  if (!DonationDialog) {
+    return null;
+  }
+
+  return (
+    <>
+      {/* Student Selection Modal */}
+      {!selectedStudentId && (
+        <Dialog open={true} onOpenChange={(open) => !open && onCancel()}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Velg elev som skal donere</DialogTitle>
+              <DialogDescription>
+                Donasjon til: <strong>{activeTransaction.rewardTitle}</strong>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 py-4">
+              {students.map((student) => (
+                <Button
+                  key={student.id}
+                  onClick={() => {
+                    setSelectedStudentId(student.id!);
+                    setShowDonationDialog(true);
+                  }}
+                  variant="outline"
+                  className="h-auto py-4 flex flex-col items-center gap-2"
+                >
+                  <div className="font-semibold">{student.name}</div>
+                  <div className="text-xs text-gray-500">
+                    {(student.points || 0).toLocaleString()} poeng
+                  </div>
+                </Button>
+              ))}
+            </div>
+            <div className="flex justify-end pt-4">
+              <Button variant="outline" onClick={onCancel}>
+                Avbryt
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Donation Amount Dialog */}
+      {DonationDialog && (
+        <DonationDialog
+          open={showDonationDialog}
+          onOpenChange={(open: boolean) => {
+            setShowDonationDialog(open);
+            if (!open) {
+              setSelectedStudentId(null);
+            }
+          }}
+          reward={communityReward}
+          student={selectedStudent}
+          onConfirm={(amount: number) => {
+            if (selectedStudentId) {
+              onConfirm(selectedStudentId, amount);
+            }
+          }}
+        />
+      )}
+    </>
+  );
+}
 
 export default Terminal;

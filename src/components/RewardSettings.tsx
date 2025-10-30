@@ -161,9 +161,10 @@ export default function RewardSettings() {
       </div>
 
       <Tabs defaultValue="simple" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-3 max-w-2xl">
           <TabsTrigger value="simple">Enkel</TabsTrigger>
           <TabsTrigger value="advanced">Avansert</TabsTrigger>
+          <TabsTrigger value="community">Fellesspotter</TabsTrigger>
         </TabsList>
 
         {/* ENKEL TAB - Static rewards list */}
@@ -500,7 +501,67 @@ export default function RewardSettings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* COMMUNITY TAB - Fellesspotter (Delte Mål) */}
+        <TabsContent value="community" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Fellesspotter (Delte Mål)</CardTitle>
+              <CardDescription>
+                Opprett klassens felles mål som elevene kan donere poeng til
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CommunityRewardManagerWrapper />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Automatisk Donasjon (Per Elev)</CardTitle>
+              <CardDescription>
+                Konfigurer automatisk prosentvis trekk til fellespot når elever tjener poeng
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <StudentAutoContributionWrapper />
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
+}
+
+// Lazy load community reward components
+function CommunityRewardManagerWrapper() {
+  const [Component, setComponent] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    import('./CommunityRewardManager').then((mod) => {
+      setComponent(() => mod.CommunityRewardManager);
+    });
+  }, []);
+
+  if (!Component) {
+    return <div className="text-center py-8 text-gray-500">Laster...</div>;
+  }
+
+  return <Component />;
+}
+
+function StudentAutoContributionWrapper() {
+  const [Component, setComponent] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    import('./StudentAutoContribution').then((mod) => {
+      setComponent(() => mod.StudentAutoContribution);
+    });
+  }, []);
+
+  if (!Component) {
+    return <div className="text-center py-8 text-gray-500">Laster...</div>;
+  }
+
+  return <Component />;
 }

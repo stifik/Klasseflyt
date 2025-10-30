@@ -4,6 +4,8 @@ export type Student = {
   id?: number;
   name: string;
   points?: number; // Antall poeng, default 0 hvis ikke satt
+  autoContributionPercent?: number; // 0-50%, default 0 - automatisk prosentvis trekk til fellespot
+  preferredCommunityRewardId?: number; // Hvilken fellespot eleven foretrekker å donere til
 };
 
 export type Transaction = {
@@ -33,6 +35,29 @@ export type Reward = {
   basePrice: number; // Base/starting price
   currentPrice: number; // Dynamic price that changes with demand
   emoji?: string;
+};
+
+export type CommunityReward = {
+  id?: number;
+  title: string; // "Farge lærers hår"
+  description?: string;
+  target: number; // 100000 poeng
+  currentAmount: number;
+  emoji?: string; // 🎨
+  status: 'active' | 'achieved';
+  createdAt: Date;
+  achievedAt?: Date;
+  priority: number; // Rekkefølge for visning
+};
+
+export type CommunityDonation = {
+  id?: number;
+  studentId: number;
+  rewardId: number;
+  amount: number;
+  donationType: 'manual' | 'auto'; // Manuell donasjon eller automatisk trekk
+  date: Date;
+  cardId?: string; // RFID card ID hvis donert med NFC
 };
 
 export type RFIDCard = {
