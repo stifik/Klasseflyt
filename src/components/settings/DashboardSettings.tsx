@@ -119,31 +119,13 @@ export default function DashboardSettings({ settings, onSettingsChange }: Dashbo
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Dashboard & Faner</CardTitle>
-        <CardDescription>Velg hvilke faner og verktøy som skal vises, og dra for å endre rekkefølgen.</CardDescription>
+        <CardTitle>Dashboard-verktøy</CardTitle>
+        <CardDescription>Velg hvilke verktøy som skal vises på dashboard, og dra for å endre rekkefølgen.</CardDescription>
       </CardHeader>
       <CardContent>
-        <Accordion type="multiple" defaultValue={['tabs']} className="w-full">
-          <AccordionItem value="tabs">
-            <AccordionTrigger>Hovedfaner</AccordionTrigger>
-            <AccordionContent className="space-y-2 pt-2">
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleTabDragEnd}>
-                <SortableContext items={settings.tabOrder} strategy={verticalListSortingStrategy}>
-                  {settings.tabOrder.map(tabKey => (
-                    <SortableItem
-                      key={tabKey}
-                      id={tabKey}
-                      label={allTabLabels[tabKey as TabKey] || tabKey}
-                      isChecked={settings.tabs[tabKey as TabKey]}
-                      onToggle={() => handleTabToggle(tabKey as TabKey)}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
-            </AccordionContent>
-          </AccordionItem>
+        <Accordion type="multiple" defaultValue={[]} className="w-full">
           <AccordionItem value="dashboard-tools" className="border-b-0">
-            <AccordionTrigger>Dashbord-verktøy</AccordionTrigger>
+            <AccordionTrigger>Verktøy ({settings.dashboardTools.filter(t => t.visible).length}/{settings.dashboardTools.length} synlige)</AccordionTrigger>
             <AccordionContent className="space-y-2 pt-2">
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDashboardDragEnd}>
                 <SortableContext items={settings.dashboardTools.map(t => t.key)} strategy={verticalListSortingStrategy}>

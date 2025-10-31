@@ -5,6 +5,7 @@ import type { AppSettings } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface ScheduleSettingsProps {
   settings: AppSettings;
@@ -27,28 +28,35 @@ export default function ScheduleSettings({ settings, onSettingsChange }: Schedul
         <CardTitle>Timeplan</CardTitle>
         <CardDescription>Legg inn start- og sluttid for timene. Dette brukes til å auto-velge time.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-2">
-        {settings.schedule.map(({ period, startTime, endTime }) => (
-          <div key={period} className="grid items-center grid-cols-3 gap-2 p-2 border rounded-lg">
-            <Label htmlFor={`period-${period}`} className="font-medium">Time {period}</Label>
-            <Input
-              id={`period-${period}-start`}
-              type="text"
-              value={startTime}
-              onChange={(e) => handleScheduleChange(period, 'startTime', e.target.value)}
-              placeholder="TT:MM"
-              pattern="[0-9]{2}:[0-9]{2}"
-            />
-            <Input
-              id={`period-${period}-end`}
-              type="text"
-              value={endTime}
-              onChange={(e) => handleScheduleChange(period, 'endTime', e.target.value)}
-              placeholder="TT:MM"
-              pattern="[0-9]{2}:[0-9]{2}"
-            />
-          </div>
-        ))}
+      <CardContent>
+        <Accordion type="multiple" defaultValue={[]} className="w-full">
+          <AccordionItem value="schedule" className="border-b-0">
+            <AccordionTrigger>Tider for hver time</AccordionTrigger>
+            <AccordionContent className="space-y-2 pt-2">
+              {settings.schedule.map(({ period, startTime, endTime }) => (
+                <div key={period} className="grid items-center grid-cols-3 gap-2 p-2 border rounded-lg">
+                  <Label htmlFor={`period-${period}`} className="font-medium">Time {period}</Label>
+                  <Input
+                    id={`period-${period}-start`}
+                    type="text"
+                    value={startTime}
+                    onChange={(e) => handleScheduleChange(period, 'startTime', e.target.value)}
+                    placeholder="TT:MM"
+                    pattern="[0-9]{2}:[0-9]{2}"
+                  />
+                  <Input
+                    id={`period-${period}-end`}
+                    type="text"
+                    value={endTime}
+                    onChange={(e) => handleScheduleChange(period, 'endTime', e.target.value)}
+                    placeholder="TT:MM"
+                    pattern="[0-9]{2}:[0-9]{2}"
+                  />
+                </div>
+              ))}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </CardContent>
     </Card>
   );

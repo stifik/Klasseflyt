@@ -8,7 +8,7 @@ import {Card, CardHeader, CardTitle, CardDescription} from '@/components/ui/card
 import {
     BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed,
     Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2, Award,
-    Terminal, Monitor, Trophy, Store, Activity, UserSecret, Calendar
+    Terminal, Monitor, Trophy, Store, Activity, Calendar, ShieldCheck
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
 import Link from 'next/link';
@@ -175,7 +175,7 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     key: 'secret-agent',
     label: 'Hemmelig Agent',
     description: 'Trekk hemmelig agent for uken.',
-    icon: UserSecret,
+    icon: ShieldCheck,
     color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
     href: '/secret-agent',
   },

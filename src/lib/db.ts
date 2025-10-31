@@ -635,6 +635,30 @@ export class MySubClassedDexie extends Dexie {
             communityDonations: '++id, studentId, rewardId, date'
         });
 
+        // Version 42: Add new dashboard tools (weekly-planner, rewardDashboard, rewardStore, activityFeed, secret-agent)
+        this.version(42).stores({}).upgrade(async (tx) => {
+            const userSettings = await tx.table('settings').get('userSettings');
+            if (userSettings && userSettings.dashboardTools) {
+                const existingKeys = userSettings.dashboardTools.map((t: DashboardConfig) => t.key);
+                const newTools: DashboardConfig[] = [
+                    { key: 'weekly-planner', visible: true },
+                    { key: 'rewardDashboard', visible: true },
+                    { key: 'rewardStore', visible: false },
+                    { key: 'activityFeed', visible: false },
+                    { key: 'secret-agent', visible: false },
+                ];
+
+                // Add only tools that don't already exist
+                for (const tool of newTools) {
+                    if (!existingKeys.includes(tool.key)) {
+                        userSettings.dashboardTools.push(tool);
+                    }
+                }
+
+                await tx.table('settings').put(userSettings);
+            }
+        });
+
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
         });
@@ -669,6 +693,12 @@ const defaultDashboardTools: DashboardConfig[] = [
     { key: 'observations', visible: true },
     { key: 'classroomTools', visible: true },
     { key: 'reports', visible: true },
+    { key: 'weekly-planner', visible: true },
+    { key: 'terminal', visible: true },
+    { key: 'rewardDashboard', visible: true },
+    { key: 'rewardStore', visible: false },
+    { key: 'activityFeed', visible: false },
+    { key: 'secret-agent', visible: false },
     { key: 'observations.hourly', visible: false },
     { key: 'observations.remarks', visible: false },
     { key: 'classroomTools.seatingChart', visible: false },

@@ -20,6 +20,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { db, resetDatabase, clearDatabase, exportDatabase, importDatabase, isEncryptedBackup } from "@/lib/db";
 import { setLastBackupDate, getLastBackupDescription } from "@/lib/backupReminder";
 import { BackupPasswordDialog } from "@/components/BackupPasswordDialog";
@@ -189,149 +190,157 @@ export default function DatabaseSettings({ settings, onSettingsChange }: Databas
           <CardTitle>Database</CardTitle>
           <CardDescription>Handlinger for å administrere appens lokale data</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h4 className="font-semibold">Backup og Gjenoppretting</h4>
-            <p className="mb-2 text-sm text-muted-foreground">
-              Last ned en backup-fil av all data, eller gjenopprett fra en tidligere backup.
-            </p>
+        <CardContent>
+          <Accordion type="multiple" defaultValue={[]} className="w-full">
+            <AccordionItem value="backup">
+              <AccordionTrigger>Backup og Gjenoppretting</AccordionTrigger>
+              <AccordionContent className="space-y-3 pt-2">
+                <p className="text-sm text-muted-foreground">
+                  Last ned en backup-fil av all data, eller gjenopprett fra en tidligere backup.
+                </p>
 
-            {/* Encryption toggle */}
-            <div className="flex items-center justify-between p-3 mb-3 border rounded-lg bg-blue-50 dark:bg-blue-950">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="encrypt-backup" className="font-medium cursor-pointer">
-                  🔒 Krypter backup (anbefalt)
-                </Label>
-              </div>
-              <Switch
-                id="encrypt-backup"
-                checked={encryptBackup}
-                onCheckedChange={setEncryptBackup}
-              />
-            </div>
+                {/* Encryption toggle */}
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-blue-50 dark:bg-blue-950">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="encrypt-backup" className="font-medium cursor-pointer">
+                      🔒 Krypter backup (anbefalt)
+                    </Label>
+                  </div>
+                  <Switch
+                    id="encrypt-backup"
+                    checked={encryptBackup}
+                    onCheckedChange={setEncryptBackup}
+                  />
+                </div>
 
-            {/* Backup reminder settings */}
-            <div className="p-3 mb-3 border rounded-lg space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="backup-reminder" className="font-medium">
-                  Backup-påminnelse
-                </Label>
-                <select
-                  id="backup-reminder"
-                  value={settings.backupReminderDays || 0}
-                  onChange={(e) => {
-                    const days = parseInt(e.target.value);
-                    onSettingsChange({
-                      ...settings,
-                      backupReminderDays: days
-                    });
-                  }}
-                  className="px-3 py-1 border rounded-md dark:bg-gray-800"
-                >
-                  <option value={0}>Av</option>
-                  <option value={1}>Daglig</option>
-                  <option value={7}>Ukentlig (7 dager)</option>
-                  <option value={14}>Hver 14. dag</option>
-                  <option value={30}>Månedlig (30 dager)</option>
-                </select>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Siste backup: <strong>{getLastBackupDescription()}</strong>
-              </p>
-            </div>
+                {/* Backup reminder settings */}
+                <div className="p-3 border rounded-lg space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="backup-reminder" className="font-medium">
+                      Backup-påminnelse
+                    </Label>
+                    <select
+                      id="backup-reminder"
+                      value={settings.backupReminderDays || 0}
+                      onChange={(e) => {
+                        const days = parseInt(e.target.value);
+                        onSettingsChange({
+                          ...settings,
+                          backupReminderDays: days
+                        });
+                      }}
+                      className="px-3 py-1 border rounded-md dark:bg-gray-800"
+                    >
+                      <option value={0}>Av</option>
+                      <option value={1}>Daglig</option>
+                      <option value={7}>Ukentlig (7 dager)</option>
+                      <option value={14}>Hver 14. dag</option>
+                      <option value={30}>Månedlig (30 dager)</option>
+                    </select>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Siste backup: <strong>{getLastBackupDescription()}</strong>
+                  </p>
+                </div>
 
-            <div className="flex gap-2">
-              <Button onClick={handleExport} variant="outline" className="w-full">
-                <Download className="mr-2" /> Eksporter {encryptBackup && '🔒'}
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="w-full">
-                    <Upload className="mr-2" /> Importer
+                <div className="flex gap-2">
+                  <Button onClick={handleExport} variant="outline" className="w-full">
+                    <Download className="mr-2" /> Eksporter {encryptBackup && '🔒'}
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      <AlertTriangle className="inline-block mr-2 text-yellow-500" /> Overskrive all data?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Dette vil permanent slette all nåværende data i appen og erstatte den med innholdet fra backup-filen. Handlingen kan ikke angres.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => fileInputRef.current?.click()}>
-                      Ja, fortsett
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImport}
-                className="hidden"
-                accept=".json"
-              />
-            </div>
-          </div>
-          <Separator />
-          <div>
-            <h4 className="font-semibold">Tøm database for ny start</h4>
-            <p className="mb-2 text-sm text-muted-foreground">
-              Dette sletter all eksisterende data (elever, lekser, anmerkninger etc.) slik at du kan starte med blanke ark. Handlingen kan ikke angres.
-            </p>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" disabled={isProcessing}>
-                  {isProcessing ? 'Jobber...' : 'Tøm all data'}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    <AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Dette vil permanent slette all data i appen. Handlingen kan ikke angres.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleClearDatabase}>Ja, slett alt</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-          <Separator />
-          <div>
-            <h4 className="font-semibold">Fyll med demodata</h4>
-            <p className="mb-2 text-sm text-muted-foreground">
-              Dette er for testing. Handlingen sletter først all data, og fyller deretter databasen med et sett med fiktive elever og data.
-            </p>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" disabled={isProcessing}>
-                  {isProcessing ? 'Jobber...' : 'Nullstill og fyll med demodata'}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    <AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Dette vil permanent slette all nåværende data og erstatte den med demodata.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleResetDatabase}>Ja, nullstill og fyll på nytt</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="w-full">
+                        <Upload className="mr-2" /> Importer
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          <AlertTriangle className="inline-block mr-2 text-yellow-500" /> Overskrive all data?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Dette vil permanent slette all nåværende data i appen og erstatte den med innholdet fra backup-filen. Handlingen kan ikke angres.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => fileInputRef.current?.click()}>
+                          Ja, fortsett
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImport}
+                    className="hidden"
+                    accept=".json"
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="clear">
+              <AccordionTrigger>Tøm database for ny start</AccordionTrigger>
+              <AccordionContent className="space-y-3 pt-2">
+                <p className="text-sm text-muted-foreground">
+                  Dette sletter all eksisterende data (elever, lekser, anmerkninger etc.) slik at du kan starte med blanke ark. Handlingen kan ikke angres.
+                </p>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" disabled={isProcessing}>
+                      {isProcessing ? 'Jobber...' : 'Tøm all data'}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        <AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Dette vil permanent slette all data i appen. Handlingen kan ikke angres.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleClearDatabase}>Ja, slett alt</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="demo" className="border-b-0">
+              <AccordionTrigger>Fyll med demodata</AccordionTrigger>
+              <AccordionContent className="space-y-3 pt-2">
+                <p className="text-sm text-muted-foreground">
+                  Dette er for testing. Handlingen sletter først all data, og fyller deretter databasen med et sett med fiktive elever og data.
+                </p>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" disabled={isProcessing}>
+                      {isProcessing ? 'Jobber...' : 'Nullstill og fyll med demodata'}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        <AlertTriangle className="inline-block mr-2 text-yellow-500" />Er du helt sikker?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Dette vil permanent slette all nåværende data og erstatte den med demodata.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleResetDatabase}>Ja, nullstill og fyll på nytt</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </CardContent>
       </Card>
     </>
