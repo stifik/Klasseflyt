@@ -355,7 +355,7 @@ export default function MorningDisplaySettings() {
                 </Link>
 
                 <Link
-                  href="/settings/weekly-planner"
+                  href="/weekly-planner"
                   className="block p-4 border rounded-lg hover:bg-secondary transition-colors"
                 >
                   <div className="flex items-center gap-3">

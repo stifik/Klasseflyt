@@ -372,26 +372,28 @@ export type GroupingRules = {
 
 export type TabKey = 'overview' | 'dailyCheck' | 'observations' | 'reports' | 'classroomTools' | 'settings' | 'assessments';
 
-export type DashboardToolKey = 
-  | 'overview' 
+export type DashboardToolKey =
+  | 'overview'
   | 'assessments'
-  | 'dailyCheck' 
+  | 'dailyCheck'
   | 'observations'
-  | 'observations.hourly' 
-  | 'observations.remarks' 
+  | 'observations.hourly'
+  | 'observations.remarks'
   | 'classroomTools'
-  | 'classroomTools.seatingChart' 
-  | 'classroomTools.groupTool' 
-  | 'classroomTools.studentPicker' 
+  | 'classroomTools.seatingChart'
+  | 'classroomTools.groupTool'
+  | 'classroomTools.studentPicker'
   | 'reports'
-  | 'reports.summary' 
-  | 'reports.studentReports' 
+  | 'reports.summary'
+  | 'reports.studentReports'
   | 'reports.analysis'
   | 'rewardDashboard'
   | 'rewardStore'
   | 'activityFeed'
   | 'terminal'
-  | 'morning-display';
+  | 'morning-display'
+  | 'secret-agent'
+  | 'weekly-planner';
 
 export type DashboardConfig = {
     key: DashboardToolKey;

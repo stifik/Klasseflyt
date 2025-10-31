@@ -8,7 +8,7 @@ import {Card, CardHeader, CardTitle, CardDescription} from '@/components/ui/card
 import {
     BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed,
     Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2, Award,
-    Terminal, Monitor
+    Terminal, Monitor, Trophy, Store, Activity, UserSecret, Calendar
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
 import Link from 'next/link';
@@ -148,12 +148,44 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     href: '/terminal',
   },
   {
-    key: 'morning-display',
-    label: 'Morning Display',
-    description: 'Dynamisk morgenvisning med innsjekking og dagsplan.',
-    icon: Eye,
-    color: 'bg-gradient-to-br from-purple-100 to-pink-100 text-purple-600 dark:from-purple-900/30 dark:to-pink-900/30 dark:text-purple-400',
-    href: '/morning-display',
+    key: 'rewardDashboard',
+    label: 'Klassebank',
+    description: 'Oversikt over elevenes poeng og transaksjoner.',
+    icon: Trophy,
+    color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
+    href: '/rewarddashboard',
+  },
+  {
+    key: 'rewardStore',
+    label: 'Belønningsbutikk',
+    description: 'Kjøp belønninger med opptjente poeng.',
+    icon: Store,
+    color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
+    href: '/rewardstore',
+  },
+  {
+    key: 'activityFeed',
+    label: 'Aktivitetsfeed',
+    description: 'Se aktivitet og transaksjoner i sanntid.',
+    icon: Activity,
+    color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+    href: '/activityfeed',
+  },
+  {
+    key: 'secret-agent',
+    label: 'Hemmelig Agent',
+    description: 'Trekk hemmelig agent for uken.',
+    icon: UserSecret,
+    color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
+    href: '/secret-agent',
+  },
+  {
+    key: 'weekly-planner',
+    label: 'Ukesplanlegger',
+    description: 'Planlegg timeplaner og leksjoner for hele uken.',
+    icon: Calendar,
+    color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
+    href: '/weekly-planner',
   },
 ];
 

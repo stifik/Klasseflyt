@@ -48,6 +48,8 @@ const allToolLabels: Record<DashboardToolKey, string> = {
   'activityFeed': "Aktivitetsfeed",
   'morning-display': "Morgenvisning",
   'terminal': "Terminal",
+  'secret-agent': "Hemmelig Agent",
+  'weekly-planner': "Ukesplanlegger",
 };
 
 const allTabLabels: Record<TabKey, string> = {
