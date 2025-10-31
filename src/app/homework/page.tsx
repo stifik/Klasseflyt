@@ -3,6 +3,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import HomeworkOverview from "@/components/HomeworkOverview";
+import PageHeader from "@/components/navigation/PageHeader";
 import { Loader2 } from "lucide-react";
 
 export default function HomeworkPage() {
@@ -24,12 +25,15 @@ export default function HomeworkPage() {
     }
 
     return (
-        <HomeworkOverview
-            students={students}
-            subjects={subjects}
-            homework={homework}
-            submissions={submissions}
-            onUpdate={handleUpdate}
-        />
+        <div>
+            <PageHeader title="Lekseoversikt" settingsUrl="/settings#hovedapp" />
+            <HomeworkOverview
+                students={students}
+                subjects={subjects}
+                homework={homework}
+                submissions={submissions}
+                onUpdate={handleUpdate}
+            />
+        </div>
     );
 }

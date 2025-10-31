@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
 import type { ScheduleTemplate, ScheduleSession, LessonPlan } from '@/lib/types';
 import LessonPlanModal from './LessonPlanModal';
+import SettingsButton from '@/components/navigation/SettingsButton';
 import './weekly-planner.css';
 
 type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
@@ -214,9 +215,12 @@ export default function WeeklyPlannerPage() {
 
   return (
     <div className="weekly-planner-page">
-      <div className="planner-header">
-        <h1>Ukesplanlegger</h1>
-        <p className="subtitle">Planlegg timeplaner for hele uken</p>
+      <div className="planner-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1>Ukesplanlegger</h1>
+          <p className="subtitle">Planlegg timeplaner for hele uken</p>
+        </div>
+        <SettingsButton href="/settings/weekly-schedule" />
       </div>
 
       <div className="week-selector">

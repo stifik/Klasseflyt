@@ -3,6 +3,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import Reports from "@/components/Reports";
+import PageHeader from "@/components/navigation/PageHeader";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
@@ -33,22 +34,25 @@ export default function ReportsPage() {
     }
 
     return (
-        <Reports
-            students={students}
-            subjects={subjects}
-            homework={homework}
-            submissions={submissions}
-            submissionAttempts={submissionAttempts}
-            tests={tests}
-            testResults={testResults}
-            learningGoals={learningGoals}
-            goalAchievements={goalAchievements}
-            dailyChecks={dailyChecks}
-            remarks={remarks}
-            hourlyChecks={hourlyChecks}
-            settings={settings}
-            activeSubTab={activeSubTab}
-            onSubTabChange={setActiveSubTab}
-        />
+        <div>
+            <PageHeader title="Rapporter" settingsUrl="/settings#hovedapp" />
+            <Reports
+                students={students}
+                subjects={subjects}
+                homework={homework}
+                submissions={submissions}
+                submissionAttempts={submissionAttempts}
+                tests={tests}
+                testResults={testResults}
+                learningGoals={learningGoals}
+                goalAchievements={goalAchievements}
+                dailyChecks={dailyChecks}
+                remarks={remarks}
+                hourlyChecks={hourlyChecks}
+                settings={settings}
+                activeSubTab={activeSubTab}
+                onSubTabChange={setActiveSubTab}
+            />
+        </div>
     );
 }

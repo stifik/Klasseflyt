@@ -3,6 +3,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import SecretAgentPicker from "@/components/SecretAgentPicker";
+import PageHeader from "@/components/navigation/PageHeader";
 import { Loader2 } from "lucide-react";
 
 export default function SecretAgentPage() {
@@ -19,6 +20,7 @@ export default function SecretAgentPage() {
 
     return (
         <div className="max-w-4xl mx-auto">
+            <PageHeader title="Hemmelig Agent" settingsUrl="/settings#hovedapp" />
             <SecretAgentPicker students={students} absences={absences} />
         </div>
     );

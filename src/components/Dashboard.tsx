@@ -8,11 +8,12 @@ import {Card, CardHeader, CardTitle, CardDescription} from '@/components/ui/card
 import {
     BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed,
     Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2, Award,
-    Terminal, Monitor, Trophy, Store, Activity, Calendar, ShieldCheck
+    Terminal, Monitor, Trophy, Store, Activity, Calendar, ShieldCheck, Settings as SettingsIcon
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { getDashboardToolSettingsUrl } from '@/lib/settingsRegistry';
 
 interface DashboardProps {
   settings: AppSettings;
@@ -222,20 +223,32 @@ const Dashboard: FC<DashboardProps> = ({settings}) => {
             }
           };
           
+          const settingsUrl = getDashboardToolSettingsUrl(tool.key);
+
           return (
             <Card
               key={tool.key}
               onClick={handleClick}
-              className="cursor-pointer hover:border-primary/50 hover:shadow-lg transition-all"
+              className="cursor-pointer hover:border-primary/50 hover:shadow-lg transition-all relative"
             >
               <CardHeader className="flex flex-row items-center gap-4">
                 <div className={cn('p-3 rounded-full', tool.color)}>
                   <Icon className="w-6 h-6" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <CardTitle>{tool.label}</CardTitle>
                   <CardDescription>{tool.description}</CardDescription>
                 </div>
+                {settingsUrl && (
+                  <Link
+                    href={settingsUrl}
+                    onClick={(e) => e.stopPropagation()}
+                    className="hidden md:flex absolute top-4 right-4 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    title="Innstillinger"
+                  >
+                    <SettingsIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  </Link>
+                )}
               </CardHeader>
             </Card>
           );

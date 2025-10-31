@@ -3,6 +3,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import DailyChecklist from "@/components/DailyChecklist";
+import PageHeader from "@/components/navigation/PageHeader";
 import { Loader2 } from "lucide-react";
 
 export default function DailyCheckPage() {
@@ -30,12 +31,15 @@ export default function DailyCheckPage() {
     }
 
     return (
-        <DailyChecklist
-            students={students}
-            seatingChart={seatingChart}
-            activeLayout={activeLayout ?? null}
-            absences={absences}
-            positiveActions={positiveActions}
-        />
+        <div>
+            <PageHeader title="Daglig Sjekk" settingsUrl="/settings#checkin" />
+            <DailyChecklist
+                students={students}
+                seatingChart={seatingChart}
+                activeLayout={activeLayout ?? null}
+                absences={absences}
+                positiveActions={positiveActions}
+            />
+        </div>
     );
 }

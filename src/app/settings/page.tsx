@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Settings from '@/components/Settings';
 import CheckInSettings from '@/components/CheckInSettings';
 import RewardSettings from '@/components/RewardSettings';
@@ -12,10 +12,34 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Settings as SettingsIcon, Gift, Bell, Monitor, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 
+type TabValue = 'app' | 'rewards' | 'checkin' | 'morning';
+
 export default function SettingsRoute() {
   const students = useLiveQuery(() => db.students.toArray());
   const subjects = useLiveQuery(() => db.subjects.toArray());
   const settings = useLiveQuery(() => db.settings.get('userSettings'));
+
+  // Read hash from URL to determine initial tab
+  const [activeTab, setActiveTab] = useState<TabValue>('app');
+
+  useEffect(() => {
+    const hash = window.location.hash.slice(1); // Remove # from hash
+    const validTabs: TabValue[] = ['app', 'rewards', 'checkin', 'morning'];
+
+    // Map 'hovedapp' to 'app' for backwards compatibility
+    const tabMap: Record<string, TabValue> = {
+      'hovedapp': 'app',
+      'app': 'app',
+      'rewards': 'rewards',
+      'checkin': 'checkin',
+      'morning': 'morning'
+    };
+
+    const mappedTab = tabMap[hash];
+    if (mappedTab && validTabs.includes(mappedTab)) {
+      setActiveTab(mappedTab);
+    }
+  }, []);
 
   const handleUpdate = () => {
     // Trigger re-query by not doing anything - useLiveQuery will auto-update
@@ -23,7 +47,7 @@ export default function SettingsRoute() {
 
   return (
     <RewardSystemLayout showBackButton={true}>
-      <Tabs defaultValue="app" className="w-full">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)} className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger value="app" className="flex items-center gap-2">
             <SettingsIcon className="w-4 h-4" />

@@ -3,6 +3,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import Assessments from "@/components/Assessments";
+import PageHeader from "@/components/navigation/PageHeader";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
@@ -24,15 +25,18 @@ export default function AssessmentsPage() {
     }
 
     return (
-        <Assessments
-            students={students}
-            subjects={subjects}
-            tests={tests}
-            testResults={testResults}
-            learningGoals={learningGoals}
-            goalAchievements={goalAchievements}
-            activeSubTab={activeSubTab}
-            onSubTabChange={setActiveSubTab}
-        />
+        <div>
+            <PageHeader title="Vurderinger" settingsUrl="/settings#hovedapp" />
+            <Assessments
+                students={students}
+                subjects={subjects}
+                tests={tests}
+                testResults={testResults}
+                learningGoals={learningGoals}
+                goalAchievements={goalAchievements}
+                activeSubTab={activeSubTab}
+                onSubTabChange={setActiveSubTab}
+            />
+        </div>
     );
 }

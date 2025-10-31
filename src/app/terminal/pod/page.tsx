@@ -3,7 +3,7 @@ import RewardSystemLayout from "@/components/RewardSystemLayout";
 
 export default function PodPage() {
   return (
-    <RewardSystemLayout showBackButton={true}>
+    <RewardSystemLayout showBackButton={true} settingsUrl="/settings#rewards">
       <Terminal />
     </RewardSystemLayout>
   );

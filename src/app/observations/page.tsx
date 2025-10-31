@@ -3,6 +3,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import Observations from "@/components/Observations";
+import PageHeader from "@/components/navigation/PageHeader";
 import { Loader2 } from "lucide-react";
 
 export default function ObservationsPage() {
@@ -34,14 +35,17 @@ export default function ObservationsPage() {
     }
 
     return (
-        <Observations
-            students={students}
-            initialRemarks={remarks}
-            initialHourlyChecks={hourlyChecks}
-            onUpdate={handleUpdate}
-            seatingChart={seatingChart}
-            settings={settings}
-            activeLayout={activeLayout ?? null}
-        />
+        <div>
+            <PageHeader title="Observasjoner" settingsUrl="/settings#hovedapp" />
+            <Observations
+                students={students}
+                initialRemarks={remarks}
+                initialHourlyChecks={hourlyChecks}
+                onUpdate={handleUpdate}
+                seatingChart={seatingChart}
+                settings={settings}
+                activeLayout={activeLayout ?? null}
+            />
+        </div>
     );
 }

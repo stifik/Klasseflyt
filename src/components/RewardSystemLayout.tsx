@@ -6,18 +6,21 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Settings, BookOpenCheck } from 'lucide-react';
 import ClassGoalProgressBar from './ClassGoalProgressBar';
+import SettingsButton from '@/components/navigation/SettingsButton';
 import { db } from '@/lib/db';
 
 interface RewardSystemLayoutProps {
   children: React.ReactNode;
   showBackButton?: boolean;
   backButtonHref?: string;
+  settingsUrl?: string;
 }
 
-const RewardSystemLayout: React.FC<RewardSystemLayoutProps> = ({ 
-  children, 
+const RewardSystemLayout: React.FC<RewardSystemLayoutProps> = ({
+  children,
   showBackButton = false,
-  backButtonHref = "/"
+  backButtonHref = "/",
+  settingsUrl
 }) => {
   const pathname = usePathname();
   const [classTotal, setClassTotal] = useState<number>(0);
@@ -78,6 +81,13 @@ const RewardSystemLayout: React.FC<RewardSystemLayoutProps> = ({
 
   return (
     <div>
+      {/* Settings button - absolute positioning at top right */}
+      {settingsUrl && (
+        <div className="hidden md:block absolute top-4 right-4 z-10">
+          <SettingsButton href={settingsUrl} />
+        </div>
+      )}
+
       {/* Progress bar - kun på terminal-sider */}
       {isOnTerminal && (
         <div className="mb-4">

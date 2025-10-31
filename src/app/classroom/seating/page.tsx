@@ -2,6 +2,7 @@
 
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
+import PageHeader from "@/components/navigation/PageHeader";
 import { Loader2 } from "lucide-react";
 import { SeatingChartTabContent } from "@/components/ClassroomTools";
 
@@ -33,12 +34,15 @@ export default function SeatingPage() {
     }
 
     return (
-        <SeatingChartTabContent
-            students={students}
-            appSettings={settings}
-            onAppSettingsChange={handleSettingsChange}
-            onSeatingChartChange={handleSeatingChartChange}
-            history={history}
-        />
+        <div>
+            <PageHeader title="Klassekart" settingsUrl="/settings#hovedapp" />
+            <SeatingChartTabContent
+                students={students}
+                appSettings={settings}
+                onAppSettingsChange={handleSettingsChange}
+                onSeatingChartChange={handleSeatingChartChange}
+                history={history}
+            />
+        </div>
     );
 }
