@@ -1,0 +1,182 @@
+"use client";
+
+import * as React from "react";
+import { useState } from "react";
+import type { Student, Subject } from "@/lib/types";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Plus, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { db } from "@/lib/db";
+
+interface StudentsAndSubjectsProps {
+  students: Student[];
+  subjects: Subject[];
+}
+
+export default function StudentsAndSubjects({ students, subjects }: StudentsAndSubjectsProps) {
+  const [newStudent, setNewStudent] = useState("");
+  const [newSubject, setNewSubject] = useState("");
+  const { toast } = useToast();
+
+  const handleAddStudent = async () => {
+    if (newStudent.trim()) {
+      try {
+        await db.students.add({ name: newStudent.trim(), points: 0 });
+        setNewStudent("");
+        toast({ title: "Elev lagt til", description: `${newStudent.trim()} er lagt til i klasselisten.` });
+      } catch (error) {
+        toast({ title: "Feil", description: "Kunne ikke legge til elev.", variant: "destructive" });
+      }
+    }
+  };
+
+  const handleAddSubject = async () => {
+    if (newSubject.trim()) {
+      try {
+        await db.subjects.add({ name: newSubject.trim() });
+        setNewSubject("");
+        toast({ title: "Fag lagt til", description: `${newSubject.trim()} er lagt til i faglisten.` });
+      } catch (error) {
+        toast({ title: "Feil", description: "Kunne ikke legge til fag.", variant: "destructive" });
+      }
+    }
+  };
+
+  const handleDeleteStudent = async (id: number) => {
+    const studentName = students.find(s => s.id === id)?.name;
+    try {
+      await db.students.delete(id);
+      toast({ title: "Elev slettet", description: `${studentName} er fjernet.`, variant: "destructive" });
+    } catch (error) {
+      toast({ title: "Feil", description: "Kunne ikke slette elev.", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteSubject = async (id: string) => {
+    const subjectName = subjects.find(s => s.id === id)?.name;
+    try {
+      await db.subjects.delete(id);
+      toast({ title: "Fag slettet", description: `${subjectName} er fjernet.`, variant: "destructive" });
+    } catch (error) {
+      toast({ title: "Feil", description: "Kunne ikke slette fag.", variant: "destructive" });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Elever og Fag</CardTitle>
+        <CardDescription>Administrer elever og fag i appen</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Accordion type="multiple" defaultValue={[]} className="w-full">
+          {/* Students Section */}
+          <AccordionItem value="students">
+            <AccordionTrigger>Elever ({students?.length || 0})</AccordionTrigger>
+            <AccordionContent className="pt-2 space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  value={newStudent}
+                  onChange={(e) => setNewStudent(e.target.value)}
+                  placeholder="Ny elev..."
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddStudent()}
+                />
+                <Button onClick={handleAddStudent}>
+                  <Plus className="mr-2" /> Legg til
+                </Button>
+              </div>
+              <ul className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                {students?.map((student) => (
+                  <li key={student.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
+                    <span>{student.name}</span>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Dette vil permanent slette eleven {student.name} og all relatert data. Handlingen kan ikke angres.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteStudent(student.id!)}>
+                            Ja, slett elev
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </li>
+                ))}
+              </ul>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Subjects Section */}
+          <AccordionItem value="subjects" className="border-b-0">
+            <AccordionTrigger>Fag ({subjects?.length || 0})</AccordionTrigger>
+            <AccordionContent className="pt-2 space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  value={newSubject}
+                  onChange={(e) => setNewSubject(e.target.value)}
+                  placeholder="Nytt fag..."
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddSubject()}
+                />
+                <Button onClick={handleAddSubject}>
+                  <Plus className="mr-2" /> Legg til
+                </Button>
+              </div>
+              <ul className="space-y-2">
+                {subjects?.map((subject) => (
+                  <li key={subject.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
+                    <span>{subject.name}</span>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Dette vil permanent slette faget {subject.name}. Handlingen kan ikke angres.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteSubject(subject.id!)}>
+                            Ja, slett fag
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </li>
+                ))}
+              </ul>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </CardContent>
+    </Card>
+  );
+}

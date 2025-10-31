@@ -1,9 +1,10 @@
 "use client";
 
 import React from 'react';
-import SettingsPage from '@/components/SettingsPage';
 import Settings from '@/components/Settings';
 import CheckInSettings from '@/components/CheckInSettings';
+import RewardSettings from '@/components/RewardSettings';
+import MorningDisplaySettings from '@/components/settings/MorningDisplaySettings';
 import RewardSystemLayout from '@/components/RewardSystemLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { db } from '@/lib/db';
@@ -58,7 +59,7 @@ export default function SettingsRoute() {
           )}
         </TabsContent>
         <TabsContent value="rewards">
-          <SettingsPage />
+          <RewardSettings />
         </TabsContent>
         <TabsContent value="checkin">
           <div className="space-y-6">
@@ -82,42 +83,7 @@ export default function SettingsRoute() {
           </div>
         </TabsContent>
         <TabsContent value="morning">
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <h2 className="text-2xl font-bold mb-4">Morning Display Innstillinger</h2>
-            <p className="text-gray-600 mb-6">
-              Konfigurer meldinger, instruksjoner, klassenavn og ukesmaler for morgenvisningen.
-            </p>
-            <div className="flex flex-col gap-4">
-              <Link
-                href="/settings/morning-display"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition w-fit"
-              >
-                <Monitor className="w-5 h-5" />
-                Meldinger og klassenavn
-              </Link>
-              <Link
-                href="/settings/themes"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition w-fit"
-              >
-                🎨
-                Temaer og bakgrunner
-              </Link>
-              <Link
-                href="/settings/weekly-schedule"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition w-fit"
-              >
-                <SettingsIcon className="w-5 h-5" />
-                Ukesmaler for dagsplan
-              </Link>
-              <Link
-                href="/settings/weekly-planner"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition w-fit"
-              >
-                📅
-                Ukesplanlegger (timeplaner)
-              </Link>
-            </div>
-          </div>
+          <MorningDisplaySettings />
         </TabsContent>
       </Tabs>
     </RewardSystemLayout>
