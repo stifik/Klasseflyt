@@ -56,8 +56,11 @@ export default function WelcomeSection({
       const container = el.parentElement ?? el;
       const availableH = container.clientHeight;
 
+      // Reset to initial size first, so text can grow back when window expands
+      el.style.fontSize = `${initialSize}px`;
+
       // If the element's scrollHeight is greater than available height, shrink
-      let current = parseFloat(getComputedStyle(el).fontSize || `${initialSize}`);
+      let current = initialSize;
       let iterations = 0;
       while (el.scrollHeight > availableH && current > minSize && iterations < 40) {
         current = Math.max(minSize, Math.floor(current * 0.95));
