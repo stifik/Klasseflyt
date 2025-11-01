@@ -84,7 +84,7 @@ export function SidebarNav({ className, onCollapseChange }: SidebarNavProps) {
                     {/* Daglig Arbeid */}
                     <SidebarSection
                         icon={BookOpen}
-                        label="Daglig Arbeid"
+                        label="Daglig arbeid"
                         defaultOpen={true}
                         isCollapsed={isCollapsed}
                     >
@@ -95,15 +95,21 @@ export function SidebarNav({ className, onCollapseChange }: SidebarNavProps) {
                             isCollapsed={isCollapsed}
                         />
                         <SidebarItem
+                            href="/innsjekking"
+                            icon={ClipboardCheck}
+                            label="Innsjekking"
+                            isCollapsed={isCollapsed}
+                        />
+                        <SidebarItem
                             href="/daily-check"
                             icon={ClipboardCheck}
-                            label="Daglig sjekk"
+                            label="iPad-sjekk"
                             isCollapsed={isCollapsed}
                         />
                         <SidebarItem
                             href="/morning-display"
                             icon={Monitor}
-                            label="Morgen-display"
+                            label="Morgenvisning"
                             isCollapsed={isCollapsed}
                             openInNewTab={true}
                         />
@@ -124,7 +130,7 @@ export function SidebarNav({ className, onCollapseChange }: SidebarNavProps) {
                     {/* Vurdering & Analyse */}
                     <SidebarSection
                         icon={ClipboardCheck}
-                        label="Vurdering & Analyse"
+                        label="Vurdering og analyse"
                         isCollapsed={isCollapsed}
                     >
                         <SidebarItem

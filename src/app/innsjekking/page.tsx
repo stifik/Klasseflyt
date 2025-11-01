@@ -9,10 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Clock, Users, Play, Target, UserX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import PageHeader from "@/components/navigation/PageHeader";
 import type { Student } from "@/lib/types";
+import { useEffect } from "react";
 
 /**
  * Dedikert innsjekking-side
@@ -24,7 +27,110 @@ export default function InnsjekkingPage() {
   const seatingChartRecords = useLiveQuery(() => db.seatingChartHistory.toArray()) || [];
   const seatingLayouts = useLiveQuery(() => db.seatingLayouts.toArray()) || [];
   const [isFlipped, setIsFlipped] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState(0);
   const { toast } = useToast();
+  
+  // Check if dev mode is enabled
+  const isDevMode = typeof window !== 'undefined' && window.localStorage?.getItem('nfc_dev_mode') === 'true';
+
+  // Dev mode state
+  const [devWeekday, setDevWeekday] = useState<string>('');
+  const [devTime, setDevTime] = useState<string>('');
+  const [nfcDisabled, setNfcDisabled] = useState<boolean>(false);
+
+  // Load dev overrides from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setDevWeekday(window.localStorage?.getItem('dev_weekday_override') || '');
+      setDevTime(window.localStorage?.getItem('dev_time_override') || '');
+      setNfcDisabled(window.localStorage?.getItem('dev_nfc_disabled') === 'true');
+    }
+  }, []);
+
+  // Handle dev weekday change
+  const handleDevWeekdayChange = (value: string) => {
+    const actualValue = value === 'none' ? '' : value;
+    setDevWeekday(actualValue);
+    if (typeof window !== 'undefined') {
+      if (actualValue) {
+        window.localStorage?.setItem('dev_weekday_override', actualValue);
+      } else {
+        window.localStorage?.removeItem('dev_weekday_override');
+      }
+    }
+    setForceUpdate(prev => prev + 1);
+  };
+
+  // Handle dev time change
+  const handleDevTimeChange = (value: string) => {
+    setDevTime(value);
+    if (typeof window !== 'undefined') {
+      if (value) {
+        window.localStorage?.setItem('dev_time_override', value);
+      } else {
+        window.localStorage?.removeItem('dev_time_override');
+      }
+    }
+    setForceUpdate(prev => prev + 1);
+  };
+
+  // Handle NFC toggle
+  const handleNfcToggle = (disabled: boolean) => {
+    setNfcDisabled(disabled);
+    if (typeof window !== 'undefined') {
+      if (disabled) {
+        window.localStorage?.setItem('dev_nfc_disabled', 'true');
+      } else {
+        window.localStorage?.removeItem('dev_nfc_disabled');
+      }
+    }
+  };
+
+  // Reset check-ins for today
+  const handleResetCheckIns = async () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    try {
+      const logsToDelete = await db.checkInLogs
+        .filter(log => {
+          const logDate = new Date(log.date);
+          logDate.setHours(0, 0, 0, 0);
+          return logDate.getTime() === today.getTime();
+        })
+        .toArray();
+
+      for (const log of logsToDelete) {
+        if (log.id) await db.checkInLogs.delete(log.id);
+      }
+
+      const absencesToDelete = await db.absences
+        .filter(absence => {
+          const absDate = new Date(absence.date);
+          absDate.setHours(0, 0, 0, 0);
+          return absDate.getTime() === today.getTime();
+        })
+        .toArray();
+
+      for (const absence of absencesToDelete) {
+        if (absence.id) await db.absences.delete(absence.id);
+      }
+
+      setForceUpdate(prev => prev + 1);
+
+      toast({
+        title: "Innsjekking nullstilt",
+        description: `${logsToDelete.length} innsjekking-logger og ${absencesToDelete.length} fravær ble slettet.`,
+      });
+    } catch (error) {
+      console.error('Reset check-ins error:', error);
+      toast({
+        title: "Feil",
+        description: "Kunne ikke nullstille innsjekking.",
+        variant: "destructive",
+      });
+    }
+  };
   
   const { activeSession, startManualCheckIn, stopManualCheckIn } = useCheckInTimer();
 
@@ -41,20 +147,24 @@ export default function InnsjekkingPage() {
     return null;
   }, [settings?.selectedSeatingLayoutId]);
 
-  // Get today's check-ins for count
-  const todayCheckIns = useLiveQuery(async () => {
-    if (!activeSession) return [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+  // Get all check-in logs (live updates)
+  const allCheckInLogs = useLiveQuery(() => db.checkInLogs.toArray());
 
-    return await db.checkInLogs
-      .where('timestamp')
-      .between(today.getTime(), tomorrow.getTime())
-      .and(log => log.bellTimeId === activeSession.bellTime.id!)
-      .toArray();
-  }, [activeSession?.bellTime.id]);
+  // Filter today's check-ins
+  const todayCheckIns = useMemo(() => {
+    if (!allCheckInLogs || !activeSession) return [];
+    
+    const today = new Date();
+    const todayAtNoon = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0, 0);
+    const todayString = todayAtNoon.toISOString().split('T')[0];
+    
+    return allCheckInLogs.filter(log => {
+      const logDateString = new Date(log.date).toISOString().split('T')[0];
+      const dateMatch = logDateString === todayString;
+      const bellMatch = log.bellTimeId === activeSession.bellTime.id;
+      return dateMatch && bellMatch;
+    });
+  }, [allCheckInLogs, activeSession]);
 
   const checkedInStudentIds = new Set((todayCheckIns || []).map(log => log.studentId));
   const checkInCount = checkedInStudentIds.size;
@@ -187,16 +297,98 @@ export default function InnsjekkingPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Innsjekking</h1>
-        <p className="text-muted-foreground">
-          {activeSession 
-            ? "Klikk på elever i klassekartet for å sjekke dem inn"
-            : "Start en innsjekking-sesjon for å begynne"
-          }
-        </p>
-      </div>
+    <div>
+      <PageHeader 
+        title="Innsjekking" 
+        settingsUrl="/settings#checkin"
+      />
+      <div className="space-y-6">
+
+      {/* Dev Tools */}
+      {isDevMode && (
+        <div className="p-4 rounded-lg border-2 bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700">
+          <h3 className="font-semibold text-sm text-orange-800 dark:text-orange-300 mb-3">🔧 Dev Tools</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs text-gray-600 dark:text-gray-400 block mb-1">Simuler ukedag</label>
+              <Select value={devWeekday || 'none'} onValueChange={handleDevWeekdayChange}>
+                <SelectTrigger className="bg-white dark:bg-gray-950">
+                  <SelectValue placeholder="Faktisk dag" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Faktisk dag</SelectItem>
+                  <SelectItem value="mandag">Mandag</SelectItem>
+                  <SelectItem value="tirsdag">Tirsdag</SelectItem>
+                  <SelectItem value="onsdag">Onsdag</SelectItem>
+                  <SelectItem value="torsdag">Torsdag</SelectItem>
+                  <SelectItem value="fredag">Fredag</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-600 dark:text-gray-400 block mb-1">Simuler klokkeslett</label>
+              <input
+                type="time"
+                value={devTime}
+                onChange={(e) => handleDevTimeChange(e.target.value)}
+                className="w-full px-3 py-2 text-sm border rounded-md bg-white dark:bg-gray-950 dark:border-gray-700"
+                placeholder="Faktisk tid"
+              />
+              {devTime && (
+                <button
+                  onClick={() => handleDevTimeChange('')}
+                  className="text-xs text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 mt-1"
+                >
+                  Nullstill til faktisk tid
+                </button>
+              )}
+            </div>
+            <div className="flex items-end">
+              <Button
+                onClick={handleResetCheckIns}
+                variant="outline"
+                className="w-full border-orange-500 text-orange-600 hover:bg-orange-50 dark:border-orange-600 dark:text-orange-400 dark:hover:bg-orange-950"
+              >
+                🔄 Nullstill innsjekking
+              </Button>
+            </div>
+          </div>
+
+          {/* NFC Toggle */}
+          <div className="mt-3 pt-3 border-t border-orange-200 dark:border-orange-800">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="nfc-toggle"
+                checked={nfcDisabled}
+                onCheckedChange={handleNfcToggle}
+              />
+              <Label htmlFor="nfc-toggle" className="text-xs text-gray-700 dark:text-gray-300">
+                Deaktiver NFC-polling (reduserer konsoll-spam)
+              </Label>
+            </div>
+          </div>
+
+          {/* Dev info display */}
+          {(devWeekday || devTime) && (
+            <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+              ⚠️ Du simulerer: {devWeekday && `${devWeekday.charAt(0).toUpperCase() + devWeekday.slice(1)}`} {devTime && `kl. ${devTime}`}
+            </p>
+          )}
+
+          {/* Debug info */}
+          {activeSession && settings?.checkInSettings && (
+            <div className="mt-3 pt-3 border-t border-orange-200 dark:border-orange-800 text-xs space-y-1">
+              <p className="font-semibold text-orange-800 dark:text-orange-300">Debug Info:</p>
+              <p className="text-gray-700 dark:text-gray-300">Type: {activeSession.bellTime.type} | Minutter: {activeSession.minutesElapsed} | Poeng: {activeSession.pointsPercent}%</p>
+              {activeSession.bellTime.type === 'morgen' ? (
+                <p className="text-gray-700 dark:text-gray-300">Innstillinger: 100%≤{settings.checkInSettings.morning.percent100Minutes}min, 50%≤{settings.checkInSettings.morning.percent50Minutes}min, 10%≤{settings.checkInSettings.morning.percent10Minutes}min, Stopp{'>'}{settings.checkInSettings.morning.absenceMinutes}min</p>
+              ) : (
+                <p className="text-gray-700 dark:text-gray-300">Innstillinger: 100%≤{settings.checkInSettings.regular.percent100Minutes}min, Stopp{'>'}{settings.checkInSettings.regular.stopMinutes}min</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Quick stats + Manual controls */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -343,6 +535,7 @@ export default function InnsjekkingPage() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

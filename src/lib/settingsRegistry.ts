@@ -56,16 +56,16 @@ export const settingsRegistry: Record<string, SettingsLink> = {
     label: 'Belønning Innstillinger'
   },
 
-  // Daily Check
+  // Check-in pages
   '/daily-check': {
     url: '/settings',
     tab: 'checkin',
-    label: 'Innsjekking Innstillinger'
+    label: 'iPad-sjekk innstillinger'
   },
   '/innsjekking': {
     url: '/settings',
     tab: 'checkin',
-    label: 'Innsjekking Innstillinger'
+    label: 'Innsjekking innstillinger'
   },
 
   // Observations

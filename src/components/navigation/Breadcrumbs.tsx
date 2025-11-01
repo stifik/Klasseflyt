@@ -8,7 +8,8 @@ import { Fragment } from "react";
 const routeNameMap: Record<string, string> = {
     "": "Dashboard",
     "homework": "Lekseoversikt",
-    "daily-check": "Daglig sjekk",
+    "innsjekking": "Innsjekking",
+    "daily-check": "iPad-sjekk",
     "observations": "Observasjoner",
     "hourly": "Timeinnsjekk",
     "remarks": "Anmerkninger",
@@ -28,6 +29,8 @@ const routeNameMap: Record<string, string> = {
     "rewardstore": "Belønninger",
     "agent-reveal": "Hemmelig agent",
     "bors": "Børs",
+    "morning-display": "Morgenvisning",
+    "secret-agent": "Hemmelig agent",
     "settings": "Innstillinger",
     "changelog": "Hva er nytt",
     "privacy": "Personvern"

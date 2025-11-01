@@ -32,7 +32,7 @@ export default function DailyCheckPage() {
 
     return (
         <div>
-            <PageHeader title="Daglig Sjekk" settingsUrl="/settings#checkin" />
+            <PageHeader title="iPad-sjekk" settingsUrl="/settings#checkin" />
             <DailyChecklist
                 students={students}
                 seatingChart={seatingChart}

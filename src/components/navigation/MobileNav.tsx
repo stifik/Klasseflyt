@@ -63,7 +63,7 @@ export function MobileNav() {
                     {/* Daglig Arbeid */}
                     <SidebarSection
                         icon={BookOpen}
-                        label="Daglig Arbeid"
+                        label="Daglig arbeid"
                         defaultOpen={true}
                     >
                         <div onClick={() => setOpen(false)}>
@@ -73,14 +73,19 @@ export function MobileNav() {
                                 label="Lekseoversikt"
                             />
                             <SidebarItem
+                                href="/innsjekking"
+                                icon={ClipboardCheck}
+                                label="Innsjekking"
+                            />
+                            <SidebarItem
                                 href="/daily-check"
                                 icon={ClipboardCheck}
-                                label="Daglig sjekk"
+                                label="iPad-sjekk"
                             />
                             <SidebarItem
                                 href="/morning-display"
                                 icon={Monitor}
-                                label="Morgen-display"
+                                label="Morgenvisning"
                                 openInNewTab={true}
                             />
                             <SidebarItem
@@ -99,7 +104,7 @@ export function MobileNav() {
                     {/* Vurdering & Analyse */}
                     <SidebarSection
                         icon={ClipboardCheck}
-                        label="Vurdering & Analyse"
+                        label="Vurdering og analyse"
                     >
                         <div onClick={() => setOpen(false)}>
                             <SidebarItem
