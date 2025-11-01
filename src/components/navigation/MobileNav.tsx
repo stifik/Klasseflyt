@@ -163,7 +163,7 @@ export function MobileNav() {
                             <SidebarItem
                                 href="/rewardstore"
                                 icon={Store}
-                                label="Belønninger"
+                                label="Prisliste"
                             />
                         </div>
                     </SidebarSection>

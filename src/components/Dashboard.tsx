@@ -157,7 +157,7 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
   },
   {
     key: 'rewardStore',
-    label: 'Belønningsbutikk',
+    label: 'Prisliste',
     description: 'Kjøp belønninger med opptjente poeng.',
     icon: Store,
     color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',

@@ -44,7 +44,7 @@ const allToolLabels: Record<DashboardToolKey, string> = {
   'reports.studentReports': "Elevrapporter",
   'reports.analysis': "Anmerkningsanalyse",
   'rewardDashboard': "Klassebank",
-  'rewardStore': "Belønningsbutikk",
+  'rewardStore': "Prisliste",
   'activityFeed': "Aktivitetsfeed",
   'morning-display': "Morgenvisning",
   'poengsentral': "Poengsentral",

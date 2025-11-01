@@ -194,7 +194,7 @@ export function SidebarNav({ className, onCollapseChange }: SidebarNavProps) {
                         <SidebarItem
                             href="/rewardstore"
                             icon={Store}
-                            label="Belønninger"
+                            label="Prisliste"
                             isCollapsed={isCollapsed}
                         />
                     </SidebarSection>

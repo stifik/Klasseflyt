@@ -63,7 +63,7 @@ export default function RewardStore() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Belønningsbutikk 🏪</CardTitle>
+          <CardTitle>Prisliste</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
