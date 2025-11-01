@@ -35,7 +35,7 @@ const allToolLabels: Record<DashboardToolKey, string> = {
   'observations': "Observasjoner",
   'observations.hourly': "Timeinnsjekk",
   'observations.remarks': "Anmerkninger",
-  'classroomTools': "Klasseverktøy",
+  'classroomTools': "Klassekart",
   'classroomTools.seatingChart': "Klassekart",
   'classroomTools.groupTool': "Gruppeverktøy",
   'classroomTools.studentPicker': "Elev-trekker",
@@ -43,7 +43,7 @@ const allToolLabels: Record<DashboardToolKey, string> = {
   'reports.summary': "Ukesoppsummering",
   'reports.studentReports': "Elevrapporter",
   'reports.analysis': "Anmerkningsanalyse",
-  'rewardDashboard': "Klassebank",
+  'rewardDashboard': "Poengoversikt",
   'rewardStore': "Prisliste",
   'activityFeed': "Aktivitetsfeed",
   'morning-display': "Morgenvisning",
@@ -57,7 +57,7 @@ const allTabLabels: Record<TabKey, string> = {
   'dailyCheck': 'Daglig Sjekk',
   'observations': 'Observasjoner',
   'assessments': 'Vurderinger',
-  'classroomTools': 'Klasseverktøy',
+  'classroomTools': 'Klassekart',
   'reports': 'Analyse',
   'settings': 'Innstillinger',
 };
@@ -133,7 +133,7 @@ export default function DashboardSettings({ settings, onSettingsChange }: Dashbo
                     <SortableItem
                       key={tool.key}
                       id={tool.key}
-                      label={allToolLabels[tool.key]}
+                      label={allToolLabels[tool.key] ?? String(tool.key) ?? 'Ukjent verktøy'}
                       isChecked={tool.visible}
                       onToggle={() => handleDashboardToolToggle(tool.key)}
                     />

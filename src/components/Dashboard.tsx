@@ -75,14 +75,7 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     color: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
     href: '/observations',
   },
-  {
-    key: 'classroomTools',
-    label: 'Klasseverktøy',
-    description: 'Klassekart, grupper og elev-trekker.',
-    icon: Settings2,
-    color: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400',
-    href: '/classroom/seating',
-  },
+  // Note: removed duplicate 'classroomTools' general tile to avoid two 'Klassekart' cards.
   {
     key: 'classroomTools.seatingChart',
     label: 'Klassekart',
@@ -139,17 +132,10 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
     href: '/reports',
   },
-  {
-    key: 'poengsentral',
-    label: 'Poengsentral',
-    description: 'Komplett kontrollsenter for poeng og belønninger.',
-    icon: Terminal,
-    color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
-    href: '/poengsentral',
-  },
+  // Poengsentral removed from dashboard tiles (kept accessible via sidebar)
   {
     key: 'rewardDashboard',
-    label: 'Klassebank',
+    label: 'Poengoversikt',
     description: 'Oversikt over elevenes poeng og transaksjoner.',
     icon: Trophy,
     color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
