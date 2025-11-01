@@ -6,7 +6,7 @@ import type { Student, Subject } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -30,6 +30,10 @@ interface StudentsAndSubjectsProps {
 export default function StudentsAndSubjects({ students, subjects }: StudentsAndSubjectsProps) {
   const [newStudent, setNewStudent] = useState("");
   const [newSubject, setNewSubject] = useState("");
+  const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
+  const [editingStudentName, setEditingStudentName] = useState("");
+  const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
+  const [editingSubjectName, setEditingSubjectName] = useState("");
   const { toast } = useToast();
 
   const handleAddStudent = async () => {
@@ -76,6 +80,52 @@ export default function StudentsAndSubjects({ students, subjects }: StudentsAndS
     }
   };
 
+  const handleEditStudent = (student: Student) => {
+    setEditingStudentId(student.id!);
+    setEditingStudentName(student.name);
+  };
+
+  const handleSaveStudent = async () => {
+    if (editingStudentId && editingStudentName.trim()) {
+      try {
+        await db.students.update(editingStudentId, { name: editingStudentName.trim() });
+        toast({ title: "Elev oppdatert", description: "Elevens navn er endret." });
+        setEditingStudentId(null);
+        setEditingStudentName("");
+      } catch (error) {
+        toast({ title: "Feil", description: "Kunne ikke oppdatere elev.", variant: "destructive" });
+      }
+    }
+  };
+
+  const handleCancelEditStudent = () => {
+    setEditingStudentId(null);
+    setEditingStudentName("");
+  };
+
+  const handleEditSubject = (subject: Subject) => {
+    setEditingSubjectId(subject.id!);
+    setEditingSubjectName(subject.name);
+  };
+
+  const handleSaveSubject = async () => {
+    if (editingSubjectId && editingSubjectName.trim()) {
+      try {
+        await db.subjects.update(editingSubjectId, { name: editingSubjectName.trim() });
+        toast({ title: "Fag oppdatert", description: "Fagets navn er endret." });
+        setEditingSubjectId(null);
+        setEditingSubjectName("");
+      } catch (error) {
+        toast({ title: "Feil", description: "Kunne ikke oppdatere fag.", variant: "destructive" });
+      }
+    }
+  };
+
+  const handleCancelEditSubject = () => {
+    setEditingSubjectId(null);
+    setEditingSubjectName("");
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -101,29 +151,59 @@ export default function StudentsAndSubjects({ students, subjects }: StudentsAndS
               </div>
               <ul className="space-y-2 max-h-60 overflow-y-auto pr-2">
                 {students?.map((student) => (
-                  <li key={student.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
-                    <span>{student.name}</span>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Dette vil permanent slette eleven {student.name} og all relatert data. Handlingen kan ikke angres.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDeleteStudent(student.id!)}>
-                            Ja, slett elev
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                  <li key={student.id} className="flex items-center justify-between gap-2 p-2 rounded-md bg-secondary">
+                    {editingStudentId === student.id ? (
+                      <>
+                        <Input
+                          value={editingStudentName}
+                          onChange={(e) => setEditingStudentName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveStudent();
+                            if (e.key === 'Escape') handleCancelEditStudent();
+                          }}
+                          className="flex-1"
+                          autoFocus
+                        />
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={handleSaveStudent}>
+                            <Check className="w-4 h-4 text-green-600" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={handleCancelEditStudent}>
+                            <X className="w-4 h-4 text-gray-600" />
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex-1">{student.name}</span>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditStudent(student)}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Dette vil permanent slette eleven {student.name} og all relatert data. Handlingen kan ikke angres.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteStudent(student.id!)}>
+                                  Ja, slett elev
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -147,29 +227,59 @@ export default function StudentsAndSubjects({ students, subjects }: StudentsAndS
               </div>
               <ul className="space-y-2">
                 {subjects?.map((subject) => (
-                  <li key={subject.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
-                    <span>{subject.name}</span>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Dette vil permanent slette faget {subject.name}. Handlingen kan ikke angres.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDeleteSubject(subject.id!)}>
-                            Ja, slett fag
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                  <li key={subject.id} className="flex items-center justify-between gap-2 p-2 rounded-md bg-secondary">
+                    {editingSubjectId === subject.id ? (
+                      <>
+                        <Input
+                          value={editingSubjectName}
+                          onChange={(e) => setEditingSubjectName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveSubject();
+                            if (e.key === 'Escape') handleCancelEditSubject();
+                          }}
+                          className="flex-1"
+                          autoFocus
+                        />
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={handleSaveSubject}>
+                            <Check className="w-4 h-4 text-green-600" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={handleCancelEditSubject}>
+                            <X className="w-4 h-4 text-gray-600" />
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex-1">{subject.name}</span>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditSubject(subject)}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Dette vil permanent slette faget {subject.name}. Handlingen kan ikke angres.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteSubject(subject.id!)}>
+                                  Ja, slett fag
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>

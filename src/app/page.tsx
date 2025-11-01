@@ -41,6 +41,7 @@ const defaultSettings: AppSettings = {
     { key: 'reports.studentReports', visible: false },
     { key: 'reports.analysis', visible: false },
   ],
+  nfcEnabled: false, // NFC disabled by default for new users
   reportSettings: {
     includeHomework: true, includeIpad: true, includeRemarks: true,
     includePositiveFeedback: false, includeTests: false, greeting: "Hei,", closing: "Vennlig hilsen,", teacherName: "Læreren",

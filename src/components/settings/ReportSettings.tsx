@@ -30,7 +30,7 @@ export default function ReportSettings({ settings, onSettingsChange }: ReportSet
         <CardDescription>Innstillinger for ukesmelding og elevrapporter</CardDescription>
       </CardHeader>
       <CardContent>
-        <Accordion type="multiple" defaultValue={['weekly']} className="w-full">
+        <Accordion type="multiple" defaultValue={[]} className="w-full">
           <AccordionItem value="weekly">
             <AccordionTrigger>Ukesmelding</AccordionTrigger>
             <AccordionContent className="space-y-4 pt-4">
@@ -77,6 +77,17 @@ export default function ReportSettings({ settings, onSettingsChange }: ReportSet
                       onCheckedChange={(checked) => handleReportSettingChange('includePositiveFeedback', checked)}
                     />
                   </div>
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <Label htmlFor="includeSecretAgent" className="font-medium">🕵️ Hemmelig Agent i ukesmelding</Label>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Inkluder godkjente agent-oppdrag i ukesmeldingen</p>
+                    </div>
+                    <Switch
+                      id="includeSecretAgent"
+                      checked={settings.reportSettings.includeSecretAgent ?? false}
+                      onCheckedChange={(value) => handleReportSettingChange('includeSecretAgent', value)}
+                    />
+                  </div>
                 </div>
               </div>
               <Separator />
@@ -112,24 +123,11 @@ export default function ReportSettings({ settings, onSettingsChange }: ReportSet
                     <Label htmlFor="positiveFeedbackBoth">Ros: Både lekser og iPad</Label>
                     <Textarea id="positiveFeedbackBoth" value={settings.reportSettings.positiveFeedbackBoth} onChange={(e) => handleReportSettingChange('positiveFeedbackBoth', e.target.value)} />
                   </div>
-
-                  {/* Secret Agent Settings */}
-                  <Separator className="my-4" />
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="includeSecretAgent" className="font-medium">🕵️ Hemmelig Agent i ukesmelding</Label>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Inkluder godkjente agent-oppdrag i ukesmeldingen</p>
-                      </div>
-                      <Switch
-                        id="includeSecretAgent"
-                        checked={settings.reportSettings.includeSecretAgent ?? false}
-                        onCheckedChange={(value) => handleReportSettingChange('includeSecretAgent', value)}
-                      />
-                    </div>
-                    {(settings.reportSettings.includeSecretAgent ?? false) && (
-                      <div className="space-y-1 ml-4">
-                        <Label htmlFor="secretAgentMessage">Tilpasset tekst for hemmelig agent</Label>
+                  {(settings.reportSettings.includeSecretAgent ?? false) && (
+                    <>
+                      <Separator />
+                      <div className="space-y-1">
+                        <Label htmlFor="secretAgentMessage">Hemmelig Agent tekst</Label>
                         <Textarea
                           id="secretAgentMessage"
                           placeholder="F.eks. 'Fullførte rollen som hemmelig agent med følgende oppdrag: [OPPDRAG]'"
@@ -138,10 +136,10 @@ export default function ReportSettings({ settings, onSettingsChange }: ReportSet
                           rows={3}
                         />
                         <p className="text-xs text-gray-500">Bruk [OPPDRAG] for å inkludere oppdraget</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">💡 Kun godkjente oppdrag (status "passed") inkluderes i ukesmeldingen - avviste oppdrag sendes ikke hjem</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">💡 Kun godkjente oppdrag (status "passed") inkluderes i ukesmeldingen</p>
                       </div>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </div>
               </div>
             </AccordionContent>

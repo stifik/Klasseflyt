@@ -431,10 +431,10 @@ export default function RewardSettings() {
               <div className="flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                 <div className="space-y-1">
                   <Label htmlFor="nfc-enabled" className="text-base font-semibold">
-                    Aktiver NFC-skanning
+                    📱 Aktiver NFC-funksjonalitet
                   </Label>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Brukes for å skanne NFC-kort i Klassebank (krever spesiell hardware)
+                    Krever NFC-hardware og bridge-oppsett. Viser NFC-knapper i Terminal og Innsjekking.
                   </p>
                 </div>
                 <Switch
@@ -448,8 +448,8 @@ export default function RewardSettings() {
                       toast({
                         title: checked ? "NFC aktivert" : "NFC deaktivert",
                         description: checked 
-                          ? "NFC-skanning er nå tilgjengelig i Klassebank" 
-                          : "NFC-skanning er skjult",
+                          ? "NFC-funksjoner er nå synlige i appen" 
+                          : "NFC-funksjoner er skjult",
                       });
                     }
                   }}

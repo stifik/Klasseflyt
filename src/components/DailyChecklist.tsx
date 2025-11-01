@@ -356,7 +356,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
         >
           <span className="font-semibold text-xs">{student.name}</span>
           <div className="flex items-center text-xs opacity-80">
-            {checkedIn ? <span>✓ Sjekket inn</span> : <span>{activeCheckIn?.isManual ? 'Klikk for å sjekke inn' : 'Klikk eller scan NFC'}</span>}
+            {checkedIn ? <span>✓ Sjekket inn</span> : <span>{activeCheckIn?.isManual || !settings?.nfcEnabled ? 'Klikk for å sjekke inn' : 'Klikk eller scan NFC'}</span>}
           </div>
         </Button>
         <Button
@@ -725,7 +725,9 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
             <CardDescription>
               {mode === 'ipad' 
                 ? 'Registrer status for iPad og fravær. Klikk på ikonet øverst til høyre på en elev for å melde fravær.'
-                : 'Elever sjekker inn med NFC-kort. Grønne knapper = sjekket inn. Grå = venter på innsjekking.'
+                : settings?.nfcEnabled
+                  ? 'Elever sjekker inn med NFC-kort. Grønne knapper = sjekket inn. Grå = venter på innsjekking.'
+                  : 'Klikk på elever for å sjekke dem inn manuelt. Grønne knapper = sjekket inn. Grå = venter på innsjekking.'
               }
             </CardDescription>
             {seatingChart && (
@@ -805,7 +807,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
               </Popover>
             </div>
             <div className="flex gap-2 flex-wrap">
-              <NFCCheckIn showOnlyButton />
+              {settings?.nfcEnabled && <NFCCheckIn showOnlyButton />}
               <Button
                 onClick={handleBulkReward}
                 className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
@@ -831,14 +833,14 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
     </Card>
 
     {/* NFC Status Panel - shows when registration is active or completed - only in iPad mode */}
-    {mode === 'ipad' && (
+    {settings?.nfcEnabled && mode === 'ipad' && (
     <div className="mt-6">
       <NFCCheckIn showOnlyPanel />
     </div>
     )}
 
     {/* Check-in NFC Panel - only in check-in mode */}
-    {mode === 'checkin' && (
+    {settings?.nfcEnabled && mode === 'checkin' && (
     <div className="mt-6">
       <CheckInNFC 
         activeSession={activeCheckIn} 

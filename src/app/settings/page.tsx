@@ -87,20 +87,22 @@ export default function SettingsRoute() {
         </TabsContent>
         <TabsContent value="checkin">
           <div className="space-y-6">
-            {/* RFID Cards Link */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <h2 className="text-2xl font-bold mb-4">RFID-kort administrasjon</h2>
-              <p className="text-gray-600 mb-4">
-                Koble RFID-kort til elever for rask innsjekking og betalinger.
-              </p>
-              <Link
-                href="/settings/rfid-cards"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition w-fit"
-              >
-                <CreditCard className="w-5 h-5" />
-                Administrer RFID-kort
-              </Link>
-            </div>
+            {/* RFID Cards Link - only show if NFC is enabled */}
+            {settings?.nfcEnabled && (
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border">
+                <h2 className="text-2xl font-bold mb-4">RFID-kort administrasjon</h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  Koble RFID-kort til elever for rask innsjekking og betalinger.
+                </p>
+                <Link
+                  href="/settings/rfid-cards"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition w-fit"
+                >
+                  <CreditCard className="w-5 h-5" />
+                  Administrer RFID-kort
+                </Link>
+              </div>
+            )}
 
             {/* Bell Times and Check-in Settings */}
             <CheckInSettings />

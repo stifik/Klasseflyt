@@ -102,10 +102,13 @@ const Terminal: React.FC = () => {
   // Get transfer fee percentage from settings
   const transferFeePercent = dbSettings?.rewardSystem?.transferFeePercent ?? 10;
 
-  // WebSocket NFC setup for real-time card detection
+  // Check if NFC is enabled in settings
+  const nfcEnabled = dbSettings?.nfcEnabled ?? false;
+
+  // WebSocket NFC setup for real-time card detection (only if enabled)
   const nfcWebSocket = useNFCWebSocket({
-    enabled: true,
-    autoConnect: true,
+    enabled: nfcEnabled,
+    autoConnect: nfcEnabled,
     onCardDetected: (card) => {
       console.log('✅ Card detected callback called:', card.uid);
       console.log('   isWaitingForCardRef.current:', isWaitingForCardRef.current);
@@ -659,7 +662,7 @@ const Terminal: React.FC = () => {
           </div>
 
           {/* NFC Mode */}
-          {paymentMode === 'nfc' && (
+          {nfcEnabled && paymentMode === 'nfc' && (
             <NFCPaymentModal
               nfcStatus={nfcStatus}
               nfcMessage={nfcMessage}
@@ -677,7 +680,7 @@ const Terminal: React.FC = () => {
             <ManualPaymentModal
               students={students}
               rfidCards={rfidCards}
-              isNFCSupported={nfc.isSupported}
+              isNFCSupported={nfcEnabled && nfc.isSupported}
               onNFCMode={handleStartNFCMode}
               onManualSelect={handleManualStudentSelect}
               onCancel={() => {
@@ -856,22 +859,24 @@ const Terminal: React.FC = () => {
           </button>
         </div>
 
-        <div className="text-center mt-8">
-          {typeof window !== 'undefined' && nfc.isSupported && rfidCards.length > 0 ? (
-            <p className="text-green-600 dark:text-green-400 font-medium flex items-center justify-center gap-2">
-              <CheckCircle2 className="w-5 h-5" />
-              NFC-støtte aktivert ({rfidCards.length} kort registrert)
-            </p>
-          ) : typeof window !== 'undefined' && !nfc.isSupported ? (
-            <p className="text-gray-500 dark:text-gray-400">
-              💡 Start NFC Bridge Server for kortlesing
-            </p>
-          ) : (
-            <p className="text-gray-500 dark:text-gray-400">
-              💡 Registrer RFID-kort i innstillinger
-            </p>
-          )}
-        </div>
+        {nfcEnabled && (
+          <div className="text-center mt-8">
+            {typeof window !== 'undefined' && nfc.isSupported && rfidCards.length > 0 ? (
+              <p className="text-green-600 dark:text-green-400 font-medium flex items-center justify-center gap-2">
+                <CheckCircle2 className="w-5 h-5" />
+                NFC-støtte aktivert ({rfidCards.length} kort registrert)
+              </p>
+            ) : typeof window !== 'undefined' && !nfc.isSupported ? (
+              <p className="text-gray-500 dark:text-gray-400">
+                💡 Start NFC Bridge Server for kortlesing
+              </p>
+            ) : (
+              <p className="text-gray-500 dark:text-gray-400">
+                💡 Registrer RFID-kort i innstillinger
+              </p>
+            )}
+          </div>
+        )}
         
         {/* ActivityFeed og RewardDashboard side ved side */}
         <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -959,7 +964,7 @@ const Terminal: React.FC = () => {
       </Dialog>
 
       {/* Processing Overlay - shown while NFC transaction is being processed */}
-      {nfc.isProcessing && nfcStatus === 'processing' && (
+      {nfcEnabled && nfc.isProcessing && nfcStatus === 'processing' && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in">
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center shadow-2xl max-w-md">
             <Loader2 className="h-20 w-20 text-blue-600 animate-spin mx-auto mb-6" />
@@ -974,7 +979,7 @@ const Terminal: React.FC = () => {
       )}
 
       {/* Success Overlay - shown for 2 seconds after successful transaction */}
-      {showSuccessOverlay && (
+      {nfcEnabled && showSuccessOverlay && (
         <div className="fixed inset-0 bg-green-600/95 flex items-center justify-center z-50 animate-fade-in">
           <div className="text-center text-white px-8">
             <div className="text-9xl mb-6 animate-bounce">✓</div>

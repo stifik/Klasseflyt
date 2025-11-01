@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Library } from "lucide-react";
+import { Plus, Trash2, Library, Pencil, Check, X } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -22,6 +22,9 @@ interface ClassroomToolsSettingsProps {
 export default function ClassroomToolsSettings({ students, settings, onSettingsChange }: ClassroomToolsSettingsProps) {
   const [newWorkstationName, setNewWorkstationName] = useState("");
   const [newWorkstationCapacity, setNewWorkstationCapacity] = useState<string>("");
+  const [editingWorkstationId, setEditingWorkstationId] = useState<string | null>(null);
+  const [editingWorkstationName, setEditingWorkstationName] = useState("");
+  const [editingWorkstationCapacity, setEditingWorkstationCapacity] = useState<string>("");
 
   const handleAddWorkstation = () => {
     if (newWorkstationName.trim()) {
@@ -43,6 +46,33 @@ export default function ClassroomToolsSettings({ students, settings, onSettingsC
     onSettingsChange({ ...settings, workstations: updatedStations });
   };
 
+  const handleEditWorkstation = (workstation: Workstation) => {
+    setEditingWorkstationId(workstation.id);
+    setEditingWorkstationName(workstation.name);
+    setEditingWorkstationCapacity(workstation.capacity?.toString() || "");
+  };
+
+  const handleSaveWorkstation = () => {
+    if (editingWorkstationId && editingWorkstationName.trim()) {
+      const capacity = editingWorkstationCapacity ? parseInt(editingWorkstationCapacity, 10) : undefined;
+      const updatedStations = settings.workstations?.map(ws =>
+        ws.id === editingWorkstationId
+          ? { ...ws, name: editingWorkstationName.trim(), capacity: capacity && !isNaN(capacity) ? capacity : undefined }
+          : ws
+      ) || [];
+      onSettingsChange({ ...settings, workstations: updatedStations });
+      setEditingWorkstationId(null);
+      setEditingWorkstationName("");
+      setEditingWorkstationCapacity("");
+    }
+  };
+
+  const handleCancelEditWorkstation = () => {
+    setEditingWorkstationId(null);
+    setEditingWorkstationName("");
+    setEditingWorkstationCapacity("");
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -50,7 +80,7 @@ export default function ClassroomToolsSettings({ students, settings, onSettingsC
         <CardDescription>Administrer arbeidsstasjoner og grupperegler</CardDescription>
       </CardHeader>
       <CardContent>
-        <Accordion type="multiple" defaultValue={['workstations']} className="w-full">
+        <Accordion type="multiple" defaultValue={[]} className="w-full">
           <AccordionItem value="workstations">
             <AccordionTrigger>Arbeidsstasjoner ({(settings.workstations || []).length})</AccordionTrigger>
             <AccordionContent className="pt-2">
@@ -73,15 +103,53 @@ export default function ClassroomToolsSettings({ students, settings, onSettingsC
               </div>
               <ul className="space-y-2">
                 {(settings.workstations || []).map((ws) => (
-                  <li key={ws.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
-                    <span className="flex items-center gap-2">
-                      <Library className="w-4 h-4" />
-                      {ws.name}
-                      {ws.capacity && <span className="text-xs text-muted-foreground">({ws.capacity} plasser)</span>}
-                    </span>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteWorkstation(ws.id)}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+                  <li key={ws.id} className="flex items-center justify-between gap-2 p-2 rounded-md bg-secondary">
+                    {editingWorkstationId === ws.id ? (
+                      <>
+                        <Input
+                          value={editingWorkstationName}
+                          onChange={(e) => setEditingWorkstationName(e.target.value)}
+                          placeholder="Stasjonsnavn..."
+                          className="flex-1"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveWorkstation();
+                            if (e.key === 'Escape') handleCancelEditWorkstation();
+                          }}
+                        />
+                        <Input
+                          type="number"
+                          value={editingWorkstationCapacity}
+                          onChange={(e) => setEditingWorkstationCapacity(e.target.value)}
+                          placeholder="Plasser"
+                          className="w-24"
+                        />
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={handleSaveWorkstation}>
+                            <Check className="w-4 h-4 text-green-600" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={handleCancelEditWorkstation}>
+                            <X className="w-4 h-4 text-gray-600" />
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex items-center gap-2 flex-1">
+                          <Library className="w-4 h-4" />
+                          {ws.name}
+                          {ws.capacity && <span className="text-xs text-muted-foreground">({ws.capacity} plasser)</span>}
+                        </span>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditWorkstation(ws)}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteWorkstation(ws.id)}>
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>

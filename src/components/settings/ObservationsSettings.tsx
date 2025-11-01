@@ -6,7 +6,7 @@ import type { AppSettings, BehaviorType } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,12 @@ export default function ObservationsSettings({ settings, onSettingsChange }: Obs
   const [newBehaviorLabel, setNewBehaviorLabel] = useState("");
   const [newBehaviorIcon, setNewBehaviorIcon] = useState<string>(availableIcons[0]);
   const [newBehaviorColor, setNewBehaviorColor] = useState<BehaviorType['color']>(availableColors[0]);
+  const [editingRemarkType, setEditingRemarkType] = useState<string | null>(null);
+  const [editingRemarkTypeName, setEditingRemarkTypeName] = useState("");
+  const [editingBehaviorId, setEditingBehaviorId] = useState<string | null>(null);
+  const [editingBehaviorLabel, setEditingBehaviorLabel] = useState("");
+  const [editingBehaviorIcon, setEditingBehaviorIcon] = useState<string>(availableIcons[0]);
+  const [editingBehaviorColor, setEditingBehaviorColor] = useState<BehaviorType['color']>(availableColors[0]);
 
   const handleAddRemarkType = () => {
     if (newRemarkType.trim() && !settings.remarkTypes?.includes(newRemarkType.trim())) {
@@ -73,6 +79,52 @@ export default function ObservationsSettings({ settings, onSettingsChange }: Obs
     onSettingsChange({ ...settings, behaviorTypes: updatedTypes });
   };
 
+  const handleEditRemarkType = (type: string) => {
+    setEditingRemarkType(type);
+    setEditingRemarkTypeName(type);
+  };
+
+  const handleSaveRemarkType = () => {
+    if (editingRemarkType && editingRemarkTypeName.trim()) {
+      const updatedTypes = settings.remarkTypes?.map(t =>
+        t === editingRemarkType ? editingRemarkTypeName.trim() : t
+      ) || [];
+      onSettingsChange({ ...settings, remarkTypes: updatedTypes });
+      setEditingRemarkType(null);
+      setEditingRemarkTypeName("");
+    }
+  };
+
+  const handleCancelEditRemarkType = () => {
+    setEditingRemarkType(null);
+    setEditingRemarkTypeName("");
+  };
+
+  const handleEditBehaviorType = (behavior: BehaviorType) => {
+    setEditingBehaviorId(behavior.id);
+    setEditingBehaviorLabel(behavior.label);
+    setEditingBehaviorIcon(behavior.icon);
+    setEditingBehaviorColor(behavior.color);
+  };
+
+  const handleSaveBehaviorType = () => {
+    if (editingBehaviorId && editingBehaviorLabel.trim()) {
+      const updatedTypes = settings.behaviorTypes?.map(t =>
+        t.id === editingBehaviorId
+          ? { ...t, label: editingBehaviorLabel.trim(), icon: editingBehaviorIcon, color: editingBehaviorColor }
+          : t
+      ) || [];
+      onSettingsChange({ ...settings, behaviorTypes: updatedTypes });
+      setEditingBehaviorId(null);
+      setEditingBehaviorLabel("");
+    }
+  };
+
+  const handleCancelEditBehaviorType = () => {
+    setEditingBehaviorId(null);
+    setEditingBehaviorLabel("");
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -80,7 +132,7 @@ export default function ObservationsSettings({ settings, onSettingsChange }: Obs
         <CardDescription>Administrer anmerkningstyper og atferdstyper</CardDescription>
       </CardHeader>
       <CardContent>
-        <Accordion type="multiple" defaultValue={['remarkTypes']} className="w-full">
+        <Accordion type="multiple" defaultValue={[]} className="w-full">
           <AccordionItem value="remarkTypes">
             <AccordionTrigger>Anmerkningstyper ({(settings.remarkTypes || []).length})</AccordionTrigger>
             <AccordionContent className="pt-2">
@@ -97,11 +149,41 @@ export default function ObservationsSettings({ settings, onSettingsChange }: Obs
               </div>
               <ul className="space-y-2">
                 {(settings.remarkTypes || []).map((type) => (
-                  <li key={type} className="flex items-center justify-between p-2 rounded-md bg-secondary">
-                    <span>{type}</span>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteRemarkType(type)}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+                  <li key={type} className="flex items-center justify-between gap-2 p-2 rounded-md bg-secondary">
+                    {editingRemarkType === type ? (
+                      <>
+                        <Input
+                          value={editingRemarkTypeName}
+                          onChange={(e) => setEditingRemarkTypeName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveRemarkType();
+                            if (e.key === 'Escape') handleCancelEditRemarkType();
+                          }}
+                          className="flex-1"
+                          autoFocus
+                        />
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={handleSaveRemarkType}>
+                            <Check className="w-4 h-4 text-green-600" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={handleCancelEditRemarkType}>
+                            <X className="w-4 h-4 text-gray-600" />
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex-1">{type}</span>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditRemarkType(type)}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteRemarkType(type)}>
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -168,15 +250,88 @@ export default function ObservationsSettings({ settings, onSettingsChange }: Obs
               </div>
               <ul className="space-y-2">
                 {(settings.behaviorTypes || []).map((type) => (
-                  <li key={type.id} className="flex items-center justify-between p-2 rounded-md bg-secondary">
-                    <div className="flex items-center gap-2">
-                      <Icon name={type.icon} className="w-4 h-4" />
-                      <div className={cn("w-3 h-3 rounded-full", colorClasses[type.color])} />
-                      <span>{type.label}</span>
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteBehaviorType(type.id)}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+                  <li key={type.id} className="p-2 rounded-md bg-secondary">
+                    {editingBehaviorId === type.id ? (
+                      <div className="space-y-2">
+                        <Input
+                          value={editingBehaviorLabel}
+                          onChange={(e) => setEditingBehaviorLabel(e.target.value)}
+                          placeholder="Atferdsnavn..."
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveBehaviorType();
+                            if (e.key === 'Escape') handleCancelEditBehaviorType();
+                          }}
+                          autoFocus
+                        />
+                        <div className="flex items-center gap-2">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm" className="justify-start">
+                                <Icon name={editingBehaviorIcon} className="w-4 h-4 mr-2" />
+                                Ikon
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-2">
+                              <div className="grid grid-cols-5 gap-1">
+                                {availableIcons.map(icon => (
+                                  <Button
+                                    key={icon}
+                                    variant={editingBehaviorIcon === icon ? "secondary" : "ghost"}
+                                    size="icon"
+                                    onClick={() => setEditingBehaviorIcon(icon)}
+                                  >
+                                    <Icon name={icon} />
+                                  </Button>
+                                ))}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm" className="justify-start">
+                                <div className={cn("w-4 h-4 rounded-full mr-2", colorClasses[editingBehaviorColor])} />
+                                Farge
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-2">
+                              <div className="flex gap-1">
+                                {availableColors.map(color => (
+                                  <button
+                                    key={color}
+                                    onClick={() => setEditingBehaviorColor(color)}
+                                    className={cn("w-6 h-6 rounded-full", colorClasses[color], {
+                                      'ring-2 ring-ring ring-offset-2': editingBehaviorColor === color
+                                    })}
+                                  />
+                                ))}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                          <Button variant="ghost" size="icon" onClick={handleSaveBehaviorType}>
+                            <Check className="w-4 h-4 text-green-600" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={handleCancelEditBehaviorType}>
+                            <X className="w-4 h-4 text-gray-600" />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Icon name={type.icon} className="w-4 h-4" />
+                          <div className={cn("w-3 h-3 rounded-full", colorClasses[type.color])} />
+                          <span>{type.label}</span>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditBehaviorType(type)}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteBehaviorType(type.id)}>
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
