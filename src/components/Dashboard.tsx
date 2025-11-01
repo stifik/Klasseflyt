@@ -10,10 +10,9 @@ import {
     Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2, Award,
     Terminal, Monitor, Trophy, Store, Activity, Calendar, ShieldCheck, Settings as SettingsIcon
 } from 'lucide-react';
-import {cn} from '@/lib/utils';
+import { cn} from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getDashboardToolSettingsUrl } from '@/lib/settingsRegistry';
 
 interface DashboardProps {
   settings: AppSettings;
@@ -223,7 +222,7 @@ const Dashboard: FC<DashboardProps> = ({settings}) => {
             }
           };
           
-          const settingsUrl = getDashboardToolSettingsUrl(tool.key);
+          // settings link removed
 
           return (
             <Card
@@ -239,16 +238,7 @@ const Dashboard: FC<DashboardProps> = ({settings}) => {
                   <CardTitle>{tool.label}</CardTitle>
                   <CardDescription>{tool.description}</CardDescription>
                 </div>
-                {settingsUrl && (
-                  <Link
-                    href={settingsUrl}
-                    onClick={(e) => e.stopPropagation()}
-                    className="hidden md:flex absolute top-4 right-4 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                    title="Innstillinger"
-                  >
-                    <SettingsIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                  </Link>
-                )}
+                {/* gear/settings icon removed as per UI preference */}
               </CardHeader>
             </Card>
           );
