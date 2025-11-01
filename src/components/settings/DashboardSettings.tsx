@@ -32,6 +32,7 @@ const allToolLabels: Record<DashboardToolKey, string> = {
   'overview': "Lekseoversikt",
   'assessments': "Vurderinger",
   'dailyCheck': "Daglig Sjekk",
+  'innsjekking': "Innsjekking",
   'observations': "Observasjoner",
   'observations.hourly': "Timeinnsjekk",
   'observations.remarks': "Anmerkninger",

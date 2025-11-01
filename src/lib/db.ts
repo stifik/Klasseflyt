@@ -690,6 +690,7 @@ const defaultDashboardTools: DashboardConfig[] = [
     { key: 'overview', visible: true },
     { key: 'assessments', visible: true },
     { key: 'dailyCheck', visible: true },
+    { key: 'innsjekking', visible: true },
     { key: 'observations', visible: true },
     { key: 'reports', visible: true },
     { key: 'weekly-planner', visible: true },

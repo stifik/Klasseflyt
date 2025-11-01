@@ -376,6 +376,7 @@ export type DashboardToolKey =
   | 'overview'
   | 'assessments'
   | 'dailyCheck'
+  | 'innsjekking'
   | 'observations'
   | 'observations.hourly'
   | 'observations.remarks'

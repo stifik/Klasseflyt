@@ -62,6 +62,11 @@ export const settingsRegistry: Record<string, SettingsLink> = {
     tab: 'checkin',
     label: 'Innsjekking Innstillinger'
   },
+  '/innsjekking': {
+    url: '/settings',
+    tab: 'checkin',
+    label: 'Innsjekking Innstillinger'
+  },
 
   // Observations
   '/observations': {
@@ -119,6 +124,10 @@ export const dashboardToolSettings: Record<string, SettingsLink> = {
     tab: 'hovedapp'
   },
   'dailyCheck': {
+    url: '/settings',
+    tab: 'checkin'
+  },
+  'innsjekking': {
     url: '/settings',
     tab: 'checkin'
   },

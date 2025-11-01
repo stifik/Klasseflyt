@@ -8,7 +8,7 @@ import {Card, CardHeader, CardTitle, CardDescription} from '@/components/ui/card
 import {
     BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed,
     Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2, Award,
-    Terminal, Monitor, Trophy, Store, Activity, Calendar, ShieldCheck, Settings as SettingsIcon
+    Terminal, Monitor, Trophy, Store, Activity, Calendar, ShieldCheck, Settings as SettingsIcon, Scan
 } from 'lucide-react';
 import { cn} from '@/lib/utils';
 import Link from 'next/link';
@@ -42,6 +42,14 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     icon: CalendarCheck,
     color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
     href: '/daily-check',
+  },
+  {
+    key: 'innsjekking',
+    label: 'Innsjekking',
+    description: 'Start innsjekking og scan NFC-kort.',
+    icon: Scan,
+    color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
+    href: '/innsjekking',
   },
   {
     key: 'morning-display',
