@@ -88,7 +88,42 @@ export default function StudentsAndSubjects({ students, subjects }: StudentsAndS
   const handleSaveStudent = async () => {
     if (editingStudentId && editingStudentName.trim()) {
       try {
-        await db.students.update(editingStudentId, { name: editingStudentName.trim() });
+        // Get the old student name before updating
+        const oldStudent = await db.students.get(editingStudentId);
+        const oldName = oldStudent?.name;
+        const newName = editingStudentName.trim();
+        
+        // Update student name
+        await db.students.update(editingStudentId, { name: newName });
+        
+        // Update name in all seating charts if it changed
+        if (oldName && oldName !== newName) {
+          const seatingRecords = await db.seatingChartHistory.toArray();
+          
+          for (const record of seatingRecords) {
+            // Parse the chart JSON
+            const chart = JSON.parse(record.chartJson) as (string[] | null)[][];
+            let updated = false;
+            
+            // Update names in the chart
+            const newChart = chart.map((row: (string[] | null)[]) => 
+              row.map((cell: string[] | null) => {
+                if (cell && cell.includes(oldName)) {
+                  updated = true;
+                  return cell.map((name: string) => name === oldName ? newName : name);
+                }
+                return cell;
+              })
+            );
+            
+            if (updated) {
+              await db.seatingChartHistory.update(record.id!, { 
+                chartJson: JSON.stringify(newChart) 
+              });
+            }
+          }
+        }
+        
         toast({ title: "Elev oppdatert", description: "Elevens navn er endret." });
         setEditingStudentId(null);
         setEditingStudentName("");

@@ -782,29 +782,34 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
               <div>
                 <h4 className="font-medium text-gray-900 dark:text-white">Registrering & Belønning</h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Gi poeng automatisk via NFC eller manuelt til alle med OK status
+                  {settings?.nfcEnabled 
+                    ? 'Gi poeng automatisk via NFC eller manuelt til alle med OK status'
+                    : 'Gi poeng manuelt til alle med OK status'
+                  }
                 </p>
               </div>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-5 w-5">
-                    <Info className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80">
-                  <div className="space-y-2">
-                    <h4 className="font-medium">NFC-registrering:</h4>
-                    <ol className="list-decimal list-inside text-sm space-y-1">
-                      <li>Trykk "Start NFC-registrering"</li>
-                      <li>Elevene tapper kort når de kommer</li>
-                      <li>De får automatisk poeng for ladet iPad</li>
-                      <li>Trykk "Avslutt registrering" når alle er kommet</li>
-                      <li>Gjenstående elever settes som "Ikke ladet"</li>
-                      <li>Juster manuelt for fraværende eller glemt iPad</li>
-                    </ol>
-                  </div>
-                </PopoverContent>
-              </Popover>
+              {settings?.nfcEnabled && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-5 w-5">
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80">
+                    <div className="space-y-2">
+                      <h4 className="font-medium">NFC-registrering:</h4>
+                      <ol className="list-decimal list-inside text-sm space-y-1">
+                        <li>Trykk "Start NFC-registrering"</li>
+                        <li>Elevene tapper kort når de kommer</li>
+                        <li>De får automatisk poeng for ladet iPad</li>
+                        <li>Trykk "Avslutt registrering" når alle er kommet</li>
+                        <li>Gjenstående elever settes som "Ikke ladet"</li>
+                        <li>Juster manuelt for fraværende eller glemt iPad</li>
+                      </ol>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
             <div className="flex gap-2 flex-wrap">
               {settings?.nfcEnabled && <NFCCheckIn showOnlyButton />}

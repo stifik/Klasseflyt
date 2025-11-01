@@ -69,7 +69,7 @@ export function ManualPaymentModal({
       {/* Manual Selection */}
       <div className="space-y-2">
         <Label htmlFor="manual-select" className="text-base">
-          {selectLabel}
+          {isNFCSupported && rfidCards.length > 0 ? selectLabel : 'Velg elev:'}
         </Label>
         <select
           id="manual-select"
@@ -92,15 +92,6 @@ export function ManualPaymentModal({
             ))}
         </select>
       </div>
-
-      {!isNFCSupported && (
-        <Alert className="border-orange-500">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            NFC støttes ikke i denne nettleseren. Bruk manuell modus eller start NFC Bridge Server.
-          </AlertDescription>
-        </Alert>
-      )}
 
       <Button
         onClick={onCancel}
