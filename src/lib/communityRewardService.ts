@@ -3,7 +3,7 @@
  *
  * Handles shared class goals where students can donate points collectively.
  * Features:
- * - Manual donations via Terminal/POS
+ * - Manual donations via Poengsentral/POS
  * - Automatic percentage deductions when students earn points
  * - Multiple active goals support
  * - Achievement celebration and history

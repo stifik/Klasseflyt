@@ -146,9 +146,9 @@ export function MobileNav() {
                     >
                         <div onClick={() => setOpen(false)}>
                             <SidebarItem
-                                href="/terminal"
+                                href="/poengsentral"
                                 icon={TerminalIcon}
-                                label="Terminal"
+                                label="Poengsentral"
                             />
                             <SidebarItem
                                 href="/activityfeed"

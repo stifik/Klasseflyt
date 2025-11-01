@@ -174,9 +174,9 @@ export function SidebarNav({ className, onCollapseChange }: SidebarNavProps) {
                         isCollapsed={isCollapsed}
                     >
                         <SidebarItem
-                            href="/terminal"
+                            href="/poengsentral"
                             icon={TerminalIcon}
-                            label="Terminal"
+                            label="Poengsentral"
                             isCollapsed={isCollapsed}
                         />
                         <SidebarItem

@@ -1,10 +1,5 @@
-import Terminal from "@/components/Terminal";
-import RewardSystemLayout from "@/components/RewardSystemLayout";
+import { redirect } from 'next/navigation';
 
 export default function TransferPage() {
-  return (
-    <RewardSystemLayout showBackButton={true}>
-      <Terminal />
-    </RewardSystemLayout>
-  );
+  redirect('/poengsentral/transfer');
 }

@@ -31,7 +31,7 @@ const defaultSettings: AppSettings = {
     { key: 'observations', visible: true },
     { key: 'classroomTools', visible: true },
     { key: 'reports', visible: true },
-    { key: 'terminal', visible: true },
+    { key: 'poengsentral', visible: true },
     { key: 'observations.hourly', visible: false },
     { key: 'observations.remarks', visible: false },
     { key: 'classroomTools.seatingChart', visible: false },
@@ -85,7 +85,7 @@ function Home() {
         let wasUpdated = false;
         const updatedTools = [...settings.dashboardTools];
         
-        const toolsToCheck = ['classroomTools', 'terminal'];
+        const toolsToCheck = ['classroomTools', 'poengsentral'];
 
         toolsToCheck.forEach(toolKey => {
             if (!updatedTools.some(t => t.key === toolKey)) {
@@ -93,7 +93,7 @@ function Home() {
                 if (toolKey === 'classroomTools') {
                     const observationsIndex = updatedTools.findIndex(t => t.key === 'observations');
                     if (observationsIndex !== -1) insertIndex = observationsIndex + 1;
-                } else if (toolKey === 'terminal') {
+                } else if (toolKey === 'poengsentral') {
                     const reportsIndex = updatedTools.findIndex(t => t.key === 'reports');
                     if (reportsIndex !== -1) insertIndex = reportsIndex + 1;
                 }

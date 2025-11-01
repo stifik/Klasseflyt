@@ -390,7 +390,7 @@ export type DashboardToolKey =
   | 'rewardDashboard'
   | 'rewardStore'
   | 'activityFeed'
-  | 'terminal'
+  | 'poengsentral'
   | 'morning-display'
   | 'secret-agent'
   | 'weekly-planner';

@@ -140,12 +140,12 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
     href: '/reports',
   },
   {
-    key: 'terminal',
-    label: 'Belønningssystem',
+    key: 'poengsentral',
+    label: 'Poengsentral',
     description: 'Komplett kontrollsenter for poeng og belønninger.',
     icon: Terminal,
     color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
-    href: '/terminal',
+    href: '/poengsentral',
   },
   {
     key: 'rewardDashboard',

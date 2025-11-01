@@ -694,7 +694,7 @@ const defaultDashboardTools: DashboardConfig[] = [
     { key: 'classroomTools', visible: true },
     { key: 'reports', visible: true },
     { key: 'weekly-planner', visible: true },
-    { key: 'terminal', visible: true },
+    { key: 'poengsentral', visible: true },
     { key: 'rewardDashboard', visible: true },
     { key: 'rewardStore', visible: false },
     { key: 'activityFeed', visible: false },

@@ -13,7 +13,8 @@ interface MainLayoutProps {
 
 // Pages that should not show the sidebar/header
 // Add routes here that need a fullscreen, header-less view (e.g. storskjerm displays)
-const publicPages = ['/login', '/privacy', '/agent-reveal', '/bors', '/rewarddashboard'];
+// Note: /rewarddashboard is an internal app page and should show the main header/sidebar.
+const publicPages = ['/login', '/privacy', '/agent-reveal', '/bors'];
 const publicPrefixes = ['/morning-display'];
 
 export function MainLayout({ children }: MainLayoutProps) {

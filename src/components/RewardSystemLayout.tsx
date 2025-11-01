@@ -28,12 +28,12 @@ const RewardSystemLayout: React.FC<RewardSystemLayoutProps> = ({
   const [goalTitle, setGoalTitle] = useState<string>('Felles belønning');
   const [showReset, setShowReset] = useState(false);
 
-  // Sjekk om vi er på terminal-sider (inkludert /terminal/pos, /terminal/pod)
-  const isOnTerminal = pathname.startsWith('/terminal');
+  // Sjekk om vi er på poengsentral-sider (inkludert /poengsentral/pos, /poengsentral/pod)
+  const isOnPoengsentral = pathname.startsWith('/poengsentral');
 
   // Hent data for progress bar
   useEffect(() => {
-    if (!isOnTerminal) return;
+    if (!isOnPoengsentral) return;
 
     let mounted = true;
     
@@ -65,7 +65,7 @@ const RewardSystemLayout: React.FC<RewardSystemLayoutProps> = ({
     fetchData();
     const interval = setInterval(fetchData, 2000);
     return () => { mounted = false; clearInterval(interval); };
-  }, [isOnTerminal]);
+  }, [isOnPoengsentral]);
 
   const handleReset = async () => {
     const settings = await db.settings.get('userSettings');
@@ -88,8 +88,8 @@ const RewardSystemLayout: React.FC<RewardSystemLayoutProps> = ({
         </div>
       )}
 
-      {/* Progress bar - kun på terminal-sider */}
-      {isOnTerminal && (
+      {/* Progress bar - kun på poengsentral-sider */}
+      {isOnPoengsentral && (
         <div className="mb-4">
           <ClassGoalProgressBar
             title={goalTitle}

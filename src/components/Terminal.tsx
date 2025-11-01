@@ -23,7 +23,7 @@ import { formatCardUID, setProcessing as setNFCProcessing } from '@/lib/nfcReade
 import { soundEffects } from '@/lib/soundEffects';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 
-type TerminalMode = 'idle' | 'pos' | 'pod' | 'transfer';
+type PoengsentralMode = 'idle' | 'pos' | 'pod' | 'transfer';
 type PaymentMode = 'manual' | 'nfc';
 type NFCStatus = 'idle' | 'waiting' | 'processing' | 'success' | 'error';
 
@@ -56,15 +56,15 @@ type ActiveTransaction = {
   amount?: number;
 } | null;
 
-const Terminal: React.FC = () => {
+const Poengsentral: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
   
   // Bestem mode fra URL
-  const getCurrentMode = (): TerminalMode => {
-    if (pathname.includes('/terminal/pos')) return 'pos';
-    if (pathname.includes('/terminal/pod')) return 'pod';
-    if (pathname.includes('/terminal/transfer')) return 'transfer';
+  const getCurrentMode = (): PoengsentralMode => {
+    if (pathname.includes('/poengsentral/pos')) return 'pos';
+    if (pathname.includes('/poengsentral/pod')) return 'pod';
+    if (pathname.includes('/poengsentral/transfer')) return 'transfer';
     return 'idle';
   };
   
@@ -765,9 +765,9 @@ const Terminal: React.FC = () => {
           />
           <button
             className="w-full py-3 px-6 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-semibold text-lg shadow-md transition-colors"
-            onClick={() => router.push('/terminal')}
+            onClick={() => router.push('/poengsentral')}
           >
-            Tilbake til Terminal
+            Tilbake til Poengsentral
           </button>
         </div>
       </div>
@@ -780,9 +780,9 @@ const Terminal: React.FC = () => {
           <PodView onSelectAction={handleSelectAction} />
           <button
             className="w-full py-3 px-6 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-semibold text-lg shadow-md transition-colors"
-            onClick={() => router.push('/terminal')}
+            onClick={() => router.push('/poengsentral')}
           >
-            Tilbake til Terminal
+            Tilbake til Poengsentral
           </button>
         </div>
       </div>
@@ -798,9 +798,9 @@ const Terminal: React.FC = () => {
           />
           <button
             className="w-full py-3 px-6 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-semibold text-lg shadow-md transition-colors"
-            onClick={() => router.push('/terminal')}
+            onClick={() => router.push('/poengsentral')}
           >
-            Tilbake til Terminal
+            Tilbake til Poengsentral
           </button>
         </div>
       </div>
@@ -811,7 +811,7 @@ const Terminal: React.FC = () => {
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            🏪 Terminal
+            🏪 Poengsentral
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-400">
             Rask arbeidsflyt for masse-transaksjoner
@@ -821,7 +821,7 @@ const Terminal: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
           {/* POS-knapp */}
           <button
-            onClick={() => router.push('/terminal/pos')}
+            onClick={() => router.push('/poengsentral/pos')}
             className="group bg-blue-500 hover:bg-blue-600 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
           >
             <div className="text-6xl mb-4">🛒</div>
@@ -834,7 +834,7 @@ const Terminal: React.FC = () => {
 
           {/* POD-knapp */}
           <button
-            onClick={() => router.push('/terminal/pod')}
+            onClick={() => router.push('/poengsentral/pod')}
             className="group bg-green-500 hover:bg-green-600 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
           >
             <div className="text-6xl mb-4">⭐</div>
@@ -847,7 +847,7 @@ const Terminal: React.FC = () => {
 
           {/* Transfer-knapp */}
           <button
-            onClick={() => router.push('/terminal/transfer')}
+            onClick={() => router.push('/poengsentral/transfer')}
             className="group bg-purple-500 hover:bg-purple-600 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
           >
             <div className="text-6xl mb-4">💸</div>
@@ -1097,4 +1097,4 @@ function DonationDialogWrapper({
   );
 }
 
-export default Terminal;
+export default Poengsentral;

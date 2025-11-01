@@ -29,18 +29,18 @@ export const settingsRegistry: Record<string, SettingsLink> = {
     label: 'Ukesplan Innstillinger'
   },
 
-  // Terminal / Reward System
-  '/terminal': {
+  // Poengsentral / Reward System
+  '/poengsentral': {
     url: '/settings',
     tab: 'rewards',
     label: 'Belønning Innstillinger'
   },
-  '/terminal/pos': {
+  '/poengsentral/pos': {
     url: '/settings',
     tab: 'rewards',
     label: 'Belønning Innstillinger'
   },
-  '/terminal/pod': {
+  '/poengsentral/pod': {
     url: '/settings',
     tab: 'rewards',
     label: 'Belønning Innstillinger'
@@ -161,7 +161,7 @@ export const dashboardToolSettings: Record<string, SettingsLink> = {
     url: '/settings',
     tab: 'hovedapp'
   },
-  'terminal': {
+  'poengsentral': {
     url: '/settings',
     tab: 'rewards'
   },

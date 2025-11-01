@@ -1,10 +1,5 @@
-import Terminal from "@/components/Terminal";
-import RewardSystemLayout from "@/components/RewardSystemLayout";
+import { redirect } from 'next/navigation';
 
 export default function PosPage() {
-  return (
-    <RewardSystemLayout showBackButton={true} settingsUrl="/settings#rewards">
-      <Terminal />
-    </RewardSystemLayout>
-  );
+  redirect('/poengsentral/pos');
 }

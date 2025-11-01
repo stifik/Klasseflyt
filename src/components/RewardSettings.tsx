@@ -434,7 +434,7 @@ export default function RewardSettings() {
                     📱 Aktiver NFC-funksjonalitet
                   </Label>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Krever NFC-hardware og bridge-oppsett. Viser NFC-knapper i Terminal og Innsjekking.
+                    Krever NFC-hardware og bridge-oppsett. Viser NFC-knapper i Poengsentral og Innsjekking.
                   </p>
                 </div>
                 <Switch
