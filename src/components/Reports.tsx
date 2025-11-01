@@ -198,7 +198,7 @@ const WeeklySummary = ({ students, subjects, homework, submissions, submissionAt
         
         const allIncludedTestResultIds: number[] = [];
 
-        const studentsToReport = students.map(student => {
+    const studentsToReport = ([...(students || [])].sort((a,b) => a.name.localeCompare(b.name, 'nb'))).map(student => {
             // Find all submission attempts for this student that occurred in the selected week.
             const studentSubmissions = safeSubmissions.filter(s => s.studentId === student.id);
             const studentSubmissionIds = new Set(studentSubmissions.map(s => s.id));

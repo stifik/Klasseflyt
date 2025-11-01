@@ -185,7 +185,7 @@ export default function StudentsAndSubjects({ students, subjects }: StudentsAndS
                 </Button>
               </div>
               <ul className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                {students?.map((student) => (
+                {([... (students || [])].sort((a, b) => a.name.localeCompare(b.name, 'nb'))).map((student) => (
                   <li key={student.id} className="flex items-center justify-between gap-2 p-2 rounded-md bg-secondary">
                     {editingStudentId === student.id ? (
                       <>
