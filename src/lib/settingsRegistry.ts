@@ -170,10 +170,6 @@ export const dashboardToolSettings: Record<string, SettingsLink> = {
     url: '/settings',
     tab: 'hovedapp'
   },
-  'poengsentral': {
-    url: '/settings',
-    tab: 'rewards'
-  },
   'rewardDashboard': {
     url: '/settings',
     tab: 'rewards'

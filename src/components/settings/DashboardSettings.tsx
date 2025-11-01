@@ -48,7 +48,6 @@ const allToolLabels: Record<DashboardToolKey, string> = {
   'rewardStore': "Prisliste",
   'activityFeed': "Aktivitetsfeed",
   'morning-display': "Morgenvisning",
-  'poengsentral': "Poengsentral",
   'secret-agent': "Hemmelig Agent",
   'weekly-planner': "Ukesplanlegger",
 };

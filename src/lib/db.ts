@@ -659,6 +659,11 @@ export class MySubClassedDexie extends Dexie {
             }
         });
 
+        // Version 43: Add timestamp index to checkInLogs for efficient date-range queries
+        this.version(43).stores({
+            checkInLogs: '++id, &[studentId+bellTimeId+date], studentId, bellTimeId, date, timestamp',
+        });
+
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
         });

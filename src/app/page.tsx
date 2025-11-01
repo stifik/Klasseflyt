@@ -27,11 +27,11 @@ const defaultSettings: AppSettings = {
     { key: 'overview', visible: true },
     { key: 'assessments', visible: true },
     { key: 'dailyCheck', visible: true },
+    { key: 'innsjekking', visible: true },
     { key: 'morning-display', visible: true },
     { key: 'observations', visible: true },
     { key: 'classroomTools', visible: true },
     { key: 'reports', visible: true },
-    { key: 'poengsentral', visible: true },
     { key: 'observations.hourly', visible: false },
     { key: 'observations.remarks', visible: false },
     { key: 'classroomTools.seatingChart', visible: false },
@@ -83,25 +83,23 @@ function Home() {
   useEffect(() => {
     if (settings && Array.isArray(settings.dashboardTools)) {
         let wasUpdated = false;
-        const updatedTools = [...settings.dashboardTools];
+        let updatedTools = [...settings.dashboardTools];
         
-        const toolsToCheck = ['classroomTools', 'poengsentral'];
+        // Add innsjekking if missing
+        if (!updatedTools.some(t => t.key === 'innsjekking')) {
+            const dailyCheckIndex = updatedTools.findIndex(t => t.key === 'dailyCheck');
+            const insertIndex = dailyCheckIndex !== -1 ? dailyCheckIndex + 1 : updatedTools.length;
+            updatedTools.splice(insertIndex, 0, { key: 'innsjekking', visible: true });
+            wasUpdated = true;
+        }
 
-        toolsToCheck.forEach(toolKey => {
-            if (!updatedTools.some(t => t.key === toolKey)) {
-                let insertIndex = updatedTools.length;
-                if (toolKey === 'classroomTools') {
-                    const observationsIndex = updatedTools.findIndex(t => t.key === 'observations');
-                    if (observationsIndex !== -1) insertIndex = observationsIndex + 1;
-                } else if (toolKey === 'poengsentral') {
-                    const reportsIndex = updatedTools.findIndex(t => t.key === 'reports');
-                    if (reportsIndex !== -1) insertIndex = reportsIndex + 1;
-                }
-                
-                updatedTools.splice(insertIndex, 0, { key: toolKey as any, visible: true });
-                wasUpdated = true;
-            }
-        });
+        // Remove obsolete keys (terminal, poengsentral)
+        const obsoleteKeys = ['terminal', 'poengsentral'];
+        const initialLength = updatedTools.length;
+        updatedTools = updatedTools.filter(t => !obsoleteKeys.includes(t.key as any));
+        if (updatedTools.length !== initialLength) {
+            wasUpdated = true;
+        }
 
         if (wasUpdated) {
             db.settings.update('userSettings', { dashboardTools: updatedTools });

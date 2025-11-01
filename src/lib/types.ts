@@ -391,7 +391,6 @@ export type DashboardToolKey =
   | 'rewardDashboard'
   | 'rewardStore'
   | 'activityFeed'
-  | 'poengsentral'
   | 'morning-display'
   | 'secret-agent'
   | 'weekly-planner';
