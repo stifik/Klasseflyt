@@ -507,23 +507,7 @@ export default function DailyChecklist({ students, seatingChart, activeLayout, a
     <Card>
       <CardHeader>
         <div className="flex flex-col gap-4">
-          {/* Link to dedicated check-in page */}
-          <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <p className="text-sm text-blue-800 dark:text-blue-200">
-                  Trenger du innsjekking med klassekart og NFC?
-                </p>
-              </div>
-              <Link href="/innsjekking">
-                <Button size="sm" variant="outline" className="border-blue-300 dark:border-blue-700">
-                  Gå til Innsjekking
-                  <ExternalLink className="w-3 h-3 ml-2" />
-                </Button>
-              </Link>
-            </div>
-          </div>
+          {/* Link to dedicated check-in page removed: moved to /innsjekking */}
 
           {/* Date Picker */}
           <div className="flex items-center justify-between">
