@@ -879,11 +879,11 @@ const Terminal: React.FC = () => {
         )}
         
         {/* ActivityFeed og RewardDashboard side ved side */}
-        <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div>
+        <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+          <div className="min-w-0 overflow-hidden">
             <ActivityFeed />
           </div>
-          <div>
+          <div className="min-w-0 overflow-hidden">
             <RewardDashboard />
           </div>
         </div>
@@ -892,7 +892,7 @@ const Terminal: React.FC = () => {
   }
 
   return (
-    <div className="p-6 min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
       {/* Notifikasjon */}
       {notification && (
         <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${

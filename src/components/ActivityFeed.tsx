@@ -1,20 +1,39 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Activity, Plus, Minus } from 'lucide-react';
 
 function ActivityFeed() {
-  // Hent de 5 siste transaksjonene, sortert på dato (nyeste først)
+  // Page size options and persisted choice (localStorage)
+  const pageSizeOptions = [5, 10, 25, 50, 100];
+  const [limit, setLimit] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem('activityFeedLimit');
+      return stored ? parseInt(stored, 10) : 5;
+    } catch (e) {
+      return 5;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('activityFeedLimit', String(limit));
+    } catch (e) {
+      // ignore
+    }
+  }, [limit]);
+
+  // Hent de siste transaksjonene basert på valgt limit, sortert på dato (nyeste først)
   const recentTransactions = useLiveQuery(async () => {
     const transactions = await db.transactions
       .orderBy('date')
       .reverse()
-      .limit(5)
+      .limit(limit)
       .toArray();
-    
+
     // Få studentnavn for hver transaksjon
     const transactionsWithStudentNames = await Promise.all(
       transactions.map(async (transaction) => {
@@ -26,9 +45,9 @@ function ActivityFeed() {
         };
       })
     );
-    
+
     return transactionsWithStudentNames;
-  }) || [];
+  }, [limit]) || [];
 
   const formatDate = (date: Date) => {
     const now = new Date();
@@ -48,14 +67,30 @@ function ActivityFeed() {
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Activity className="w-5 h-5" />
-          Aktivitetsfeed
-        </CardTitle>
+    <Card className="w-full flex flex-col max-h-[600px]">
+      <CardHeader className="shrink-0">
+        <div className="flex items-center gap-2 w-full">
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="w-5 h-5" />
+            Aktivitetsfeed
+          </CardTitle>
+
+          <div className="ml-auto">
+            <label htmlFor="activity-feed-size" className="sr-only">Antall</label>
+            <select
+              id="activity-feed-size"
+              value={limit}
+              onChange={(e) => setLimit(parseInt(e.target.value, 10))}
+              className="border rounded px-2 py-1 text-sm"
+            >
+              {pageSizeOptions.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 overflow-y-auto min-h-0">
         {recentTransactions.length === 0 ? (
           <div className="text-center text-gray-500 py-4">
             Ingen aktivitet ennå

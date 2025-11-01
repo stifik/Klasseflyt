@@ -154,7 +154,7 @@ export default function RewardDashboard() {
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <>
       {/* Notifikasjon */}
       {notification && (
         <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
@@ -166,7 +166,7 @@ export default function RewardDashboard() {
         </div>
       )}
 
-      <Card className="flex-1 flex flex-col overflow-hidden m-2">
+      <Card className="flex flex-col max-h-[600px] overflow-hidden">
         <CardHeader className="shrink-0">
           <div className="flex items-center justify-between mb-2">
             <CardTitle className="flex items-center gap-2">
@@ -504,6 +504,6 @@ export default function RewardDashboard() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </>
   );
 }

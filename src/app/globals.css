@@ -2,8 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+html,
 body {
   font-family: 'PT Sans', sans-serif;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Prevent tiny horizontal overflow from creating an unwanted scrollbar. */
+#__next,
+main {
+  overflow-x: hidden;
 }
 
 @layer base {
