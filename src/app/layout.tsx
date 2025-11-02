@@ -5,6 +5,7 @@ import { Providers } from '@/components/Providers';
 import { MainLayout } from '@/components/navigation/MainLayout';
 import { BackupReminderToast } from '@/components/BackupReminderToast';
 import { CheckInReminderToast } from '@/components/CheckInReminderToast';
+import PlausibleProvider from 'next-plausible';
 
 export const metadata: Metadata = {
   title: 'Klasseflyt',
@@ -19,6 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="h-full">
       <head>
+        <PlausibleProvider domain="klasseflyt.no" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
