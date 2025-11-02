@@ -38,7 +38,7 @@ const allTools: {key: DashboardToolKey; label: string; description: string; icon
   },
   {
     key: 'dailyCheck',
-    label: 'Daglig Sjekk',
+    label: 'iPad-sjekk',
     description: 'Registrer iPad-status for hver elev.',
     icon: CalendarCheck,
     color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',

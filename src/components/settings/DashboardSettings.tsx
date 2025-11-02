@@ -31,7 +31,7 @@ interface DashboardSettingsProps {
 const allToolLabels: Record<DashboardToolKey, string> = {
   'overview': "Lekseoversikt",
   'assessments': "Vurderinger",
-  'dailyCheck': "Daglig Sjekk",
+  'dailyCheck': "iPad-sjekk",
   'innsjekking': "Innsjekking",
   'observations': "Observasjoner",
   'observations.hourly': "Timeinnsjekk",
@@ -54,7 +54,7 @@ const allToolLabels: Record<DashboardToolKey, string> = {
 
 const allTabLabels: Record<TabKey, string> = {
   'overview': 'Lekseoversikt',
-  'dailyCheck': 'Daglig Sjekk',
+  'dailyCheck': 'iPad-sjekk',
   'observations': 'Observasjoner',
   'assessments': 'Vurderinger',
   'classroomTools': 'Klassekart',

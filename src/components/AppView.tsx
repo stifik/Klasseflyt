@@ -31,7 +31,7 @@ const tabComponents: Partial<Record<TabKey, FC<any>>> = {
 
 const tabLabels: Partial<Record<TabKey, string>> = {
   overview: "Lekseoversikt",
-  dailyCheck: "Daglig Sjekk",
+  dailyCheck: "iPad-sjekk",
   observations: "Observasjoner",
   assessments: "Vurderinger",
   reports: "Analyse",
