@@ -11,9 +11,14 @@ import AppView from "@/components/AppView";
 import Dashboard from "@/components/Dashboard";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
-import Onboarding from "@/components/Onboarding";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { WelcomeScreen } from "@/components/WelcomeScreen";
+import { QuickStartWizard } from "@/components/QuickStartWizard";
+import { DashboardTour } from "@/components/DashboardTour";
+import { LocalStorageInfo } from "@/components/LocalStorageInfo";
+import { DemoBanner } from "@/components/DemoBanner";
+import { loadDemoData, clearDemoData } from "@/lib/mock-data";
 
 
 const defaultSettings: AppSettings = {
@@ -112,22 +117,67 @@ function Home() {
     await db.settings.put({ id: 'userSettings', ...newSettings });
   }
   
-  const handleOnboardingComplete = async (finalSettings: AppSettings, teacherName: string, students: Omit<Student, 'id'>[], subjects: Omit<Subject, 'id'>[]) => {
-      await db.transaction('rw', db.students, db.subjects, db.settings, async () => {
-        await db.students.bulkAdd(students.map(s => ({ name: s.name, points: 0 })));
-        await db.subjects.bulkAdd(subjects.map(s => ({ name: s.name })));
+  // New onboarding state management
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [showQuickStart, setShowQuickStart] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+  const [showLocalStorageInfo, setShowLocalStorageInfo] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
-        const newSettings = {
-            ...finalSettings,
-            reportSettings: {
-                ...finalSettings.reportSettings,
-                teacherName,
-            },
-            onboardingCompleted: true,
-        };
-        await db.settings.put({ id: 'userSettings', ...newSettings });
-      });
-  }
+  // Check onboarding status on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const onboardingCompleted = localStorage.getItem('onboardingCompleted');
+      const dashboardTourCompleted = localStorage.getItem('dashboardTourCompleted');
+      const isDemoModeFlag = localStorage.getItem('isDemoMode') === 'true';
+      
+      setIsDemoMode(isDemoModeFlag);
+
+      // If no onboarding completed, show welcome screen
+      if (!onboardingCompleted) {
+        setShowWelcome(true);
+      } else if (!dashboardTourCompleted) {
+        // Show tour if onboarding done but tour not completed
+        setShowTour(true);
+        setShowLocalStorageInfo(true);
+      }
+    }
+  }, []);
+
+  const handleSelectDemo = async () => {
+    setShowWelcome(false);
+    await loadDemoData();
+    setIsDemoMode(true);
+    setShowTour(true);
+    setShowLocalStorageInfo(true);
+  };
+
+  const handleSelectQuickStart = () => {
+    setShowWelcome(false);
+    setShowQuickStart(true);
+  };
+
+  const handleQuickStartComplete = () => {
+    setShowQuickStart(false);
+    setShowTour(true);
+    setShowLocalStorageInfo(true);
+  };
+
+  const handleTourComplete = () => {
+    setShowTour(false);
+  };
+
+  const handleLocalStorageInfoClose = () => {
+    setShowLocalStorageInfo(false);
+  };
+
+  const handleSwitchToRealData = async () => {
+    if (confirm('Dette vil slette all demo-data. Er du sikker?')) {
+      await clearDemoData();
+      setIsDemoMode(false);
+      setShowQuickStart(true);
+    }
+  };
 
   const isLoading = students === undefined || subjects === undefined || settings === undefined;
 
@@ -139,12 +189,41 @@ function Home() {
       </div>
     );
   }
-  
-  if (!currentSettings.onboardingCompleted) {
-      return <Onboarding onFinish={handleOnboardingComplete} initialSettings={currentSettings} />;
-  }
 
-  return <Dashboard settings={currentSettings} />;
+  return (
+    <>
+      {/* Onboarding Screens */}
+      <WelcomeScreen
+        open={showWelcome}
+        onSelectDemo={handleSelectDemo}
+        onSelectQuickStart={handleSelectQuickStart}
+      />
+      
+      <QuickStartWizard
+        open={showQuickStart}
+        onComplete={handleQuickStartComplete}
+        onBack={showWelcome ? () => {
+          setShowQuickStart(false);
+          setShowWelcome(true);
+        } : undefined}
+      />
+
+      <DashboardTour
+        open={showTour}
+        onComplete={handleTourComplete}
+      />
+
+      {showLocalStorageInfo && (
+        <LocalStorageInfo onClose={handleLocalStorageInfoClose} />
+      )}
+
+      {/* Main App */}
+      <div>
+        {isDemoMode && <DemoBanner onSwitchToRealData={handleSwitchToRealData} />}
+        <Dashboard settings={currentSettings} />
+      </div>
+    </>
+  );
 }
 
 export default Home;

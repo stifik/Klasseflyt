@@ -204,7 +204,9 @@ const Dashboard: FC<DashboardProps> = ({settings}) => {
           <h2 className="text-3xl font-bold tracking-tight">Velkommen {teacherName}!</h2>
           <p className="text-muted-foreground">Velg et verktøy for å komme i gang.</p>
         </div>
-        <SettingsButton href="/settings#dashboard-header" />
+        <div data-tour="settings-button">
+          <SettingsButton href="/settings#dashboard-header" />
+        </div>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {visibleTools.map((tool) => {

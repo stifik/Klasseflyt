@@ -47,6 +47,7 @@ export function SidebarNav({ className, onCollapseChange }: SidebarNavProps) {
 
     return (
         <aside
+            data-tour="sidebar"
             className={cn(
                 "fixed left-0 top-0 z-40 h-screen border-r bg-background transition-all duration-300",
                 isCollapsed ? "w-16" : "w-64",
