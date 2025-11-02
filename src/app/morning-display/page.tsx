@@ -40,12 +40,16 @@ function MorningDisplayContent() {
   const [showProgressBar, setShowProgressBar] = useState(true);
   const [showSecretAgent, setShowSecretAgent] = useState(true);
 
-  // Check if guide should be shown on first visit
+  // Check if guide should be shown on first visit (with 6 second delay)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const hasSeenGuide = localStorage.getItem('morningDisplayGuideShown');
       if (!hasSeenGuide) {
-        setShowGuide(true);
+        const timer = setTimeout(() => {
+          setShowGuide(true);
+        }, 6000); // Wait 6 seconds before showing guide
+        
+        return () => clearTimeout(timer);
       }
     }
   }, []);
@@ -394,13 +398,13 @@ function MorningDisplayContent() {
   }, [bellTimeId]); // Re-run when bellTimeId changes to reset student status
 
   const handleNavigateToSettings = () => {
-    // Navigate to settings page and open Morning Display section
-    window.location.href = '/?tab=settings&section=morningDisplay';
+    // Navigate to settings page and open Morning Display tab
+    window.location.href = '/settings#morning';
   };
 
   const handleNavigateToSchedulePlanner = () => {
-    // Navigate to weekly planner page
-    window.location.href = '/weekly-planner';
+    // Navigate to weekly planner/schedule page
+    window.location.href = '/settings/weekly-schedule';
   };
 
   return (

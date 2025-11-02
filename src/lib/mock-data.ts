@@ -57,40 +57,40 @@ export async function loadDemoData() {
   const currentWeek = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
   
   const demoHomework = [
-    // LEKSE 1: OVERDUE - 5 dager siden
+    // LEKSE 1: Forrige uke mandag
     {
       title: 'Les kapittel 3 og svar på spørsmål',
       subjectId: subjectIds[0] as string,
       week: currentWeek - 1,
-      date: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000)
+      date: new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000)
     },
-    // LEKSE 2: OVERDUE - 2 dager siden
+    // LEKSE 2: Forrige uke onsdag
     {
       title: 'Oppgave 4.1-4.15 i læreboka',
       subjectId: subjectIds[1] as string,
-      week: currentWeek,
-      date: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000)
+      week: currentWeek - 1,
+      date: new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000)
     },
-    // LEKSE 3: PÅGÅENDE - frist i morgen
+    // LEKSE 3: Forrige uke fredag
     {
       title: 'Write a short essay about your favorite hobby',
       subjectId: subjectIds[2] as string,
-      week: currentWeek,
-      date: new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000)
+      week: currentWeek - 1,
+      date: new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000)
     },
-    // LEKSE 4: FREMTIDIG - frist om 5 dager
+    // LEKSE 4: Denne uken mandag (3 dager siden)
     {
       title: 'Forbered presentasjon om ditt favorittdikt',
       subjectId: subjectIds[0] as string,
-      week: currentWeek + 1,
-      date: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000)
+      week: currentWeek,
+      date: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000)
     },
-    // LEKSE 5: FREMTIDIG - frist om 1 uke
+    // LEKSE 5: I går
     {
       title: 'Kapittel 5: Brøk og desimaltall, øv deg på oppgavene',
       subjectId: subjectIds[1] as string,
-      week: currentWeek + 1,
-      date: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+      week: currentWeek,
+      date: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000)
     }
   ];
   
@@ -174,15 +174,111 @@ export async function loadDemoData() {
   await db.submissionAttempts.bulkAdd(hw2Attempts);
   // 6 elever (index 10-15): Ikke levert
   
-  // ==== LEKSE 3 (pågående, frist i morgen) ====
-  // Leksene er reaktive - data legges inn etter fristen
-  // Ingen submissions for pågående lekser
+  // ==== LEKSE 3 (forrige uke fredag) ====
+  // Fordeling: 9 godkjent, 3 må rettes, 4 ikke levert
   
-  // ==== LEKSE 4 (fremtidig, frist om 5 dager) ====
-  // Ingen submissions for fremtidige lekser
+  const hw3Submissions = [];
+  for (let i = 0; i < 12; i++) {
+    hw3Submissions.push({
+      homeworkId: homeworkIds[2],
+      studentId: studentIds[i] as number
+    });
+  }
+  const hw3SubIds = await db.submissions.bulkAdd(hw3Submissions, { allKeys: true }) as number[];
   
-  // ==== LEKSE 5 (fremtidig, frist om 1 uke) ====
-  // Ingen submissions for fremtidige lekser
+  const hw3Attempts = [];
+  // 9 godkjent
+  for (let i = 0; i < 9; i++) {
+    hw3Attempts.push({
+      submissionId: hw3SubIds[i],
+      status: 'Godkjent' as const,
+      date: new Date(now.getTime() - Math.random() * 4 * 24 * 60 * 60 * 1000)
+    });
+  }
+  // 3 må rettes
+  for (let i = 9; i < 12; i++) {
+    hw3Attempts.push({
+      submissionId: hw3SubIds[i],
+      status: 'Må rettes' as const,
+      comment: 'Mangler svar på siste del',
+      date: new Date(now.getTime() - Math.random() * 4 * 24 * 60 * 60 * 1000)
+    });
+  }
+  await db.submissionAttempts.bulkAdd(hw3Attempts);
+  // 4 elever (index 12-15): Ikke levert
+  
+  // ==== LEKSE 4 (denne uken mandag - 3 dager siden) ====
+  // Fordeling: 11 godkjent, 2 syk, 3 ikke levert
+  
+  const hw4Submissions = [];
+  for (let i = 0; i < 13; i++) {
+    hw4Submissions.push({
+      homeworkId: homeworkIds[3],
+      studentId: studentIds[i] as number
+    });
+  }
+  const hw4SubIds = await db.submissions.bulkAdd(hw4Submissions, { allKeys: true }) as number[];
+  
+  const hw4Attempts = [];
+  // 11 godkjent
+  for (let i = 0; i < 11; i++) {
+    hw4Attempts.push({
+      submissionId: hw4SubIds[i],
+      status: 'Godkjent' as const,
+      date: new Date(now.getTime() - Math.random() * 3 * 24 * 60 * 60 * 1000)
+    });
+  }
+  // 2 syk
+  for (let i = 11; i < 13; i++) {
+    hw4Attempts.push({
+      submissionId: hw4SubIds[i],
+      status: 'Syk/Fravær' as const,
+      comment: 'Syk',
+      date: new Date(now.getTime() - Math.random() * 3 * 24 * 60 * 60 * 1000)
+    });
+  }
+  await db.submissionAttempts.bulkAdd(hw4Attempts);
+  // 3 elever (index 13-15): Ikke levert
+  
+  // ==== LEKSE 5 (i går) ====
+  // Fordeling: 10 godkjent, 1 glemt bok, 2 må rettes, 3 ikke levert
+  
+  const hw5Submissions = [];
+  for (let i = 0; i < 13; i++) {
+    hw5Submissions.push({
+      homeworkId: homeworkIds[4],
+      studentId: studentIds[i] as number
+    });
+  }
+  const hw5SubIds = await db.submissions.bulkAdd(hw5Submissions, { allKeys: true }) as number[];
+  
+  const hw5Attempts = [];
+  // 10 godkjent
+  for (let i = 0; i < 10; i++) {
+    hw5Attempts.push({
+      submissionId: hw5SubIds[i],
+      status: 'Godkjent' as const,
+      date: new Date(now.getTime() - Math.random() * 1 * 24 * 60 * 60 * 1000)
+    });
+  }
+  // 1 glemt bok
+  hw5Attempts.push({
+    submissionId: hw5SubIds[10],
+    status: 'Glemt bok' as const,
+    comment: 'Glemte boka hjemme',
+    date: new Date(now.getTime() - Math.random() * 1 * 24 * 60 * 60 * 1000)
+  });
+  // 2 må rettes
+  for (let i = 11; i < 13; i++) {
+    hw5Attempts.push({
+      submissionId: hw5SubIds[i],
+      status: 'Må rettes' as const,
+      comment: 'Sjekk utregningene',
+      date: new Date(now.getTime() - Math.random() * 1 * 24 * 60 * 60 * 1000)
+    });
+  }
+  await db.submissionAttempts.bulkAdd(hw5Attempts);
+  // 3 elever (index 13-15): Ikke levert
   
   // Add some demo remarks
   const demoRemarks = [
@@ -226,6 +322,78 @@ export async function loadDemoData() {
   }
   
   await db.dailyChecks.bulkAdd(demoDailyChecks);
+  
+  // ==== UKESPLANLEGGER (demo timeplan for alle ukedager) ====
+  
+  const demoScheduleTemplates = [
+    // Mandag
+    {
+      name: 'Mandag-mal',
+      dayOfWeek: 'monday' as const,
+      sessions: [
+        { id: 0, time: '08:30', subject: 'Norsk', topic: 'Leseforståelse: Kapittel 3' },
+        { id: 1, time: '09:30', subject: 'Matematikk', topic: 'Brøk og desimaltall' },
+        { id: 2, time: '10:45', subject: 'Engelsk', topic: 'Verb: Past tense' },
+        { id: 3, time: '12:00', subject: 'Naturfag', topic: 'Dyrs livssyklus' }
+      ],
+      createdAt: now,
+      updatedAt: now
+    },
+    // Tirsdag
+    {
+      name: 'Tirsdag-mal',
+      dayOfWeek: 'tuesday' as const,
+      sessions: [
+        { id: 0, time: '08:30', subject: 'Matematikk', topic: 'Geometri: Areal' },
+        { id: 1, time: '09:30', subject: 'Norsk', topic: 'Skriving: Fortelling' },
+        { id: 2, time: '10:45', subject: 'Gym', topic: 'Lagidrett' },
+        { id: 3, time: '12:00', subject: 'Engelsk', topic: 'Vocabulary: Hobbies' }
+      ],
+      createdAt: now,
+      updatedAt: now
+    },
+    // Onsdag
+    {
+      name: 'Onsdag-mal',
+      dayOfWeek: 'wednesday' as const,
+      sessions: [
+        { id: 0, time: '08:30', subject: 'Engelsk', topic: 'Reading comprehension' },
+        { id: 1, time: '09:30', subject: 'Matematikk', topic: 'Repetisjon: Tall og algebra' },
+        { id: 2, time: '10:45', subject: 'Samfunnsfag', topic: 'Norges geografi' },
+        { id: 3, time: '12:00', subject: 'Norsk', topic: 'Grammatikk: Setningsanalyse' }
+      ],
+      createdAt: now,
+      updatedAt: now
+    },
+    // Torsdag
+    {
+      name: 'Torsdag-mal',
+      dayOfWeek: 'thursday' as const,
+      sessions: [
+        { id: 0, time: '08:30', subject: 'Naturfag', topic: 'Eksperiment: Vann og olje' },
+        { id: 1, time: '09:30', subject: 'Norsk', topic: 'Diktet: Språklige virkemidler' },
+        { id: 2, time: '10:45', subject: 'Matematikk', topic: 'Måling: Vekt og volum' },
+        { id: 3, time: '12:00', subject: 'Kunst og håndverk', topic: 'Maling: Fargelære' }
+      ],
+      createdAt: now,
+      updatedAt: now
+    },
+    // Fredag
+    {
+      name: 'Fredag-mal',
+      dayOfWeek: 'friday' as const,
+      sessions: [
+        { id: 0, time: '08:30', subject: 'Matematikk', topic: 'Quiz: Ukens tema' },
+        { id: 1, time: '09:30', subject: 'Engelsk', topic: 'Presentation: My week' },
+        { id: 2, time: '10:45', subject: 'Musikk', topic: 'Rytme og takt' },
+        { id: 3, time: '11:30', subject: 'Fellestime', topic: 'Oppsummering og ukesavslutning' }
+      ],
+      createdAt: now,
+      updatedAt: now
+    }
+  ];
+  
+  await db.scheduleTemplates.bulkAdd(demoScheduleTemplates);
   
   // ==== KLASSEKART (7×8 layout med 16 pulter) ====
   
