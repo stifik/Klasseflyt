@@ -11,14 +11,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Monitor } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Monitor, Pencil, Calendar, EyeOff } from "lucide-react";
 
 interface MorningDisplayGuideProps {
   open: boolean;
   onClose: () => void;
+  onNavigateToSettings: () => void;
+  onNavigateToSchedulePlanner: () => void;
 }
 
-export default function MorningDisplayGuide({ open, onClose }: MorningDisplayGuideProps) {
+export default function MorningDisplayGuide({ 
+  open, 
+  onClose, 
+  onNavigateToSettings,
+  onNavigateToSchedulePlanner 
+}: MorningDisplayGuideProps) {
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
   const handleClose = () => {
@@ -28,67 +36,104 @@ export default function MorningDisplayGuide({ open, onClose }: MorningDisplayGui
     onClose();
   };
 
+  const handleNavigateToSettings = () => {
+    handleClose();
+    onNavigateToSettings();
+  };
+
+  const handleNavigateToSchedule = () => {
+    handleClose();
+    onNavigateToSchedulePlanner();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Monitor className="w-5 h-5" />
-            Morgen Display - Kort guide
-          </DialogTitle>
+          <div className="flex items-center gap-2">
+            <Monitor className="h-6 w-6" />
+            <DialogTitle>Morgen Display - Kort guide</DialogTitle>
+          </div>
           <DialogDescription>
             Slik bruker du displayet på tavla
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <p className="text-sm">
-            Dette vises på tavla når elevene kommer:
-          </p>
+        <div className="space-y-4">
+          {/* Seksjon 1: Hva som vises */}
+          <div>
+            <p className="text-sm mb-2">Dette vises på tavla når elevene kommer:</p>
+            <ul className="text-sm space-y-1 text-muted-foreground">
+              <li>• Velkomstmelding og dagens instrukser</li>
+              <li>• Dagens timeplan med fag og tema</li>
+              <li>• Poengoversikt og felles fremgang (hvis du bruker belønningssystemet)</li>
+              <li>• Hemmelig agent (hvis aktivert)</li>
+            </ul>
+          </div>
 
-          <ul className="space-y-2 text-sm">
-            <li className="flex items-start gap-2">
-              <span className="text-primary">•</span>
-              <span>Velkomstmelding og dagens instrukser</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-primary">•</span>
-              <span>Dagens timeplan med fag og tema</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-primary">•</span>
-              <span>Poengoversikt (hvis du bruker belønningssystemet)</span>
-            </li>
-          </ul>
+          <Separator />
 
-          <div className="rounded-lg bg-muted p-3 space-y-2">
-            <p className="font-medium text-sm">💡 Tips</p>
-            <ul className="text-xs text-muted-foreground space-y-1">
-              <li>• Tilpass meldinger i Innstillinger → Morgen Display</li>
-              <li>• Skjul poeng hvis du ikke bruker belønningssystemet</li>
+          {/* Seksjon 2: Tilpass displayet */}
+          <div>
+            <h4 className="font-medium mb-3">Tilpass displayet:</h4>
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={handleNavigateToSettings}
+              >
+                <Pencil className="h-4 w-4 mr-2" />
+                Rediger velkomstmelding
+              </Button>
+              
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={handleNavigateToSchedule}
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Rediger timeplan
+              </Button>
+              
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={handleNavigateToSettings}
+              >
+                <EyeOff className="h-4 w-4 mr-2" />
+                Skjul poeng
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Seksjon 3: Tips */}
+          <div className="bg-muted p-3 rounded-md">
+            <p className="text-sm font-medium mb-2">💡 Tips</p>
+            <ul className="text-sm space-y-1 text-muted-foreground">
+              <li>• Bruk piltaster (← →) for å navigere mellom sidene</li>
               <li>• Trykk F11 for fullskjerm på tavla</li>
             </ul>
           </div>
 
-          <div className="flex items-center space-x-2 pt-2">
-            <Checkbox
-              id="dont-show-guide"
-              checked={dontShowAgain}
-              onCheckedChange={(checked) => setDontShowAgain(checked as boolean)}
-            />
-            <Label
-              htmlFor="dont-show-guide"
-              className="text-sm cursor-pointer"
-            >
-              Ikke vis denne igjen
-            </Label>
-          </div>
-        </div>
+          {/* Seksjon 4: Checkbox + Lukk */}
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="dontShow"
+                checked={dontShowAgain}
+                onCheckedChange={(checked) => setDontShowAgain(checked === true)}
+              />
+              <Label htmlFor="dontShow" className="text-sm cursor-pointer">
+                Ikke vis denne igjen
+              </Label>
+            </div>
 
-        <div className="flex justify-end">
-          <Button onClick={handleClose}>
-            Ok, skjønner!
-          </Button>
+            <Button onClick={handleClose} className="w-full">
+              Ok, skjønner!
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

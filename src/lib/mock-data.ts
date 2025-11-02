@@ -175,36 +175,14 @@ export async function loadDemoData() {
   // 6 elever (index 10-15): Ikke levert
   
   // ==== LEKSE 3 (pågående, frist i morgen) ====
-  // Fordeling: 10 levert (venter godkjenning), 6 ikke levert
-  
-  const hw3SubmittedIndices = [0, 1, 2, 4, 6, 8, 10, 12, 13, 15];
-  const hw3Submissions = [];
-  for (const i of hw3SubmittedIndices) {
-    hw3Submissions.push({
-      homeworkId: homeworkIds[2],
-      studentId: studentIds[i] as number
-    });
-  }
-  await db.submissions.bulkAdd(hw3Submissions);
-  // Ingen attempts = venter på godkjenning
-  // 6 elever: Ikke levert
+  // Leksene er reaktive - data legges inn etter fristen
+  // Ingen submissions for pågående lekser
   
   // ==== LEKSE 4 (fremtidig, frist om 5 dager) ====
-  // Fordeling: 2 tidlig innlevert, 14 ikke levert
-  
-  const hw4Submissions = [];
-  for (let i = 0; i < 2; i++) {
-    hw4Submissions.push({
-      homeworkId: homeworkIds[3],
-      studentId: studentIds[i] as number
-    });
-  }
-  await db.submissions.bulkAdd(hw4Submissions);
-  // Ingen attempts = venter på godkjenning
-  // 14 elever: Ikke levert ennå
+  // Ingen submissions for fremtidige lekser
   
   // ==== LEKSE 5 (fremtidig, frist om 1 uke) ====
-  // 0 levert, 16 ikke levert - ingen submissions
+  // Ingen submissions for fremtidige lekser
   
   // Add some demo remarks
   const demoRemarks = [

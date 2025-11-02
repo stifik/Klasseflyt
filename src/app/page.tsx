@@ -148,6 +148,10 @@ function Home() {
     setShowWelcome(false);
     await loadDemoData();
     setIsDemoMode(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('isDemoMode', 'true');
+      localStorage.setItem('onboardingCompleted', 'true');
+    }
     setShowTour(true);
     setShowLocalStorageInfo(true);
   };
@@ -159,6 +163,10 @@ function Home() {
 
   const handleQuickStartComplete = () => {
     setShowQuickStart(false);
+    setIsDemoMode(false);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('isDemoMode', 'false');
+    }
     setShowTour(true);
     setShowLocalStorageInfo(true);
   };
@@ -175,6 +183,9 @@ function Home() {
     if (confirm('Dette vil slette all demo-data. Er du sikker?')) {
       await clearDemoData();
       setIsDemoMode(false);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('isDemoMode', 'false');
+      }
       setShowQuickStart(true);
     }
   };

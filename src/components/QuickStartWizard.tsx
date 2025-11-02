@@ -132,7 +132,7 @@ export function QuickStartWizard({ open, onComplete, onBack }: QuickStartWizardP
                 <Label htmlFor="students">Elevnavn</Label>
                 <Textarea
                   id="students"
-                  placeholder="Emma Hansen&#10;Noah Johansen&#10;Olivia Berg&#10;..."
+                  placeholder={"Emma Hansen\nNoah Johansen\nOlivia Berg\n..."}
                   value={studentsText}
                   onChange={(e) => setStudentsText(e.target.value)}
                   rows={12}

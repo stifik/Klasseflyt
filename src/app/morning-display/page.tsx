@@ -393,12 +393,24 @@ function MorningDisplayContent() {
     return () => clearInterval(interval);
   }, [bellTimeId]); // Re-run when bellTimeId changes to reset student status
 
+  const handleNavigateToSettings = () => {
+    // Navigate to settings page and open Morning Display section
+    window.location.href = '/?tab=settings&section=morningDisplay';
+  };
+
+  const handleNavigateToSchedulePlanner = () => {
+    // Navigate to weekly planner page
+    window.location.href = '/weekly-planner';
+  };
+
   return (
     <>
       {/* Guide popup */}
       <MorningDisplayGuide
         open={showGuide}
         onClose={() => setShowGuide(false)}
+        onNavigateToSettings={handleNavigateToSettings}
+        onNavigateToSchedulePlanner={handleNavigateToSchedulePlanner}
       />
 
       <div
