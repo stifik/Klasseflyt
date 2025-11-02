@@ -33,17 +33,18 @@ export default function MorningDisplaySettings() {
   // Check for anchor links and open relevant sections
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const hash = window.location.hash;
-      if (hash === '#welcome-messages') {
+      const fullHash = window.location.hash;
+      // Handle both #welcome-messages and #morning#welcome-messages
+      if (fullHash.includes('welcome-messages')) {
         setOpenAccordions(['messages']);
         setTimeout(() => {
           document.getElementById('welcome-messages')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
-      } else if (hash === '#display-toggles') {
+        }, 200);
+      } else if (fullHash.includes('display-toggles')) {
         // Display toggles are always visible (not in accordion)
         setTimeout(() => {
           document.getElementById('display-toggles')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
+        }, 200);
       }
     }
   }, []);

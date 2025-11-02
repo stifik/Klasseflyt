@@ -23,8 +23,12 @@ export default function SettingsRoute() {
   const [activeTab, setActiveTab] = useState<TabValue>('app');
 
   useEffect(() => {
-    const hash = window.location.hash.slice(1); // Remove # from hash
+    const fullHash = window.location.hash.slice(1); // Remove # from hash
     const validTabs: TabValue[] = ['app', 'rewards', 'checkin', 'morning'];
+
+    // Split hash by # to handle multiple anchors like #morning#welcome-messages
+    const hashParts = fullHash.split('#');
+    const mainHash = hashParts[0];
 
     // Map 'hovedapp' to 'app' for backwards compatibility
     const tabMap: Record<string, TabValue> = {
@@ -35,7 +39,7 @@ export default function SettingsRoute() {
       'morning': 'morning'
     };
 
-    const mappedTab = tabMap[hash];
+    const mappedTab = tabMap[mainHash];
     if (mappedTab && validTabs.includes(mappedTab)) {
       setActiveTab(mappedTab);
     }
