@@ -81,6 +81,21 @@ const SortableItem = ({ id, label, isChecked, onToggle }: { id: string; label: s
 
 export default function DashboardSettings({ settings, onSettingsChange }: DashboardSettingsProps) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const [openAccordions, setOpenAccordions] = React.useState<string[]>([]);
+
+  // Handle opening accordion when navigating to the anchor
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash === '#dashboard-header') {
+      setOpenAccordions(['dashboard-tools']);
+      // Scroll to the header after a small delay
+      setTimeout(() => {
+        const element = document.getElementById('dashboard-header');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
+  }, []);
 
   const handleTabToggle = (key: TabKey) => {
     onSettingsChange({
@@ -118,12 +133,12 @@ export default function DashboardSettings({ settings, onSettingsChange }: Dashbo
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader id="dashboard-header">
         <CardTitle>Dashboard-verktøy</CardTitle>
         <CardDescription>Velg hvilke verktøy som skal vises på dashboard, og dra for å endre rekkefølgen.</CardDescription>
       </CardHeader>
       <CardContent>
-        <Accordion type="multiple" defaultValue={[]} className="w-full">
+        <Accordion type="multiple" value={openAccordions} onValueChange={setOpenAccordions} className="w-full">
           <AccordionItem value="dashboard-tools" className="border-b-0">
             <AccordionTrigger>Verktøy ({settings.dashboardTools.filter(t => t.visible).length}/{settings.dashboardTools.length} synlige)</AccordionTrigger>
             <AccordionContent className="space-y-2 pt-2">

@@ -21,6 +21,18 @@ interface SettingsProps {
 export default function Settings({ initialStudents, initialSubjects, settings: initialSettings, onSettingsChange }: SettingsProps) {
   const [localSettings, setLocalSettings] = React.useState(initialSettings);
 
+  // Handle scroll to dashboard header on mount
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash === '#dashboard-header') {
+      setTimeout(() => {
+        const element = document.getElementById('dashboard-header');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
+  }, []);
+
   // Debounce saving
   React.useEffect(() => {
     const handler = setTimeout(() => {

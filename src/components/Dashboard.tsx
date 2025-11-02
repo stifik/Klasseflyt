@@ -11,6 +11,7 @@ import {
     Terminal, Monitor, Trophy, Store, Activity, Calendar, ShieldCheck, Settings as SettingsIcon, Scan
 } from 'lucide-react';
 import { cn} from '@/lib/utils';
+import SettingsButton from '@/components/navigation/SettingsButton';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -198,9 +199,12 @@ const Dashboard: FC<DashboardProps> = ({settings}) => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Velkommen {teacherName}!</h2>
-        <p className="text-muted-foreground">Velg et verktøy for å komme i gang.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Velkommen {teacherName}!</h2>
+          <p className="text-muted-foreground">Velg et verktøy for å komme i gang.</p>
+        </div>
+        <SettingsButton href="/settings#dashboard-header" />
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {visibleTools.map((tool) => {
