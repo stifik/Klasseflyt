@@ -2,6 +2,7 @@
 
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
+import PageHeader from "@/components/navigation/PageHeader";
 import GroupTool from "@/components/GroupTool";
 import { Loader2 } from "lucide-react";
 
@@ -25,13 +26,16 @@ export default function GroupsPage() {
     }
 
     return (
-        <GroupTool
-            students={students}
-            appSettings={settings}
-            onAppSettingsChange={handleSettingsChange}
-            stationAssignmentLogs={stationAssignmentLogs}
-            groupSets={groupSets}
-            absences={absences}
-        />
+        <div>
+            <PageHeader title="Klasseverktøy" settingsUrl="/settings#classroomTools" />
+            <GroupTool
+                students={students}
+                appSettings={settings}
+                onAppSettingsChange={handleSettingsChange}
+                stationAssignmentLogs={stationAssignmentLogs}
+                groupSets={groupSets}
+                absences={absences}
+            />
+        </div>
     );
 }

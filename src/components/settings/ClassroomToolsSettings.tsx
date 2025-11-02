@@ -193,16 +193,25 @@ export default function ClassroomToolsSettings({ students, settings, onSettingsC
   const [openAccordions, setOpenAccordions] = useState<string[]>([]);
 
   React.useEffect(() => {
-    // Check if we're navigating to the seatingChartLegend anchor
-    if (typeof window !== 'undefined' && window.location.hash === '#seatingChartLegend') {
-      setOpenAccordions(['seating-rules']);
-      // Scroll to the element after a small delay to ensure it's rendered
-      setTimeout(() => {
-        const element = document.getElementById('seatingChartLegend');
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 100);
+    // Check if we're navigating to specific anchors
+    if (typeof window !== 'undefined') {
+      if (window.location.hash === '#seatingChartLegend') {
+        setOpenAccordions(['seating-rules']);
+        setTimeout(() => {
+          const element = document.getElementById('seatingChartLegend');
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
+      } else if (window.location.hash === '#classroomTools') {
+        // For ClassroomTools header, scroll to it without opening any specific accordion
+        setTimeout(() => {
+          const element = document.getElementById('classroomTools-header');
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
+      }
     }
   }, []);
 
@@ -255,7 +264,7 @@ export default function ClassroomToolsSettings({ students, settings, onSettingsC
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader id="classroomTools-header">
         <CardTitle>Klasseverktøy</CardTitle>
         <CardDescription>Administrer arbeidsstasjoner og grupperegler</CardDescription>
       </CardHeader>
@@ -336,7 +345,7 @@ export default function ClassroomToolsSettings({ students, settings, onSettingsC
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="grouping-rules">
+          <AccordionItem value="grouping-rules" id="classroomTools-grouping">
             <AccordionTrigger>Grupperegler</AccordionTrigger>
             <AccordionContent className="pt-2">
               <GroupingRulesManager
