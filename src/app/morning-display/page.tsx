@@ -10,6 +10,7 @@ import Slide1 from '@/components/morning-display/Slide1';
 import Slide2 from '@/components/morning-display/Slide2';
 import Slide3 from '@/components/morning-display/Slide3';
 import SlideControls from '@/components/morning-display/SlideControls';
+import MorningDisplayGuide from '@/components/MorningDisplayGuide';
 import type { Student, WelcomeMessage, InstructionMessage, BellTime } from '@/lib/types';
 import './morning-display.css';
 
@@ -34,6 +35,20 @@ function MorningDisplayContent() {
   const [themeGradient, setThemeGradient] = useState<string>('');
   const [showAllSessions, setShowAllSessions] = useState(false);
   const [initialDate, setInitialDate] = useState<string | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
+  const [showPointsList, setShowPointsList] = useState(true);
+  const [showProgressBar, setShowProgressBar] = useState(true);
+  const [showSecretAgent, setShowSecretAgent] = useState(true);
+
+  // Check if guide should be shown on first visit
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hasSeenGuide = localStorage.getItem('morningDisplayGuideShown');
+      if (!hasSeenGuide) {
+        setShowGuide(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     // Check URL parameters
@@ -151,6 +166,11 @@ function MorningDisplayContent() {
   if (settings) {
   setClassName(settings.morningDisplaySettings?.className || 'klassen');
   setCheckInSettings(settings.checkInSettings);
+        
+        // Load display toggles
+        setShowPointsList(settings.morningDisplaySettings?.showPointsList ?? true);
+        setShowProgressBar(settings.morningDisplaySettings?.showProgressBar ?? true);
+        setShowSecretAgent(settings.morningDisplaySettings?.showSecretAgent ?? true);
 
         // Load today's theme
         const theme = await getTodayTheme();
@@ -374,46 +394,58 @@ function MorningDisplayContent() {
   }, [bellTimeId]); // Re-run when bellTimeId changes to reset student status
 
   return (
-    <div
-      className="morning-display"
-      style={{
-        backgroundImage: themeGradient,
-        backgroundSize: '400% 400%',
-      }}
-    >
-      {currentSlide === 1 && (
-        <Slide1
-          students={students}
-          welcomeMessage={welcomeMessage}
-          instructions={instructions}
-          className={className}
-          bellTime={bellTime}
-          checkInSettings={checkInSettings}
-          bellType={bellType}
-          onNavigateToDagsplan={() => setCurrentSlide(2)}
-        />
-      )}
+    <>
+      {/* Guide popup */}
+      <MorningDisplayGuide
+        open={showGuide}
+        onClose={() => setShowGuide(false)}
+      />
 
-      {currentSlide === 2 && (
-        <>
-          <Slide2 showAllSessions={showAllSessions} initialDate={initialDate} onAdvanceToNext={() => setCurrentSlide(3)} />
-          <SlideControls
-            currentSlide={currentSlide}
-            onSlideChange={setCurrentSlide}
+      <div
+        className="morning-display"
+        style={{
+          backgroundImage: themeGradient,
+          backgroundSize: '400% 400%',
+        }}
+      >
+        {currentSlide === 1 && (
+          <Slide1
+            students={students}
+            welcomeMessage={welcomeMessage}
+            instructions={instructions}
+            className={className}
+            bellTime={bellTime}
+            checkInSettings={checkInSettings}
+            bellType={bellType}
+            onNavigateToDagsplan={() => setCurrentSlide(2)}
+            showPointsList={showPointsList}
+            showProgressBar={showProgressBar}
           />
-        </>
-      )}
+        )}
 
-      {currentSlide === 3 && (
-        <>
-          <Slide3 />
-          <SlideControls
-            currentSlide={currentSlide}
-            onSlideChange={setCurrentSlide}
-          />
-        </>
-      )}
-    </div>
+        {currentSlide === 2 && (
+          <>
+            <Slide2 showAllSessions={showAllSessions} initialDate={initialDate} onAdvanceToNext={() => showSecretAgent ? setCurrentSlide(3) : setCurrentSlide(1)} />
+            <SlideControls
+              currentSlide={currentSlide}
+              onSlideChange={setCurrentSlide}
+              maxSlide={showSecretAgent ? 3 : 2}
+            />
+          </>
+        )}
+
+        {showSecretAgent && currentSlide === 3 && (
+          <>
+            <Slide3 />
+            <SlideControls
+              currentSlide={currentSlide}
+              onSlideChange={setCurrentSlide}
+              maxSlide={3}
+            />
+          </>
+        )}
+      </div>
+    </>
   );
 }
 

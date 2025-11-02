@@ -3,9 +3,10 @@
 type SlideControlsProps = {
   currentSlide: number;
   onSlideChange: (slide: number) => void;
+  maxSlide?: number;
 };
 
-export default function SlideControls({ currentSlide, onSlideChange }: SlideControlsProps) {
+export default function SlideControls({ currentSlide, onSlideChange, maxSlide = 3 }: SlideControlsProps) {
   return (
     <div className="slide-controls">
       {currentSlide === 1 && (
@@ -26,12 +27,14 @@ export default function SlideControls({ currentSlide, onSlideChange }: SlideCont
             ← Innsjekking
           </button>
 
-          <button
-            onClick={() => onSlideChange(3)}
-            className="dagsplan-btn slide-button"
-          >
-            Agent Reveal →
-          </button>
+          {maxSlide >= 3 && (
+            <button
+              onClick={() => onSlideChange(3)}
+              className="dagsplan-btn slide-button"
+            >
+              Agent Reveal →
+            </button>
+          )}
         </div>
       )}
 

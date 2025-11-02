@@ -25,6 +25,8 @@ type Slide1Props = {
   checkInSettings?: CheckInSettings; // pass full settings so we can support morning and regular
   bellType?: 'morgen' | 'ordinær';
   onNavigateToDagsplan: () => void;
+  showPointsList?: boolean;
+  showProgressBar?: boolean;
 };
 
 type ClockColor = 'green' | 'yellow' | 'orange' | 'red';
@@ -41,6 +43,8 @@ export default function Slide1({
   checkInSettings,
   bellType,
   onNavigateToDagsplan,
+  showPointsList = true,
+  showProgressBar = true,
 }: Slide1Props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [classTotal, setClassTotal] = useState<number>(0);
@@ -229,24 +233,28 @@ export default function Slide1({
       </div>
 
       {/* PROGRESS BAR - går hele bredden */}
-      <div className="slide-1-progress">
-        <ClassGoalProgressBar
-          title={goalTitle}
-          current={classTotal}
-          goal={goal.target}
-          showReset={showReset}
-          onReset={handleReset}
-          fullBleed={true}
-        />
-      </div>
+      {showProgressBar && (
+        <div className="slide-1-progress">
+          <ClassGoalProgressBar
+            title={goalTitle}
+            current={classTotal}
+            goal={goal.target}
+            showReset={showReset}
+            onReset={handleReset}
+            fullBleed={true}
+          />
+        </div>
+      )}
 
       {/* CONTENT - to kolonner */}
       <div className="slide-1-content">
-        <div className="left-column">
-          <StudentList students={students} />
-        </div>
+        {showPointsList && (
+          <div className="left-column">
+            <StudentList students={students} />
+          </div>
+        )}
 
-        <div className="right-column">
+        <div className={showPointsList ? "right-column" : "right-column-full"}>
           <WelcomeSection
             message={welcomeMessage}
             instructions={instructions}

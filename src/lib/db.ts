@@ -748,6 +748,11 @@ const defaultMorningDisplaySettings: MorningDisplaySettings = {
   lastThemeId: undefined,
   lastThemeDate: undefined,
   useTimeBasedMessages: false,
+  welcomeMessage: '',
+  dailyInstructions: '',
+  showPointsList: true,
+  showProgressBar: true,
+  showSecretAgent: true,
 };const defaultSettings: AppSettings = {
   tabs: {
     overview: true, assessments: true, dailyCheck: true, observations: true, reports: true,

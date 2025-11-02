@@ -3,13 +3,16 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Save, Calendar } from 'lucide-react';
+import { Save, Calendar, Monitor, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
+import type { MorningDisplaySettings as MorningDisplaySettingsType } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 export default function MorningDisplaySettings() {
@@ -22,12 +25,18 @@ export default function MorningDisplaySettings() {
   const [instructionRotationMode, setInstructionRotationMode] = useState<'daily' | 'per-ringetid'>('daily');
   const [messagesText, setMessagesText] = useState('');
   const [instructionsText, setInstructionsText] = useState('');
+  const [showPointsList, setShowPointsList] = useState(true);
+  const [showProgressBar, setShowProgressBar] = useState(true);
+  const [showSecretAgent, setShowSecretAgent] = useState(true);
 
   useEffect(() => {
     if (settings?.morningDisplaySettings) {
       setClassName(settings.morningDisplaySettings.className);
       setMessageRotationMode(settings.morningDisplaySettings.messageRotationMode);
       setInstructionRotationMode(settings.morningDisplaySettings.instructionRotationMode);
+      setShowPointsList(settings.morningDisplaySettings.showPointsList ?? true);
+      setShowProgressBar(settings.morningDisplaySettings.showProgressBar ?? true);
+      setShowSecretAgent(settings.morningDisplaySettings.showSecretAgent ?? true);
     }
   }, [settings]);
 
@@ -75,6 +84,26 @@ export default function MorningDisplaySettings() {
     } catch (error) {
       console.error('Error saving class name:', error);
       alert('Feil ved lagring av klassenavn');
+    }
+  };
+
+  const handleSaveDisplayToggles = async () => {
+    try {
+      const current = await db.settings.get('userSettings');
+      if (current && current.morningDisplaySettings) {
+        await db.settings.update('userSettings', {
+          morningDisplaySettings: {
+            ...current.morningDisplaySettings,
+            showPointsList,
+            showProgressBar,
+            showSecretAgent,
+          },
+        });
+        alert('Visningsinnstillinger lagret!');
+      }
+    } catch (error) {
+      console.error('Error saving display toggles:', error);
+      alert('Feil ved lagring av innstillinger');
     }
   };
 
@@ -226,6 +255,90 @@ export default function MorningDisplaySettings() {
             <Button onClick={handleSaveRotationMode} className="w-full">
               <Save className="w-4 h-4 mr-2" />
               Lagre rotasjonsinnstillinger
+            </Button>
+          </div>
+
+          <Separator />
+
+          {/* Display toggles */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 mb-3">
+              <Monitor className="w-4 h-4" />
+              <h4 className="font-medium text-sm">Vis på display</h4>
+            </div>
+            
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div>
+                <Label htmlFor="show-points-list" className="font-medium cursor-pointer">
+                  Poengliste
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Vis elevenes poeng på venstre side
+                </p>
+              </div>
+              <Switch
+                id="show-points-list"
+                checked={showPointsList}
+                onCheckedChange={setShowPointsList}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div>
+                <Label htmlFor="show-progress-bar" className="font-medium cursor-pointer">
+                  Felles belønning (progress bar)
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Vis klassens fremgang mot neste belønning
+                </p>
+              </div>
+              <Switch
+                id="show-progress-bar"
+                checked={showProgressBar}
+                onCheckedChange={setShowProgressBar}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div>
+                <Label htmlFor="show-secret-agent" className="font-medium cursor-pointer">
+                  Hemmelig agent
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Vis "Hemmelig agent"-siden i displayet
+                </p>
+              </div>
+              <Switch
+                id="show-secret-agent"
+                checked={showSecretAgent}
+                onCheckedChange={setShowSecretAgent}
+              />
+            </div>
+
+            <Button onClick={handleSaveDisplayToggles} className="w-full mt-3">
+              <Save className="w-4 h-4 mr-2" />
+              Lagre visningsinnstillinger
+            </Button>
+          </div>
+
+          <Separator />
+
+          {/* Fullskjerm tips og preview */}
+          <div className="space-y-3">
+            <div className="rounded-lg bg-muted p-3 text-sm">
+              <p className="font-medium mb-1">💡 Tips</p>
+              <p className="text-muted-foreground">
+                Trykk <kbd className="px-2 py-1 bg-background border rounded text-xs">F11</kbd> for å vise displayet i fullskjerm på tavla.
+              </p>
+            </div>
+
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => window.open('/morning-display', '_blank')}
+            >
+              <ExternalLink className="mr-2 w-4 h-4" />
+              Forhåndsvis Display
             </Button>
           </div>
         </CardContent>

@@ -129,6 +129,17 @@
   overflow: hidden;
 }
 
+.right-column-full {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  overflow: hidden;
+}
+
 /* DEPRECATED - gamle klasser som ikke brukes lenger */
 .right-side {
   width: 65%;

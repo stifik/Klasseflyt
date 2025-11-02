@@ -229,6 +229,11 @@ export type MorningDisplaySettings = {
   lastThemeId?: number;
   lastThemeDate?: string;
   useTimeBasedMessages?: boolean; // Enable/disable time-based message system
+  welcomeMessage?: string; // Custom welcome message
+  dailyInstructions?: string; // Custom daily instructions
+  showPointsList?: boolean; // Show points list on display
+  showProgressBar?: boolean; // Show progress bar on display
+  showSecretAgent?: boolean; // Show secret agent page on display
 };
 
 // Time-based message system types
