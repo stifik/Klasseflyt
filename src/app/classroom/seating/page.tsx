@@ -35,7 +35,7 @@ export default function SeatingPage() {
 
     return (
         <div>
-            <PageHeader title="Klassekart" settingsUrl="/settings#hovedapp" />
+            <PageHeader title="Klassekart" settingsUrl="/settings#seatingChartLegend" />
             <SeatingChartTabContent
                 students={students}
                 appSettings={settings}

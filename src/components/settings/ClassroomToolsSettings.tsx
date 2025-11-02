@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useState } from "react";
-import type { AppSettings, Student, Workstation, GroupingRules, AvoidPair } from "@/lib/types";
+import type { AppSettings, Student, Workstation, GroupingRules, AvoidPair, SeatingChartRules, PlacementRule } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,171 @@ interface ClassroomToolsSettingsProps {
   settings: AppSettings;
   onSettingsChange: (newSettings: AppSettings) => void;
 }
+
+const SeatingChartRulesManager: React.FC<{
+  students: Student[];
+  appSettings: AppSettings;
+  onAppSettingsChange: (settings: AppSettings) => void;
+}> = ({ students, appSettings, onAppSettingsChange }) => {
+  const [selectedStudent1, setSelectedStudent1] = React.useState<number | "">("");
+  const [selectedStudent2, setSelectedStudent2] = React.useState<number | "">("");
+  const [selectedStudentForRule, setSelectedStudentForRule] = React.useState<number | "">("");
+  const [selectedPlacement, setSelectedPlacement] = React.useState<'front' | 'back'>('front');
+  const [avoidSameNeighbors, setAvoidSameNeighbors] = React.useState(appSettings.seatingChartRules?.avoidSameNeighbors ?? true);
+
+  const studentNameMap = React.useMemo(() => new Map(students.map(s => [s.id!, s.name])), [students]);
+  const rules = appSettings.seatingChartRules || { avoidPairs: [], placementRules: [], avoidSameNeighbors: true };
+
+  const handleRuleChange = (newRules: Partial<SeatingChartRules>) => {
+    onAppSettingsChange({
+      ...appSettings,
+      seatingChartRules: {
+        avoidPairs: rules.avoidPairs,
+        placementRules: rules.placementRules,
+        avoidSameNeighbors: rules.avoidSameNeighbors,
+        ...newRules
+      }
+    });
+  };
+
+  const handleAddAvoidPair = () => {
+    if (selectedStudent1 && selectedStudent2 && selectedStudent1 !== selectedStudent2) {
+      const student1Name = studentNameMap.get(selectedStudent1)!;
+      const student2Name = studentNameMap.get(selectedStudent2)!;
+      const newPair: AvoidPair = [student1Name, student2Name].sort() as AvoidPair;
+      
+      if (!rules.avoidPairs.some(p => p[0] === newPair[0] && p[1] === newPair[1])) {
+        handleRuleChange({ avoidPairs: [...rules.avoidPairs, newPair] });
+      }
+      setSelectedStudent1("");
+      setSelectedStudent2("");
+    }
+  };
+
+  const handleRemoveAvoidPair = (pairToRemove: AvoidPair) => {
+    const newAvoidPairs = rules.avoidPairs.filter(p => p[0] !== pairToRemove[0] || p[1] !== pairToRemove[1]);
+    handleRuleChange({ avoidPairs: newAvoidPairs });
+  };
+
+  const handleAddPlacementRule = () => {
+    if (selectedStudentForRule) {
+      const studentName = studentNameMap.get(selectedStudentForRule)!;
+      const newRule: PlacementRule = { studentName, placement: selectedPlacement };
+      
+      if (!rules.placementRules.some(r => r.studentName === studentName && r.placement === selectedPlacement)) {
+        handleRuleChange({ placementRules: [...rules.placementRules, newRule] });
+      }
+      setSelectedStudentForRule("");
+    }
+  };
+
+  const handleRemovePlacementRule = (ruleToRemove: PlacementRule) => {
+    const newPlacementRules = rules.placementRules.filter(r => r.studentName !== ruleToRemove.studentName || r.placement !== ruleToRemove.placement);
+    handleRuleChange({ placementRules: newPlacementRules });
+  };
+
+  const handleAvoidSameNeighborsChange = () => {
+    handleRuleChange({ avoidSameNeighbors: !avoidSameNeighbors });
+    setAvoidSameNeighbors(!avoidSameNeighbors);
+  };
+
+  return (
+    <div className="space-y-4 text-sm">
+      <div>
+        <Label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={avoidSameNeighbors}
+            onChange={handleAvoidSameNeighborsChange}
+            className="w-4 h-4"
+          />
+          <span>Unngå samme naboer som sist</span>
+        </Label>
+      </div>
+
+      <div>
+        <Label>Unngå par (sider som ikke skal sitte ved siden av hverandre)</Label>
+        <div className="p-2 border rounded-md mt-1 space-y-2">
+          <div className="flex gap-2">
+            <Select value={selectedStudent1 === "" ? "" : selectedStudent1.toString()} onValueChange={(v) => setSelectedStudent1(v ? parseInt(v) : "")}>
+              <SelectTrigger className="flex-1 text-xs">
+                <SelectValue placeholder="Elev 1..." />
+              </SelectTrigger>
+              <SelectContent>
+                {students.map(s => (
+                  <SelectItem key={s.id} value={s.id!.toString()}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedStudent2 === "" ? "" : selectedStudent2.toString()} onValueChange={(v) => setSelectedStudent2(v ? parseInt(v) : "")}>
+              <SelectTrigger className="flex-1 text-xs">
+                <SelectValue placeholder="Elev 2..." />
+              </SelectTrigger>
+              <SelectContent>
+                {students.map(s => (
+                  <SelectItem key={s.id} value={s.id!.toString()}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button onClick={handleAddAvoidPair} size="icon"><Plus /></Button>
+          </div>
+          {rules.avoidPairs.length > 0 && (
+            <div className="space-y-2 mt-2">
+              {rules.avoidPairs.map((pair, index) => (
+                <div key={index} className="flex items-center justify-between p-2 text-xs rounded-md bg-secondary">
+                  <span>{pair.join(' og ')}</span>
+                  <Button size="icon" variant="ghost" onClick={() => handleRemoveAvoidPair(pair)}>
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <Label>Plassering</Label>
+        <div className="p-2 border rounded-md mt-1 space-y-2">
+          <div className="flex gap-2">
+            <Select value={selectedStudentForRule === "" ? "" : selectedStudentForRule.toString()} onValueChange={(v) => setSelectedStudentForRule(v ? parseInt(v) : "")}>
+              <SelectTrigger className="flex-1 text-xs">
+                <SelectValue placeholder="Velg elev..." />
+              </SelectTrigger>
+              <SelectContent>
+                {students.map(s => (
+                  <SelectItem key={s.id} value={s.id!.toString()}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedPlacement} onValueChange={(v) => setSelectedPlacement(v as 'front' | 'back')}>
+              <SelectTrigger className="w-24 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="front">Foran</SelectItem>
+                <SelectItem value="back">Bak</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button onClick={handleAddPlacementRule} size="icon"><Plus /></Button>
+          </div>
+          {rules.placementRules.length > 0 && (
+            <div className="space-y-2 mt-2">
+              {rules.placementRules.map((rule, index) => (
+                <div key={index} className="flex items-center justify-between p-2 text-xs rounded-md bg-secondary">
+                  <span>{rule.studentName} ({rule.placement === 'front' ? 'Foran' : 'Bak'})</span>
+                  <Button size="icon" variant="ghost" onClick={() => handleRemovePlacementRule(rule)}>
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function ClassroomToolsSettings({ students, settings, onSettingsChange }: ClassroomToolsSettingsProps) {
   const [newWorkstationName, setNewWorkstationName] = useState("");
@@ -156,10 +321,21 @@ export default function ClassroomToolsSettings({ students, settings, onSettingsC
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="grouping-rules" className="border-b-0">
+          <AccordionItem value="grouping-rules" id="seatingChartLegend">
             <AccordionTrigger>Grupperegler</AccordionTrigger>
             <AccordionContent className="pt-2">
               <GroupingRulesManager
+                students={students}
+                appSettings={settings}
+                onAppSettingsChange={onSettingsChange}
+              />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="seating-rules" className="border-b-0">
+            <AccordionTrigger>Regler klassekart</AccordionTrigger>
+            <AccordionContent className="pt-2">
+              <SeatingChartRulesManager
                 students={students}
                 appSettings={settings}
                 onAppSettingsChange={onSettingsChange}

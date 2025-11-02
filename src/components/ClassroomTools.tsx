@@ -30,10 +30,6 @@ export const SeatingChartTabContent: FC<{
     history: SeatingChartRecord[];
 }> = ({ students, appSettings, onAppSettingsChange, onSeatingChartChange, history }) => {
     const [isGenerating, setIsGenerating] = useState(false);
-    const [selectedStudent1, setSelectedStudent1] = useState<string>("");
-    const [selectedStudent2, setSelectedStudent2] = useState<string>("");
-    const [selectedStudentForRule, setSelectedStudentForRule] = useState<string>("");
-    const [selectedPlacement, setSelectedPlacement] = useState<'front' | 'back'>('front');
     const { toast } = useToast();
 
     const layouts = useLiveQuery(() => db.seatingLayouts.toArray());
@@ -43,9 +39,6 @@ export const SeatingChartTabContent: FC<{
         }
         return undefined;
     }, [appSettings.selectedSeatingLayoutId]);
-
-    const avoidPairs = appSettings.seatingChartRules?.avoidPairs || [];
-    const placementRules = appSettings.seatingChartRules?.placementRules || [];
 
     const lastChart: SeatingChartDataType | null = history[0] ? JSON.parse(history[0].chartJson) : null;
 
@@ -59,34 +52,12 @@ export const SeatingChartTabContent: FC<{
         });
     }
 
-    const handleAddAvoidPair = () => {
-        if (selectedStudent1 && selectedStudent2 && selectedStudent1 !== selectedStudent2) {
-            const newPair: AvoidPair = [selectedStudent1, selectedStudent2].sort() as AvoidPair;
-            if (!avoidPairs.some(p => p[0] === newPair[0] && p[1] === newPair[1])) {
-                handleRuleChange({ avoidPairs: [...avoidPairs, newPair] });
-            }
-            setSelectedStudent1("");
-            setSelectedStudent2("");
-        }
-    };
-
-    const handleRemoveAvoidPair = (pairToRemove: AvoidPair) => {
-        const newAvoidPairs = avoidPairs.filter(p => p[0] !== pairToRemove[0] || p[1] !== pairToRemove[1]);
-        handleRuleChange({ avoidPairs: newAvoidPairs });
-    };
-
-    const handleAddPlacementRule = () => {
-        if (selectedStudentForRule) {
-            const newRules = placementRules.filter(r => r.studentName !== selectedStudentForRule);
-            handleRuleChange({ placementRules: [...newRules, { studentName: selectedStudentForRule, placement: selectedPlacement }] });
-            setSelectedStudentForRule("");
-        }
-    };
-
-    const handleRemovePlacementRule = (studentNameToRemove: string) => {
-        const newPlacementRules = placementRules.filter(r => r.studentName !== studentNameToRemove);
-        handleRuleChange({ placementRules: newPlacementRules });
-    };
+    /* Rules UI moved to Settings - keeping for reference
+    const handleAddAvoidPair = () => { ... };
+    const handleRemoveAvoidPair = () => { ... };
+    const handleAddPlacementRule = () => { ... };
+    const handleRemovePlacementRule = () => { ... };
+    */
 
     const getNeighbors = (r: number, c: number, chart: SeatingChartDataType): string[] => {
         const neighbors: string[] = [];
@@ -107,6 +78,8 @@ export const SeatingChartTabContent: FC<{
         let attempts = 0;
         const maxAttempts = 50;
         const avoidSameNeighbors = appSettings.seatingChartRules?.avoidSameNeighbors ?? true;
+        const avoidPairs = appSettings.seatingChartRules?.avoidPairs || [];
+        const placementRules = appSettings.seatingChartRules?.placementRules || [];
         const shuffle = <T,>(arr: T[]): T[] => [...arr].sort(() => Math.random() - 0.5);
     const lockedDesks: LockedDesk[] = activeLayout.lockedDesks || [];
         const newChart: SeatingChartDataType = Array(activeLayout.rows).fill(null).map(() => Array(activeLayout.cols).fill(null).map(() => []));
@@ -307,70 +280,7 @@ export const SeatingChartTabContent: FC<{
                         </div>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader><CardTitle>Regler</CardTitle></CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="flex items-center justify-between p-3 border rounded-lg">
-                            <Label htmlFor="avoid-neighbors">Unngå tidligere naboer</Label>
-                            <Switch
-                                id="avoid-neighbors"
-                                checked={appSettings.seatingChartRules?.avoidSameNeighbors ?? true}
-                                onCheckedChange={(checked) => handleRuleChange({ avoidSameNeighbors: checked })}
-                            />
-                        </div>
-                        <div>
-                            <Label>Unngå par</Label>
-                            <div className="flex gap-2 mt-1">
-                                <Select value={selectedStudent1} onValueChange={setSelectedStudent1}>
-                                    <SelectTrigger><SelectValue placeholder="Elev 1" /></SelectTrigger>
-                                    <SelectContent>{students.filter(s => s.name !== selectedStudent2).map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
-                                </Select>
-                                <Select value={selectedStudent2} onValueChange={setSelectedStudent2}>
-                                    <SelectTrigger><SelectValue placeholder="Elev 2" /></SelectTrigger>
-                                    <SelectContent>{students.filter(s => s.name !== selectedStudent1).map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
-                                </Select>
-                                <Button onClick={handleAddAvoidPair} size="icon"><Plus /></Button>
-                            </div>
-                            {avoidPairs.length > 0 && (
-                                <div className="space-y-2 mt-2">
-                                    {avoidPairs.map((pair, index) => (
-                                        <div key={index} className="flex items-center justify-between p-2 text-sm rounded-md bg-secondary">
-                                            <span>{pair.join(' og ')}</span>
-                                            <Button size="icon" variant="ghost" onClick={() => handleRemoveAvoidPair(pair)}><X className="w-4 h-4" /></Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        <div>
-                            <Label>Plassering</Label>
-                            <div className="flex gap-2 mt-1">
-                                <Select value={selectedStudentForRule} onValueChange={setSelectedStudentForRule}>
-                                    <SelectTrigger><SelectValue placeholder="Elev" /></SelectTrigger>
-                                    <SelectContent>{students.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
-                                </Select>
-                                <Select value={selectedPlacement} onValueChange={(v) => setSelectedPlacement(v as 'front' | 'back')}>
-                                    <SelectTrigger><SelectValue placeholder="Plassering" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="front">Foran</SelectItem>
-                                        <SelectItem value="back">Bak</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <Button onClick={handleAddPlacementRule} size="icon"><Plus /></Button>
-                            </div>
-                            {placementRules.length > 0 && (
-                                <div className="space-y-2 mt-2">
-                                    {placementRules.map((rule, index) => (
-                                        <div key={index} className="flex items-center justify-between p-2 text-sm rounded-md bg-secondary">
-                                            <span>{rule.studentName} ({rule.placement === 'front' ? 'Foran' : 'Bak'})</span>
-                                            <Button size="icon" variant="ghost" onClick={() => handleRemovePlacementRule(rule.studentName)}><X className="w-4 h-4" /></Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* Rules moved to Settings under Klasseverktøy tab */}
                 <Card>
                     <CardHeader><CardTitle>Layout</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
