@@ -221,7 +221,8 @@ export default function DatabaseSettings({ settings, onSettingsChange }: Databas
                     </Label>
                     <select
                       id="backup-reminder"
-                      value={settings.backupReminderDays || 0}
+                      // Default to weekly (7 days) when the setting is not present
+                      value={settings.backupReminderDays ?? 7}
                       onChange={(e) => {
                         const days = parseInt(e.target.value);
                         onSettingsChange({
