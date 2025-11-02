@@ -1,5 +1,7 @@
 import { db } from "./db";
 import type { Reward } from "./types";
+import { processAutoContribution } from './communityRewardService';
+import { v4 as uuidv4 } from 'uuid';
 
 // Resultat-type for belønningsfunksjoner
 export type RewardResult = {
@@ -208,7 +210,6 @@ export async function givePoints(
     }
 
     // Process auto-contribution to community rewards (if enabled)
-    const { processAutoContribution } = await import('./communityRewardService');
     const autoDeducted = await processAutoContribution(studentId, amount);
 
     // Calculate net points after auto-contribution
@@ -287,7 +288,6 @@ export async function buyReward(
     });
 
     // 3. Add purchased reward record
-    const { v4: uuidv4 } = await import('uuid');
     await db.purchasedRewards.add({
       purchaseId: uuidv4(),
       studentId,

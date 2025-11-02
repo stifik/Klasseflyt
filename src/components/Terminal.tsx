@@ -6,6 +6,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import type { Reward } from '@/lib/types';
 import { buyReward, givePoints, transferPoints, type RewardResult } from '@/lib/rewardService';
+import { makeDonation } from '@/lib/communityRewardService';
+import { CommunityRewardAchievedModal } from './CommunityRewardAchievedModal';
 import PosView from './PosView';
 import PodView from './PodView';
 import TransferView from './TransferView';
@@ -359,9 +361,6 @@ const Poengsentral: React.FC = () => {
       result = await givePoints(studentId, currentTransaction.amount, currentTransaction.description, cardId);
     } else if (currentTransaction.type === 'donation') {
       // Handle community reward donation
-      const { makeDonation } = await import('@/lib/communityRewardService');
-      const { CommunityRewardAchievedModal } = await import('./CommunityRewardAchievedModal');
-
       // If no amount set yet, we need to ask for it (only happens in manual mode)
       if (!currentTransaction.amount) {
         // This shouldn't happen as we handle amount in the dialog, but just in case
@@ -718,7 +717,6 @@ const Poengsentral: React.FC = () => {
                 activeTransactionRef.current = updatedTransaction;
 
                 // Process the donation directly with the amount
-                const { makeDonation } = await import('@/lib/communityRewardService');
                 const result = await makeDonation(
                   studentId,
                   activeTransaction.rewardId,
