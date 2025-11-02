@@ -126,25 +126,47 @@ function Home() {
 
   // Check onboarding status on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const onboardingCompleted = localStorage.getItem('onboardingCompleted');
-      const dashboardTourCompleted = localStorage.getItem('dashboardTourCompleted');
-      const isDemoModeFlag = localStorage.getItem('isDemoMode') === 'true';
-      
-      setIsDemoMode(isDemoModeFlag);
+    const checkOnboarding = async () => {
+      if (typeof window !== 'undefined') {
+        const onboardingCompleted = localStorage.getItem('onboardingCompleted');
+        const dashboardTourCompleted = localStorage.getItem('dashboardTourCompleted');
+        const isDemoModeFlag = localStorage.getItem('isDemoMode') === 'true';
+        
+        setIsDemoMode(isDemoModeFlag);
 
-      // If no onboarding completed, show welcome screen
-      if (!onboardingCompleted) {
-        setShowWelcome(true);
-      } else if (!dashboardTourCompleted) {
-        // Show tour if onboarding done but tour not completed
-        setShowTour(true);
-        setShowLocalStorageInfo(true);
+        // Check if there's existing data in the database
+        const existingStudents = await db.students.count();
+        
+        // Only show welcome if no onboarding AND no existing data
+        if (!onboardingCompleted && existingStudents === 0) {
+          setShowWelcome(true);
+        } else if (onboardingCompleted && !dashboardTourCompleted) {
+          // Show tour if onboarding done but tour not completed
+          setShowTour(true);
+          setShowLocalStorageInfo(true);
+        }
       }
-    }
+    };
+    
+    checkOnboarding();
   }, []);
 
   const handleSelectDemo = async () => {
+    // Check if there's existing data
+    const existingStudents = await db.students.count();
+    
+    if (existingStudents > 0) {
+      const confirmed = confirm(
+        '⚠️ ADVARSEL: Du har allerede data i appen!\n\n' +
+        'Å laste demo-data vil SLETTE all eksisterende data (elever, lekser, observasjoner, osv.)\n\n' +
+        'Er du helt sikker på at du vil fortsette?'
+      );
+      
+      if (!confirmed) {
+        return; // User cancelled
+      }
+    }
+    
     setShowWelcome(false);
     await loadDemoData();
     setIsDemoMode(true);
