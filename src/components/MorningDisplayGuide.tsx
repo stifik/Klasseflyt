@@ -12,20 +12,16 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Monitor, Pencil, Calendar, EyeOff } from "lucide-react";
+import { Monitor, Pencil, Calendar, EyeOff, ExternalLink } from "lucide-react";
 
 interface MorningDisplayGuideProps {
   open: boolean;
   onClose: () => void;
-  onNavigateToSettings: () => void;
-  onNavigateToSchedulePlanner: () => void;
 }
 
 export default function MorningDisplayGuide({ 
   open, 
-  onClose, 
-  onNavigateToSettings,
-  onNavigateToSchedulePlanner 
+  onClose
 }: MorningDisplayGuideProps) {
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
@@ -34,16 +30,6 @@ export default function MorningDisplayGuide({
       localStorage.setItem('morningDisplayGuideShown', 'true');
     }
     onClose();
-  };
-
-  const handleNavigateToSettings = () => {
-    handleClose();
-    onNavigateToSettings();
-  };
-
-  const handleNavigateToSchedule = () => {
-    handleClose();
-    onNavigateToSchedulePlanner();
   };
 
   return (
@@ -77,32 +63,53 @@ export default function MorningDisplayGuide({
           <div>
             <h4 className="font-medium mb-3">Tilpass displayet:</h4>
             <div className="space-y-2">
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={handleNavigateToSettings}
+              <a
+                href="/settings#morning#welcome-messages"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full"
               >
-                <Pencil className="h-4 w-4 mr-2" />
-                Rediger velkomstmelding
-              </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Rediger velkomstmelding
+                  <ExternalLink className="h-3 w-3 ml-auto" />
+                </Button>
+              </a>
               
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={handleNavigateToSchedule}
+              <a
+                href="/settings/weekly-schedule"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full"
               >
-                <Calendar className="h-4 w-4 mr-2" />
-                Rediger timeplan
-              </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Rediger timeplan
+                  <ExternalLink className="h-3 w-3 ml-auto" />
+                </Button>
+              </a>
               
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={handleNavigateToSettings}
+              <a
+                href="/settings#morning#display-toggles"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full"
               >
-                <EyeOff className="h-4 w-4 mr-2" />
-                Skjul poeng
-              </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                >
+                  <EyeOff className="h-4 w-4 mr-2" />
+                  Skjul poeng
+                  <ExternalLink className="h-3 w-3 ml-auto" />
+                </Button>
+              </a>
             </div>
           </div>
 

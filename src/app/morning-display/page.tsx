@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { db } from '@/lib/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { getTodayTheme, getThemeGradient } from '@/lib/themes';
 import { getTimeBasedMessage, isTimeBasedMessagesEnabled } from '@/lib/timeBasedMessages';
 import { getCurrentTime } from '@/lib/autoCheckInService';
@@ -23,6 +24,10 @@ type StudentWithStatus = {
 
 function MorningDisplayContent() {
   const searchParams = useSearchParams();
+  
+  // Use useLiveQuery for reactive updates
+  const liveSettings = useLiveQuery(() => db.settings.get('userSettings'));
+  
   const [currentSlide, setCurrentSlide] = useState(1);
   const [students, setStudents] = useState<StudentWithStatus[]>([]);
   const [welcomeMessage, setWelcomeMessage] = useState('God morgen!');
@@ -39,6 +44,15 @@ function MorningDisplayContent() {
   const [showPointsList, setShowPointsList] = useState(true);
   const [showProgressBar, setShowProgressBar] = useState(true);
   const [showSecretAgent, setShowSecretAgent] = useState(true);
+
+  // Auto-update display toggles when settings change
+  useEffect(() => {
+    if (liveSettings?.morningDisplaySettings) {
+      setShowPointsList(liveSettings.morningDisplaySettings.showPointsList ?? true);
+      setShowProgressBar(liveSettings.morningDisplaySettings.showProgressBar ?? true);
+      setShowSecretAgent(liveSettings.morningDisplaySettings.showSecretAgent ?? true);
+    }
+  }, [liveSettings]);
 
   // Check if guide should be shown on first visit (with 6 second delay)
   useEffect(() => {
@@ -397,24 +411,12 @@ function MorningDisplayContent() {
     return () => clearInterval(interval);
   }, [bellTimeId]); // Re-run when bellTimeId changes to reset student status
 
-  const handleNavigateToSettings = () => {
-    // Navigate to settings page and open Morning Display tab
-    window.location.href = '/settings#morning';
-  };
-
-  const handleNavigateToSchedulePlanner = () => {
-    // Navigate to weekly planner/schedule page
-    window.location.href = '/settings/weekly-schedule';
-  };
-
   return (
     <>
       {/* Guide popup */}
       <MorningDisplayGuide
         open={showGuide}
         onClose={() => setShowGuide(false)}
-        onNavigateToSettings={handleNavigateToSettings}
-        onNavigateToSchedulePlanner={handleNavigateToSchedulePlanner}
       />
 
       <div

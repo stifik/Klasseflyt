@@ -28,6 +28,25 @@ export default function MorningDisplaySettings() {
   const [showPointsList, setShowPointsList] = useState(true);
   const [showProgressBar, setShowProgressBar] = useState(true);
   const [showSecretAgent, setShowSecretAgent] = useState(true);
+  const [openAccordions, setOpenAccordions] = useState<string[]>([]);
+
+  // Check for anchor links and open relevant sections
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      if (hash === '#welcome-messages') {
+        setOpenAccordions(['messages']);
+        setTimeout(() => {
+          document.getElementById('welcome-messages')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      } else if (hash === '#display-toggles') {
+        // Display toggles are always visible (not in accordion)
+        setTimeout(() => {
+          document.getElementById('display-toggles')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (settings?.morningDisplaySettings) {
@@ -39,6 +58,31 @@ export default function MorningDisplaySettings() {
       setShowSecretAgent(settings.morningDisplaySettings.showSecretAgent ?? true);
     }
   }, [settings]);
+
+  // Auto-save toggles when they change
+  useEffect(() => {
+    const saveToggles = async () => {
+      if (!settings?.morningDisplaySettings) return;
+      
+      try {
+        await db.settings.update('userSettings', {
+          morningDisplaySettings: {
+            ...settings.morningDisplaySettings,
+            showPointsList,
+            showProgressBar,
+            showSecretAgent,
+          },
+        });
+      } catch (error) {
+        console.error('Error auto-saving display toggles:', error);
+      }
+    };
+
+    // Only save if settings are loaded (not initial state)
+    if (settings?.morningDisplaySettings) {
+      saveToggles();
+    }
+  }, [showPointsList, showProgressBar, showSecretAgent]);
 
   useEffect(() => {
     if (welcomeMessages) {
@@ -87,25 +131,7 @@ export default function MorningDisplaySettings() {
     }
   };
 
-  const handleSaveDisplayToggles = async () => {
-    try {
-      const current = await db.settings.get('userSettings');
-      if (current && current.morningDisplaySettings) {
-        await db.settings.update('userSettings', {
-          morningDisplaySettings: {
-            ...current.morningDisplaySettings,
-            showPointsList,
-            showProgressBar,
-            showSecretAgent,
-          },
-        });
-        alert('Visningsinnstillinger lagret!');
-      }
-    } catch (error) {
-      console.error('Error saving display toggles:', error);
-      alert('Feil ved lagring av innstillinger');
-    }
-  };
+
 
   const handleSaveRotationMode = async () => {
     try {
@@ -261,7 +287,7 @@ export default function MorningDisplaySettings() {
           <Separator />
 
           {/* Display toggles */}
-          <div className="space-y-2">
+          <div className="space-y-2" id="display-toggles">
             <div className="flex items-center gap-2 mb-3">
               <Monitor className="w-4 h-4" />
               <h4 className="font-medium text-sm">Vis på display</h4>
@@ -314,11 +340,6 @@ export default function MorningDisplaySettings() {
                 onCheckedChange={setShowSecretAgent}
               />
             </div>
-
-            <Button onClick={handleSaveDisplayToggles} className="w-full mt-3">
-              <Save className="w-4 h-4 mr-2" />
-              Lagre visningsinnstillinger
-            </Button>
           </div>
 
           <Separator />
@@ -345,9 +366,14 @@ export default function MorningDisplaySettings() {
       </Card>
 
       {/* Accordions for resten */}
-      <Accordion type="multiple" defaultValue={[]} className="w-full space-y-4">
+      <Accordion 
+        type="multiple" 
+        value={openAccordions}
+        onValueChange={setOpenAccordions}
+        className="w-full space-y-4"
+      >
         <AccordionItem value="messages" className="border-b-0">
-          <Card>
+          <Card id="welcome-messages">
             <CardHeader>
               <AccordionTrigger className="p-0 hover:no-underline">
                 <CardTitle>Velkomstmeldinger ({welcomeMessages?.length || 0})</CardTitle>
