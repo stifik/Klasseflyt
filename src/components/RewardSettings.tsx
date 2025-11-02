@@ -13,6 +13,7 @@ import { Trash2, Plus, TrendingUp, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import ActionsSettings from './settings/ActionsSettings';
 
 export default function RewardSettings() {
   const { toast } = useToast();
@@ -279,9 +280,10 @@ export default function RewardSettings() {
       </div>
 
       <Tabs defaultValue="simple" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-2xl">
+        <TabsList className="grid w-full grid-cols-4 max-w-3xl">
           <TabsTrigger value="simple">Enkel</TabsTrigger>
           <TabsTrigger value="advanced">Avansert</TabsTrigger>
+          <TabsTrigger value="actions">Handlinger (POD)</TabsTrigger>
           <TabsTrigger value="community">Fellesspotter</TabsTrigger>
         </TabsList>
 
@@ -767,6 +769,11 @@ export default function RewardSettings() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ACTIONS TAB - Positive handlinger (POD) */}
+        <TabsContent value="actions" className="space-y-6">
+          <ActionsSettings />
         </TabsContent>
 
         {/* COMMUNITY TAB - Fellesspotter (Delte Mål) */}

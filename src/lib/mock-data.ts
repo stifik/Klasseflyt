@@ -1,5 +1,6 @@
 import { db } from './db';
 import { v4 as uuidv4 } from 'uuid';
+import type { Reward } from './types';
 
 /**
  * Loads demo data into the database for new users who want to try the app
@@ -394,6 +395,69 @@ export async function loadDemoData() {
   ];
   
   await db.scheduleTemplates.bulkAdd(demoScheduleTemplates);
+  
+  // ==== BELØNNINGER (demo rewards) ====
+  
+  const demoRewards: Omit<Reward, 'id'>[] = [
+    {
+      name: 'Godteri',
+      cost: 50,
+      basePrice: 50,
+      currentPrice: 50,
+      emoji: '🍬'
+    },
+    {
+      name: 'Ekstra friminutt',
+      cost: 75,
+      basePrice: 75,
+      currentPrice: 75,
+      emoji: '⭐'
+    },
+    {
+      name: 'Spilltime',
+      cost: 100,
+      basePrice: 100,
+      currentPrice: 100,
+      emoji: '🎮'
+    },
+    {
+      name: 'Velg lesestoffen',
+      cost: 60,
+      basePrice: 60,
+      currentPrice: 60,
+      emoji: '📚'
+    },
+    {
+      name: 'Kunstprosjekt',
+      cost: 120,
+      basePrice: 120,
+      currentPrice: 120,
+      emoji: '🎨'
+    },
+    {
+      name: 'Musikk-pause',
+      cost: 80,
+      basePrice: 80,
+      currentPrice: 80,
+      emoji: '🎵'
+    },
+    {
+      name: 'Klasseleder for dagen',
+      cost: 150,
+      basePrice: 150,
+      currentPrice: 150,
+      emoji: '🏆'
+    },
+    {
+      name: 'Lek-time',
+      cost: 200,
+      basePrice: 200,
+      currentPrice: 200,
+      emoji: '🎪'
+    }
+  ];
+  
+  await db.rewards.bulkAdd(demoRewards as any);
   
   // ==== KLASSEKART (7×8 layout med 16 pulter) ====
   
