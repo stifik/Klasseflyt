@@ -190,6 +190,21 @@ export default function ClassroomToolsSettings({ students, settings, onSettingsC
   const [editingWorkstationId, setEditingWorkstationId] = useState<string | null>(null);
   const [editingWorkstationName, setEditingWorkstationName] = useState("");
   const [editingWorkstationCapacity, setEditingWorkstationCapacity] = useState<string>("");
+  const [openAccordions, setOpenAccordions] = useState<string[]>([]);
+
+  React.useEffect(() => {
+    // Check if we're navigating to the seatingChartLegend anchor
+    if (typeof window !== 'undefined' && window.location.hash === '#seatingChartLegend') {
+      setOpenAccordions(['seating-rules']);
+      // Scroll to the element after a small delay to ensure it's rendered
+      setTimeout(() => {
+        const element = document.getElementById('seatingChartLegend');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
+  }, []);
 
   const handleAddWorkstation = () => {
     if (newWorkstationName.trim()) {
@@ -245,7 +260,7 @@ export default function ClassroomToolsSettings({ students, settings, onSettingsC
         <CardDescription>Administrer arbeidsstasjoner og grupperegler</CardDescription>
       </CardHeader>
       <CardContent>
-        <Accordion type="multiple" defaultValue={[]} className="w-full">
+        <Accordion type="multiple" value={openAccordions} onValueChange={setOpenAccordions} className="w-full">
           <AccordionItem value="workstations">
             <AccordionTrigger>Arbeidsstasjoner ({(settings.workstations || []).length})</AccordionTrigger>
             <AccordionContent className="pt-2">
@@ -321,7 +336,7 @@ export default function ClassroomToolsSettings({ students, settings, onSettingsC
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="grouping-rules" id="seatingChartLegend">
+          <AccordionItem value="grouping-rules">
             <AccordionTrigger>Grupperegler</AccordionTrigger>
             <AccordionContent className="pt-2">
               <GroupingRulesManager
@@ -332,7 +347,7 @@ export default function ClassroomToolsSettings({ students, settings, onSettingsC
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="seating-rules" className="border-b-0">
+          <AccordionItem value="seating-rules" id="seatingChartLegend" className="border-b-0">
             <AccordionTrigger>Regler klassekart</AccordionTrigger>
             <AccordionContent className="pt-2">
               <SeatingChartRulesManager
