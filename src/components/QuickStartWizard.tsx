@@ -78,6 +78,28 @@ export function QuickStartWizard({ open, onComplete, onBack }: QuickStartWizardP
         localStorage.setItem('onboardingCompleted', 'true');
       }
 
+      // Also persist teacher name into app settings so Dashboard can read it
+      try {
+        const existingSettings = await db.settings.get('userSettings');
+        if (existingSettings) {
+          await db.settings.put({
+            id: 'userSettings',
+            ...existingSettings,
+            reportSettings: {
+              ...(existingSettings.reportSettings || {}),
+              teacherName: teacherName
+            }
+          });
+        } else {
+          await db.settings.put({
+            id: 'userSettings',
+            reportSettings: { teacherName }
+          });
+        }
+      } catch (err) {
+        console.error('Failed to persist teacher name to settings:', err);
+      }
+
       onComplete();
     } catch (error) {
       console.error('Error saving data:', error);
