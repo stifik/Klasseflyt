@@ -242,10 +242,13 @@ export async function handleManualCheckIn(
   studentId: number,
   activeSession: ActiveCheckInSession
 ): Promise<CheckInTapResult> {
+  console.log('[handleManualCheckIn] Called with studentId:', studentId, 'activeSession:', activeSession);
+  
   // Find student by ID
   const student = await db.students.get(studentId);
 
   if (!student || !student.id) {
+    console.error('[handleManualCheckIn] Student not found:', studentId);
     return {
       success: false,
       message: 'Eleven ble ikke funnet',
@@ -253,6 +256,7 @@ export async function handleManualCheckIn(
     };
   }
 
+  console.log('[handleManualCheckIn] Student found:', student.name, 'Checking existing check-in');
   // Check if already checked in
   console.debug('[handleManualCheckIn] Checking existing check-in', { studentId: student.id, bellTimeId: activeSession.bellTime.id });
   const alreadyCheckedIn = await hasStudentCheckedIn(student.id, activeSession.bellTime.id!);

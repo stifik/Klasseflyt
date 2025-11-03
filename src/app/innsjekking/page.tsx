@@ -1,21 +1,22 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback, useRef } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useCheckInTimer } from "@/hooks/useCheckInTimer";
-import { handleManualCheckIn } from "@/lib/checkInHandler";
+import { handleManualCheckIn, handleCheckInTap } from "@/lib/checkInHandler";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Users, Play, Target, UserX } from "lucide-react";
+import { Clock, Users, Play, Target, UserX, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import PageHeader from "@/components/navigation/PageHeader";
 import type { Student } from "@/lib/types";
 import { useEffect } from "react";
+import { useNFCWebSocket } from "@/hooks/useNFCWebSocket";
 
 /**
  * Dedikert innsjekking-side
@@ -134,6 +135,79 @@ export default function InnsjekkingPage() {
   
   const { activeSession, startManualCheckIn, stopManualCheckIn } = useCheckInTimer();
 
+  // Check if NFC is enabled in settings
+  const nfcEnabled = settings?.nfcEnabled ?? false;
+
+  // Handle NFC card detection during check-in
+  const handleNFCCardDetected = useCallback(async (card: { uid: string; atr?: string }) => {
+    console.log('🔵 NFC Card detected during check-in:', card.uid);
+    
+    if (!activeSession) {
+      console.log('⚠️ No active check-in session, ignoring card');
+      return;
+    }
+
+    console.log('✅ Active session found, processing check-in tap');
+    console.log('   Session:', {
+      bellTimeId: activeSession.bellTime.id,
+      bellTimeType: activeSession.bellTime.type,
+      bellTimeTime: activeSession.bellTime.time,
+      isManual: activeSession.isManual
+    });
+
+    try {
+      const result = await handleCheckInTap(card.uid, activeSession);
+      
+      console.log('📋 Check-in tap result:', result);
+
+      if (result.success) {
+        toast({
+          title: "✅ Innsjekket",
+          description: `${result.studentName} sjekket inn${result.pointsAwarded ? ` (+${result.pointsAwarded} poeng)` : ''}`,
+        });
+        // Force re-render to update UI
+        setForceUpdate(prev => prev + 1);
+      } else {
+        toast({
+          title: "⚠️ Feil",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error processing NFC check-in:', error);
+      toast({
+        title: "❌ Feil",
+        description: "Kunne ikke behandle NFC-kortet",
+        variant: "destructive",
+      });
+    }
+  }, [activeSession, toast]);
+
+  // WebSocket NFC setup for real-time card detection (only if enabled)
+  const nfcWebSocket = useNFCWebSocket({
+    enabled: nfcEnabled,
+    autoConnect: nfcEnabled,
+    onCardDetected: handleNFCCardDetected,
+    onError: (error, message) => {
+      console.error('❌ NFC WebSocket error:', error, message);
+      toast({
+        title: "NFC-feil",
+        description: message || 'Feil ved kortlesing',
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Debug log when NFC status changes
+  useEffect(() => {
+    console.log('🔍 Innsjekking NFC Status Update:');
+    console.log('   nfcEnabled:', nfcEnabled);
+    console.log('   WebSocket status:', nfcWebSocket.status);
+    console.log('   Readers connected:', nfcWebSocket.readersConnected);
+    console.log('   Active session:', activeSession ? 'Yes' : 'No');
+  }, [nfcEnabled, nfcWebSocket.status, nfcWebSocket.readersConnected, activeSession]);
+
   // Get current seating chart
   const currentSeatingChart = useLiveQuery(async () => {
     const latest = await db.seatingChartHistory.orderBy('createdAt').last();
@@ -217,7 +291,22 @@ export default function InnsjekkingPage() {
 
   // Manual check-in handler
   const handleStudentClick = async (student: Student) => {
-    if (!activeSession || !student.id) return;
+    console.log('[STUDENT CLICK] Clicked:', student.name, 'activeSession:', activeSession, 'studentId:', student.id);
+    
+    if (!activeSession) {
+      console.error('[STUDENT CLICK] No active session!');
+      toast({
+        title: "Ingen aktiv innsjekking",
+        description: "Start en innsjekking først",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!student.id) {
+      console.error('[STUDENT CLICK] No student ID!');
+      return;
+    }
     
     // Check if already checked in
     if (checkedInStudentIds.has(student.id)) {
@@ -228,6 +317,7 @@ export default function InnsjekkingPage() {
       return;
     }
 
+    console.log('[STUDENT CLICK] Calling handleManualCheckIn with studentId:', student.id, 'bellTime:', activeSession.bellTime);
     const result = await handleManualCheckIn(student.id, activeSession);
     
     if (result.success) {
@@ -253,13 +343,24 @@ export default function InnsjekkingPage() {
   const StudentButton = ({ student }: { student: Student }) => {
     const isCheckedIn = checkedInStudentIds.has(student.id!);
     const isAbsent = isStudentAbsent(student.id!);
+    const isDisabled = !activeSession || isCheckedIn || isAbsent;
+    
+    console.log('[StudentButton] Rendering button for', student.name, {
+      isDisabled,
+      activeSession: !!activeSession,
+      isCheckedIn,
+      isAbsent
+    });
     
     return (
       <div className="relative w-full aspect-[7/5]">
         <Button
           variant={isCheckedIn ? "default" : "outline"}
-          disabled={!activeSession || isCheckedIn || isAbsent}
-          onClick={() => handleStudentClick(student)}
+          disabled={isDisabled}
+          onClick={() => {
+            console.log('[StudentButton] Button clicked for', student.name, 'disabled:', isDisabled);
+            handleStudentClick(student);
+          }}
           className={cn("justify-center h-auto py-2 flex-col w-full h-full", {
             "bg-green-600 hover:bg-green-700 text-white": isCheckedIn,
             "opacity-50": !activeSession || isAbsent,
@@ -391,7 +492,7 @@ export default function InnsjekkingPage() {
       )}
 
       {/* Quick stats + Manual controls */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Status</CardTitle>
@@ -409,6 +510,43 @@ export default function InnsjekkingPage() {
               {activeSession
                 ? `${activeSession.bellTime.type === 'morgen' ? 'Morgen' : 'Ordinær'}`
                 : 'Ingen sesjon'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">NFC-status</CardTitle>
+            {nfcWebSocket.status === 'connected' ? (
+              <Wifi className="h-4 w-4 text-green-600 dark:text-green-400" />
+            ) : (
+              <WifiOff className="h-4 w-4 text-muted-foreground" />
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {nfcEnabled ? (
+                nfcWebSocket.status === 'connected' ? (
+                  <span className="text-green-600 dark:text-green-400">Klar</span>
+                ) : nfcWebSocket.status === 'connecting' ? (
+                  <span className="text-yellow-600 dark:text-yellow-400">Kobler</span>
+                ) : (
+                  <span className="text-red-600 dark:text-red-400">Frakoblet</span>
+                )
+              ) : (
+                <span className="text-muted-foreground">Av</span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {nfcEnabled ? (
+                nfcWebSocket.status === 'connected' ? (
+                  `${nfcWebSocket.readersConnected} leser${nfcWebSocket.readersConnected !== 1 ? 'e' : ''}`
+                ) : (
+                  'Ikke tilkoblet'
+                )
+              ) : (
+                'Skru på i innstillinger'
+              )}
             </p>
           </CardContent>
         </Card>

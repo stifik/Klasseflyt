@@ -430,32 +430,84 @@ export default function RewardSettings() {
               </div>
 
               {/* Enable/Disable NFC */}
-              <div className="flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                <div className="space-y-1">
-                  <Label htmlFor="nfc-enabled" className="text-base font-semibold">
-                    📱 Aktiver NFC-funksjonalitet
-                  </Label>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Krever NFC-hardware og bridge-oppsett. Viser NFC-knapper i Poengsentral og Innsjekking.
-                  </p>
+              <div className="space-y-3 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border-2 border-purple-200 dark:border-purple-800">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label htmlFor="nfc-enabled" className="text-base font-semibold">
+                      📱 Aktiver NFC-funksjonalitet
+                    </Label>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Krever NFC-hardware og bridge-oppsett. Viser NFC-knapper i Poengsentral og Innsjekking.
+                    </p>
+                  </div>
+                  <Switch
+                    id="nfc-enabled"
+                    checked={dbSettings?.nfcEnabled || false}
+                    onCheckedChange={async (checked) => {
+                      const settings = await db.settings.get('userSettings');
+                      if (settings) {
+                        settings.nfcEnabled = checked;
+                        await db.settings.put(settings);
+                        toast({
+                          title: checked ? "NFC aktivert" : "NFC deaktivert",
+                          description: checked 
+                            ? "NFC-funksjoner er nå synlige i appen. Husk å starte bridge-serveren!" 
+                            : "NFC-funksjoner er skjult",
+                        });
+                      }
+                    }}
+                  />
                 </div>
-                <Switch
-                  id="nfc-enabled"
-                  checked={dbSettings?.nfcEnabled || false}
-                  onCheckedChange={async (checked) => {
-                    const settings = await db.settings.get('userSettings');
-                    if (settings) {
-                      settings.nfcEnabled = checked;
-                      await db.settings.put(settings);
-                      toast({
-                        title: checked ? "NFC aktivert" : "NFC deaktivert",
-                        description: checked 
-                          ? "NFC-funksjoner er nå synlige i appen" 
-                          : "NFC-funksjoner er skjult",
-                      });
-                    }
-                  }}
-                />
+                
+                {/* NFC Setup Instructions */}
+                {dbSettings?.nfcEnabled && (
+                  <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded border border-purple-200 dark:border-purple-700">
+                    <p className="text-sm font-semibold mb-2">🚀 Slik starter du NFC Bridge Server:</p>
+                    <ol className="text-sm text-gray-700 dark:text-gray-300 space-y-1 list-decimal list-inside">
+                      <li>Åpne PowerShell/Terminal</li>
+                      <li>Naviger til <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">nfc-bridge</code> mappen</li>
+                      <li>Kjør kommando: <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">npm start</code></li>
+                      <li>Sjekk at serveren kjører på <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">localhost:3001</code></li>
+                    </ol>
+                    <div className="mt-3 flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('http://localhost:3001/health');
+                            if (response.ok) {
+                              toast({
+                                title: "✅ Bridge-server kjører!",
+                                description: "NFC Bridge Server er tilgjengelig og klar til bruk",
+                              });
+                            } else {
+                              toast({
+                                title: "⚠️ Bridge-server svarer ikke korrekt",
+                                description: "Serveren kjører, men svarer ikke som forventet",
+                                variant: "destructive"
+                              });
+                            }
+                          } catch (error) {
+                            toast({
+                              title: "❌ Kan ikke koble til bridge-server",
+                              description: "Sjekk at serveren kjører på localhost:3001",
+                              variant: "destructive"
+                            });
+                          }
+                        }}
+                      >
+                        Test tilkobling
+                      </Button>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Klikk for å sjekke om bridge-serveren kjører
+                      </p>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      💡 Bridge-serveren må kjøre i bakgrunnen når du bruker NFC-funksjoner
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Show configuration only if dynamic mode is enabled */}

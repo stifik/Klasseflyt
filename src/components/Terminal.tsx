@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
@@ -135,6 +135,15 @@ const Poengsentral: React.FC = () => {
       }
     }
   });
+
+  // Debug log when nfcEnabled or WebSocket status changes
+  useEffect(() => {
+    console.log('🔍 Terminal NFC Status Update:');
+    console.log('   nfcEnabled:', nfcEnabled);
+    console.log('   WebSocket status:', nfcWebSocket.status);
+    console.log('   Readers connected:', nfcWebSocket.readersConnected);
+    console.log('   Current reader:', nfcWebSocket.currentReader);
+  }, [nfcEnabled, nfcWebSocket.status, nfcWebSocket.readersConnected, nfcWebSocket.currentReader]);
 
   // Handle NFC card scanning
   const handleNFCCard = useCallback(async (cardUid: string) => {
@@ -474,18 +483,41 @@ const Poengsentral: React.FC = () => {
   };
 
   const handleStartNFCMode = async () => {
+    console.log('🎯 handleStartNFCMode called');
+    console.log('   nfcEnabled:', nfcEnabled);
+    console.log('   nfcWebSocket.status:', nfcWebSocket.status);
+    console.log('   nfcWebSocket.readersConnected:', nfcWebSocket.readersConnected);
+    
     setPaymentMode('nfc');
     setNfcStatus('waiting');
     setNfcMessage('Kobler til kortleser...');
     
-    // Check WebSocket status
-    if (nfcWebSocket.status === 'disconnected' || nfcWebSocket.status === 'error') {
-      setNfcMessage('NFC Bridge Server er ikke tilkoblet. Sjekk at bridge-serveren kjører.');
+    // Check if NFC is enabled in settings first
+    if (!nfcEnabled) {
+      console.log('❌ NFC is not enabled in settings');
+      setNfcMessage('NFC er ikke aktivert. Gå til Innstillinger → Belønning → Avansert for å aktivere NFC.');
       soundEffects.play('error');
       setTimeout(() => {
         setNfcStatus('idle');
         setPaymentMode('manual');
-      }, 3000);
+      }, 5000);
+      return;
+    }
+    
+    // Check WebSocket status
+    if (nfcWebSocket.status === 'disconnected' || nfcWebSocket.status === 'error') {
+      console.log('❌ WebSocket is not connected. Status:', nfcWebSocket.status);
+      console.log('   Attempting to manually trigger connection...');
+      
+      // Try to connect manually
+      nfcWebSocket.connect();
+      
+      setNfcMessage('NFC Bridge Server er ikke tilkoblet. Prøver å koble til... Vent litt og prøv igjen.');
+      soundEffects.play('error');
+      setTimeout(() => {
+        setNfcStatus('idle');
+        setPaymentMode('manual');
+      }, 5000);
       return;
     }
 
@@ -858,18 +890,33 @@ const Poengsentral: React.FC = () => {
         </div>
 
         {nfcEnabled && (
-          <div className="text-center mt-8">
-            {typeof window !== 'undefined' && nfc.isSupported && rfidCards.length > 0 ? (
-              <p className="text-green-600 dark:text-green-400 font-medium flex items-center justify-center gap-2">
-                <CheckCircle2 className="w-5 h-5" />
-                NFC-støtte aktivert ({rfidCards.length} kort registrert)
-              </p>
-            ) : typeof window !== 'undefined' && !nfc.isSupported ? (
-              <p className="text-gray-500 dark:text-gray-400">
-                💡 Start NFC Bridge Server for kortlesing
+          <div className="text-center mt-8 space-y-2">
+            {/* WebSocket Status */}
+            <div className="flex items-center justify-center gap-2">
+              {nfcWebSocket.status === 'connected' || nfcWebSocket.status === 'monitoring' ? (
+                <p className="text-green-600 dark:text-green-400 font-medium flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5" />
+                  NFC Bridge tilkoblet ({nfcWebSocket.readersConnected} kortleser{nfcWebSocket.readersConnected !== 1 ? 'e' : ''})
+                </p>
+              ) : nfcWebSocket.status === 'connecting' ? (
+                <p className="text-yellow-600 dark:text-yellow-400 flex items-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Kobler til NFC Bridge...
+                </p>
+              ) : (
+                <p className="text-red-600 dark:text-red-400 flex items-center gap-2">
+                  ⚠️ NFC Bridge ikke tilkoblet - Start bridge-serveren på localhost:3001
+                </p>
+              )}
+            </div>
+            
+            {/* RFID Cards Status */}
+            {typeof window !== 'undefined' && rfidCards.length > 0 ? (
+              <p className="text-gray-600 dark:text-gray-400 text-sm">
+                {rfidCards.length} RFID-kort registrert
               </p>
             ) : (
-              <p className="text-gray-500 dark:text-gray-400">
+              <p className="text-gray-500 dark:text-gray-400 text-sm">
                 💡 Registrer RFID-kort i innstillinger
               </p>
             )}

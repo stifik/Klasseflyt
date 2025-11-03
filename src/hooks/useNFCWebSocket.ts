@@ -133,24 +133,33 @@ export function useNFCWebSocket({
   }, [onCardDetected, onCardRemoved, onError, updateStatus]);
 
   const connect = useCallback(() => {
-    if (!enabled) return;
-    if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) return;
+    if (!enabled) {
+      console.log('🔴 NFC WebSocket: Cannot connect - NFC is disabled');
+      return;
+    }
+    if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
+      console.log('🟡 NFC WebSocket: Already connected or connecting');
+      return;
+    }
 
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current as number);
       reconnectTimerRef.current = null;
     }
 
+    console.log('🔵 NFC WebSocket: Attempting to connect to', WS_URL);
     try {
       updateStatus('connecting');
       const ws = new WebSocket(WS_URL);
 
       ws.onopen = () => {
+        console.log('✅ NFC WebSocket: Connected successfully to', WS_URL);
         updateStatus('connected');
         reconnectAttemptsRef.current = 0;
         if (autoMonitor || isMonitoringRef.current) {
           setTimeout(() => {
             if (wsRef.current?.readyState === WebSocket.OPEN) {
+              console.log('👁️ NFC WebSocket: Starting monitoring...');
               wsRef.current.send(JSON.stringify({ command: 'start_monitoring' }));
             }
           }, 100);
@@ -174,6 +183,7 @@ export function useNFCWebSocket({
       };
 
       ws.onclose = (event: CloseEvent) => {
+        console.log('❌ NFC WebSocket: Connection closed. Code:', event.code, 'Reason:', event.reason || 'none');
         wsRef.current = null;
         updateStatus('disconnected');
         const wasManualClose = manualDisconnectRef.current === true || event.code === 1000;
@@ -181,8 +191,10 @@ export function useNFCWebSocket({
           reconnectAttemptsRef.current += 1;
           const attempt = reconnectAttemptsRef.current;
           const backoff = Math.min(reconnectInterval * Math.pow(2, attempt - 1), 30000);
+          console.log(`🔄 NFC WebSocket: Reconnecting in ${backoff}ms (attempt ${attempt})...`);
           reconnectTimerRef.current = window.setTimeout(() => connect(), backoff);
         } else if (!wasManualClose) {
+          console.log('⚠️ NFC WebSocket: Not reconnecting - manual close or not enabled');
           onError?.('WEBSOCKET_ERROR', 'Failed to connect to NFC bridge - is the server running?');
         }
       };
@@ -266,13 +278,16 @@ export function useNFCWebSocket({
     sendCommand('scan_once');
   }, [sendCommand]);
 
-  // Auto-connect on mount if enabled
+  // Auto-connect on mount if enabled, and reconnect if enabled changes from false to true
   useEffect(() => {
     // Reset manual disconnect when mounting a new hook instance
     manualDisconnectRef.current = false;
 
     if (enabled && autoConnect) {
       connect();
+    } else if (!enabled) {
+      // If NFC is disabled, disconnect
+      disconnect();
     }
 
     return () => {
@@ -280,9 +295,9 @@ export function useNFCWebSocket({
       manualDisconnectRef.current = true;
       disconnect();
     };
-    // Only run on mount/unmount
+    // Re-run when enabled changes so we connect when NFC is turned on
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enabled]);
 
   // Keep ws.onmessage in sync if the handler changes after connection
   useEffect(() => {
