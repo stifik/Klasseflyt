@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Users, Play, Target, UserX, Wifi, WifiOff } from "lucide-react";
+import { Clock, Users, Play, Target, UserX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import PageHeader from "@/components/navigation/PageHeader";
@@ -139,8 +139,8 @@ export default function InnsjekkingPage() {
   const nfcEnabled = settings?.nfcEnabled ?? false;
 
   // Handle NFC card detection during check-in
-  const handleNFCCardDetected = useCallback(async (card: { uid: string; atr?: string }) => {
-    console.log('🔵 NFC Card detected during check-in:', card.uid);
+  const handleNFCCardDetected = useCallback(async (card: { uid: string; cardId: string; length: number; reader: string; timestamp: string }) => {
+    console.log('🔵 NFC Card detected during check-in:', card);
     
     if (!activeSession) {
       console.log('⚠️ No active check-in session, ignoring card');
@@ -188,6 +188,7 @@ export default function InnsjekkingPage() {
   const nfcWebSocket = useNFCWebSocket({
     enabled: nfcEnabled,
     autoConnect: nfcEnabled,
+    autoMonitor: true, // Auto-start monitoring when connected
     onCardDetected: handleNFCCardDetected,
     onError: (error, message) => {
       console.error('❌ NFC WebSocket error:', error, message);
@@ -291,10 +292,7 @@ export default function InnsjekkingPage() {
 
   // Manual check-in handler
   const handleStudentClick = async (student: Student) => {
-    console.log('[STUDENT CLICK] Clicked:', student.name, 'activeSession:', activeSession, 'studentId:', student.id);
-    
     if (!activeSession) {
-      console.error('[STUDENT CLICK] No active session!');
       toast({
         title: "Ingen aktiv innsjekking",
         description: "Start en innsjekking først",
@@ -304,7 +302,6 @@ export default function InnsjekkingPage() {
     }
     
     if (!student.id) {
-      console.error('[STUDENT CLICK] No student ID!');
       return;
     }
     
@@ -317,7 +314,6 @@ export default function InnsjekkingPage() {
       return;
     }
 
-    console.log('[STUDENT CLICK] Calling handleManualCheckIn with studentId:', student.id, 'bellTime:', activeSession.bellTime);
     const result = await handleManualCheckIn(student.id, activeSession);
     
     if (result.success) {
@@ -344,13 +340,6 @@ export default function InnsjekkingPage() {
     const isCheckedIn = checkedInStudentIds.has(student.id!);
     const isAbsent = isStudentAbsent(student.id!);
     const isDisabled = !activeSession || isCheckedIn || isAbsent;
-    
-    console.log('[StudentButton] Rendering button for', student.name, {
-      isDisabled,
-      activeSession: !!activeSession,
-      isCheckedIn,
-      isAbsent
-    });
     
     return (
       <div className="relative w-full aspect-[7/5]">
@@ -492,7 +481,7 @@ export default function InnsjekkingPage() {
       )}
 
       {/* Quick stats + Manual controls */}
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Status</CardTitle>
@@ -510,43 +499,6 @@ export default function InnsjekkingPage() {
               {activeSession
                 ? `${activeSession.bellTime.type === 'morgen' ? 'Morgen' : 'Ordinær'}`
                 : 'Ingen sesjon'}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">NFC-status</CardTitle>
-            {nfcWebSocket.status === 'connected' ? (
-              <Wifi className="h-4 w-4 text-green-600 dark:text-green-400" />
-            ) : (
-              <WifiOff className="h-4 w-4 text-muted-foreground" />
-            )}
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {nfcEnabled ? (
-                nfcWebSocket.status === 'connected' ? (
-                  <span className="text-green-600 dark:text-green-400">Klar</span>
-                ) : nfcWebSocket.status === 'connecting' ? (
-                  <span className="text-yellow-600 dark:text-yellow-400">Kobler</span>
-                ) : (
-                  <span className="text-red-600 dark:text-red-400">Frakoblet</span>
-                )
-              ) : (
-                <span className="text-muted-foreground">Av</span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {nfcEnabled ? (
-                nfcWebSocket.status === 'connected' ? (
-                  `${nfcWebSocket.readersConnected} leser${nfcWebSocket.readersConnected !== 1 ? 'e' : ''}`
-                ) : (
-                  'Ikke tilkoblet'
-                )
-              ) : (
-                'Skru på i innstillinger'
-              )}
             </p>
           </CardContent>
         </Card>
