@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
     if (!body.rewards || !Array.isArray(body.rewards)) {
       return NextResponse.json(
-        { message: 'Invalid request body. Expected { borsId: string, rewards: Reward[] }' },
+        { message: 'Invalid request body. Expected { borsId: string, rewards: Reward[], classGoal?: { current: number, target: number, title: string } }' },
         { status: 400, headers: corsHeaders() }
       );
     }
@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
     // Store in KV or local cache with unique key per borsId
     const priceData = {
       rewards: body.rewards,
+      classGoal: body.classGoal || null,
       lastUpdated: new Date().toISOString(),
     };
 
@@ -113,12 +114,12 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    let priceData: { rewards: any[]; lastUpdated: string } | null = null;
+    let priceData: { rewards: any[]; classGoal?: { current: number; target: number; title: string } | null; lastUpdated: string } | null = null;
 
     const kvKey = `price_list_${borsId}`;
     const kvClient = await getKv();
     if (kvClient) {
-      priceData = await kvClient.get<{ rewards: any[]; lastUpdated: string }>(kvKey);
+      priceData = await kvClient.get<{ rewards: any[]; classGoal?: { current: number; target: number; title: string } | null; lastUpdated: string }>(kvKey);
       console.log(`📥 Fetching prices from KV for borsId: ${borsId}`);
     } else {
       // Use local cache for development
@@ -129,6 +130,7 @@ export async function GET(req: NextRequest) {
     if (!priceData) {
       return NextResponse.json({
         rewards: [],
+        classGoal: null,
         lastUpdated: null,
         message: 'No price data available yet for this borsId'
       }, { headers: corsHeaders() });

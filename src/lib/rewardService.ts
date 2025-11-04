@@ -76,7 +76,28 @@ async function syncPricesWithApi(rewards: Reward[]) {
       return;
     }
 
+    // Hent felles belønning-info
+    const settings = await db.settings.get('userSettings');
+    const transactions = await db.transactions.toArray();
+    
+    // Beregn total klasse-poeng (kun positive transaksjoner)
+    const classTotalPoints = transactions.reduce((sum, t) => {
+      const change = t.pointsChange || 0;
+      return change > 0 ? sum + change : sum;
+    }, 0);
+
+    const classGoal = settings?.classGoal 
+      ? {
+          current: classTotalPoints,
+          target: settings.classGoal.target || 200,
+          title: settings.communityGoalTitle || 'Felles belønning'
+        }
+      : null;
+
     console.log('📤 Syncing prices to API...', rewards.length, 'rewards, borsId:', borsId);
+    if (classGoal) {
+      console.log('🎯 Class goal:', classGoal);
+    }
     
     const response = await fetch('/api/prices', {
       method: 'POST',
@@ -84,7 +105,11 @@ async function syncPricesWithApi(rewards: Reward[]) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ borsId, rewards }),
+      body: JSON.stringify({ 
+        borsId, 
+        rewards,
+        classGoal 
+      }),
     });
 
     if (response.ok) {
