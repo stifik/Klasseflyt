@@ -291,6 +291,62 @@ export default function RewardSettings() {
         <TabsContent value="simple" className="space-y-6">
           <Card>
             <CardHeader>
+              <CardTitle>Enkel felles belønning (Progress Bar)</CardTitle>
+              <CardDescription>
+                Sett et felles klassemål basert på totale tjente poeng
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <Label htmlFor="class-goal-title">Tittel på felles belønning</Label>
+                  <Input
+                    id="class-goal-title"
+                    value={dbSettings?.communityGoalTitle || ''}
+                    onChange={async (e) => {
+                      const settings = await db.settings.get('userSettings');
+                      if (settings) {
+                        settings.communityGoalTitle = e.target.value;
+                        await db.settings.put(settings);
+                      }
+                    }}
+                    placeholder="F.eks: Filmkveld, Pizza-party, etc."
+                  />
+                </div>
+                <div className="w-48">
+                  <Label htmlFor="class-goal-target">Målpoeng</Label>
+                  <Input
+                    id="class-goal-target"
+                    type="number"
+                    value={dbSettings?.classGoal?.target || 200}
+                    onChange={async (e) => {
+                      const target = parseInt(e.target.value) || 200;
+                      const settings = await db.settings.get('userSettings');
+                      if (settings) {
+                        settings.classGoal = {
+                          ...settings.classGoal,
+                          target
+                        };
+                        await db.settings.put(settings);
+                        toast({
+                          title: "Lagret",
+                          description: `Målpoeng satt til ${target}`,
+                        });
+                      }
+                    }}
+                    placeholder="200"
+                  />
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                💡 Dette målet vises på display-skjermen og i Poengsentral som en progress bar. 
+                Den baseres på totale poeng klassen har tjent (ikke netto saldo).
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Belønninger</CardTitle>
               <CardDescription>
                 Legg til og administrer tilgjengelige belønninger for elevene

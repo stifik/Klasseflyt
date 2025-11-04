@@ -174,6 +174,9 @@ export async function makeDonation(
     const newAmount = reward.currentAmount + amount;
     await db.communityRewards.update(rewardId, { currentAmount: newAmount });
 
+    // Sync to display API (for Klasseflyt-display børs view)
+    syncCommunityRewardToApi();
+
     // Check if goal is achieved
     let rewardAchieved = false;
     if (newAmount >= reward.target) {
@@ -194,6 +197,69 @@ export async function makeDonation(
       success: false,
       message: 'En feil oppstod ved donasjon',
     };
+  }
+}
+
+/**
+ * Sync community reward progress to display API
+ */
+async function syncCommunityRewardToApi() {
+  try {
+    const apiKey = process.env.NEXT_PUBLIC_API_SECRET_KEY;
+    if (!apiKey) {
+      console.warn('⚠️ API_SECRET_KEY not set, skipping community reward sync');
+      return;
+    }
+
+    const borsId = localStorage.getItem('klasseflyt_bors_id');
+    if (!borsId) {
+      console.warn('⚠️ Børs-ID not set in localStorage, skipping community reward sync');
+      return;
+    }
+
+    // Get active community rewards
+    const activeCommunityRewards = await db.communityRewards
+      .where('status')
+      .equals('active')
+      .sortBy('priority');
+
+    if (!activeCommunityRewards || activeCommunityRewards.length === 0) {
+      return;
+    }
+
+    // Get rewards for complete data
+    const rewards = await db.rewards.toArray();
+
+    // Use the first active community reward (highest priority)
+    const topReward = activeCommunityRewards[0];
+    const classGoal = {
+      current: topReward.currentAmount,
+      target: topReward.target,
+      title: topReward.title
+    };
+
+    console.log('📤 Syncing community reward to API...', classGoal);
+
+    const response = await fetch('/api/prices', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        borsId,
+        rewards,
+        classGoal
+      }),
+    });
+
+    if (response.ok) {
+      console.log('✅ Community reward synced to display API');
+    } else {
+      console.error('❌ Failed to sync community reward:', response.status);
+    }
+  } catch (error) {
+    console.error('❌ Failed to sync community reward to API:', error);
   }
 }
 
@@ -242,6 +308,9 @@ export async function processAutoContribution(
     // Update reward's current amount
     const newAmount = reward.currentAmount + autoAmount;
     await db.communityRewards.update(preferredRewardId, { currentAmount: newAmount });
+
+    // Sync to display API
+    syncCommunityRewardToApi();
 
     // Check if goal is achieved
     if (newAmount >= reward.target) {

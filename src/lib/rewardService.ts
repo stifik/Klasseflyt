@@ -76,23 +76,40 @@ async function syncPricesWithApi(rewards: Reward[]) {
       return;
     }
 
-    // Hent felles belønning-info
+    // Hent felles belønning-info - prøv først aktiv communityReward, deretter classGoal fra settings
     const settings = await db.settings.get('userSettings');
-    const transactions = await db.transactions.toArray();
-    
-    // Beregn total klasse-poeng (kun positive transaksjoner)
-    const classTotalPoints = transactions.reduce((sum, t) => {
-      const change = t.pointsChange || 0;
-      return change > 0 ? sum + change : sum;
-    }, 0);
+    let classGoal = null;
 
-    const classGoal = settings?.classGoal 
-      ? {
-          current: classTotalPoints,
-          target: settings.classGoal.target || 200,
-          title: settings.communityGoalTitle || 'Felles belønning'
-        }
-      : null;
+    // Sjekk først om det finnes aktive communityRewards (Fellesspotter/Delte Mål)
+    const activeCommunityRewards = await db.communityRewards
+      .where('status')
+      .equals('active')
+      .sortBy('priority');
+
+    if (activeCommunityRewards && activeCommunityRewards.length > 0) {
+      // Bruk den første aktive belønningen (høyest prioritet)
+      const topReward = activeCommunityRewards[0];
+      classGoal = {
+        current: topReward.currentAmount,
+        target: topReward.target,
+        title: topReward.title
+      };
+    } else if (settings?.classGoal) {
+      // Fallback til enkel classGoal-system (hvis det eksisterer)
+      const transactions = await db.transactions.toArray();
+      
+      // Beregn total klasse-poeng (kun positive transaksjoner)
+      const classTotalPoints = transactions.reduce((sum, t) => {
+        const change = t.pointsChange || 0;
+        return change > 0 ? sum + change : sum;
+      }, 0);
+
+      classGoal = {
+        current: classTotalPoints,
+        target: settings.classGoal.target || 200,
+        title: settings.communityGoalTitle || 'Felles belønning'
+      };
+    }
 
     console.log('📤 Syncing prices to API...', rewards.length, 'rewards, borsId:', borsId);
     if (classGoal) {
