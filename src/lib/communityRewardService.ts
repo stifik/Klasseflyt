@@ -238,7 +238,28 @@ async function syncCommunityRewardToApi() {
       title: topReward.title
     };
 
+    // Also check for simple classGoal
+    const settings = await db.settings.get('userSettings');
+    let simpleClassGoal = null;
+
+    if (settings?.classGoal) {
+      const transactions = await db.transactions.toArray();
+      const classTotalPoints = transactions.reduce((sum, t) => {
+        const change = t.pointsChange || 0;
+        return change > 0 ? sum + change : sum;
+      }, 0);
+
+      simpleClassGoal = {
+        current: classTotalPoints,
+        target: settings.classGoal.target || 200,
+        title: settings.communityGoalTitle || 'Felles belønning'
+      };
+    }
+
     console.log('📤 Syncing community reward to API...', classGoal);
+    if (simpleClassGoal) {
+      console.log('📤 Also syncing simple class goal...', simpleClassGoal);
+    }
 
     const response = await fetch('/api/prices', {
       method: 'POST',
@@ -249,7 +270,8 @@ async function syncCommunityRewardToApi() {
       body: JSON.stringify({
         borsId,
         rewards,
-        classGoal
+        classGoal,
+        simpleClassGoal
       }),
     });
 

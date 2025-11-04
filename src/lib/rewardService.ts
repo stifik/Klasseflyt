@@ -76,11 +76,12 @@ async function syncPricesWithApi(rewards: Reward[]) {
       return;
     }
 
-    // Hent felles belønning-info - prøv først aktiv communityReward, deretter classGoal fra settings
+    // Hent felles belønning-info - både communityReward og enkel classGoal
     const settings = await db.settings.get('userSettings');
-    let classGoal = null;
+    let classGoal = null; // Fellesspotter (Delte Mål)
+    let simpleClassGoal = null; // Enkel felles belønning
 
-    // Sjekk først om det finnes aktive communityRewards (Fellesspotter/Delte Mål)
+    // Sjekk om det finnes aktive communityRewards (Fellesspotter/Delte Mål)
     const activeCommunityRewards = await db.communityRewards
       .where('status')
       .equals('active')
@@ -94,8 +95,10 @@ async function syncPricesWithApi(rewards: Reward[]) {
         target: topReward.target,
         title: topReward.title
       };
-    } else if (settings?.classGoal) {
-      // Fallback til enkel classGoal-system (hvis det eksisterer)
+    }
+
+    // Sjekk også om enkel classGoal er konfigurert
+    if (settings?.classGoal) {
       const transactions = await db.transactions.toArray();
       
       // Beregn total klasse-poeng (kun positive transaksjoner)
@@ -104,7 +107,7 @@ async function syncPricesWithApi(rewards: Reward[]) {
         return change > 0 ? sum + change : sum;
       }, 0);
 
-      classGoal = {
+      simpleClassGoal = {
         current: classTotalPoints,
         target: settings.classGoal.target || 200,
         title: settings.communityGoalTitle || 'Felles belønning'
@@ -113,7 +116,10 @@ async function syncPricesWithApi(rewards: Reward[]) {
 
     console.log('📤 Syncing prices to API...', rewards.length, 'rewards, borsId:', borsId);
     if (classGoal) {
-      console.log('🎯 Class goal:', classGoal);
+      console.log('🎯 Fellesspotter (Delte Mål):', classGoal);
+    }
+    if (simpleClassGoal) {
+      console.log('🎯 Enkel felles belønning:', simpleClassGoal);
     }
     
     const response = await fetch('/api/prices', {
@@ -125,7 +131,8 @@ async function syncPricesWithApi(rewards: Reward[]) {
       body: JSON.stringify({ 
         borsId, 
         rewards,
-        classGoal 
+        classGoal,
+        simpleClassGoal
       }),
     });
 
