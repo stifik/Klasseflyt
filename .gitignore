@@ -40,10 +40,6 @@ next-env.d.ts
 .genkit/*
 .env*
 
-# firebase
-firebase-debug.log
-firestore-debug.log
-
 # nfc-bridge (separate repo/branch)
 /nfc-bridge/
 

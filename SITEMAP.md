@@ -213,7 +213,6 @@ src/
 │   ├── db.ts .................................... Dexie database
 │   ├── types.ts ................................. TypeScript types
 │   ├── utils.ts ................................. Utility functions
-│   ├── firestore.ts ............................. Firestore config
 │   ├── rewardService.ts ......................... Belønningslogikk
 │   ├── positiveActions.ts ....................... Positive handlinger
 │   ├── rewards.ts ............................... Belønninger konfig
