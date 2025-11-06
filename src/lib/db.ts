@@ -1130,6 +1130,129 @@ export async function exportDatabase(password?: string) {
   return data;
 }
 
+/**
+ * Migrate old submissions structure to new structure (v22+)
+ * Old: submission has status/comment directly
+ * New: submission is a folder, submissionAttempts has status/comment
+ */
+async function migrateSubmissions(oldSubmissions: any[], homeworkData: any[]): Promise<void> {
+    // Create homework date lookup
+    const homeworkDateMap = new Map(homeworkData.map(h => [h.id, h.date]));
+
+    // Group old submissions by student-homework pair
+    const submissionGroups = new Map<string, any[]>();
+    
+    for (const oldSub of oldSubmissions) {
+        const key = `${oldSub.studentId}-${oldSub.homeworkId}`;
+        if (!submissionGroups.has(key)) {
+            submissionGroups.set(key, []);
+        }
+        submissionGroups.get(key)!.push(oldSub);
+    }
+
+    // Process each group: create one submission with multiple attempts
+    for (const [key, oldSubs] of submissionGroups) {
+        const [studentId, homeworkId] = key.split('-').map(Number);
+        
+        // Create the submission "folder"
+        const submissionId = await db.submissions.add({
+            studentId,
+            homeworkId
+        });
+
+        // Create attempts for each old submission with status
+        const attempts: Omit<SubmissionAttempt, 'id'>[] = [];
+        for (const oldSub of oldSubs) {
+            if (oldSub.status) {
+                attempts.push({
+                    submissionId: submissionId as number,
+                    status: oldSub.status,
+                    comment: oldSub.comment,
+                    date: homeworkDateMap.get(oldSub.homeworkId) || new Date()
+                });
+            }
+        }
+
+        // Add all attempts for this submission
+        if (attempts.length > 0) {
+            await db.submissionAttempts.bulkAdd(attempts);
+        }
+    }
+}
+
+/**
+ * Migrate old settings structure to include missing new fields
+ */
+function migrateSettings(oldSettings: any): AppSettings & { id: string } {
+    const migrated: any = { ...oldSettings, id: 'userSettings' };
+
+    // Ensure all tabs exist
+    migrated.tabs = migrated.tabs || {};
+    if (migrated.tabs.hourlyCheck || migrated.tabs.remarks) {
+        migrated.tabs.observations = true;
+        delete migrated.tabs.hourlyCheck;
+        delete migrated.tabs.remarks;
+    }
+    migrated.tabs.observations = migrated.tabs.observations ?? true;
+    migrated.tabs.assessments = migrated.tabs.assessments ?? true;
+    migrated.tabs.classroomTools = migrated.tabs.classroomTools ?? true;
+    migrated.tabs.settings = migrated.tabs.settings ?? true;
+
+    // Migrate tab order
+    if (migrated.tabOrder) {
+        migrated.tabOrder = migrated.tabOrder
+            .map((tab: string) => {
+                if (tab === 'hourlyCheck' || tab === 'remarks') return 'observations';
+                if (tab === 'seatingChart') return null;
+                return tab;
+            })
+            .filter((tab: string | null) => tab !== null);
+        migrated.tabOrder = [...new Set(migrated.tabOrder)];
+    } else {
+        migrated.tabOrder = defaultSettings.tabOrder;
+    }
+
+    // Ensure dashboardTools exists with all new tools
+    if (!migrated.dashboardTools) {
+        migrated.dashboardTools = defaultDashboardTools;
+    } else {
+        // Add any missing dashboard tools
+        const existingKeys = migrated.dashboardTools.map((t: DashboardConfig) => t.key);
+        for (const tool of defaultDashboardTools) {
+            if (!existingKeys.includes(tool.key)) {
+                migrated.dashboardTools.push(tool);
+            }
+        }
+    }
+
+    // Ensure all report settings exist
+    migrated.reportSettings = migrated.reportSettings || {};
+    const rs = migrated.reportSettings;
+    rs.includeHomeworkInReport = rs.includeHomeworkInReport ?? true;
+    rs.includeIpadInReport = rs.includeIpadInReport ?? true;
+    rs.includeRemarksInReport = rs.includeRemarksInReport ?? true;
+    rs.includeHourlyCheckInReport = rs.includeHourlyCheckInReport ?? true;
+    rs.includeTestsInReport = rs.includeTestsInReport ?? false;
+    rs.includeLearningGoalsInReport = rs.includeLearningGoalsInReport ?? false;
+    rs.positiveFeedbackMessage = rs.positiveFeedbackMessage || defaultSettings.reportSettings.positiveFeedbackMessage;
+    rs.positiveFeedbackHomework = rs.positiveFeedbackHomework || defaultSettings.reportSettings.positiveFeedbackHomework;
+    rs.positiveFeedbackIpad = rs.positiveFeedbackIpad || defaultSettings.reportSettings.positiveFeedbackIpad;
+    rs.positiveFeedbackBoth = rs.positiveFeedbackBoth || defaultSettings.reportSettings.positiveFeedbackBoth;
+
+    // Ensure other new fields exist
+    migrated.behaviorTypes = migrated.behaviorTypes || defaultBehaviorTypes;
+    migrated.workstations = migrated.workstations || defaultSettings.workstations;
+    migrated.dpiaAnalysis = migrated.dpiaAnalysis || defaultDPIAAnalysis;
+    migrated.checkInSettings = migrated.checkInSettings || defaultCheckInSettings;
+    migrated.morningDisplaySettings = migrated.morningDisplaySettings || defaultMorningDisplaySettings;
+    migrated.rewardSystem = migrated.rewardSystem || defaultSettings.rewardSystem;
+    migrated.classGoal = migrated.classGoal || defaultSettings.classGoal;
+    migrated.communityGoalTitle = migrated.communityGoalTitle || defaultSettings.communityGoalTitle;
+    migrated.nfcEnabled = migrated.nfcEnabled ?? false;
+
+    return migrated;
+}
+
 export async function importDatabase(data: { [key: string]: any[] } | string, password?: string) {
     let parsedData: { [key: string]: any[] };
 
@@ -1144,24 +1267,85 @@ export async function importDatabase(data: { [key: string]: any[] } | string, pa
       parsedData = data as { [key: string]: any[] };
     }
 
+    // Clear all tables first
     await db.transaction('rw', db.tables, async () => {
-        // Clear all tables
         await Promise.all(db.tables.map(table => table.clear()));
+    });
 
-        // Import data table by table
+    // Check if we need to migrate submissions (old format has status field)
+    let needsSubmissionMigration = false;
+    if (parsedData['submissions'] && parsedData['submissions'].length > 0) {
+        const firstSub = parsedData['submissions'][0];
+        needsSubmissionMigration = 'status' in firstSub;
+    }
+
+    // Migrate submissions OUTSIDE of transaction to avoid TransactionInactiveError
+    if (needsSubmissionMigration) {
+        console.log('🔄 Migrerer submissions fra gammel til ny struktur...');
+        await migrateSubmissions(
+            parsedData['submissions'],
+            parsedData['homework'] || []
+        );
+        // Remove from parsedData to avoid double import
+        delete parsedData['submissions'];
+        delete parsedData['submissionAttempts'];
+        console.log('✅ Migrering av submissions fullført');
+    }
+
+    // Import remaining tables in a transaction
+    await db.transaction('rw', db.tables, async () => {
+        // Special handling for settings migration
+        if (parsedData['settings'] && parsedData['settings'].length > 0) {
+            const oldSettings = parsedData['settings'][0];
+            const migratedSettings = migrateSettings(oldSettings);
+            await db.settings.put(migratedSettings);
+            delete parsedData['settings'];
+            console.log('✅ Migrert innstillinger til ny struktur');
+        }
+
+        // Import remaining tables
         for (const tableName in parsedData) {
             if (db.table(tableName)) {
-                // For date fields, we need to ensure they are Date objects
-                const tableData = parsedData[tableName].map(item => {
-                    if (item.date) item.date = new Date(item.date);
-                    if (item.createdAt) item.createdAt = new Date(item.createdAt);
-                    if (item.updatedAt) item.updatedAt = new Date(item.updatedAt);
-                    return item;
-                });
-                await db.table(tableName).bulkAdd(tableData);
+                try {
+                    // For date fields, we need to ensure they are Date objects
+                    const tableData = parsedData[tableName].map(item => {
+                        if (item.date) item.date = new Date(item.date);
+                        if (item.createdAt) item.createdAt = new Date(item.createdAt);
+                        if (item.updatedAt) item.updatedAt = new Date(item.updatedAt);
+                        if (item.timestamp) item.timestamp = new Date(item.timestamp);
+                        return item;
+                    });
+                    
+                    if (tableData.length > 0) {
+                        await db.table(tableName).bulkAdd(tableData);
+                        console.log(`✅ Importert ${tableData.length} rader til ${tableName}`);
+                    }
+                } catch (error) {
+                    console.warn(`⚠️ Kunne ikke importere tabell ${tableName}:`, error);
+                    // Continue with other tables even if one fails
+                }
+            } else {
+                console.warn(`⚠️ Tabell ${tableName} finnes ikke i gjeldende database-versjon (hoppet over)`);
             }
         }
     });
+
+    // Ensure actions and rewards are populated OUTSIDE transaction to avoid timeout
+    const actionsCount = await db.actions.count();
+    if (actionsCount === 0) {
+        const { positiveActions } = await import('./positiveActions');
+        await db.actions.bulkAdd(positiveActions);
+        console.log('✅ La til standard positive handlinger (POD)');
+    }
+
+    const rewardsCount = await db.rewards.count();
+    if (rewardsCount === 0) {
+        const { defaultRewards } = await import('./rewards');
+        await db.rewards.bulkAdd(defaultRewards);
+        console.log('✅ La til standard belønninger');
+    }
+    
+    console.log('🎉 Import fullført!');
 }
     
 

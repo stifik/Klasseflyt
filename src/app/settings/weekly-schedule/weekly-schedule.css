@@ -131,10 +131,29 @@
   color: #bbb;
   font-size: 1.3rem;
   user-select: none;
+  transition: color 0.2s;
+}
+
+.drag-handle:hover {
+  color: #667eea;
 }
 
 .drag-handle:active {
   cursor: grabbing;
+}
+
+/* Drag and drop states */
+.session-item.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.session-item.drag-over {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+  border-style: dashed;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
 }
 
 .session-time {

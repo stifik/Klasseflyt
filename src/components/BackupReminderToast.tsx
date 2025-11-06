@@ -21,6 +21,9 @@ export function BackupReminderToast() {
   useEffect(() => {
     // Only run on client side and only once per session
     if (typeof window === 'undefined' || hasShownReminder) return;
+    
+    // Wait for dbSettings to load
+    if (!dbSettings) return;
 
     // Check if we should show reminder
     if (shouldShowReminder(backupReminderDays)) {
@@ -79,7 +82,7 @@ export function BackupReminderToast() {
 
       setHasShownReminder(true);
     }
-  }, [backupReminderDays, hasShownReminder, toast, router]);
+  }, [backupReminderDays, hasShownReminder, toast, router, dbSettings]);
 
   return null; // This component doesn't render anything
 }

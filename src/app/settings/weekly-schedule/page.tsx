@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, DragEvent } from 'react';
 import { db } from '@/lib/db';
 import type { ScheduleTemplate, ScheduleSession } from '@/lib/types';
 import './weekly-schedule.css';
@@ -22,6 +22,8 @@ export default function WeeklySchedulePage() {
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [targetDay, setTargetDay] = useState<DayOfWeek>('tuesday');
   const [isSaving, setIsSaving] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   useEffect(() => {
     loadTemplate(activeDay);
@@ -65,6 +67,57 @@ export default function WeeklySchedulePage() {
 
   const deleteSession = (id: number) => {
     setSessions(sessions.filter(s => s.id !== id));
+  };
+
+  // Drag and Drop handlers
+  const handleDragStart = (e: DragEvent<HTMLDivElement>, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', e.currentTarget.innerHTML);
+    // Add some visual feedback
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '0.4';
+    }
+  };
+
+  const handleDragEnd = (e: DragEvent<HTMLDivElement>) => {
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '1';
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>, index: number) => {
+    e.preventDefault(); // Allow drop
+    e.dataTransfer.dropEffect = 'move';
+    
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>, dropIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDragOverIndex(null);
+      return;
+    }
+
+    // Reorder sessions
+    const newSessions = [...sessions];
+    const [draggedSession] = newSessions.splice(draggedIndex, 1);
+    newSessions.splice(dropIndex, 0, draggedSession);
+
+    setSessions(newSessions);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   const saveTemplate = async () => {
@@ -181,8 +234,17 @@ export default function WeeklySchedulePage() {
             </div>
           ) : (
             sessions.map((session, index) => (
-              <div key={session.id} className="session-item">
-                <div className="drag-handle">⋮⋮</div>
+              <div
+                key={session.id}
+                className={`session-item ${draggedIndex === index ? 'dragging' : ''} ${dragOverIndex === index ? 'drag-over' : ''}`}
+                draggable
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, index)}
+              >
+                <div className="drag-handle" title="Dra for å endre rekkefølge">⋮⋮</div>
                 <input
                   type="time"
                   className="session-time"
