@@ -29,7 +29,8 @@ import {
     Store,
     ShieldCheck,
     Monitor,
-    DollarSign
+    DollarSign,
+    Settings as SettingsIcon
 } from "lucide-react";
 import { SidebarSection } from "./SidebarSection";
 import { SidebarItem } from "./SidebarItem";
@@ -198,12 +199,12 @@ export function MobileNav() {
                 {/* Footer */}
                 <div className="border-t p-3">
                     <Link
-                        href="/changelog"
-                        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        href="/settings"
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
                         onClick={() => setOpen(false)}
                     >
-                        <Activity className="h-3 w-3" />
-                        <span>Hva er nytt?</span>
+                        <SettingsIcon className="h-4 w-4" />
+                        <span>Innstillinger</span>
                     </Link>
                 </div>
             </SheetContent>

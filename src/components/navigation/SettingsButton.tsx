@@ -30,7 +30,7 @@ export default function SettingsButton({
       <Button
         variant={variant}
         size={size}
-        className={cn('hidden md:flex', className)}
+        className={className}
         title={label}
       >
         <Settings className="h-5 w-5" />

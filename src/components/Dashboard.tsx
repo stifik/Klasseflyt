@@ -8,7 +8,8 @@ import {Card, CardHeader, CardTitle, CardDescription} from '@/components/ui/card
 import {
     BookOpen, CalendarCheck, Megaphone, BarChart2, Users, Blocks, Smile, Annoyed,
     Eye, Shuffle, UserCheck, NotebookText, FileText, CheckSquare, Settings2, Award,
-    Terminal, Monitor, Trophy, Store, Activity, Calendar, ShieldCheck, Settings as SettingsIcon, Scan
+    Terminal, Monitor, Trophy, Store, Activity, Calendar, ShieldCheck, Settings as SettingsIcon, Scan,
+    GitCommit, Mail
 } from 'lucide-react';
 import { cn} from '@/lib/utils';
 import SettingsButton from '@/components/navigation/SettingsButton';
@@ -243,6 +244,25 @@ const Dashboard: FC<DashboardProps> = ({settings}) => {
             </Card>
           );
         })}
+      </div>
+      
+      {/* Footer */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8 pb-4 text-sm text-muted-foreground border-t">
+        <Link 
+          href="/changelog" 
+          className="flex items-center gap-2 hover:text-foreground transition-colors"
+        >
+          <GitCommit className="h-4 w-4" />
+          <span>Hva er nytt?</span>
+        </Link>
+        <span className="hidden sm:inline">•</span>
+        <a 
+          href="mailto:kontakt@klasseflyt.no"
+          className="flex items-center gap-2 hover:text-foreground transition-colors"
+        >
+          <Mail className="h-4 w-4" />
+          <span>Spørsmål eller tilbakemeldinger? Skriv til kontakt@klasseflyt.no</span>
+        </a>
       </div>
     </div>
   );

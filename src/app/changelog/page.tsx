@@ -6,6 +6,30 @@ import { Badge } from "@/components/ui/badge";
 
 const changelog = [
     {
+        version: "1.3.0",
+        date: "November 2024",
+        changes: [
+            { type: "new", text: "Komplett belønningssystem med POS og POD Terminal-moduser." },
+            { type: "new", text: "Digital lommebok med gavekort-funksjoner." },
+            { type: "new", text: "Belønningsdashboard og -butikk for oversikt og administrasjon." },
+            { type: "new", text: "Elevtrekker med animasjon og tilpassbare innstillinger." },
+            { type: "new", text: "Drag-and-drop klassekart med intelligente plasseringsregler." },
+            { type: "new", text: "Arkivfunksjon for klassekart og gruppefordelinger." },
+            { type: "new", text: "Anmerkningsanalyse med statistikk og visualisering." },
+            { type: "new", text: "NFC-støtte for belønningssystemet." },
+            { type: "new", text: "Prosjektorvisning av leaderboard for storskjerm." },
+            { type: "new", text: "Poenggivning integrert i Daglig sjekk (iPad-status)." },
+            { type: "improvement", text: "Forbedret gruppeverktøy med manuell kontroll og lagring." },
+            { type: "improvement", text: "Utvidet anmerkningssystem med kategorisering og tidslinje." },
+            { type: "improvement", text: "Forbedret ukesmelding med prøveresultater og iPad-status." },
+            { type: "improvement", text: "Aktivitetsfeed for belønningssystemet." },
+            { type: "improvement", text: "Robust håndtering av student-ID i belønningssystemet." },
+            { type: "fix", text: "Fikset problem med manglende innstillinger i mobilversjonen." },
+            { type: "fix", text: "Fikset backup-toast som viste for tidlig under onboarding." },
+            { type: "fix", text: "Forbedret responsivt design for mobil og nettbrett." },
+        ]
+    },
+    {
         version: "1.2.0",
         date: "August 2024",
         changes: [
