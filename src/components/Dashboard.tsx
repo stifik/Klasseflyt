@@ -199,55 +199,57 @@ const Dashboard: FC<DashboardProps> = ({settings}) => {
 
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Velkommen {teacherName}!</h2>
-          <p className="text-muted-foreground">Velg et verktøy for å komme i gang.</p>
+    <div className="min-h-screen flex flex-col">
+      <div className="flex-1 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Velkommen {teacherName}!</h2>
+            <p className="text-muted-foreground">Velg et verktøy for å komme i gang.</p>
+          </div>
+          <div data-tour="settings-button">
+            <SettingsButton href="/settings#dashboard-header" />
+          </div>
         </div>
-        <div data-tour="settings-button">
-          <SettingsButton href="/settings#dashboard-header" />
-        </div>
-      </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {visibleTools.map((tool) => {
-          if (!tool) return null;
-          const Icon = tool.icon;
-          
-          // Open morning-display in new window, others use router
-          const handleClick = () => {
-            if (tool.key === 'morning-display') {
-              window.open(tool.href, '_blank');
-            } else {
-              router.push(tool.href);
-            }
-          };
-          
-          // settings link removed
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {visibleTools.map((tool) => {
+            if (!tool) return null;
+            const Icon = tool.icon;
+            
+            // Open morning-display in new window, others use router
+            const handleClick = () => {
+              if (tool.key === 'morning-display') {
+                window.open(tool.href, '_blank');
+              } else {
+                router.push(tool.href);
+              }
+            };
+            
+            // settings link removed
 
-          return (
-            <Card
-              key={tool.key}
-              onClick={handleClick}
-              className="cursor-pointer hover:border-primary/50 hover:shadow-lg transition-all relative"
-            >
-              <CardHeader className="flex flex-row items-center gap-4">
-                <div className={cn('p-3 rounded-full', tool.color)}>
-                  <Icon className="w-6 h-6" />
-                </div>
-                <div className="flex-1">
-                  <CardTitle>{tool.label}</CardTitle>
-                  <CardDescription>{tool.description}</CardDescription>
-                </div>
-                {/* gear/settings icon removed as per UI preference */}
-              </CardHeader>
-            </Card>
-          );
-        })}
+            return (
+              <Card
+                key={tool.key}
+                onClick={handleClick}
+                className="cursor-pointer hover:border-primary/50 hover:shadow-lg transition-all relative"
+              >
+                <CardHeader className="flex flex-row items-center gap-4">
+                  <div className={cn('p-3 rounded-full', tool.color)}>
+                    <Icon className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle>{tool.label}</CardTitle>
+                    <CardDescription>{tool.description}</CardDescription>
+                  </div>
+                  {/* gear/settings icon removed as per UI preference */}
+                </CardHeader>
+              </Card>
+            );
+          })}
+        </div>
       </div>
       
-      {/* Footer */}
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8 pb-4 text-sm text-muted-foreground border-t">
+      {/* Footer - pushed to bottom */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 py-6 text-sm text-muted-foreground border-t mt-8">
         <Link 
           href="/changelog" 
           className="flex items-center gap-2 hover:text-foreground transition-colors"
