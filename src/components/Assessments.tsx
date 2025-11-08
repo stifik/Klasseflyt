@@ -6,10 +6,12 @@ import type { Student, Subject, Test, TestResult, LearningGoal, GoalAchievement,
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Plus, Trash2, Target, Link as LinkIcon, X, Calendar as CalendarIcon, Award } from "lucide-react";
+import { Plus, Trash2, Target, Link as LinkIcon, X, Calendar as CalendarIcon, Award, Filter, RotateCcw, ChevronDown } from "lucide-react";
 import { db } from "@/lib/db";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { v4 as uuidv4 } from 'uuid';
@@ -154,6 +156,23 @@ const AddTestDialog: FC<{ subjects: Subject[]; learningGoals: LearningGoal[]; on
 
 const TestsComponent = ({ students, subjects, tests = [], testResults = [], learningGoals }: TestsProps) => {
   const { toast } = useToast();
+  const [filters, setFilters] = useState<{ 
+    subject: string;
+    searchQuery: string;
+    scoreFilter: 'all' | 'minimum' | 'range' | 'percent';
+    minScore: string;
+    maxScore: string;
+    percentThreshold: string;
+    selectedStudent: string;
+  }>({ 
+    subject: "all",
+    searchQuery: "",
+    scoreFilter: "all",
+    minScore: "",
+    maxScore: "",
+    percentThreshold: "90",
+    selectedStudent: "all"
+  });
   
   const getResult = (studentId: number, testId: number) => testResults.find(r => r.studentId === studentId && r.testId === testId);
 
@@ -164,6 +183,104 @@ const TestsComponent = ({ students, subjects, tests = [], testResults = [], lear
   const sortedTests = useMemo(() => {
     return [...(tests || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [tests]);
+
+  // Filter tests by subject and search query only
+  const filteredTests = useMemo(() => {
+    if (!Array.isArray(sortedTests)) return [];
+    
+    return sortedTests.filter(test => {
+      // Filter by subject
+      if (filters.subject !== "all" && test.subjectId !== filters.subject) {
+        return false;
+      }
+      
+      // Filter by search query (in test title)
+      if (filters.searchQuery.trim() !== "") {
+        const searchLower = filters.searchQuery.toLowerCase();
+        if (!test.title.toLowerCase().includes(searchLower)) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [sortedTests, filters.subject, filters.searchQuery]);
+
+  // Filter students based on their scores on the filtered tests
+  const filteredStudents = useMemo(() => {
+    // If no score filter is active, show all students (or just selected student)
+    if (filters.scoreFilter === 'all') {
+      if (filters.selectedStudent !== "all") {
+        return sortedStudents.filter(s => s.id === Number(filters.selectedStudent));
+      }
+      return sortedStudents;
+    }
+
+    // If no tests are visible after filtering, show no students
+    if (filteredTests.length === 0) {
+      return [];
+    }
+
+    // Filter students who meet the score criteria on ANY of the filtered tests
+    return sortedStudents.filter(student => {
+      // If a specific student is selected, only show that student
+      if (filters.selectedStudent !== "all" && student.id !== Number(filters.selectedStudent)) {
+        return false;
+      }
+
+      // Check if this student meets the score criteria on at least one filtered test
+      const meetsScoreCriteria = filteredTests.some(test => {
+        const result = testResults.find(r => r.testId === test.id && r.studentId === student.id);
+        
+        if (!result || result.score === null) {
+          return false; // No score means doesn't meet criteria
+        }
+
+        // Check against the selected filter type
+        if (filters.scoreFilter === 'minimum') {
+          const min = parseFloat(filters.minScore);
+          return !isNaN(min) && result.score >= min;
+        } else if (filters.scoreFilter === 'range') {
+          const min = parseFloat(filters.minScore);
+          const max = parseFloat(filters.maxScore);
+          return !isNaN(min) && !isNaN(max) && result.score >= min && result.score <= max;
+        } else if (filters.scoreFilter === 'percent') {
+          const threshold = parseFloat(filters.percentThreshold);
+          if (isNaN(threshold)) return true;
+          const percentage = (result.score / test.maxScore) * 100;
+          return percentage >= threshold;
+        }
+        
+        return true;
+      });
+
+      return meetsScoreCriteria;
+    });
+  }, [sortedStudents, filteredTests, filters, testResults]);
+
+  // Calculate statistics for filtered students and tests
+  const filterStats = useMemo(() => {
+    if (filteredTests.length === 0 || filteredStudents.length === 0) return null;
+    
+    const allScores = filteredTests.flatMap(test => {
+      const results = testResults.filter(r => 
+        r.testId === test.id && 
+        r.score !== null &&
+        filteredStudents.some(s => s.id === r.studentId)
+      );
+      return results.map(r => r.score!);
+    });
+    
+    if (allScores.length === 0) return null;
+    
+    const avgScore = allScores.reduce((sum, score) => sum + score, 0) / allScores.length;
+    
+    return {
+      avgScore: avgScore.toFixed(1),
+      totalTests: filteredTests.length,
+      totalStudents: filteredStudents.length,
+    };
+  }, [filteredTests, filteredStudents, testResults]);
 
   const handleScoreChange = async (studentId: number, testId: number, score: string) => {
     const newScore = score === '' ? null : parseFloat(score);
@@ -197,12 +314,27 @@ const TestsComponent = ({ students, subjects, tests = [], testResults = [], lear
     }
   };
 
+  const handleDeleteTest = async (testId: number) => {
+    try {
+      await db.transaction('rw', db.tests, db.testResults, async () => {
+        // Delete all test results for this test
+        await db.testResults.where('testId').equals(testId).delete();
+        // Delete the test itself
+        await db.tests.delete(testId);
+      });
+      toast({ title: "Prøve slettet", description: "Prøven og alle resultater er slettet.", variant: "destructive" });
+    } catch (error) {
+      console.error("Failed to delete test:", error);
+      toast({ title: "Feil", description: "Kunne ikke slette prøven.", variant: "destructive" });
+    }
+  };
+
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>, studentIndex: number, testId: number) => {
     if (e.key === 'Enter' || e.key === 'Tab') {
       e.preventDefault();
       const nextStudentIndex = studentIndex + 1;
-      if (nextStudentIndex < sortedStudents.length) {
-        const nextStudent = sortedStudents[nextStudentIndex];
+      if (nextStudentIndex < filteredStudents.length) {
+        const nextStudent = filteredStudents[nextStudentIndex];
         const nextInput = document.getElementById(`score-input-${nextStudent.id}-${testId}`);
         nextInput?.focus();
       }
@@ -216,18 +348,195 @@ const TestsComponent = ({ students, subjects, tests = [], testResults = [], lear
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-2xl font-bold">Prøveresultater</h2>
-        <AddTestDialog subjects={subjects} onAddTest={handleAddTest} learningGoals={learningGoals} />
-      </div>
+      <Collapsible>
+        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-2xl font-bold">Prøveresultater</h2>
+          <div className="flex items-center gap-2">
+            <AddTestDialog subjects={subjects} onAddTest={handleAddTest} learningGoals={learningGoals} />
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Filter className="mr-2 h-4 w-4" />
+                Vis/Skjul Filter
+                <ChevronDown className="ml-2 h-4 w-4"/>
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+        </div>
+        <CollapsibleContent className="p-4 mt-4 border rounded-md space-y-4">
+          {/* Search and basic filters */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="search">Søk i prøvenavn</Label>
+              <Input 
+                id="search"
+                placeholder="f.eks. 'gangeprøven', 'kapittel 3'..." 
+                value={filters.searchQuery}
+                onChange={(e) => setFilters({...filters, searchQuery: e.target.value})}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="subject">Fag</Label>
+              <Select value={filters.subject} onValueChange={v => setFilters({...filters, subject: v})}>
+                <SelectTrigger id="subject"><SelectValue placeholder="Filtrer på fag..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Fag</SelectItem>
+                  {subjects.map(s => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="student">Elev (valgfritt)</Label>
+              <Select value={filters.selectedStudent} onValueChange={v => setFilters({...filters, selectedStudent: v})}>
+                <SelectTrigger id="student"><SelectValue placeholder="Alle elever" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Elever</SelectItem>
+                  {sortedStudents.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Score filters */}
+          <div className="space-y-3 p-4 border rounded-md bg-muted/30">
+            <Label className="text-sm font-semibold">Filtrer på poengsum</Label>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="score-all" 
+                  checked={filters.scoreFilter === 'all'}
+                  onCheckedChange={() => setFilters({...filters, scoreFilter: 'all'})}
+                />
+                <Label htmlFor="score-all" className="font-normal cursor-pointer">
+                  Vis alle (ingen poengfilter)
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="score-minimum" 
+                  checked={filters.scoreFilter === 'minimum'}
+                  onCheckedChange={() => setFilters({...filters, scoreFilter: 'minimum'})}
+                />
+                <Label htmlFor="score-minimum" className="font-normal cursor-pointer">
+                  Minimum
+                </Label>
+                <Input 
+                  type="number" 
+                  placeholder="f.eks. 90"
+                  className="w-24"
+                  value={filters.minScore}
+                  onChange={(e) => setFilters({...filters, minScore: e.target.value})}
+                  disabled={filters.scoreFilter !== 'minimum'}
+                />
+                <span className="text-sm text-muted-foreground">poeng</span>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="score-range" 
+                  checked={filters.scoreFilter === 'range'}
+                  onCheckedChange={() => setFilters({...filters, scoreFilter: 'range'})}
+                />
+                <Label htmlFor="score-range" className="font-normal cursor-pointer">
+                  Mellom
+                </Label>
+                <Input 
+                  type="number" 
+                  placeholder="min"
+                  className="w-20"
+                  value={filters.minScore}
+                  onChange={(e) => setFilters({...filters, minScore: e.target.value})}
+                  disabled={filters.scoreFilter !== 'range'}
+                />
+                <span className="text-sm">og</span>
+                <Input 
+                  type="number" 
+                  placeholder="maks"
+                  className="w-20"
+                  value={filters.maxScore}
+                  onChange={(e) => setFilters({...filters, maxScore: e.target.value})}
+                  disabled={filters.scoreFilter !== 'range'}
+                />
+                <span className="text-sm text-muted-foreground">poeng</span>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="score-percent" 
+                  checked={filters.scoreFilter === 'percent'}
+                  onCheckedChange={() => setFilters({...filters, scoreFilter: 'percent'})}
+                />
+                <Label htmlFor="score-percent" className="font-normal cursor-pointer">
+                  Prosent over
+                </Label>
+                <Select 
+                  value={filters.percentThreshold} 
+                  onValueChange={v => setFilters({...filters, percentThreshold: v})}
+                  disabled={filters.scoreFilter !== 'percent'}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="90">90%</SelectItem>
+                    <SelectItem value="80">80%</SelectItem>
+                    <SelectItem value="70">70%</SelectItem>
+                    <SelectItem value="60">60%</SelectItem>
+                    <SelectItem value="50">50%</SelectItem>
+                    <SelectItem value="40">40%</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Statistics */}
+          {filterStats && (
+            <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+              <div className="text-sm space-y-1">
+                <p className="font-semibold text-blue-900 dark:text-blue-100">📊 Statistikk for filtrerte prøver:</p>
+                <p className="text-blue-800 dark:text-blue-200">
+                  Viser <strong>{filterStats.totalTests}</strong> av <strong>{sortedTests.length}</strong> prøver
+                </p>
+                <p className="text-blue-800 dark:text-blue-200">
+                  Viser <strong>{filterStats.totalStudents}</strong> av <strong>{sortedStudents.length}</strong> elever
+                </p>
+                <p className="text-blue-800 dark:text-blue-200">
+                  Gjennomsnittsscore: <strong>{filterStats.avgScore}</strong> poeng
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <Button 
+              onClick={() => setFilters({ 
+                subject: "all", 
+                searchQuery: "",
+                scoreFilter: "all",
+                minScore: "",
+                maxScore: "",
+                percentThreshold: "90",
+                selectedStudent: "all"
+              })} 
+              variant="ghost"
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Nullstill alle filter
+            </Button>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
       
       <div className="overflow-x-auto border rounded-lg">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="sticky left-0 z-10 font-bold bg-background">Elev</TableHead>
-              {sortedTests.map(t => (
-                <TableHead key={t.id} className="text-center group">
+              {filteredTests.map(t => (
+                <TableHead key={t.id} className="text-center group relative min-w-[140px]">
                   <div>{subjects.find(s => s.id === t.subjectId)?.name}</div>
                   <div className="font-normal">{t.title}</div>
                   <div className="text-xs font-light text-muted-foreground">Maks: {t.maxScore}p</div>
@@ -248,15 +557,40 @@ const TestsComponent = ({ students, subjects, tests = [], testResults = [], lear
                         </TooltipContent>
                       </Tooltip>
                   )}
+                  
+                  {/* Delete button */}
+                  <div className="absolute top-1 right-1 invisible group-hover:visible">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                          <Trash2 className="h-3 w-3 text-destructive"/>
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Dette vil slette prøven '{t.title}' og alle resultater for alle elever. Handlingen kan ikke angres.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteTest(t.id!)}>
+                            Ja, slett prøven
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedStudents.map((student, studentIndex) => (
+            {filteredStudents.map((student, studentIndex) => (
               <TableRow key={student.id}>
                 <TableCell className="sticky left-0 z-10 font-medium bg-background">{student.name}</TableCell>
-                {sortedTests.map(t => {
+                {filteredTests.map(t => {
                   const result = getResult(student.id!, t.id!);
                   return (
                     <TableCell key={t.id} className="p-1 text-center min-w-[100px]">
@@ -276,6 +610,15 @@ const TestsComponent = ({ students, subjects, tests = [], testResults = [], lear
                 })}
               </TableRow>
             ))}
+            {filteredStudents.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={filteredTests.length + 1} className="text-center text-muted-foreground py-8">
+                  {filters.scoreFilter !== 'all' 
+                    ? "Ingen elever møter de valgte kriteriene" 
+                    : "Ingen prøver funnet"}
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
