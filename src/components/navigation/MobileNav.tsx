@@ -35,6 +35,7 @@ import {
 import { SidebarSection } from "./SidebarSection";
 import { SidebarItem } from "./SidebarItem";
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 
 export function MobileNav() {
     const [open, setOpen] = useState(false);
@@ -49,7 +50,10 @@ export function MobileNav() {
             </SheetTrigger>
             <SheetContent side="left" className="w-64 p-0">
                 <SheetHeader className="border-b px-6 py-4">
-                    <SheetTitle>Klasseflyt</SheetTitle>
+                    <SheetTitle className="flex items-center gap-2">
+                        <Logo />
+                        <span>Klasseflyt</span>
+                    </SheetTitle>
                 </SheetHeader>
                 <nav className="flex-1 space-y-4 overflow-y-auto p-3">
                     {/* Dashboard */}

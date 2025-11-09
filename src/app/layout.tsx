@@ -10,6 +10,9 @@ import PlausibleProvider from 'next-plausible';
 export const metadata: Metadata = {
   title: 'Klasseflyt',
   description: 'En app for lærere for å administrere klasserommet effektivt.',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({

@@ -30,6 +30,7 @@ import { SidebarItem } from "./SidebarItem";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Logo } from "@/components/Logo";
 
 interface SidebarNavProps {
     className?: string;
@@ -59,13 +60,19 @@ export function SidebarNav({ className, onCollapseChange }: SidebarNavProps) {
                 <div className="flex h-14 items-center border-b px-3">
                     {!isCollapsed && (
                         <Link href="/" className="flex items-center gap-2 font-semibold">
+                            <Logo />
                             <span className="text-lg">Klasseflyt</span>
+                        </Link>
+                    )}
+                    {isCollapsed && (
+                        <Link href="/" className="flex items-center justify-center w-full">
+                            <Logo />
                         </Link>
                     )}
                     <Button
                         variant="ghost"
                         size="icon"
-                        className={cn("ml-auto h-8 w-8", isCollapsed && "mx-auto")}
+                        className={cn("ml-auto h-8 w-8", isCollapsed && "absolute right-2")}
                         onClick={handleToggle}
                     >
                         <ChevronLeft className={cn("h-4 w-4 transition-transform", isCollapsed && "rotate-180")} />

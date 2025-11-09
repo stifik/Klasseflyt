@@ -1,0 +1,36 @@
+<svg width="512" height="512" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradSimple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#60a5fa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <path d="M 15 25 Q 30 20, 40 25 T 65 25" 
+        stroke="url(#gradSimple)" 
+        stroke-width="3.5" 
+        fill="none" 
+        stroke-linecap="round"
+        opacity="0.7"/>
+  
+  <path d="M 15 40 Q 30 35, 40 40 T 65 40" 
+        stroke="url(#gradSimple)" 
+        stroke-width="3.5" 
+        fill="none" 
+        stroke-linecap="round"
+        opacity="0.55"/>
+  
+  <path d="M 15 55 Q 30 50, 40 55 T 65 55" 
+        stroke="url(#gradSimple)" 
+        stroke-width="3.5" 
+        fill="none" 
+        stroke-linecap="round"
+        opacity="0.4"/>
+  
+  <path d="M 20 45 L 35 60 Q 50 25, 75 15" 
+        stroke="#2db83d" 
+        stroke-width="8" 
+        fill="none" 
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+</svg>
