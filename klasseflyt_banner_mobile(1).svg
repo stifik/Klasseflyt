@@ -1,0 +1,79 @@
+<svg width="820" height="312" viewBox="0 0 820 312" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="bgGradMobile" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#f0f9ff;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#e0f2fe;stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="logoGradMobile" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#60a5fa;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    
+    <rect width="820" height="312" fill="url(#bgGradMobile)"/>
+    
+    <!-- Subtle background waves -->
+    <path d="M -50 80 Q 150 50, 350 80 T 750 80 T 1150 80 L 1150 0 L -50 0 Z" 
+          fill="#bae6fd" 
+          opacity="0.15"/>
+    
+    <path d="M -50 140 Q 200 110, 450 140 T 900 140 T 1300 140 L 1300 0 L -50 0 Z" 
+          fill="#7dd3fc" 
+          opacity="0.1"/>
+    
+    <path d="M -50 250 Q 250 200, 550 250 T 950 250 T 1350 250 L 1350 312 L -50 312 Z" 
+          fill="#bae6fd" 
+          opacity="0.12"/>
+    
+    <!-- Text centered -->
+    <text x="440" y="145" 
+          text-anchor="middle"
+          font-family="Arial, sans-serif" 
+          font-size="48" 
+          font-weight="700" 
+          fill="#1e293b"
+          letter-spacing="-1">
+        Klasseflyt
+    </text>
+    
+    <text x="440" y="177" 
+          text-anchor="middle"
+          font-family="Arial, sans-serif" 
+          font-size="22" 
+          font-weight="400" 
+          fill="#64748b"
+          letter-spacing="0.3">
+        Alt du trenger, ett sted
+    </text>
+    
+    <!-- Logo to the left of text -->
+    <g transform="translate(190, 89) scale(1.4)">
+        <path d="M 15 25 Q 30 20, 40 25 T 65 25" 
+              stroke="url(#logoGradMobile)" 
+              stroke-width="3.5" 
+              fill="none" 
+              stroke-linecap="round"
+              opacity="0.7"/>
+        
+        <path d="M 15 40 Q 30 35, 40 40 T 65 40" 
+              stroke="url(#logoGradMobile)" 
+              stroke-width="3.5" 
+              fill="none" 
+              stroke-linecap="round"
+              opacity="0.55"/>
+        
+        <path d="M 15 55 Q 30 50, 40 55 T 65 55" 
+              stroke="url(#logoGradMobile)" 
+              stroke-width="3.5" 
+              fill="none" 
+              stroke-linecap="round"
+              opacity="0.4"/>
+        
+        <path d="M 20 45 L 35 60 Q 50 25, 75 15" 
+              stroke="#2db83d" 
+              stroke-width="8" 
+              fill="none" 
+              stroke-linecap="round"
+              stroke-linejoin="round"/>
+    </g>
+</svg>
