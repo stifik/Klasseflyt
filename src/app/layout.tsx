@@ -6,6 +6,7 @@ import { MainLayout } from '@/components/navigation/MainLayout';
 import { BackupReminderToast } from '@/components/BackupReminderToast';
 import { CheckInReminderToast } from '@/components/CheckInReminderToast';
 import PlausibleProvider from 'next-plausible';
+import { Analytics } from '@vercel/analytics/react';
 
 export const metadata: Metadata = {
   title: 'Klasseflyt',
@@ -37,6 +38,7 @@ export default function RootLayout({
           <CheckInReminderToast />
           <Toaster />
         </Providers>
+        <Analytics />
       </body>
     </html>
   );
