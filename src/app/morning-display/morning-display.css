@@ -30,7 +30,7 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  padding-bottom: 30px; /* Add space for footer */
+  padding-bottom: 25px; /* Match footer height exactly */
 }
 
 /* NEW: Header for Slide 1 - spenner over begge kolonner */
@@ -362,18 +362,20 @@
   align-content: center;
   overflow: hidden;
   padding: 5px;
+  grid-auto-rows: minmax(auto, 1fr); /* Allow rows to shrink to fit */
 }
 
 .student-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
+  padding: 8px 10px; /* Slightly smaller default padding */
   border-radius: 10px;
   border: 3px solid;
-  font-size: 1.1rem;
+  font-size: 1rem; /* Slightly smaller default font */
   transition: all 0.3s ease;
-  min-height: 45px;
+  min-height: 40px; /* Reduced min-height */
+  max-height: 60px; /* Add max-height to prevent too tall cards */
   background-color: rgba(255, 255, 255, 0.9);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -429,52 +431,72 @@
   color: #1b5e20;
 }
 
-/* Dynamic sizing based on student count */
+/* Dynamic sizing based on student count - ensure all students fit on screen */
 .student-list[data-count="10"] .student-card,
 .student-list[data-count="12"] .student-card,
 .student-list[data-count="15"] .student-card {
-  font-size: 1.1rem;
-  padding: 10px 12px;
+  font-size: 1.05rem;
+  padding: 9px 11px;
+  min-height: 42px;
 }
 
 /* Increase gap for smaller classes to stretch vertically */
 .student-list[data-count="10"],
 .student-list[data-count="12"],
 .student-list[data-count="15"] {
-  gap: 16px 12px; /* Increased vertical gap */
+  gap: 12px 10px;
 }
 
 .student-list[data-count="18"] .student-card,
 .student-list[data-count="20"] .student-card {
-  font-size: 1rem;
-  padding: 8px 10px;
+  font-size: 0.95rem;
+  padding: 7px 9px;
+  min-height: 38px;
 }
 
 .student-list[data-count="18"],
 .student-list[data-count="20"] {
-  gap: 12px 12px; /* Medium vertical gap */
+  gap: 8px 10px;
 }
 
 .student-list[data-count="22"] .student-card,
 .student-list[data-count="25"] .student-card {
-  font-size: 0.95rem;
-  padding: 7px 9px;
+  font-size: 0.85rem;
+  padding: 6px 8px;
+  min-height: 35px;
 }
 
 .student-list[data-count="22"],
 .student-list[data-count="25"] {
-  gap: 10px 12px; /* Slightly smaller vertical gap */
+  gap: 6px 8px;
 }
 
 .student-list[data-count="28"] .student-card,
 .student-list[data-count="30"] .student-card {
-  font-size: 0.85rem;
-  padding: 6px 8px;
+  font-size: 0.75rem;
+  padding: 5px 7px;
+  min-height: 32px;
 }
 
 .student-list[data-count="28"],
 .student-list[data-count="30"] {
-  gap: 8px 12px; /* Original vertical gap */
+  gap: 5px 8px;
+}
+
+/* For very large classes, make everything even smaller */
+.student-list[data-count="32"] .student-card,
+.student-list[data-count="35"] .student-card,
+.student-list[data-count="40"] .student-card {
+  font-size: 0.7rem;
+  padding: 4px 6px;
+  min-height: 28px;
+  border-width: 2px;
+}
+
+.student-list[data-count="32"],
+.student-list[data-count="35"],
+.student-list[data-count="40"] {
+  gap: 4px 6px;
 }
 
 /* Adjust grid columns for small student counts */
