@@ -28,6 +28,7 @@ export default function Slide2({
   const [isLoading, setIsLoading] = useState(true);
   const [visibleSessionCount, setVisibleSessionCount] = useState(0);
   const [displayedDate, setDisplayedDate] = useState<Date>(new Date());
+  const [showHint, setShowHint] = useState(true);
   const gridRef = useRef<HTMLDivElement | null>(null);
 
   // Set initial date from prop if provided
@@ -57,6 +58,9 @@ export default function Slide2({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'ArrowRight' || isEditMode) return;
 
+      // Hide hint on interaction
+      if (showHint) setShowHint(false);
+
       if (visibleSessionCount < sessions.length) {
         setVisibleSessionCount(prev => prev + 1);
       } else {
@@ -71,7 +75,7 @@ export default function Slide2({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isEditMode, visibleSessionCount, sessions.length, onAdvanceToNext]);
+  }, [isEditMode, visibleSessionCount, sessions.length, onAdvanceToNext, showHint]);
 
   // Measure visible session cards and set a CSS variable so all cards can share the
   // same height (the tallest). This prevents the jarring horizontal stretch/shrink
@@ -277,7 +281,7 @@ export default function Slide2({
         setTemplateId(newId as number);
       }
 
-      setIsEditMode(false);
+      onEditModeChange?.(false);
     } catch (error) {
       console.error('Error saving schedule:', error);
       alert('Feil ved lagring av dagsplan');
@@ -286,7 +290,7 @@ export default function Slide2({
 
   const handleCancel = () => {
     loadTodaySchedule();
-    setIsEditMode(false);
+    onEditModeChange?.(false);
   };
 
   const handleAddSession = () => {
@@ -333,6 +337,9 @@ export default function Slide2({
   };
 
   const handleSlideClick = () => {
+    // Hide hint on interaction
+    if (showHint) setShowHint(false);
+    
     // Only allow revealing in non-edit mode and if there are more sessions to reveal
     if (!isEditMode && visibleSessionCount < sessions.length) {
       setVisibleSessionCount(visibleSessionCount + 1);
@@ -341,6 +348,10 @@ export default function Slide2({
 
   const handleSessionClick = (e: React.MouseEvent, sessionId: number) => {
     e.stopPropagation(); // Prevent slide click
+    
+    // Hide hint on interaction
+    if (showHint) setShowHint(false);
+    
     if (!isEditMode) {
       // Include the currently displayed date so the lesson page looks up the
       // correct day's template instead of always using the real current date.
@@ -482,17 +493,6 @@ export default function Slide2({
           </button>
         )}
 
-        {/* Discreet lock button placed in the lower-right footer when not in edit mode */}
-        {!isEditMode && (
-          <button
-            className="schedule-lock"
-            onClick={(e) => { e.stopPropagation(); setIsEditMode(true); }}
-            aria-label="Rediger dagsplan"
-          >
-            🔒
-          </button>
-        )}
-
         <div className={`schedule-list ${isEditMode ? 'edit-mode' : ''}`}>
           {sessions.length === 0 ? (
             <div className="empty-schedule">
@@ -606,6 +606,13 @@ export default function Slide2({
             })()
           )}
         </div>
+
+        {/* Navigation hint - shown only when not in edit mode and sessions are not fully revealed */}
+        {!isEditMode && showHint && sessions.length > 0 && (
+          <div className="navigation-hint">
+            <span>Trykk pil høyre eller klikk for å fortsette →</span>
+          </div>
+        )}
       </div>
     </div>
   );

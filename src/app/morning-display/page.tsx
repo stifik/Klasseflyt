@@ -92,8 +92,24 @@ function MorningDisplayContent() {
     }
 
     loadData();
-    setupKeyboardNavigation();
   }, [searchParams]);
+
+  // Keyboard navigation - separate useEffect to access maxSlide
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        setCurrentSlide(prev => (prev > 1 ? prev - 1 : prev));
+      } else if (e.key === 'ArrowRight') {
+        // Don't handle ArrowRight on slide 2 - let Slide2 component handle it for session reveal
+        if (currentSlide !== 2) {
+          setCurrentSlide(prev => (prev < maxSlide ? prev + 1 : prev));
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [maxSlide, currentSlide]);
 
   // Update active bell time every minute to handle transitions
   useEffect(() => {
@@ -343,23 +359,6 @@ function MorningDisplayContent() {
       const idx = Math.floor(Math.random() * messages.length);
       return messages[idx];
     }
-  };
-
-  const setupKeyboardNavigation = () => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') {
-        // If we're on slide 3 (Agent Reveal), go back to slide 2 (dagsplan) to keep chronological order.
-        setCurrentSlide(prev => (prev === 3 ? 2 : 1));
-      } else if (e.key === 'ArrowRight') {
-        // Only navigate to slide 2 if we're not already on slide 2; when on slide 2
-        // the Slide2 component handles ArrowRight to reveal sessions and can
-        // call back to advance to slide 3 when fully revealed.
-        setCurrentSlide(prev => (prev === 2 ? prev : 2));
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
   };
 
   // Setup live updates listener - runs when bellTimeId changes
