@@ -11,11 +11,18 @@ interface Slide2Props {
   showAllSessions?: boolean;
   initialDate?: string | null;
   onAdvanceToNext?: () => void;
+  isEditMode?: boolean;
+  onEditModeChange?: (isEdit: boolean) => void;
 }
 
-export default function Slide2({ showAllSessions = false, initialDate = null, onAdvanceToNext }: Slide2Props) {
+export default function Slide2({ 
+  showAllSessions = false, 
+  initialDate = null, 
+  onAdvanceToNext,
+  isEditMode = false,
+  onEditModeChange
+}: Slide2Props) {
   const router = useRouter();
-  const [isEditMode, setIsEditMode] = useState(false);
   const [sessions, setSessions] = useState<ScheduleSession[]>([]);
   const [templateId, setTemplateId] = useState<number | undefined>();
   const [isLoading, setIsLoading] = useState(true);

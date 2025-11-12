@@ -44,6 +44,10 @@ function MorningDisplayContent() {
   const [showPointsList, setShowPointsList] = useState(true);
   const [showProgressBar, setShowProgressBar] = useState(true);
   const [showSecretAgent, setShowSecretAgent] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  // Calculate max slide based on whether secret agent is enabled
+  const maxSlide = showSecretAgent ? 3 : 2;
 
   // Auto-update display toggles when settings change
   useEffect(() => {
@@ -442,26 +446,28 @@ function MorningDisplayContent() {
         )}
 
         {currentSlide === 2 && (
-          <>
-            <Slide2 showAllSessions={showAllSessions} initialDate={initialDate} onAdvanceToNext={() => showSecretAgent ? setCurrentSlide(3) : setCurrentSlide(1)} />
-            <SlideControls
-              currentSlide={currentSlide}
-              onSlideChange={setCurrentSlide}
-              maxSlide={showSecretAgent ? 3 : 2}
-            />
-          </>
+          <Slide2 
+            showAllSessions={showAllSessions} 
+            initialDate={initialDate} 
+            onAdvanceToNext={() => showSecretAgent ? setCurrentSlide(3) : setCurrentSlide(1)}
+            isEditMode={isEditMode}
+            onEditModeChange={setIsEditMode}
+          />
         )}
 
         {showSecretAgent && currentSlide === 3 && (
-          <>
-            <Slide3 />
-            <SlideControls
-              currentSlide={currentSlide}
-              onSlideChange={setCurrentSlide}
-              maxSlide={3}
-            />
-          </>
+          <Slide3 />
         )}
+
+        {/* Unified footer controls for all slides */}
+        <SlideControls
+          currentSlide={currentSlide}
+          onSlideChange={setCurrentSlide}
+          maxSlide={maxSlide}
+          showEditButton={currentSlide === 2}
+          onEditClick={() => setIsEditMode(!isEditMode)}
+          isEditMode={isEditMode}
+        />
       </div>
     </>
   );

@@ -24,7 +24,7 @@ type Slide1Props = {
   bellTime?: string;
   checkInSettings?: CheckInSettings; // pass full settings so we can support morning and regular
   bellType?: 'morgen' | 'ordinær';
-  onNavigateToDagsplan: () => void;
+  onNavigateToDagsplan?: () => void; // Keep for backwards compatibility but won't be used
   showPointsList?: boolean;
   showProgressBar?: boolean;
 };
@@ -42,11 +42,10 @@ export default function Slide1({
   bellTime,
   checkInSettings,
   bellType,
-  onNavigateToDagsplan,
+  onNavigateToDagsplan, // Not used anymore - navigation is in footer
   showPointsList = true,
   showProgressBar = true,
 }: Slide1Props) {
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [classTotal, setClassTotal] = useState<number>(0);
   const [goal, setGoal] = useState<{ target: number; lastAchieved?: string }>({ target: 200 });
   const [goalTitle, setGoalTitle] = useState<string>('Felles belønning');
@@ -106,36 +105,6 @@ export default function Slide1({
     const interval = setInterval(fetchData, 2000);
     return () => { mounted = false; clearInterval(interval); };
   }, []);
-
-  useEffect(() => {
-    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && document.fullscreenElement) {
-        // Ensure we exit fullscreen if ESC is pressed
-        document.exitFullscreen().catch(() => {});
-      }
-    };
-
-    document.addEventListener('fullscreenchange', onFsChange);
-    window.addEventListener('keydown', onKey);
-
-    return () => {
-      document.removeEventListener('fullscreenchange', onFsChange);
-      window.removeEventListener('keydown', onKey);
-    };
-  }, []);
-
-  const toggleFullscreen = async () => {
-    try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-      } else {
-        await document.exitFullscreen();
-      }
-    } catch (e) {
-      // ignore
-    }
-  };
 
   const handleReset = async () => {
     const settings = await db.settings.get('userSettings');
@@ -222,14 +191,7 @@ export default function Slide1({
         <div className="header-center">
           <Clock bellTime={bellTime} checkInSettings={checkInSettings} bellType={bellType} />
         </div>
-        <div className="header-right">
-          <button 
-            className="dagsplan-btn-header"
-            onClick={onNavigateToDagsplan}
-          >
-            Dagsplan →
-          </button>
-        </div>
+        <div className="header-right"></div>
       </div>
 
       {/* PROGRESS BAR - går hele bredden */}
@@ -262,21 +224,6 @@ export default function Slide1({
           />
         </div>
       </div>
-
-      {/* Fullskjerm-knapp */}
-      <button
-        className="fullscreen-toggle"
-        onClick={toggleFullscreen}
-        aria-pressed={isFullscreen}
-        aria-label={isFullscreen ? 'Avslutt fullskjerm' : 'Fullskjerm'}
-      >
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-          <path d="M3 9 V3 H9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M21 9 V3 H15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M3 15 V21 H9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M21 15 V21 H15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
     </div>
   );
 }

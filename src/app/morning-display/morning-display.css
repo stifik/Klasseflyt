@@ -869,6 +869,123 @@
 }
 
 /* ========================================
+   SLIDE CONTROLS FOOTER
+   ======================================== */
+
+.slide-controls-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 2rem;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 100;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.slide-controls-left {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.slide-controls-center {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  justify-content: center;
+}
+
+.slide-controls-right {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.slide-arrow {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: all 0.2s ease;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide-arrow:hover:not(:disabled) {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.slide-arrow:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.slide-dots {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.slide-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid white;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+}
+
+.slide-dot:hover {
+  transform: scale(1.2);
+}
+
+.slide-dot.active {
+  background: white;
+  width: 16px;
+  height: 16px;
+  border-width: 3px;
+}
+
+.slide-edit-button,
+.slide-fullscreen-button {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.slide-edit-button:hover,
+.slide-fullscreen-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.slide-fullscreen-button {
+  padding: 0.5rem;
+}
+
+/* ========================================
    RESPONSIVE DESIGN
    ======================================== */
 
