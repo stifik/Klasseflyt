@@ -35,7 +35,8 @@ export default function SlideControls({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'F11') {
         e.preventDefault();
-        toggleFullscreen();
+        // Use setTimeout to avoid the error with user gesture requirement
+        setTimeout(() => toggleFullscreen(), 0);
       }
     };
 
@@ -47,13 +48,12 @@ export default function SlideControls({
     try {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen();
-        setIsFullscreen(true);
       } else {
         await document.exitFullscreen();
-        setIsFullscreen(false);
       }
     } catch (err) {
-      console.error('Error toggling fullscreen:', err);
+      // Fullscreen request can be denied if not triggered by user gesture
+      console.log('Fullscreen request denied');
     }
   };
 
@@ -92,7 +92,7 @@ export default function SlideControls({
           className="slide-arrow"
           aria-label="Forrige slide"
         >
-          <ChevronLeft size={32} />
+          <ChevronLeft size={16} />
         </button>
 
         <div className="slide-dots">
@@ -113,7 +113,7 @@ export default function SlideControls({
           className="slide-arrow"
           aria-label="Neste slide"
         >
-          <ChevronRight size={32} />
+          <ChevronRight size={16} />
         </button>
       </div>
 
@@ -125,7 +125,7 @@ export default function SlideControls({
           aria-label={isFullscreen ? 'Avslutt fullskjerm' : 'Fullskjerm'}
           aria-pressed={isFullscreen}
         >
-          <Maximize2 size={24} />
+          <Maximize2 size={12} />
         </button>
       </div>
     </div>
