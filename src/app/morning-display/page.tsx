@@ -44,7 +44,8 @@ function MorningDisplayContent() {
   const [showPointsList, setShowPointsList] = useState(true);
   const [showProgressBar, setShowProgressBar] = useState(true);
   const [showSecretAgent, setShowSecretAgent] = useState(true);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditModeSlide2, setIsEditModeSlide2] = useState(false);
+  const [isEditModeSlide1, setIsEditModeSlide1] = useState(false);
 
   // Calculate max slide based on whether secret agent is enabled
   const maxSlide = showSecretAgent ? 3 : 2;
@@ -223,13 +224,20 @@ function MorningDisplayContent() {
       // Check if time-based messages are enabled
       const useTimeBased = await isTimeBasedMessagesEnabled();
 
-      if (useTimeBased) {
+      // Check sessionStorage for overrides first
+      const welcomeOverride = typeof window !== 'undefined' 
+        ? sessionStorage.getItem('morning-display-welcome-override')
+        : null;
+      const instructionsOverride = typeof window !== 'undefined'
+        ? sessionStorage.getItem('morning-display-instructions-override')
+        : null;
+
+      if (welcomeOverride) {
+        setWelcomeMessage(welcomeOverride);
+      } else if (useTimeBased) {
         // Load time-based messages
         const welcomeMsg = await getTimeBasedMessage('welcome');
         setWelcomeMessage(welcomeMsg);
-
-        const instructionMsg = await getTimeBasedMessage('instruction');
-        setInstructions(instructionMsg);
       } else {
         // Load traditional random messages
         const messages = await db.welcomeMessages.toArray();
@@ -237,7 +245,14 @@ function MorningDisplayContent() {
           const randomMessage = getRandomMessage(messages, 'morning_display_welcome_v1');
           setWelcomeMessage(randomMessage.message);
         }
+      }
 
+      if (instructionsOverride) {
+        setInstructions(instructionsOverride);
+      } else if (useTimeBased) {
+        const instructionMsg = await getTimeBasedMessage('instruction');
+        setInstructions(instructionMsg);
+      } else {
         const instructionsList = await db.instructionMessages.toArray();
         if (instructionsList.length > 0) {
           const randomInstruction = getRandomMessage(instructionsList, 'morning_display_instruction_v1');
@@ -441,6 +456,9 @@ function MorningDisplayContent() {
             onNavigateToDagsplan={() => setCurrentSlide(2)}
             showPointsList={showPointsList}
             showProgressBar={showProgressBar}
+            isEditMode={isEditModeSlide1}
+            onWelcomeMessageChange={setWelcomeMessage}
+            onInstructionsChange={setInstructions}
           />
         )}
 
@@ -449,8 +467,8 @@ function MorningDisplayContent() {
             showAllSessions={showAllSessions} 
             initialDate={initialDate} 
             onAdvanceToNext={() => showSecretAgent ? setCurrentSlide(3) : setCurrentSlide(1)}
-            isEditMode={isEditMode}
-            onEditModeChange={setIsEditMode}
+            isEditMode={isEditModeSlide2}
+            onEditModeChange={setIsEditModeSlide2}
           />
         )}
 
@@ -463,9 +481,15 @@ function MorningDisplayContent() {
           currentSlide={currentSlide}
           onSlideChange={setCurrentSlide}
           maxSlide={maxSlide}
-          showEditButton={currentSlide === 2}
-          onEditClick={() => setIsEditMode(!isEditMode)}
-          isEditMode={isEditMode}
+          showEditButton={currentSlide === 1 || currentSlide === 2}
+          onEditClick={() => {
+            if (currentSlide === 1) {
+              setIsEditModeSlide1(!isEditModeSlide1);
+            } else if (currentSlide === 2) {
+              setIsEditModeSlide2(!isEditModeSlide2);
+            }
+          }}
+          isEditMode={currentSlide === 1 ? isEditModeSlide1 : isEditModeSlide2}
         />
       </div>
     </>

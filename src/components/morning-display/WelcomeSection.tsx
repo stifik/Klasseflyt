@@ -6,12 +6,18 @@ type WelcomeSectionProps = {
   message: string;
   instructions: string;
   className: string;
+  isEditMode?: boolean;
+  onMessageChange?: (message: string) => void;
+  onInstructionsChange?: (instructions: string) => void;
 };
 
 export default function WelcomeSection({ 
   message, 
   instructions,
-  className 
+  className,
+  isEditMode = false,
+  onMessageChange,
+  onInstructionsChange
 }: WelcomeSectionProps) {
   const messageRef = useRef<HTMLParagraphElement>(null);
 
@@ -97,6 +103,34 @@ export default function WelcomeSection({
       </span>
     ));
   };
+
+  // If in edit mode, show textarea fields
+  if (isEditMode) {
+    return (
+      <div className="welcome-message-edit">
+        <div className="edit-field">
+          <label>Velkomstmelding:</label>
+          <textarea
+            value={message}
+            onChange={(e) => onMessageChange?.(e.target.value)}
+            className="welcome-textarea"
+            rows={4}
+            placeholder="Skriv velkomstmelding..."
+          />
+        </div>
+        <div className="edit-field">
+          <label>Instrukser:</label>
+          <textarea
+            value={instructions}
+            onChange={(e) => onInstructionsChange?.(e.target.value)}
+            className="instructions-textarea"
+            rows={3}
+            placeholder="Skriv instrukser..."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="welcome-message" ref={messageRef} id="welcomeMessage">

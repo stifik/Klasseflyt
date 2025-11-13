@@ -27,6 +27,9 @@ type Slide1Props = {
   onNavigateToDagsplan?: () => void; // Keep for backwards compatibility but won't be used
   showPointsList?: boolean;
   showProgressBar?: boolean;
+  isEditMode?: boolean;
+  onWelcomeMessageChange?: (message: string) => void;
+  onInstructionsChange?: (instructions: string) => void;
 };
 
 type ClockColor = 'green' | 'yellow' | 'orange' | 'red';
@@ -45,6 +48,9 @@ export default function Slide1({
   onNavigateToDagsplan, // Not used anymore - navigation is in footer
   showPointsList = true,
   showProgressBar = true,
+  isEditMode = false,
+  onWelcomeMessageChange,
+  onInstructionsChange,
 }: Slide1Props) {
   const [classTotal, setClassTotal] = useState<number>(0);
   const [goal, setGoal] = useState<{ target: number; lastAchieved?: string }>({ target: 200 });
@@ -221,6 +227,19 @@ export default function Slide1({
             message={welcomeMessage}
             instructions={instructions}
             className={className}
+            isEditMode={isEditMode}
+            onMessageChange={(newMessage) => {
+              onWelcomeMessageChange?.(newMessage);
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('morning-display-welcome-override', newMessage);
+              }
+            }}
+            onInstructionsChange={(newInstructions) => {
+              onInstructionsChange?.(newInstructions);
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('morning-display-instructions-override', newInstructions);
+              }
+            }}
           />
         </div>
       </div>
