@@ -6,6 +6,20 @@ import { Badge } from "@/components/ui/badge";
 
 const changelog = [
     {
+        version: "1.3.1",
+        date: "13. november 2024",
+        changes: [
+            { type: "new", text: "Redigeringsfunksjon for velkomstmeldinger på morgenvisning - endre meldinger direkte under økten." },
+            { type: "new", text: "Morgenvisning åpner nå i minimalistisk popup-vindu uten nettleser-UI." },
+            { type: "new", text: "Navigasjonshint på dagsplan-siden som forklarer hvordan man navigerer videre." },
+            { type: "improvement", text: "Forbedret navigasjon i morgenvisning - pil høyre viser nå timer progressivt før den går til neste slide." },
+            { type: "improvement", text: "Redusert footer-høyde til 25px for mer skjermplass på morgenvisning." },
+            { type: "improvement", text: "Dynamisk skalering av elevkort basert på antall elever - alle elever vises uten scrolling." },
+            { type: "fix", text: "Fikset klokke-farge logikk - bakgrunnen skifter nå farge nøyaktig når innsjekkingsperioden utløper." },
+            { type: "fix", text: "Fjernet hengelås-ikon fra dagsplan - redigering er nå i footeren." },
+        ]
+    },
+    {
         version: "1.3.0",
         date: "November 2024",
         changes: [

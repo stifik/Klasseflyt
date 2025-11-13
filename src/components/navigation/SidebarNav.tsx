@@ -22,7 +22,8 @@ import {
     ShieldCheck,
     DollarSign,
     Settings as SettingsIcon,
-    Monitor
+    Monitor,
+    Calendar
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarSection } from "./SidebarSection";
@@ -100,6 +101,12 @@ export function SidebarNav({ className, onCollapseChange }: SidebarNavProps) {
                             href="/homework"
                             icon={FileText}
                             label="Lekseoversikt"
+                            isCollapsed={isCollapsed}
+                        />
+                        <SidebarItem
+                            href="/weekly-planner"
+                            icon={Calendar}
+                            label="Ukesplanlegger"
                             isCollapsed={isCollapsed}
                         />
                         <SidebarItem
