@@ -97,16 +97,16 @@ function getClockColor(
   if (type === 'morgen') {
     const morning = settings.morning;
     if (minutesSinceBell < 0) return 'green'; // Before bell time - show green on clock
-    if (minutesSinceBell <= morning.percent100Minutes) return 'green';
-    if (minutesSinceBell <= morning.percent50Minutes) return 'yellow';
-    if (minutesSinceBell <= morning.percent10Minutes) return 'orange';
+    if (minutesSinceBell < morning.percent100Minutes) return 'green';
+    if (minutesSinceBell < morning.percent50Minutes) return 'yellow';
+    if (minutesSinceBell < morning.percent10Minutes) return 'orange';
     return 'red';
   }
 
   // ordinær
   const regular = settings.regular;
   if (minutesSinceBell < 0) return 'green';
-  if (minutesSinceBell <= regular.percent100Minutes) return 'green';
-  if (minutesSinceBell <= regular.stopMinutes) return 'yellow';
+  if (minutesSinceBell < regular.percent100Minutes) return 'green';
+  if (minutesSinceBell < regular.stopMinutes) return 'yellow';
   return 'red';
 }

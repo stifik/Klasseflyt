@@ -145,14 +145,14 @@ export default function Slide1({
 
       const { percent100Minutes, percent50Minutes, percent10Minutes, absenceMinutes, postCloseGraceMinutes } = morning;
 
-      if (minutesSinceBell <= percent100Minutes) return 'green';
-      if (minutesSinceBell <= percent50Minutes) return 'yellow';
-      if (minutesSinceBell <= percent10Minutes) return 'orange';
-      if (minutesSinceBell <= absenceMinutes) return 'red';
+      if (minutesSinceBell < percent100Minutes) return 'green';
+      if (minutesSinceBell < percent50Minutes) return 'yellow';
+      if (minutesSinceBell < percent10Minutes) return 'orange';
+      if (minutesSinceBell < absenceMinutes) return 'red';
 
       // Keep red for configured grace or default 2 minutes
       const postCloseGrace = postCloseGraceMinutes ?? 2;
-      if (minutesSinceBell <= absenceMinutes + postCloseGrace) return 'red';
+      if (minutesSinceBell < absenceMinutes + postCloseGrace) return 'red';
 
       return 'transparent';
     }
@@ -162,11 +162,11 @@ export default function Slide1({
     // For ordinary check-in we show green slightly before the bell (match Clock behaviour)
     if (minutesSinceBell < 0) return 'green';
     const { percent100Minutes, stopMinutes, postCloseGraceMinutes } = regular;
-    if (minutesSinceBell <= percent100Minutes) return 'green';
-    if (minutesSinceBell <= stopMinutes) return 'yellow';
+    if (minutesSinceBell < percent100Minutes) return 'green';
+    if (minutesSinceBell < stopMinutes) return 'yellow';
     // > stopMinutes => red until postCloseGrace
     const postCloseGrace = postCloseGraceMinutes ?? 2;
-    if (minutesSinceBell <= stopMinutes + postCloseGrace) return 'red';
+    if (minutesSinceBell < stopMinutes + postCloseGrace) return 'red';
     // After grace period ends, return transparent
     return 'transparent';
   }
