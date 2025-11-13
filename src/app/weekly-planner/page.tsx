@@ -5,6 +5,8 @@ import { db } from '@/lib/db';
 import type { ScheduleTemplate, ScheduleSession, LessonPlan } from '@/lib/types';
 import LessonPlanModal from './LessonPlanModal';
 import SettingsButton from '@/components/navigation/SettingsButton';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown } from 'lucide-react';
 import './weekly-planner.css';
 
 type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
@@ -39,6 +41,7 @@ export default function WeeklyPlannerPage() {
     date: string;
     existingPlan?: LessonPlan;
   } | null>(null);
+  const [openDays, setOpenDays] = useState<Set<DayOfWeek>>(new Set()); // All closed by default
 
   useEffect(() => {
     loadWeekData();
@@ -197,6 +200,18 @@ export default function WeeklyPlannerPage() {
     loadWeekData(); // Refresh data after closing modal
   };
 
+  const toggleDay = (dayKey: DayOfWeek) => {
+    setOpenDays(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(dayKey)) {
+        newSet.delete(dayKey);
+      } else {
+        newSet.add(dayKey);
+      }
+      return newSet;
+    });
+  };
+
   const formatDateRange = () => {
     if (!weekData) return '';
     const start = weekData.startDate.getDate();
@@ -242,7 +257,7 @@ export default function WeeklyPlannerPage() {
         </button>
       </div>
 
-      <div className="week-grid">
+      <div className="week-days-vertical">
         {DAYS.map((day, dayIndex) => {
           const dayData = weekData.days[day.key];
           const template = dayData.template;
@@ -250,51 +265,66 @@ export default function WeeklyPlannerPage() {
           const dateParts = dayData.date.split('-');
           const date = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
           const isToday = dayData.date === new Date().toISOString().split('T')[0];
+          const isOpen = openDays.has(day.key);
 
           return (
-            <div key={day.key} className={`day-column ${isToday ? 'today' : ''}`}>
-              <div className="day-header">
-                <h3>{day.label}</h3>
-                <span className="day-date">{date.getDate()}. {date.toLocaleDateString('nb-NO', { month: 'short' })}</span>
-              </div>
-
-              <div className="sessions-container">
-                {!template || template.sessions.length === 0 ? (
-                  <div className="empty-day">
-                    <p>Ingen dagsplan</p>
-                    <a href="/settings/weekly-schedule" className="setup-link">
-                      Sett opp mal →
-                    </a>
+            <Collapsible
+              key={day.key}
+              open={isOpen}
+              onOpenChange={() => toggleDay(day.key)}
+              className={`day-accordion ${isToday ? 'today' : ''}`}
+            >
+              <CollapsibleTrigger className="day-accordion-trigger">
+                <div className="day-accordion-header">
+                  <div className="day-info">
+                    <h3>{day.label}</h3>
+                    <span className="day-date">
+                      {date.getDate()}. {date.toLocaleDateString('nb-NO', { month: 'short' })}
+                    </span>
                   </div>
-                ) : (
-                  template.sessions.map(session => {
-                    const hasLessonPlan = dayData.lessonPlans.has(session.id);
-                    const lessonPlan = dayData.lessonPlans.get(session.id);
+                  <ChevronDown className={`chevron ${isOpen ? 'open' : ''}`} size={20} />
+                </div>
+              </CollapsibleTrigger>
 
-                    return (
-                      <div
-                        key={session.id}
-                        className={`session-card ${hasLessonPlan ? 'has-plan' : ''}`}
-                        onClick={() => handleSessionClick(session, template.id!, dayData.date, lessonPlan)}
-                      >
-                        <div className="session-time">{normalizeToHHMM(lessonPlan?.time) || normalizeToHHMM(session.time)}</div>
-                        <div className="session-info">
-                          <div className="session-subject">{lessonPlan?.subject || session.subject}</div>
-                          { (lessonPlan?.topic || session.topic) && (
-                            <div className="session-topic">{lessonPlan?.topic || session.topic}</div>
+              <CollapsibleContent className="day-accordion-content">
+                <div className="sessions-container">
+                  {!template || template.sessions.length === 0 ? (
+                    <div className="empty-day">
+                      <p>Ingen dagsplan</p>
+                      <a href="/settings/weekly-schedule" className="setup-link">
+                        Sett opp mal →
+                      </a>
+                    </div>
+                  ) : (
+                    template.sessions.map(session => {
+                      const hasLessonPlan = dayData.lessonPlans.has(session.id);
+                      const lessonPlan = dayData.lessonPlans.get(session.id);
+
+                      return (
+                        <div
+                          key={session.id}
+                          className={`session-card ${hasLessonPlan ? 'has-plan' : ''}`}
+                          onClick={() => handleSessionClick(session, template.id!, dayData.date, lessonPlan)}
+                        >
+                          <div className="session-time">{normalizeToHHMM(lessonPlan?.time) || normalizeToHHMM(session.time)}</div>
+                          <div className="session-info">
+                            <div className="session-subject">{lessonPlan?.subject || session.subject}</div>
+                            { (lessonPlan?.topic || session.topic) && (
+                              <div className="session-topic">{lessonPlan?.topic || session.topic}</div>
+                            )}
+                          </div>
+                          {hasLessonPlan && (
+                            <div className="plan-indicator" title="Har timeplan">
+                              📝
+                            </div>
                           )}
                         </div>
-                        {hasLessonPlan && (
-                          <div className="plan-indicator" title="Har timeplan">
-                            📝
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
+                      );
+                    })
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           );
         })}
       </div>

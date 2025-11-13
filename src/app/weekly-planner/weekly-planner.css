@@ -65,6 +65,84 @@
   margin-top: 0.25rem;
 }
 
+/* Vertical accordion layout */
+.week-days-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.day-accordion {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.day-accordion.today {
+  border: 2px solid #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.day-accordion-trigger {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.day-accordion-trigger:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.day-accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.day-accordion.today .day-accordion-header {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.day-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.day-info h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.day-date {
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+
+.chevron {
+  transition: transform 0.2s;
+  color: white;
+  flex-shrink: 0;
+}
+
+.chevron.open {
+  transform: rotate(180deg);
+}
+
+.day-accordion-content {
+  overflow: hidden;
+}
+
+/* Keep existing grid for legacy support */
 .week-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -243,6 +321,36 @@
 .session-time {
   color: #6b7280;
   font-size: 1rem;
+}
+
+.inline-subject-input,
+.inline-topic-input {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  transition: border-color 0.2s;
+}
+
+.inline-subject-input:focus,
+.inline-topic-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.inline-subject-input {
+  width: auto;
+  min-width: 80px;
+  max-width: 150px;
+}
+
+.inline-topic-input {
+  width: auto;
+  min-width: 150px;
+  max-width: 250px;
 }
 
 .close-btn {
