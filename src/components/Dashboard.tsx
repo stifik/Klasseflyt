@@ -218,7 +218,11 @@ const Dashboard: FC<DashboardProps> = ({settings}) => {
             // Open morning-display in new window, others use router
             const handleClick = () => {
               if (tool.key === 'morning-display') {
-                window.open(tool.href, '_blank');
+                // Open in a minimalistic popup window without toolbars
+                const width = window.screen.width;
+                const height = window.screen.height;
+                const features = `width=${width},height=${height},left=0,top=0,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=no`;
+                window.open(tool.href, 'MorningDisplay', features);
               } else {
                 router.push(tool.href);
               }

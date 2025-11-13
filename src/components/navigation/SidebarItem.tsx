@@ -18,10 +18,21 @@ export function SidebarItem({ href, icon: Icon, label, badge, isCollapsed, openI
     const pathname = usePathname();
     const isActive = pathname === href || pathname.startsWith(href + "/");
 
+    const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+        if (openInNewTab && href === '/morning-display') {
+            e.preventDefault();
+            const width = window.screen.width;
+            const height = window.screen.height;
+            const features = `width=${width},height=${height},left=0,top=0,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=no`;
+            window.open(href, 'MorningDisplay', features);
+        }
+    };
+
     return (
         <Link
             href={href}
-            target={openInNewTab ? "_blank" : undefined}
+            onClick={handleClick}
+            target={openInNewTab && href !== '/morning-display' ? "_blank" : undefined}
             rel={openInNewTab ? "noopener noreferrer" : undefined}
             className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
