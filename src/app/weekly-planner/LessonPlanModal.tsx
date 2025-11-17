@@ -10,6 +10,9 @@ interface LessonPlanModalProps {
   initialDate: string;
   existingPlan?: LessonPlan;
   onClose: () => void;
+  onNavigate?: (direction: 'prev' | 'next') => void;
+  canNavigatePrev?: boolean;
+  canNavigateNext?: boolean;
 }
 
 export default function LessonPlanModal({
@@ -18,6 +21,9 @@ export default function LessonPlanModal({
   initialDate,
   existingPlan,
   onClose,
+  onNavigate,
+  canNavigatePrev = false,
+  canNavigateNext = false,
 }: LessonPlanModalProps) {
   const [date, setDate] = useState(initialDate);
   const normalizeToHHMM = (t?: string) => {
@@ -53,6 +59,12 @@ export default function LessonPlanModal({
   const [previousPlans, setPreviousPlans] = useState<LessonPlan[]>([]);
 
   useEffect(() => {
+    // Update date when initialDate changes (from navigation)
+    setDate(initialDate);
+  }, [initialDate]);
+
+  useEffect(() => {
+    // Reset all fields when session or existingPlan changes
     if (existingPlan) {
       setObjectives(existingPlan.objectives || []);
       setActivities(existingPlan.activities || []);
@@ -60,9 +72,17 @@ export default function LessonPlanModal({
       setTime(normalizeToHHMM(existingPlan.time || session.time));
       setSubjectOverride(existingPlan.subject || session.subject);
       setTopicOverride(existingPlan.topic || session.topic);
+    } else {
+      // No existing plan - reset to session defaults
+      setObjectives([]);
+      setActivities([]);
+      setNotes('');
+      setTime(normalizeToHHMM(session.time));
+      setSubjectOverride(session.subject);
+      setTopicOverride(session.topic);
     }
     loadPreviousPlans();
-  }, [existingPlan]);
+  }, [existingPlan, session.id, session.subject, session.topic, session.time]);
 
   const loadPreviousPlans = async () => {
     // Find all previous lesson plans for this subject
@@ -79,71 +99,101 @@ export default function LessonPlanModal({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const planData: Omit<LessonPlan, 'id' | 'createdAt' | 'updatedAt'> = {
-        sessionId: session.id,
-        templateId,
-        date,
-        subject: subjectOverride,
-        topic: topicOverride,
-        time: time,
-        objectives,
-        activities,
-        notes,
-      };
-
-      if (existingPlan?.id) {
-        // Update existing
-        await db.lessonPlans.update(existingPlan.id, {
-          ...planData,
-          updatedAt: new Date(),
-        });
-      } else {
-        // Create new - first check if one exists for this date/session combo
-        const existing = await db.lessonPlans
-          .where('date')
-          .equals(date)
-          .and(plan => plan.sessionId === session.id)
-          .first();
-
-        if (existing) {
-          // Update the existing one
-          await db.lessonPlans.update(existing.id!, {
-            ...planData,
-            updatedAt: new Date(),
-          });
-        } else {
-          // Create new
-          await db.lessonPlans.add({
-            ...planData,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          });
-        }
-      }
-
+      await saveLessonPlan();
       onClose();
-        // Notify other views that lesson plans changed (date passed in `date` state)
-        try {
-          window.dispatchEvent(new CustomEvent('lessonPlansUpdated', { detail: { date } }));
-          // Broadcast to other tabs/windows using BroadcastChannel when available
-          try {
-            if (typeof BroadcastChannel !== 'undefined') {
-              const bc = new BroadcastChannel('klasseflyt-lessonplans');
-              bc.postMessage({ type: 'lessonPlansUpdated', date });
-              bc.close();
-            }
-          } catch (e) {
-            // ignore broadcast failures
-          }
-        } catch (e) {
-          // ignore if dispatch not supported
-        }
     } catch (error) {
       console.error('Error saving lesson plan:', error);
       alert('Feil ved lagring av timeplan');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const saveLessonPlan = async () => {
+    // Only save if there's actual content
+    const filteredObjectives = objectives.filter((o) => o.trim());
+    const filteredActivities = activities.filter((a) => a.trim());
+    const trimmedNotes = notes.trim();
+    
+    const hasContent = filteredObjectives.length > 0 || 
+                      filteredActivities.length > 0 || 
+                      trimmedNotes.length > 0;
+    
+    if (!hasContent) {
+      // No content - don't create an empty plan
+      return;
+    }
+
+    const planData: Omit<LessonPlan, 'id' | 'createdAt' | 'updatedAt'> = {
+      sessionId: session.id,
+      templateId,
+      date,
+      subject: subjectOverride,
+      topic: topicOverride,
+      time: time,
+      objectives: filteredObjectives,
+      activities: filteredActivities,
+      notes: trimmedNotes,
+    };
+
+    if (existingPlan?.id) {
+      // Update existing
+      await db.lessonPlans.update(existingPlan.id, {
+        ...planData,
+        updatedAt: new Date(),
+      });
+    } else {
+      // Create new - first check if one exists for this date/session combo
+      const existing = await db.lessonPlans
+        .where('date')
+        .equals(date)
+        .and(plan => plan.sessionId === session.id)
+        .first();
+
+      if (existing) {
+        // Update the existing one
+        await db.lessonPlans.update(existing.id!, {
+          ...planData,
+          updatedAt: new Date(),
+        });
+      } else {
+        // Create new
+        await db.lessonPlans.add({
+          ...planData,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+    }
+
+    // Notify other views that lesson plans changed
+    try {
+      window.dispatchEvent(new CustomEvent('lessonPlansUpdated', { detail: { date } }));
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          const bc = new BroadcastChannel('klasseflyt-lessonplans');
+          bc.postMessage({ type: 'lessonPlansUpdated', date });
+          bc.close();
+        }
+      } catch (e) {
+        // ignore broadcast failures
+      }
+    } catch (e) {
+      // ignore if dispatch not supported
+    }
+  };
+
+  const handleNavigate = async (direction: 'prev' | 'next') => {
+    if (!onNavigate) return;
+    
+    // Auto-save before navigating
+    try {
+      await saveLessonPlan();
+    } catch (error) {
+      console.error('Error auto-saving:', error);
+    }
+    
+    onNavigate(direction);
   };
 
   const handleCopyFrom = (plan: LessonPlan) => {
@@ -167,71 +217,59 @@ export default function LessonPlanModal({
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('nb-NO', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    const weekday = d.toLocaleDateString('nb-NO', { weekday: 'short' });
+    const day = d.getDate();
+    const month = d.toLocaleDateString('nb-NO', { month: 'short' });
+    return `${weekday} ${day}. ${month}`;
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay">
       <div className="modal-content lesson-plan-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <div>
-            <h2>
-              <input
-                value={subjectOverride}
-                onChange={(e) => setSubjectOverride(e.target.value)}
-                className="inline-subject-input"
-                aria-label="Fag"
-              />
-              {" - "}
-              <input
-                value={topicOverride}
-                onChange={(e) => setTopicOverride(e.target.value)}
-                className="inline-topic-input"
-                aria-label="Tema"
-              />
-            </h2>
-            <p className="session-time">{time}</p>
+          <div className="header-left">
+            <div className="date-time-stack">
+              <span className="compact-date">{formatDate(date)}</span>
+              <div className="time-selector">
+                <span className="time-icon">🕐</span>
+                <input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="time-input"
+                />
+              </div>
+            </div>
           </div>
-          <button className="close-btn" onClick={onClose}>
-            ✕
-          </button>
+          <div className="header-right">
+            <input
+              value={subjectOverride}
+              onChange={(e) => setSubjectOverride(e.target.value)}
+              className="subject-input"
+              aria-label="Fag"
+              placeholder="Fag"
+            />
+            <input
+              value={topicOverride}
+              onChange={(e) => setTopicOverride(e.target.value)}
+              className="topic-input"
+              aria-label="Tema"
+              placeholder="Tema for timen"
+            />
+          </div>
         </div>
 
         <div className="modal-body">
-          <div className="date-selector">
-            <label>
-              <strong>Dato:</strong>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="date-input"
-              />
-            </label>
-            <label style={{ marginLeft: 16 }}>
-              <strong>Tid:</strong>
-              <input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="time-input"
-              />
-            </label>
-            <span className="date-display">{formatDate(date)}</span>
-          </div>
 
           {previousPlans.length > 0 && (
-            <div className="copy-section">
+            <div className="copy-section-card">
               <button
                 className="copy-trigger-btn"
                 onClick={() => setShowCopyList(!showCopyList)}
               >
-                📋 Kopier fra tidligere timeplan ({previousPlans.length})
+                <span className="copy-icon">📋</span>
+                <span>Kopier fra tidligere timeplan</span>
+                <span className="copy-badge">{previousPlans.length}</span>
               </button>
 
               {showCopyList && (
@@ -246,7 +284,7 @@ export default function LessonPlanModal({
                       <div className="plan-preview">
                         {plan.topic && <span className="plan-topic">{plan.topic}</span>}
                         <span className="plan-stats">
-                          {plan.objectives.length} mål, {plan.activities.length} aktiviteter
+                          {plan.objectives.length} mål · {plan.activities.length} aktiviteter
                         </span>
                       </div>
                     </div>
@@ -256,57 +294,83 @@ export default function LessonPlanModal({
             </div>
           )}
 
-          <div className="section">
+          <div className="section-card">
             <div className="section-header">
-              <h3>📌 Mål for timen</h3>
+              <div className="section-title">
+                <span className="section-icon">🎯</span>
+                <h3>Mål for timen</h3>
+              </div>
               <p className="help-text">Ett mål per linje</p>
             </div>
             <textarea
               value={objectives.join('\n')}
               onChange={(e) => handleObjectivesTextChange(e.target.value)}
-              placeholder="Skriv hvert læringsmål på en ny linje...&#10;For eksempel:&#10;Forstå hvordan man multipliserer med tocifrede tall&#10;Kunne bruke standardalgoritmen&#10;Løse praktiske oppgaver"
-              className="bulk-textarea"
+              placeholder={`Skriv hvert læringsmål på en ny linje...\nFor eksempel:\nForstå hvordan man multipliserer med tosifrede tall\nKunne bruke standardalgoritmen\nLøse praktiske oppgaver`}
+              className="section-textarea"
               rows={6}
             />
           </div>
 
-          <div className="section">
+          <div className="section-card">
             <div className="section-header">
-              <h3>📝 Timens gang</h3>
+              <div className="section-title">
+                <span className="section-icon">📝</span>
+                <h3>Timens gang</h3>
+              </div>
               <p className="help-text">Én aktivitet per linje</p>
             </div>
             <textarea
               value={activities.join('\n')}
               onChange={(e) => handleActivitiesTextChange(e.target.value)}
-              placeholder="Skriv hver aktivitet på en ny linje...&#10;For eksempel:&#10;Oppstart og oppmøte&#10;Repetisjon av forrige time&#10;Gjennomgang på tavla&#10;Elevene jobber med oppgaver&#10;Oppsummering"
-              className="bulk-textarea"
+              placeholder={`Skriv hver aktivitet på en ny linje...\nFor eksempel:\nOppstart og oppmøte\nRepetisjon av forrige time\nGjennomgang på tavla\nElevene jobber med oppgaver\nOppsummering`}
+              className="section-textarea"
               rows={8}
             />
           </div>
 
-          <div className="section">
-            <h3>💬 Notater</h3>
+          <div className="section-card notes-section">
+            <div className="section-header">
+              <div className="section-title">
+                <span className="section-icon">💬</span>
+                <h3>Notater</h3>
+              </div>
+            </div>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Skriv notater her..."
-              className="notes-textarea"
+              className="section-textarea notes-textarea"
               rows={4}
             />
           </div>
         </div>
 
         <div className="modal-footer">
-          <button className="cancel-btn" onClick={onClose}>
-            Avbryt
-          </button>
-          <button
-            className="save-btn"
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            {isSaving ? 'Lagrer...' : 'Lagre timeplan'}
-          </button>
+          {onNavigate && (
+            <div className="footer-navigation">
+              <button
+                className="nav-btn prev-btn"
+                onClick={() => handleNavigate('prev')}
+                disabled={!canNavigatePrev}
+                title="Forrige time"
+              >
+                ← Forrige
+              </button>
+              <button
+                className="nav-btn next-btn"
+                onClick={() => handleNavigate('next')}
+                disabled={!canNavigateNext}
+                title="Neste time"
+              >
+                Neste →
+              </button>
+            </div>
+          )}
+          <div className="footer-actions">
+            <button className="cancel-btn" onClick={onClose}>
+              Lukk
+            </button>
+          </div>
         </div>
       </div>
     </div>
