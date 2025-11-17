@@ -217,21 +217,19 @@ export default function LessonPlanModal({
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('nb-NO', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    const weekday = d.toLocaleDateString('nb-NO', { weekday: 'short' });
+    const day = d.getDate();
+    const month = d.toLocaleDateString('nb-NO', { month: 'short' });
+    return `${weekday} ${day}. ${month}`;
   };
 
   return (
     <div className="modal-overlay">
       <div className="modal-content lesson-plan-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="header-content">
-            <div className="meta-info">
-              <span className="date-badge">{formatDate(date)}</span>
+          <div className="header-left">
+            <div className="date-time-stack">
+              <span className="compact-date">{formatDate(date)}</span>
               <div className="time-selector">
                 <span className="time-icon">🕐</span>
                 <input
@@ -242,6 +240,8 @@ export default function LessonPlanModal({
                 />
               </div>
             </div>
+          </div>
+          <div className="header-right">
             <input
               value={subjectOverride}
               onChange={(e) => setSubjectOverride(e.target.value)}
@@ -257,9 +257,6 @@ export default function LessonPlanModal({
               placeholder="Tema for timen"
             />
           </div>
-          <button className="close-btn" onClick={onClose}>
-            ✕
-          </button>
         </div>
 
         <div className="modal-body">
