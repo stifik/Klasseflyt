@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 
+// Liste over reserverte subdomener som ikke kan registreres
+const RESERVED_SUBDOMAINS = [
+  'www',
+  'api',
+  'admin',
+  'app',
+  'dev',
+  'staging',
+  'test',
+  'gangetabell',
+  'demo',
+  'docs',
+  'help',
+  'support',
+  'status',
+  'mail',
+  'email',
+  'verktoy',
+  'verktøy',
+];
+
 /**
  * GET /api/bors-registry/check?id=<borsId>
  * Sjekker om en børs-ID er ledig
@@ -28,6 +49,15 @@ export async function GET(request: NextRequest) {
         available: false,
         borsId: normalizedId,
         message: 'Ugyldig format',
+      });
+    }
+
+    // Sjekk om børs-ID er reservert
+    if (RESERVED_SUBDOMAINS.includes(normalizedId)) {
+      return NextResponse.json({
+        available: false,
+        borsId: normalizedId,
+        message: 'Dette subdomenet er reservert og kan ikke brukes',
       });
     }
 
