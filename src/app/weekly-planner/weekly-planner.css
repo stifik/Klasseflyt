@@ -697,20 +697,22 @@
 }
 
 .cancel-btn {
-  padding: 0.875rem 1.75rem;
-  background: #f3f4f6;
-  color: #374151;
+  padding: 0.875rem 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
   border: none;
   border-radius: 10px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+  box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
 }
 
 .cancel-btn:hover {
-  background: #e5e7eb;
+  background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%);
   transform: translateY(-1px);
+  box-shadow: 0 6px 8px rgba(102, 126, 234, 0.4);
 }
 
 .save-btn {

@@ -110,6 +110,20 @@ export default function LessonPlanModal({
   };
 
   const saveLessonPlan = async () => {
+    // Only save if there's actual content
+    const filteredObjectives = objectives.filter((o) => o.trim());
+    const filteredActivities = activities.filter((a) => a.trim());
+    const trimmedNotes = notes.trim();
+    
+    const hasContent = filteredObjectives.length > 0 || 
+                      filteredActivities.length > 0 || 
+                      trimmedNotes.length > 0;
+    
+    if (!hasContent) {
+      // No content - don't create an empty plan
+      return;
+    }
+
     const planData: Omit<LessonPlan, 'id' | 'createdAt' | 'updatedAt'> = {
       sessionId: session.id,
       templateId,
@@ -117,9 +131,9 @@ export default function LessonPlanModal({
       subject: subjectOverride,
       topic: topicOverride,
       time: time,
-      objectives,
-      activities,
-      notes,
+      objectives: filteredObjectives,
+      activities: filteredActivities,
+      notes: trimmedNotes,
     };
 
     if (existingPlan?.id) {
@@ -357,14 +371,7 @@ export default function LessonPlanModal({
           )}
           <div className="footer-actions">
             <button className="cancel-btn" onClick={onClose}>
-              Avbryt
-            </button>
-            <button
-              className="save-btn"
-              onClick={handleSave}
-              disabled={isSaving}
-            >
-              {isSaving ? 'Lagrer...' : 'Lagre timeplan'}
+              Lukk
             </button>
           </div>
         </div>
