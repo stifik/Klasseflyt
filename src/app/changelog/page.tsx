@@ -6,6 +6,18 @@ import { Badge } from "@/components/ui/badge";
 
 const changelog = [
     {
+        version: "1.4.0",
+        date: "17. november 2024",
+        changes: [
+            { type: "new", text: "Ukesplanlegger - planlegg timeplaner for hele uken på ett sted." },
+            { type: "new", text: "Kopier tidligere timeplaner for å spare tid." },
+            { type: "new", text: "Bla mellom timer med automatisk lagring." },
+            { type: "improvement", text: "Mer plass til innhold - mindre unødvendige knapper og luft." },
+            { type: "improvement", text: "Bedre utnyttelse av skjermen på brede datamaskiner." },
+            { type: "fix", text: "Redigert-merke vises kun når du faktisk har lagt inn noe i timen." },
+        ]
+    },
+    {
         version: "1.3.1",
         date: "13. november 2024",
         changes: [
