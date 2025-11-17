@@ -64,6 +64,18 @@ export default function LessonPlanModal({
   }, [initialDate]);
 
   useEffect(() => {
+    // Handle ESC key to close and save modal
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [objectives, activities, notes, time, subjectOverride, topicOverride]);
+
+  useEffect(() => {
     // Reset all fields when session or existingPlan changes
     if (existingPlan) {
       setObjectives(existingPlan.objectives || []);
@@ -194,6 +206,16 @@ export default function LessonPlanModal({
     }
     
     onNavigate(direction);
+  };
+
+  const handleClose = async () => {
+    // Auto-save before closing
+    try {
+      await saveLessonPlan();
+    } catch (error) {
+      console.error('Error auto-saving on close:', error);
+    }
+    onClose();
   };
 
   const handleCopyFrom = (plan: LessonPlan) => {
@@ -367,7 +389,7 @@ export default function LessonPlanModal({
             </div>
           )}
           <div className="footer-actions">
-            <button className="cancel-btn" onClick={onClose}>
+            <button className="cancel-btn" onClick={handleClose}>
               Lukk
             </button>
           </div>
