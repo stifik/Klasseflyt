@@ -40,6 +40,8 @@ export default function WeeklyPlannerPage() {
     templateId: number;
     date: string;
     existingPlan?: LessonPlan;
+    dayKey: DayOfWeek;
+    sessionIndex: number;
   } | null>(null);
   const [openDays, setOpenDays] = useState<Set<DayOfWeek>>(new Set()); // All closed by default
 
@@ -185,19 +187,102 @@ export default function WeeklyPlannerPage() {
     session: ScheduleSession,
     templateId: number,
     date: string,
-    existingPlan?: LessonPlan
+    existingPlan: LessonPlan | undefined,
+    dayKey: DayOfWeek,
+    sessionIndex: number
   ) => {
     setSelectedSession({
       session,
       templateId,
       date,
       existingPlan,
+      dayKey,
+      sessionIndex,
     });
   };
 
   const handleCloseModal = () => {
     setSelectedSession(null);
     loadWeekData(); // Refresh data after closing modal
+  };
+
+  const handleNavigate = (direction: 'prev' | 'next') => {
+    if (!selectedSession || !weekData) return;
+
+    // Find all sessions across all days
+    const allSessions: Array<{
+      session: ScheduleSession;
+      templateId: number;
+      date: string;
+      existingPlan?: LessonPlan;
+      dayKey: DayOfWeek;
+      sessionIndex: number;
+    }> = [];
+
+    DAYS.forEach((day) => {
+      const dayData = weekData.days[day.key];
+      const template = dayData.template;
+      if (template && template.sessions.length > 0) {
+        template.sessions.forEach((session, index) => {
+          const lessonPlan = dayData.lessonPlans.get(session.id);
+          allSessions.push({
+            session,
+            templateId: template.id!,
+            date: dayData.date,
+            existingPlan: lessonPlan,
+            dayKey: day.key,
+            sessionIndex: index,
+          });
+        });
+      }
+    });
+
+    // Find current session index in the flat list
+    const currentIndex = allSessions.findIndex(
+      (s) =>
+        s.dayKey === selectedSession.dayKey &&
+        s.sessionIndex === selectedSession.sessionIndex
+    );
+
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+
+    if (newIndex >= 0 && newIndex < allSessions.length) {
+      const nextSession = allSessions[newIndex];
+      setSelectedSession(nextSession);
+    }
+  };
+
+  const getNavigationAvailability = () => {
+    if (!selectedSession || !weekData) return { canPrev: false, canNext: false };
+
+    // Count all sessions
+    let totalSessions = 0;
+    let currentPosition = 0;
+    let found = false;
+
+    DAYS.forEach((day) => {
+      const dayData = weekData.days[day.key];
+      const template = dayData.template;
+      if (template && template.sessions.length > 0) {
+        template.sessions.forEach((session, index) => {
+          if (
+            day.key === selectedSession.dayKey &&
+            index === selectedSession.sessionIndex
+          ) {
+            currentPosition = totalSessions;
+            found = true;
+          }
+          totalSessions++;
+        });
+      }
+    });
+
+    return {
+      canPrev: found && currentPosition > 0,
+      canNext: found && currentPosition < totalSessions - 1,
+    };
   };
 
   const toggleDay = (dayKey: DayOfWeek) => {
@@ -296,7 +381,7 @@ export default function WeeklyPlannerPage() {
                       </a>
                     </div>
                   ) : (
-                    template.sessions.map(session => {
+                    template.sessions.map((session, sessionIndex) => {
                       const hasLessonPlan = dayData.lessonPlans.has(session.id);
                       const lessonPlan = dayData.lessonPlans.get(session.id);
 
@@ -304,7 +389,7 @@ export default function WeeklyPlannerPage() {
                         <div
                           key={session.id}
                           className={`session-card ${hasLessonPlan ? 'has-plan' : ''}`}
-                          onClick={() => handleSessionClick(session, template.id!, dayData.date, lessonPlan)}
+                          onClick={() => handleSessionClick(session, template.id!, dayData.date, lessonPlan, day.key, sessionIndex)}
                         >
                           <div className="session-time">{normalizeToHHMM(lessonPlan?.time) || normalizeToHHMM(session.time)}</div>
                           <div className="session-info">
@@ -336,6 +421,9 @@ export default function WeeklyPlannerPage() {
           initialDate={selectedSession.date}
           existingPlan={selectedSession.existingPlan}
           onClose={handleCloseModal}
+          onNavigate={handleNavigate}
+          canNavigatePrev={getNavigationAvailability().canPrev}
+          canNavigateNext={getNavigationAvailability().canNext}
         />
       )}
     </div>
