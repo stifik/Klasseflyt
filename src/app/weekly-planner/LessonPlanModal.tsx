@@ -122,7 +122,7 @@ export default function LessonPlanModal({
   };
 
   const saveLessonPlan = async () => {
-    // Only save if there's actual content
+    // Check if there's actual content or changes
     const filteredObjectives = objectives.filter((o) => o.trim());
     const filteredActivities = activities.filter((a) => a.trim());
     const trimmedNotes = notes.trim();
@@ -131,8 +131,12 @@ export default function LessonPlanModal({
                       filteredActivities.length > 0 || 
                       trimmedNotes.length > 0;
     
-    if (!hasContent) {
-      // No content - don't create an empty plan
+    const hasChanges = subjectOverride !== session.subject ||
+                      topicOverride !== session.topic ||
+                      time !== normalizeToHHMM(session.time);
+    
+    if (!hasContent && !hasChanges) {
+      // No content and no changes - don't create an empty plan
       return;
     }
 
