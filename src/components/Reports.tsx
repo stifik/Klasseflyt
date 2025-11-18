@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
-import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp, MessageSquare, Award, Target, Check, MessageSquarePlus, BadgeCheck } from 'lucide-react';
+import { Printer, Copy, Loader2, Clock, ChevronDown, ChevronUp, MessageSquare, Award, Target, Check, MessageSquarePlus, BadgeCheck, Download } from 'lucide-react';
 import { getWeekNumber } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RemarkAnalysis from './RemarkAnalysis';
@@ -18,6 +18,7 @@ import { format } from 'date-fns';
 import { nb } from 'date-fns/locale';
 import { Textarea } from './ui/textarea';
 import { db } from '@/lib/db';
+import { generateStudentReportPDF, generateMultipleStudentReportsPDF } from '@/lib/pdfGenerator';
 
 interface ReportsProps {
   students: Student[];
@@ -598,7 +599,7 @@ const ReportDetails = ({ stat, behaviorTypes, reportSettings }: { stat: ReturnTy
 );
 
 
-const FullReportCard = ({ stat, isOpen, isPrintVersion = false, behaviorTypes, reportSettings }: { stat: ReturnType<typeof useStudentStats>[0], isOpen: boolean, isPrintVersion?: boolean, behaviorTypes: BehaviorType[], reportSettings: ReportSettings }) => (
+const FullReportCard = ({ stat, isOpen, isPrintVersion = false, behaviorTypes, reportSettings, onPrintSingle, isGeneratingPDF }: { stat: ReturnType<typeof useStudentStats>[0], isOpen: boolean, isPrintVersion?: boolean, behaviorTypes: BehaviorType[], reportSettings: ReportSettings, onPrintSingle?: () => void, isGeneratingPDF?: boolean }) => (
      <Card className={cn(
         "print:shadow-none print:border-none",
         isPrintVersion && "border-b border-t"
@@ -610,12 +611,27 @@ const FullReportCard = ({ stat, isOpen, isPrintVersion = false, behaviorTypes, r
                     {reportSettings.includeHomeworkInReport && <CardDescription>Totaloversikt ({stat.totalHomework} lekser)</CardDescription>}
                 </div>
                 {!isPrintVersion && (
-                    <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                            {isOpen ? "Skjul detaljer" : "Vis detaljer"}
-                            {isOpen ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
+                    <div className="flex gap-2">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={onPrintSingle}
+                            disabled={isGeneratingPDF}
+                        >
+                            {isGeneratingPDF ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Download className="mr-2 h-4 w-4" />
+                            )}
+                            Last ned PDF
                         </Button>
-                    </CollapsibleTrigger>
+                        <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                                {isOpen ? "Skjul detaljer" : "Vis detaljer"}
+                                {isOpen ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
+                            </Button>
+                        </CollapsibleTrigger>
+                    </div>
                 )}
             </div>
         </CardHeader>
@@ -760,6 +776,8 @@ const useStudentStats = (
 
 const StudentReport = (props: Omit<ReportsProps, 'activeSubTab' | 'onSubTabChange'>) => {
     const [openStudents, setOpenStudents] = useState<Record<number, boolean>>({});
+    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+    const { toast } = useToast();
     const behaviorTypes = props.settings.behaviorTypes || [];
     const studentStats = useStudentStats(
         props.students,
@@ -781,32 +799,131 @@ const StudentReport = (props: Omit<ReportsProps, 'activeSubTab' | 'onSubTabChang
         setOpenStudents(prev => ({ ...prev, [studentId]: !prev[studentId] }));
     };
 
+    const convertToReportData = (stat: typeof studentStats[0]) => {
+        // Konverter til formatet PDF-generatoren forventer
+        const homeworkDetails = stat.statsBySubject.flatMap(subStat => 
+            subStat.problemSubmissions.map(hw => ({
+                subject: subStat.subjectName,
+                title: hw.title || '',
+                week: hw.week || 0,
+                status: hw.status,
+                statusColor: statusColors[hw.status] || '#000000'
+            }))
+        );
+
+        const remarkDetails = stat.loggedRemarks.map(remark => {
+            const behaviorType = behaviorTypes.find(bt => bt.id === remark.type);
+            return {
+                date: new Date(remark.date),
+                text: remark.message || '',
+                behaviorType: behaviorType?.label
+            };
+        });
+
+        const testResults = stat.testResults.map(tr => ({
+            subjectName: tr.subjectName,
+            testTitle: tr.test.title,
+            date: new Date(tr.test.date),
+            score: tr.result.score || 0,
+            maxScore: tr.test.maxScore,
+            percentage: Math.round(((tr.result.score || 0) / tr.test.maxScore) * 100)
+        }));
+
+        return {
+            studentId: stat.studentId!,
+            studentName: stat.studentName,
+            totalHomework: stat.totalHomework,
+            totalStatusCounts: stat.totalStatusCounts,
+            totalRemarks: stat.totalRemarks,
+            homeworkDetails,
+            remarkDetails,
+            testResults,
+            learningGoals: stat.learningGoals
+        };
+    };
+
+    const printSingleStudent = async (studentId: number) => {
+        setIsGeneratingPDF(true);
+        try {
+            const stat = studentStats.find(s => s.studentId === studentId);
+            if (!stat) {
+                toast({ title: "Feil", description: "Fant ikke eleven", variant: "destructive" });
+                return;
+            }
+            
+            const reportData = convertToReportData(stat);
+            await generateStudentReportPDF(reportData, props.settings.reportSettings);
+            
+            toast({ 
+                title: "PDF generert!", 
+                description: `Rapporten for ${stat.studentName} er lastet ned.` 
+            });
+        } catch (error) {
+            console.error('PDF generation error:', error);
+            toast({ 
+                title: "Feil ved PDF-generering", 
+                description: "Kunne ikke generere PDF. Se konsollen for detaljer.", 
+                variant: "destructive" 
+            });
+        } finally {
+            setIsGeneratingPDF(false);
+        }
+    };
+
+    const printAll = async () => {
+        setIsGeneratingPDF(true);
+        try {
+            const allReportData = studentStats.map(convertToReportData);
+            await generateMultipleStudentReportsPDF(allReportData, props.settings.reportSettings);
+            
+            toast({ 
+                title: "PDF generert!", 
+                description: `Rapport for alle ${studentStats.length} elever er lastet ned.` 
+            });
+        } catch (error) {
+            console.error('PDF generation error:', error);
+            toast({ 
+                title: "Feil ved PDF-generering", 
+                description: "Kunne ikke generere PDF. Se konsollen for detaljer.", 
+                variant: "destructive" 
+            });
+        } finally {
+            setIsGeneratingPDF(false);
+        }
+    };
+
     return (
         <Card>
-            <CardHeader className="no-print">
+            <CardHeader>
                 <div className="flex items-center justify-between">
                     <div>
                         <CardTitle>Elevrapporter</CardTitle>
                         <CardDescription>Oversikt over hver enkelt elevs fremgang og ansvarsområder.</CardDescription>
                     </div>
-                    <Button onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" /> Skriv ut alle</Button>
+                    <Button onClick={printAll} disabled={isGeneratingPDF}>
+                        {isGeneratingPDF ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Download className="mr-2 h-4 w-4" />
+                        )}
+                        Last ned alle som PDF
+                    </Button>
                 </div>
             </CardHeader>
-            <CardContent className="space-y-4 screen-only">
+            <CardContent className="space-y-4">
                 {studentStats.map(stat => (
                     <Collapsible key={stat.studentId} open={openStudents[stat.studentId!] || false} onOpenChange={() => toggleStudent(stat.studentId!)}>
-                        <FullReportCard stat={stat} isOpen={openStudents[stat.studentId!] || false} behaviorTypes={behaviorTypes} reportSettings={props.settings.reportSettings} />
+                        <FullReportCard 
+                            stat={stat} 
+                            isOpen={openStudents[stat.studentId!] || false} 
+                            behaviorTypes={behaviorTypes} 
+                            reportSettings={props.settings.reportSettings}
+                            onPrintSingle={() => printSingleStudent(stat.studentId!)}
+                            isGeneratingPDF={isGeneratingPDF}
+                        />
                     </Collapsible>
                 ))}
             </CardContent>
-             {/* Hidden, print-only version */}
-            <div className="hidden print-only printable-area">
-                {studentStats.map(stat => (
-                    <div key={stat.studentId} className="page-break">
-                         <FullReportCard stat={stat} isOpen={true} isPrintVersion={true} behaviorTypes={behaviorTypes} reportSettings={props.settings.reportSettings} />
-                    </div>
-                ))}
-            </div>
         </Card>
     );
 }
