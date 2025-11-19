@@ -150,11 +150,12 @@ export default function RewardStore() {
         <CardContent className="pt-6">
           <div className="text-sm space-y-2 text-blue-900 dark:text-blue-100">
             <p className="font-semibold">💡 Dynamisk prissetting</p>
-            <p>Prisene endres automatisk basert på kjøp:</p>
+            <p>Prisene endres automatisk basert på popularitet:</p>
             <ul className="list-disc list-inside space-y-1 text-xs ml-2">
-              <li>Kjøpt belønning: pris øker med 5% av grunnpris</li>
-              <li>Andre belønninger: pris synker 2% mot grunnpris</li>
-              <li>Prisene holdes mellom 50%-200% av grunnpris</li>
+              <li>Kjøpt belønning: pris øker (konfigurerbart i innstillinger)</li>
+              <li>Andre belønninger: deler prisøkningen likt mellom seg som reduksjon</li>
+              <li>Dette gir matematisk balanse (zero-sum) - populære varer blir dyrere, upopulære billigere</li>
+              <li>Prisene holdes innenfor konfigurerte grenser (standard: 50%-200% av grunnpris)</li>
             </ul>
           </div>
         </CardContent>

@@ -9,17 +9,22 @@ export type RewardResult = {
   message: string;
 };
 
-// Dynamic pricing algorithm with configurable parameters
+// Dynamic pricing algorithm with balanced zero-sum mechanics
 export function calculateNewPrices(
   rewards: Reward[], 
   boughtRewardId: number,
   increasePercent: number = 5,
-  decreasePercent: number = 2,
   floorPercent: number = 50,
   ceilingPercent: number = 200
 ): Reward[] {
   console.log('🔄 Calculating prices for bought reward ID:', boughtRewardId, 'type:', typeof boughtRewardId);
   console.log('📋 All rewards before calculation:', rewards.map(r => `ID ${r.id}(${typeof r.id}): ${r.name} = ${r.currentPrice}`));
+  
+  // Calculate balanced decrease: total increase distributed equally among other items
+  const otherRewardsCount = rewards.length - 1;
+  const balancedDecreasePercent = otherRewardsCount > 0 ? increasePercent / otherRewardsCount : 0;
+  
+  console.log(`⚖️ Balance: ${rewards.length} total rewards, ${otherRewardsCount} others → each decreases ${balancedDecreasePercent.toFixed(3)}%`);
   
   return rewards.map(reward => {
     let newPrice = reward.currentPrice;
@@ -34,15 +39,15 @@ export function calculateNewPrices(
       newPrice += reward.basePrice * (increasePercent / 100);
       // Round up to ensure price always increases
       newPrice = Math.ceil(newPrice);
-      console.log(`  ✅ ID ${reward.id} (${reward.name}): BOUGHT - ${oldPrice} → ${newPrice}`);
+      console.log(`  ✅ ID ${reward.id} (${reward.name}): BOUGHT - ${oldPrice} → ${newPrice} (+${increasePercent}%)`);
     } else {
-      // Other items always decrease by configured % of base price
-      // This creates downward pressure on all non-purchased items
-      const decayAmount = reward.basePrice * (decreasePercent / 100);
+      // Distribute the total increase equally among all other items
+      // This creates zero-sum pricing: total market value stays constant
+      const decayAmount = reward.basePrice * (balancedDecreasePercent / 100);
       newPrice -= decayAmount;
-      // Round down to ensure price always decreases (unless at floor)
-      newPrice = Math.floor(newPrice);
-      console.log(`  📉 ID ${reward.id} (${reward.name}): DECREASED - ${oldPrice} → ${newPrice}`);
+      // Round to nearest integer for clean display
+      newPrice = Math.round(newPrice);
+      console.log(`  📉 ID ${reward.id} (${reward.name}): DECREASED - ${oldPrice} → ${newPrice} (-${balancedDecreasePercent.toFixed(3)}%)`);
     }
 
     // Enforce price bounds (configurable % of basePrice)
@@ -371,7 +376,6 @@ export async function buyReward(
         allRewards,
         rewardId,
         rewardSystem.priceIncreasePercent,
-        rewardSystem.priceDecreasePercent,
         rewardSystem.priceFloorPercent,
         rewardSystem.priceCeilingPercent
       );
@@ -423,7 +427,6 @@ export async function updatePricesAfterPurchase(rewardId: number): Promise<void>
     const rewardSystem = settings?.rewardSystem || {
       mode: 'simple',
       priceIncreasePercent: 5,
-      priceDecreasePercent: 2,
       priceFloorPercent: 50,
       priceCeilingPercent: 200,
       transferFeePercent: 10,
@@ -435,7 +438,6 @@ export async function updatePricesAfterPurchase(rewardId: number): Promise<void>
         allRewards, 
         rewardId,
         rewardSystem.priceIncreasePercent,
-        rewardSystem.priceDecreasePercent,
         rewardSystem.priceFloorPercent,
         rewardSystem.priceCeilingPercent
       );

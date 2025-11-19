@@ -34,7 +34,6 @@ export default function RewardSettings() {
   const [rewardSystem, setRewardSystem] = useState<RewardSystemSettings>({
     mode: 'simple',
     priceIncreasePercent: 5,
-    priceDecreasePercent: 2,
     priceFloorPercent: 50,
     priceCeilingPercent: 200,
     transferFeePercent: 10,
@@ -588,30 +587,7 @@ export default function RewardSettings() {
                       className="w-full"
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Hvor mye prisen på en belønning øker når den blir kjøpt
-                    </p>
-                  </div>
-
-                  {/* Price decrease percentage */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label>Prisreduksjon for andre varer</Label>
-                      <span className="text-sm font-semibold text-red-600">
-                        -{rewardSystem.priceDecreasePercent}%
-                      </span>
-                    </div>
-                    <Slider
-                      value={[rewardSystem.priceDecreasePercent]}
-                      onValueChange={([value]) =>
-                        setRewardSystem({ ...rewardSystem, priceDecreasePercent: value })
-                      }
-                      min={1}
-                      max={10}
-                      step={1}
-                      className="w-full"
-                    />
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Hvor mye prisen på andre belønninger synker når én blir kjøpt
+                      Hvor mye prisen øker på kjøpt vare. Denne økningen fordeles automatisk likt som reduksjon på alle andre varer (zero-sum økonomi)
                     </p>
                   </div>
 
