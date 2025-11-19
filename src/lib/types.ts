@@ -37,6 +37,13 @@ export type Reward = {
   emoji?: string;
 };
 
+export type PriceHistory = {
+  id?: number;
+  rewardId: number;
+  price: number;
+  timestamp: Date;
+};
+
 export type CommunityReward = {
   id?: number;
   title: string; // "Farge lærers hår"

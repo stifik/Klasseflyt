@@ -376,6 +376,20 @@ export async function buyReward(
         rewardSystem.priceCeilingPercent
       );
 
+      // Log price changes to history for rewards that changed
+      const timestamp = new Date();
+      const priceHistoryEntries = updatedRewards
+        .filter(r => r.currentPrice !== allRewards.find(old => old.id === r.id)?.currentPrice)
+        .map(r => ({
+          rewardId: r.id,
+          price: r.currentPrice,
+          timestamp
+        }));
+
+      if (priceHistoryEntries.length > 0) {
+        await db.priceHistory.bulkAdd(priceHistoryEntries);
+      }
+
       // Update all rewards in database
       await Promise.all(
         updatedRewards.map(r => db.rewards.update(r.id, {
@@ -426,6 +440,20 @@ export async function updatePricesAfterPurchase(rewardId: number): Promise<void>
         rewardSystem.priceCeilingPercent
       );
       
+      // Log price changes to history for rewards that changed
+      const timestamp = new Date();
+      const priceHistoryEntries = updatedRewards
+        .filter(r => r.currentPrice !== allRewards.find(old => old.id === r.id)?.currentPrice)
+        .map(r => ({
+          rewardId: r.id,
+          price: r.currentPrice,
+          timestamp
+        }));
+
+      if (priceHistoryEntries.length > 0) {
+        await db.priceHistory.bulkAdd(priceHistoryEntries);
+      }
+      
       // Update all rewards in database
       await Promise.all(
         updatedRewards.map(r => db.rewards.update(r.id, {
@@ -439,6 +467,36 @@ export async function updatePricesAfterPurchase(rewardId: number): Promise<void>
     }
   } catch (error) {
     console.error('Error updating prices after purchase:', error);
+  }
+}
+
+// Get price history for a specific reward
+export async function getPriceHistory(rewardId: number) {
+  try {
+    const reward = await db.rewards.get(rewardId);
+    
+    if (!reward) {
+      throw new Error('Reward not found');
+    }
+
+    // Hent prishistorikk fra database, sortert etter tidspunkt
+    const history = await db.priceHistory
+      .where('rewardId')
+      .equals(rewardId)
+      .sortBy('timestamp');
+
+    return {
+      rewardId: reward.id,
+      rewardName: reward.name,
+      history: history.map(h => ({
+        timestamp: h.timestamp.toISOString(),
+        price: h.price,
+        date: h.timestamp.toISOString().split('T')[0]
+      }))
+    };
+  } catch (error) {
+    console.error('Error fetching price history:', error);
+    throw error;
   }
 }
 
