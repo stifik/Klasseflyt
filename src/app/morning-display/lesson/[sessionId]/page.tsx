@@ -5,6 +5,16 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { db } from '@/lib/db';
 import type { LessonPlan } from '@/lib/types';
 import './lesson-plan.css';
+import {
+  ArrowLeft,
+  Edit2,
+  Save,
+  X,
+  Target,
+  ListTodo,
+  MessageSquare,
+  Clock
+} from 'lucide-react';
 
 export default function LessonPlanPage() {
   const params = useParams();
@@ -24,7 +34,6 @@ export default function LessonPlanPage() {
       const date = urlParams.get('date');
       if (date) {
         setDisplayDate(date);
-        console.log('Set displayDate from URL:', date);
       }
     }
   }, []);
@@ -185,6 +194,16 @@ export default function LessonPlanPage() {
     setLessonPlan({ ...lessonPlan, notes: value });
   };
 
+  const handleSubjectChange = (value: string) => {
+    if (!lessonPlan) return;
+    setLessonPlan({ ...lessonPlan, subject: value });
+  };
+
+  const handleTopicChange = (value: string) => {
+    if (!lessonPlan) return;
+    setLessonPlan({ ...lessonPlan, topic: value });
+  };
+
   if (isLoading) {
     return (
       <div className="lesson-plan-page">
@@ -199,17 +218,18 @@ export default function LessonPlanPage() {
     return (
       <div className="lesson-plan-page">
         <div className="lesson-plan-error">
-            <h2>Fant ikke økten</h2>
-            <button
-              onClick={() => {
-                const backUrl = `/morning-display?slide=2&showAll=true${displayDate ? `&date=${displayDate}` : ''}`;
-                router.push(backUrl);
-              }}
-              className="back-button"
-            >
-              ← Tilbake til dagsplan
-            </button>
-          </div>
+          <h2>Fant ikke økten</h2>
+          <button
+            onClick={() => {
+              const backUrl = `/morning-display?slide=2&showAll=true${displayDate ? `&date=${displayDate}` : ''}`;
+              router.push(backUrl);
+            }}
+            className="back-button"
+          >
+            <ArrowLeft size={18} />
+            Tilbake til dagsplan
+          </button>
+        </div>
       </div>
     );
   }
@@ -224,20 +244,24 @@ export default function LessonPlanPage() {
           }}
           className="back-button"
         >
-          ← Tilbake til dagsplan
+          <ArrowLeft size={18} />
+          Tilbake
         </button>
         <div className="lesson-plan-controls">
           {!isEditMode ? (
             <button onClick={() => setIsEditMode(true)} className="edit-button">
-              🔓 Rediger
+              <Edit2 size={16} />
+              Rediger
             </button>
           ) : (
             <div className="edit-controls">
               <button onClick={handleSave} className="save-button">
-                💾 Lagre
+                <Save size={16} />
+                Lagre
               </button>
               <button onClick={handleCancel} className="cancel-button">
-                ❌ Avbryt
+                <X size={16} />
+                Avbryt
               </button>
             </div>
           )}
@@ -247,15 +271,41 @@ export default function LessonPlanPage() {
       <div className="lesson-plan-content">
         <div className="lesson-plan-title">
           <div className="title-row">
-            <span className="lesson-time">{lessonPlan.time}</span>
-            <h1>{lessonPlan.subject}</h1>
-            {lessonPlan.topic && <span className="lesson-topic">{lessonPlan.topic}</span>}
+            <span className="lesson-time">
+              <Clock size={16} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom' }} />
+              {lessonPlan.time}
+            </span>
+            {!isEditMode ? (
+              <h1>{lessonPlan.subject}</h1>
+            ) : (
+              <input
+                type="text"
+                value={lessonPlan.subject}
+                onChange={(e) => handleSubjectChange(e.target.value)}
+                className="subject-input"
+                placeholder="Fag"
+              />
+            )}
+            {!isEditMode ? (
+              lessonPlan.topic && <span className="lesson-topic">{lessonPlan.topic}</span>
+            ) : (
+              <input
+                type="text"
+                value={lessonPlan.topic || ''}
+                onChange={(e) => handleTopicChange(e.target.value)}
+                className="topic-input"
+                placeholder="Tema (valgfritt)"
+              />
+            )}
           </div>
         </div>
 
         <div className="lesson-plan-sections">
           <div className="lesson-plan-section">
-            <h2>📌 MÅL FOR TIMEN</h2>
+            <h2>
+              <Target size={20} />
+              Mål for timen
+            </h2>
             {!isEditMode ? (
               <ul className="objectives-list">
                 {lessonPlan.objectives.length === 0 ? (
@@ -263,6 +313,7 @@ export default function LessonPlanPage() {
                 ) : (
                   lessonPlan.objectives.map((objective, index) => (
                     <li key={index} className="objective-item">
+                      <Target size={16} className="item-icon" />
                       <span>{objective}</span>
                     </li>
                   ))
@@ -275,13 +326,11 @@ export default function LessonPlanPage() {
                   value={lessonPlan.objectives.join('\n')}
                   onChange={(e) => handleObjectivesTextChange(e.target.value)}
                   onKeyPress={(e) => {
-                    // Allow Enter key for line breaks - don't prevent default
                     if (e.key === 'Enter') {
                       e.stopPropagation();
-                      // Don't call e.preventDefault() - let the textarea handle Enter naturally
                     }
                   }}
-                  placeholder="Skriv hvert læringsmål på en ny linje...&#10;For eksempel:&#10;Forstå hvordan man multipliserer med tocifrede tall&#10;Kunne bruke standardalgoritmen&#10;Løse praktiske oppgaver"
+                  placeholder="Skriv hvert læringsmål på en ny linje..."
                   className="bulk-textarea"
                   rows={6}
                 />
@@ -290,7 +339,10 @@ export default function LessonPlanPage() {
           </div>
 
           <div className="lesson-plan-section">
-            <h2>📝 TIMENS GANG</h2>
+            <h2>
+              <ListTodo size={20} />
+              Timens gang
+            </h2>
             {!isEditMode ? (
               <ul className="activities-list">
                 {lessonPlan.activities.length === 0 ? (
@@ -298,6 +350,7 @@ export default function LessonPlanPage() {
                 ) : (
                   lessonPlan.activities.map((activity, index) => (
                     <li key={index} className="activity-item">
+                      <ListTodo size={16} className="item-icon" />
                       <span>{activity}</span>
                     </li>
                   ))
@@ -310,13 +363,11 @@ export default function LessonPlanPage() {
                   value={lessonPlan.activities.join('\n')}
                   onChange={(e) => handleActivitiesTextChange(e.target.value)}
                   onKeyPress={(e) => {
-                    // Allow Enter key for line breaks - don't prevent default
                     if (e.key === 'Enter') {
                       e.stopPropagation();
-                      // Don't call e.preventDefault() - let the textarea handle Enter naturally
                     }
                   }}
-                  placeholder="Skriv hver aktivitet på en ny linje...&#10;For eksempel:&#10;Oppstart og oppmøte&#10;Repetisjon av forrige time&#10;Gjennomgang på tavla&#10;Elevene jobber med oppgaver&#10;Oppsummering"
+                  placeholder="Skriv hver aktivitet på en ny linje..."
                   className="bulk-textarea"
                   rows={8}
                 />
@@ -326,7 +377,10 @@ export default function LessonPlanPage() {
         </div>
 
         <div className="lesson-plan-section">
-          <h2>💬 NOTATER</h2>
+          <h2>
+            <MessageSquare size={20} />
+            Notater
+          </h2>
           {!isEditMode ? (
             <div className="notes-display">
               {lessonPlan.notes || 'Ingen notater'}
