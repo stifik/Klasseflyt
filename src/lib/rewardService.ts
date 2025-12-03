@@ -119,12 +119,38 @@ async function syncPricesWithApi(rewards: Reward[]) {
       };
     }
 
+    // Hent prishistorikk for alle belønninger (for synkronisering)
+    const priceHistory: { rewardId: number; rewardName: string; history: { timestamp: string; price: number }[] }[] = [];
+    
+    for (const reward of rewards) {
+      if (reward.id) {
+        const history = await db.priceHistory
+          .where('rewardId')
+          .equals(reward.id)
+          .sortBy('timestamp');
+        
+        if (history.length > 0) {
+          priceHistory.push({
+            rewardId: reward.id,
+            rewardName: reward.name,
+            history: history.map(h => ({
+              timestamp: h.timestamp.toISOString(),
+              price: h.price
+            }))
+          });
+        }
+      }
+    }
+
     console.log('📤 Syncing prices to API...', rewards.length, 'rewards, borsId:', borsId);
     if (classGoal) {
       console.log('🎯 Fellesspotter (Delte Mål):', classGoal);
     }
     if (simpleClassGoal) {
       console.log('🎯 Enkel felles belønning:', simpleClassGoal);
+    }
+    if (priceHistory.length > 0) {
+      console.log('📊 Price history for', priceHistory.length, 'rewards');
     }
     
     const response = await fetch('/api/prices', {
@@ -137,7 +163,8 @@ async function syncPricesWithApi(rewards: Reward[]) {
         borsId, 
         rewards,
         classGoal,
-        simpleClassGoal
+        simpleClassGoal,
+        priceHistory
       }),
     });
 
@@ -500,6 +527,90 @@ export async function getPriceHistory(rewardId: number) {
     console.error('Error fetching price history:', error);
     throw error;
   }
+}
+
+// Migrate existing price history from IndexedDB to Vercel KV
+// Call this from the browser console: await migrateExistingPriceHistory()
+export async function migrateExistingPriceHistory(): Promise<{ success: boolean; message: string }> {
+  try {
+    const apiKey = process.env.NEXT_PUBLIC_API_SECRET_KEY;
+    if (!apiKey) {
+      return { success: false, message: 'API_SECRET_KEY not set' };
+    }
+
+    const borsId = localStorage.getItem('klasseflyt_bors_id');
+    if (!borsId) {
+      return { success: false, message: 'Børs-ID not set in localStorage' };
+    }
+
+    // Get all rewards
+    const rewards = await db.rewards.toArray();
+    if (rewards.length === 0) {
+      return { success: false, message: 'No rewards found' };
+    }
+
+    // Build price history for all rewards
+    const priceHistory: { rewardId: number; rewardName: string; history: { timestamp: string; price: number }[] }[] = [];
+
+    for (const reward of rewards) {
+      if (reward.id) {
+        const history = await db.priceHistory
+          .where('rewardId')
+          .equals(reward.id)
+          .sortBy('timestamp');
+
+        if (history.length > 0) {
+          priceHistory.push({
+            rewardId: reward.id,
+            rewardName: reward.name,
+            history: history.map(h => ({
+              timestamp: h.timestamp.toISOString(),
+              price: h.price
+            }))
+          });
+        }
+      }
+    }
+
+    if (priceHistory.length === 0) {
+      return { success: false, message: 'No price history found in IndexedDB' };
+    }
+
+    console.log(`📊 Migrating price history for ${priceHistory.length} rewards...`);
+
+    // Send to API
+    const response = await fetch('/api/prices', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        borsId,
+        rewards,
+        priceHistory
+      }),
+    });
+
+    if (response.ok) {
+      const totalEntries = priceHistory.reduce((sum, h) => sum + h.history.length, 0);
+      console.log(`✅ Migrated ${totalEntries} price history entries for ${priceHistory.length} rewards`);
+      return { 
+        success: true, 
+        message: `Migrerte ${totalEntries} prishistorikk-oppføringer for ${priceHistory.length} belønninger` 
+      };
+    } else {
+      return { success: false, message: `API error: ${response.status} ${response.statusText}` };
+    }
+  } catch (error) {
+    console.error('Migration error:', error);
+    return { success: false, message: `Error: ${error}` };
+  }
+}
+
+// Make migrateExistingPriceHistory available globally for console access
+if (typeof window !== 'undefined') {
+  (window as any).migrateExistingPriceHistory = migrateExistingPriceHistory;
 }
 
 // Sync agent status to API endpoint
