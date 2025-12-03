@@ -81,7 +81,7 @@ export const SeatingChartTabContent: FC<{
         const avoidPairs = appSettings.seatingChartRules?.avoidPairs || [];
         const placementRules = appSettings.seatingChartRules?.placementRules || [];
         const shuffle = <T,>(arr: T[]): T[] => [...arr].sort(() => Math.random() - 0.5);
-    const lockedDesks: LockedDesk[] = activeLayout.lockedDesks || [];
+        const lockedDesks: LockedDesk[] = activeLayout.lockedDesks || [];
         const newChart: SeatingChartDataType = Array(activeLayout.rows).fill(null).map(() => Array(activeLayout.cols).fill(null).map(() => []));
 
         while (attempts < maxAttempts) {
@@ -170,13 +170,13 @@ export const SeatingChartTabContent: FC<{
                             }
                             if (lastStudentPosition) break;
                         }
-                        
+
                         // If we found where the student was, check if any current neighbors were neighbors before
                         if (lastStudentPosition) {
                             const lastNeighbors = getNeighbors(lastStudentPosition.r, lastStudentPosition.c, lastChart);
                             for (const currentNeighbor of neighbors) {
                                 if (lastNeighbors.includes(currentNeighbor)) {
-                                    isValid = false; 
+                                    isValid = false;
                                     break;
                                 }
                             }
@@ -230,8 +230,8 @@ export const SeatingChartTabContent: FC<{
             return;
         }
 
-    const lockedDesks: LockedDesk[] = activeLayout.lockedDesks || [];
-    const lockedStudentMap = new Map<string, string>(lockedDesks.map((l: LockedDesk) => [l.deskId, l.studentName] as [string, string]));
+        const lockedDesks: LockedDesk[] = activeLayout.lockedDesks || [];
+        const lockedStudentMap = new Map<string, string>(lockedDesks.map((l: LockedDesk) => [l.deskId, l.studentName] as [string, string]));
 
         const newChart: SeatingChartDataType = Array(activeLayout.rows).fill(null).map(() => Array(activeLayout.cols).fill(null).map(() => []));
 
@@ -313,15 +313,15 @@ export const SeatingChartTabContent: FC<{
                         <TabsTrigger value="archive">Arkiv</TabsTrigger>
                     </TabsList>
                     <TabsContent value="current">
-                        <NewSeatingChart 
-                            students={students} 
-                            appSettings={appSettings} 
-                            onAppSettingsChange={onAppSettingsChange} 
-                            onSeatingChartChange={onSeatingChartChange} 
+                        <NewSeatingChart
+                            students={students}
+                            appSettings={appSettings}
+                            onAppSettingsChange={onAppSettingsChange}
+                            onSeatingChartChange={onSeatingChartChange}
                         />
                     </TabsContent>
                     <TabsContent value="archive">
-                        <SeatingChartArchive 
+                        <SeatingChartArchive
                             onLoadChart={(chart) => onSeatingChartChange(chart, 'load')}
                         />
                     </TabsContent>
@@ -516,6 +516,3 @@ const ClassroomTools: FC<ClassroomToolsProps> = (props) => {
 };
 
 export default ClassroomTools;
-
-    
-    

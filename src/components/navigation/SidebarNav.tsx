@@ -23,7 +23,8 @@ import {
     DollarSign,
     Settings as SettingsIcon,
     Monitor,
-    Calendar
+    Calendar,
+    Timer
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarSection } from "./SidebarSection";
@@ -184,6 +185,12 @@ export function SidebarNav({ className, onCollapseChange }: SidebarNavProps) {
                             href="/classroom/picker"
                             icon={Shuffle}
                             label="Elev-trekker"
+                            isCollapsed={isCollapsed}
+                        />
+                        <SidebarItem
+                            href="/classroom/stopwatch"
+                            icon={Timer}
+                            label="Stoppeklokke"
                             isCollapsed={isCollapsed}
                         />
                     </SidebarSection>
