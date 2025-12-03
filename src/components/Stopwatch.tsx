@@ -115,7 +115,7 @@ function StopwatchMode() {
     const { minutes, seconds, milliseconds } = formatTime(time);
 
     return (
-        <Card ref={cardRef} className="relative bg-background">
+        <Card ref={cardRef} className="relative bg-background fullscreen:min-h-screen fullscreen:flex fullscreen:flex-col fullscreen:justify-center [&:fullscreen]:min-h-screen [&:fullscreen]:flex [&:fullscreen]:flex-col [&:fullscreen]:justify-center">
             <CardHeader>
                 <CardTitle className="text-center text-2xl">Stoppeklokke</CardTitle>
             </CardHeader>
@@ -229,7 +229,7 @@ function CountdownMode() {
     const isFinished = timeLeft === 0 && initialTime > 0 && !isRunning;
 
     return (
-        <Card ref={cardRef} className={cn("relative bg-background", isFinished && "animate-pulse border-red-500 border-4")}>
+        <Card ref={cardRef} className={cn("relative bg-background [&:fullscreen]:min-h-screen [&:fullscreen]:flex [&:fullscreen]:flex-col [&:fullscreen]:justify-center", isFinished && "animate-pulse border-red-500 border-4")}>
             <CardHeader>
                 <CardTitle className="text-center text-2xl">Nedtelling</CardTitle>
             </CardHeader>
@@ -247,7 +247,7 @@ function CountdownMode() {
                                 max="999"
                                 value={inputMinutes}
                                 onChange={(e) => setInputMinutes(e.target.value)}
-                                className="text-8xl h-28 w-40 text-center font-bold"
+                                className="h-32 w-44 text-center font-bold [font-size:4rem] leading-none"
                             />
                             <span className="text-sm text-muted-foreground font-sans">Minutter</span>
                         </div>
@@ -259,7 +259,7 @@ function CountdownMode() {
                                 max="59"
                                 value={inputSeconds}
                                 onChange={(e) => setInputSeconds(e.target.value)}
-                                className="text-8xl h-28 w-40 text-center font-bold"
+                                className="h-32 w-44 text-center font-bold [font-size:4rem] leading-none"
                             />
                             <span className="text-sm text-muted-foreground font-sans">Sekunder</span>
                         </div>

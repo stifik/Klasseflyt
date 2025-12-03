@@ -190,7 +190,7 @@ export function SidebarNav({ className, onCollapseChange }: SidebarNavProps) {
                         <SidebarItem
                             href="/classroom/stopwatch"
                             icon={Timer}
-                            label="Stoppeklokke"
+                            label="Timere"
                             isCollapsed={isCollapsed}
                         />
                     </SidebarSection>
