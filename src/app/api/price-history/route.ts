@@ -14,12 +14,10 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders() });
 }
 
-// Check if we're in production with KV available
-const isKvAvailable = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
-
-// Dynamically import KV only if available
+// Dynamically import and check KV at runtime (not module level)
 async function getKv() {
-  if (isKvAvailable) {
+  // Check at runtime, not module level
+  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
     const { kv } = await import('@vercel/kv');
     return kv;
   }
@@ -32,6 +30,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const borsId = searchParams.get('borsId');
     const rewardId = searchParams.get('rewardId');
+
+    console.log(`📥 price-history request: borsId=${borsId}, rewardId=${rewardId}`);
 
     if (!borsId) {
       return NextResponse.json(
@@ -48,10 +48,12 @@ export async function GET(req: NextRequest) {
     }
 
     const historyKey = `price_history_${borsId}_${rewardId}`;
+    console.log(`🔑 Looking up key: ${historyKey}`);
+    
     const kvClient = await getKv();
 
     if (!kvClient) {
-      // KV not available (local dev)
+      console.log('⚠️ KV not available');
       return NextResponse.json({
         rewardId: parseInt(rewardId),
         rewardName: '',
@@ -64,6 +66,8 @@ export async function GET(req: NextRequest) {
       rewardName: string; 
       history: { timestamp: string; price: number }[] 
     }>(historyKey);
+
+    console.log(`📊 Found data:`, historyData ? `${historyData.history?.length || 0} entries` : 'null');
 
     if (!historyData) {
       return NextResponse.json({
