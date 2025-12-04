@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Dette er et client-side API endpoint som bruker IndexedDB
-// Siden dette kjører i Next.js API route (server-side), kan vi ikke direkte aksessere IndexedDB
-// Dette endepunktet er egentlig ment for eksterne kall, men siden alt data er i IndexedDB,
-// må frontend heller hente data direkte fra IndexedDB
-
 // CORS headers for cross-origin requests
 function corsHeaders() {
   return {
@@ -19,11 +14,31 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders() });
 }
 
+// Check if we're in production with KV available
+const isKvAvailable = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
+
+// Dynamically import KV only if available
+async function getKv() {
+  if (isKvAvailable) {
+    const { kv } = await import('@vercel/kv');
+    return kv;
+  }
+  return null;
+}
+
 // GET: Hent prishistorikk for en belønning
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
+    const borsId = searchParams.get('borsId');
     const rewardId = searchParams.get('rewardId');
+
+    if (!borsId) {
+      return NextResponse.json(
+        { error: 'Missing required parameter: borsId' },
+        { status: 400, headers: corsHeaders() }
+      );
+    }
 
     if (!rewardId) {
       return NextResponse.json(
@@ -32,15 +47,33 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Siden dette er et server-side endpoint og data er i IndexedDB (client-side),
-    // returnerer vi en beskjed om at dette må hentes fra client-side
-    return NextResponse.json(
-      { 
-        error: 'Price history must be fetched from client-side IndexedDB',
-        message: 'Use the getPriceHistory function from rewardService.ts instead'
-      },
-      { status: 501, headers: corsHeaders() }
-    );
+    const historyKey = `price_history_${borsId}_${rewardId}`;
+    const kvClient = await getKv();
+
+    if (!kvClient) {
+      // KV not available (local dev)
+      return NextResponse.json({
+        rewardId: parseInt(rewardId),
+        rewardName: '',
+        history: []
+      }, { headers: corsHeaders() });
+    }
+
+    const historyData = await kvClient.get<{ 
+      rewardId: number; 
+      rewardName: string; 
+      history: { timestamp: string; price: number }[] 
+    }>(historyKey);
+
+    if (!historyData) {
+      return NextResponse.json({
+        rewardId: parseInt(rewardId),
+        rewardName: '',
+        history: []
+      }, { headers: corsHeaders() });
+    }
+
+    return NextResponse.json(historyData, { headers: corsHeaders() });
 
   } catch (error) {
     console.error('Error in price-history API:', error);
