@@ -1,0 +1,115 @@
+# Klasseflyt - INBOX
+
+> **Dette er din idé-samling!** 
+> Legg til bugs, feature-ønsker, tanker og ting du vil at appen skal ha.
+> KI-assistenten sjekker denne filen regelmessig og flytter innhold til riktig sted.
+
+---
+
+## 🐛 Bugs
+
+<!-- 
+Beskriv problemet så detaljert som mulig:
+- Hva gjorde du?
+- Hva forventet du skulle skje?
+- Hva skjedde i stedet?
+- Hvilken side/komponent gjelder det?
+-->
+
+
+
+---
+
+## 💡 Feature-ønsker
+
+<!-- 
+Beskriv hva du ønsker:
+- Hvilken funksjonalitet?
+- Hvorfor er det nyttig?
+- Hvordan skal det fungere?
+-->
+
+
+
+---
+
+## 🎨 Design/UX-forbedringer
+
+<!-- 
+Ting som kan gjøres bedre:
+- For mange klikk for å gjøre X
+- Forvirrende tekst/ikoner
+- Ting som burde være mer synlig
+-->
+
+
+
+---
+
+## 🔧 Tekniske ting
+
+<!-- 
+Tekniske ønsker:
+- Ytelse
+- Integrasjoner
+- Refaktorering
+-->
+
+
+
+---
+
+## 📝 Notater
+
+<!-- 
+Andre tanker og ideer som ikke passer andre steder
+-->
+
+
+
+---
+
+## Dokumentvedlikehold
+
+### Hvordan denne filen brukes
+
+1. **Du (bruker)**: Legg til hva som helst her - bugs, ideer, frustrasjoner
+2. **KI-assistenten**: Sjekker filen ved start av hver økt
+3. **Behandling**:
+   - Bugs → Fikses eller legges i `roadmap.md`
+   - Features → Flyttes til `roadmap.md`
+   - Design → Flyttes til `design.md` eller `roadmap.md`
+   - Teknisk → Flyttes til `architecture.md` eller `roadmap.md`
+4. **Etter behandling**: Innholdet markeres som flyttet eller slettes
+
+### Tips for gode bug-rapporter
+```
+**Bug**: [Kort beskrivelse]
+**Side**: /reports
+**Steg**: 
+1. Åpne rapporter
+2. Klikk på "Last ned PDF"
+3. Ingenting skjer
+
+**Forventet**: PDF lastes ned
+**Faktisk**: Spinner som aldri stopper
+```
+
+### Tips for gode feature-ønsker
+```
+**Feature**: [Kort beskrivelse]
+**Hvorfor**: Spar tid på å gjøre X manuelt
+**Hvordan**: 
+- Knapp på dashboard
+- Åpner modal med valg
+- Genererer rapport automatisk
+```
+
+---
+
+## Sist oppdatert
+
+**2025-12-08**: Opprettet INBOX
+- Lagt til seksjoner for bugs, features, design, teknisk
+- Dokumentert hvordan filen brukes
+- Lagt til tips for gode rapporter
