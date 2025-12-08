@@ -230,6 +230,17 @@ Ved endringer, sjekk og oppdater relevante dokumenter:
 - Følger Keep a Changelog-format (keepachangelog.com)
 - Kategorier: Added, Changed, Fixed, Removed, Security
 
+#### Når oppdatere changelog?
+- **Umiddelbart**: Nye features, UI-endringer, bugfikser brukeren har opplevd
+- **Samle opp**: Interne/tekniske fikser kan grupperes i neste versjon
+- **Spør hvis usikker**: "Skal denne endringen i changelog, eller samler vi opp?"
+
+#### Workflow ved bugfiks fra INBOX
+1. Fiks buggen
+2. Marker som fikset i INBOX.md (med dato og kort forklaring)
+3. Legg til i changelog under "Fixed" (samme eller neste versjon)
+4. Commit med beskrivende melding
+
 ## Environment Variables
 
 ```env
