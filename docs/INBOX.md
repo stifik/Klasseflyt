@@ -16,6 +16,14 @@ Beskriv problemet så detaljert som mulig:
 - Hvilken side/komponent gjelder det?
 -->
 
+*(Ingen åpne bugs)*
+
+<!-- 
+FIKSET 2025-12-08: NFC-leser referanseproblem
+Problemet var at reader-objektet ble sammenlignet med referanse (===) 
+istedenfor navn. Ved reconnect ble ny referanse ikke oppdatert.
+Løsning: Endret til navnesammenligning + oppdatering av referanser ved reconnect.
+-->
 
 
 ---

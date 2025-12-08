@@ -40,7 +40,19 @@ function broadcast(message) {
 pcsc.on('reader', (reader) => {
   console.log('📱 New reader detected:', reader.name);
 
-  if (!readers.find(r => r.name === reader.name)) {
+  // Check if reader with same name already exists
+  const existingReaderIndex = readers.findIndex(r => r.name === reader.name);
+  if (existingReaderIndex !== -1) {
+    // Replace old reference with new one
+    console.log('🔄 Updating existing reader reference:', reader.name);
+    readers[existingReaderIndex] = reader;
+    
+    // Update currentReader if it was this reader
+    if (currentReader && currentReader.name === reader.name) {
+      currentReader = reader;
+      console.log('🔄 Updated currentReader reference');
+    }
+  } else {
     readers.push(reader);
     broadcast({
       type: 'reader_connected',
@@ -74,8 +86,18 @@ pcsc.on('reader', (reader) => {
         console.log('📥 Card inserted');
 
         // Automatically read card when inserted (if monitoring is active)
-        if (isMonitoring && reader === currentReader) {
+        // Use name comparison instead of reference comparison to handle reconnects
+        const isCurrentReader = currentReader && currentReader.name === reader.name;
+        if (isMonitoring && isCurrentReader) {
+          console.log('📖 Auto-reading card from:', reader.name);
           readAndBroadcastCard(reader);
+        } else if (isMonitoring && !currentReader) {
+          // If no current reader is set but we're monitoring, use this reader
+          console.log('📖 No current reader, using:', reader.name);
+          currentReader = reader;
+          readAndBroadcastCard(reader);
+        } else {
+          console.log('⏸️ Card detected but not reading (monitoring:', isMonitoring, ', isCurrentReader:', isCurrentReader, ')');
         }
       }
     }
