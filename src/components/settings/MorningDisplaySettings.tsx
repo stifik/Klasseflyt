@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import AIMessageSettings from './AIMessageSettings';
 
 export default function MorningDisplaySettings() {
   const settings = useLiveQuery(() => db.settings.get('userSettings'));
@@ -513,6 +514,9 @@ export default function MorningDisplaySettings() {
           </Card>
         </AccordionItem>
       </Accordion>
+
+      {/* AI Message Settings */}
+      <AIMessageSettings />
 
       {/* Hurtigstart guide */}
       <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200">

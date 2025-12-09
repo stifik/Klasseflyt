@@ -6,6 +6,17 @@ import { Badge } from "@/components/ui/badge";
 
 const changelog = [
     {
+        version: "1.5.0",
+        date: "7. januar 2025",
+        changes: [
+            { type: "new", text: "KI-genererte velkomstmeldinger - bruk OpenAI eller Anthropic for unike morgenmeldinger." },
+            { type: "new", text: "BYOK (Bring Your Own Key) - API-nøkler lagres kun lokalt." },
+            { type: "new", text: "Meldingene tilpasses automatisk til tidsperiode, ukedag og tid på døgnet." },
+            { type: "new", text: "Regenerer-knapp for å få ny melding med ett klikk." },
+            { type: "improvement", text: "Caching av meldinger - samme melding gjenbrukes innenfor samme tidsperiode." },
+        ]
+    },
+    {
         version: "1.4.0",
         date: "17. november 2024",
         changes: [

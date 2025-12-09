@@ -1,18 +1,19 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getTodayTheme, getThemeGradient } from '@/lib/themes';
 import { getTimeBasedMessage, isTimeBasedMessagesEnabled } from '@/lib/timeBasedMessages';
 import { getCurrentTime } from '@/lib/autoCheckInService';
+import { getOrGenerateMessage, getCurrentTimePeriod, forceRegenerate } from '@/lib/aiMessageService';
 import Slide1 from '@/components/morning-display/Slide1';
 import Slide2 from '@/components/morning-display/Slide2';
 import Slide3 from '@/components/morning-display/Slide3';
 import SlideControls from '@/components/morning-display/SlideControls';
 import MorningDisplayGuide from '@/components/MorningDisplayGuide';
-import type { Student, WelcomeMessage, InstructionMessage, BellTime } from '@/lib/types';
+import type { Student, WelcomeMessage, InstructionMessage, BellTime, AIMessageSettings } from '@/lib/types';
 import './morning-display.css';
 
 type StudentWithStatus = {
@@ -46,6 +47,9 @@ function MorningDisplayContent() {
   const [showSecretAgent, setShowSecretAgent] = useState(true);
   const [isEditModeSlide2, setIsEditModeSlide2] = useState(false);
   const [isEditModeSlide1, setIsEditModeSlide1] = useState(false);
+  const [aiMessageSettings, setAiMessageSettings] = useState<AIMessageSettings | null>(null);
+  const [currentTimePeriodId, setCurrentTimePeriodId] = useState<number | null>(null);
+  const [isRegeneratingAI, setIsRegeneratingAI] = useState(false);
 
   // Calculate max slide based on whether secret agent is enabled
   const maxSlide = showSecretAgent ? 3 : 2;
@@ -56,6 +60,7 @@ function MorningDisplayContent() {
       setShowPointsList(liveSettings.morningDisplaySettings.showPointsList ?? true);
       setShowProgressBar(liveSettings.morningDisplaySettings.showProgressBar ?? true);
       setShowSecretAgent(liveSettings.morningDisplaySettings.showSecretAgent ?? true);
+      setAiMessageSettings(liveSettings.morningDisplaySettings.aiMessageSettings || null);
     }
   }, [liveSettings]);
 
@@ -186,6 +191,54 @@ function MorningDisplayContent() {
     return () => clearInterval(interval);
   }, []);
 
+  // Check for time period changes and update AI messages automatically
+  useEffect(() => {
+    if (!aiMessageSettings?.enabled) return;
+
+    const checkTimePeriod = async () => {
+      // Only check if page is visible
+      if (document.visibilityState !== 'visible') return;
+
+      const timePeriod = await getCurrentTimePeriod();
+      if (!timePeriod?.id) return;
+
+      // If time period changed, generate new message
+      if (timePeriod.id !== currentTimePeriodId) {
+        console.log('[AI Message] Time period changed, generating new message');
+        setCurrentTimePeriodId(timePeriod.id);
+
+        const result = await getOrGenerateMessage(aiMessageSettings);
+        if (result.success && result.message) {
+          setWelcomeMessage(result.message);
+          console.log('[AI Message]', result.fromCache ? 'Loaded from cache' : 'Generated new');
+        }
+      }
+    };
+
+    // Check every minute
+    const interval = setInterval(checkTimePeriod, 60000);
+
+    return () => clearInterval(interval);
+  }, [aiMessageSettings, currentTimePeriodId]);
+
+  // Handler for manual regeneration of AI message
+  const handleRegenerateAIMessage = useCallback(async () => {
+    if (!aiMessageSettings?.enabled) return;
+
+    setIsRegeneratingAI(true);
+    try {
+      const result = await forceRegenerate(aiMessageSettings);
+      if (result.success && result.message) {
+        setWelcomeMessage(result.message);
+        console.log('[AI Message] Manually regenerated');
+      } else {
+        console.error('[AI Message] Regeneration failed:', result.error);
+      }
+    } finally {
+      setIsRegeneratingAI(false);
+    }
+  }, [aiMessageSettings]);
+
   const loadData = async () => {
     try {
       // Load students
@@ -224,6 +277,19 @@ function MorningDisplayContent() {
       // Check if time-based messages are enabled
       const useTimeBased = await isTimeBasedMessagesEnabled();
 
+      // Check if AI messages are enabled
+      const aiSettings = settings?.morningDisplaySettings?.aiMessageSettings;
+      const useAI = aiSettings?.enabled === true;
+      setAiMessageSettings(aiSettings || null);
+
+      // Get current time period for AI messages
+      if (useAI) {
+        const timePeriod = await getCurrentTimePeriod();
+        if (timePeriod?.id) {
+          setCurrentTimePeriodId(timePeriod.id);
+        }
+      }
+
       // Check sessionStorage for overrides first
       const welcomeOverride = typeof window !== 'undefined' 
         ? sessionStorage.getItem('morning-display-welcome-override')
@@ -234,6 +300,26 @@ function MorningDisplayContent() {
 
       if (welcomeOverride) {
         setWelcomeMessage(welcomeOverride);
+      } else if (useAI && aiSettings) {
+        // Use AI-generated message
+        const result = await getOrGenerateMessage(aiSettings);
+        if (result.success && result.message) {
+          setWelcomeMessage(result.message);
+          console.log('[AI Message]', result.fromCache ? 'Loaded from cache' : 'Generated new');
+        } else {
+          console.warn('[AI Message] Failed:', result.error);
+          // Fallback to time-based or random
+          if (useTimeBased) {
+            const welcomeMsg = await getTimeBasedMessage('welcome');
+            setWelcomeMessage(welcomeMsg);
+          } else {
+            const messages = await db.welcomeMessages.toArray();
+            if (messages.length > 0) {
+              const randomMessage = getRandomMessage(messages, 'morning_display_welcome_v1');
+              setWelcomeMessage(randomMessage.message);
+            }
+          }
+        }
       } else if (useTimeBased) {
         // Load time-based messages
         const welcomeMsg = await getTimeBasedMessage('welcome');
@@ -459,6 +545,9 @@ function MorningDisplayContent() {
             isEditMode={isEditModeSlide1}
             onWelcomeMessageChange={setWelcomeMessage}
             onInstructionsChange={setInstructions}
+            isAIEnabled={aiMessageSettings?.enabled ?? false}
+            isRegeneratingAI={isRegeneratingAI}
+            onRegenerateAI={handleRegenerateAIMessage}
           />
         )}
 

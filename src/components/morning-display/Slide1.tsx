@@ -7,6 +7,7 @@ import WelcomeSection from './WelcomeSection';
 import ClassGoalProgressBar from '@/components/ClassGoalProgressBar';
 import { db } from '@/lib/db';
 import { getCurrentTime } from '@/lib/autoCheckInService';
+import { RefreshCw, Sparkles } from 'lucide-react';
 import type { CheckInSettings } from '@/lib/types';
 
 type Student = {
@@ -30,6 +31,10 @@ type Slide1Props = {
   isEditMode?: boolean;
   onWelcomeMessageChange?: (message: string) => void;
   onInstructionsChange?: (instructions: string) => void;
+  // AI message props
+  isAIEnabled?: boolean;
+  isRegeneratingAI?: boolean;
+  onRegenerateAI?: () => void;
 };
 
 type ClockColor = 'green' | 'yellow' | 'orange' | 'red';
@@ -51,6 +56,9 @@ export default function Slide1({
   isEditMode = false,
   onWelcomeMessageChange,
   onInstructionsChange,
+  isAIEnabled = false,
+  isRegeneratingAI = false,
+  onRegenerateAI,
 }: Slide1Props) {
   const [classTotal, setClassTotal] = useState<number>(0);
   const [goal, setGoal] = useState<{ target: number; lastAchieved?: string }>({ target: 200 });
@@ -241,6 +249,49 @@ export default function Slide1({
               }
             }}
           />
+          
+          {/* AI Regenerate Button - only show when AI is enabled */}
+          {isAIEnabled && onRegenerateAI && (
+            <button
+              onClick={onRegenerateAI}
+              disabled={isRegeneratingAI}
+              className="ai-regenerate-button"
+              title="Generer ny KI-melding"
+              style={{
+                position: 'absolute',
+                bottom: '1rem',
+                right: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 1rem',
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '0.5rem',
+                color: 'white',
+                cursor: isRegeneratingAI ? 'wait' : 'pointer',
+                fontSize: '0.875rem',
+                opacity: isRegeneratingAI ? 0.7 : 1,
+                transition: 'opacity 0.2s, background-color 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                if (!isRegeneratingAI) {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+              }}
+            >
+              {isRegeneratingAI ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              {isRegeneratingAI ? 'Genererer...' : 'Ny melding'}
+            </button>
+          )}
         </div>
       </div>
     </div>

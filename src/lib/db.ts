@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings, WelcomeMessage, InstructionMessage, ScheduleTemplate, ThemeHistory, MorningDisplaySettings, LessonPlan, Theme, UserThemePreference, TimePeriod, TimeBasedMessage, DefaultMessage, CommunityReward, CommunityDonation, PriceHistory } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings, WelcomeMessage, InstructionMessage, ScheduleTemplate, ThemeHistory, MorningDisplaySettings, LessonPlan, Theme, UserThemePreference, TimePeriod, TimeBasedMessage, DefaultMessage, CommunityReward, CommunityDonation, PriceHistory, AIMessageCache } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -60,6 +60,7 @@ export class MySubClassedDexie extends Dexie {
     communityRewards!: Table<CommunityReward, number>;
     communityDonations!: Table<CommunityDonation, number>;
     priceHistory!: Table<PriceHistory, number>;
+    aiMessageCache!: Table<AIMessageCache, number>;
 
 
     constructor() {
@@ -670,6 +671,11 @@ export class MySubClassedDexie extends Dexie {
             priceHistory: '++id, rewardId, timestamp',
         });
 
+        // Version 45: Add AI message cache for AI-generated welcome messages
+        this.version(45).stores({
+            aiMessageCache: '++id, [date+timePeriodId], date, timePeriodId',
+        });
+
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
         });
@@ -759,6 +765,15 @@ const defaultMorningDisplaySettings: MorningDisplaySettings = {
   showPointsList: true,
   showProgressBar: true,
   showSecretAgent: true,
+  aiMessageSettings: {
+    enabled: false,
+    provider: 'openai',
+    messageContext: '',
+    tone: 'friendly',
+    language: 'norwegian',
+    includeTimeOfDay: true,
+    includeDayOfWeek: true,
+  },
 };const defaultSettings: AppSettings = {
   tabs: {
     overview: true, assessments: true, dailyCheck: true, observations: true, reports: true,

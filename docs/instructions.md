@@ -64,13 +64,13 @@ src/
 2. Legg til Table i `lib/db.ts` klassedefinisjonen
 3. Importer typen i db.ts
 4. Legg til ny versjon med stores() for migrering
-5. Nåværende versjon: **44** (oppdater ved endringer)
+5. Nåværende versjon: **45** (oppdater ved endringer)
 
 **Eksempel på versjonering:**
 ```typescript
 // I db.ts constructor
-this.version(44).stores({
-    priceHistory: '++id, rewardId, timestamp',
+this.version(45).stores({
+    aiMessageCache: '++id, [date+timePeriodId], date, timePeriodId',
 });
 ```
 
@@ -156,6 +156,27 @@ Klasseflyt støtter RFID-kort for betalinger. Se `docs/NFC_RFID_GUIDE.md`.
 - `components/NFCPaymentModal.tsx` - Betalingsmodal
 - `components/RFIDCardManager.tsx` - Kortadministrasjon
 - `lib/db.ts` - rfidCards tabell
+
+## KI-genererte meldinger (Morning Display)
+
+Klasseflyt støtter BYOK (Bring Your Own Key) AI-genererte velkomstmeldinger.
+
+**Hovedfiler:**
+- `lib/aiMessageService.ts` - Service for OpenAI/Anthropic API-kall
+- `components/settings/AIMessageSettings.tsx` - Innstillinger for AI-meldinger
+- `components/morning-display/Slide1.tsx` - Regenerer-knapp i display
+
+**Dataflyt:**
+1. Bruker legger inn API-nøkkel (lagres i localStorage, aldri synket)
+2. Ved åpning av morning-display sjekkes cache for dagens dato + tidsperiode
+3. Hvis cache finnes → vis cached melding
+4. Hvis ikke → generer ny melding via API, lagre i cache
+5. Ved bytte av tidsperiode → generer ny melding automatisk (hvis skjerm synlig)
+
+**Cache-strategi:**
+- Én melding per tidsperiode per dag
+- Cache ryddes automatisk etter 7 dager
+- Manuell regenerering overskriver cache
 
 ## Viktige konvensjoner
 
@@ -311,6 +332,13 @@ Se `architecture.md` for systemdesign og `roadmap.md` for utviklingsplan.
 ---
 
 ## Sist oppdatert
+
+**2025-12-09**: KI-genererte velkomstmeldinger
+- Lagt til BYOK AI-meldinger for Morning Display
+- Støtte for OpenAI (GPT-4o-mini) og Anthropic (Claude 3.5 Haiku)
+- API-nøkler lagres i localStorage (aldri synket)
+- Én melding per tidsperiode per dag med automatisk cache
+- Database versjon: 44 → 45
 
 **2025-12-08**: Utvidet dokumentasjonsystem
 - Lagt til maintenance-seksjoner og INBOX-workflow

@@ -17,6 +17,19 @@ Formatet er basert på [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.0] - 2025-01-07
+
+### Nytt
+- **KI-genererte velkomstmeldinger** for Morning Display
+  - Støtte for OpenAI (GPT-4o-mini) og Anthropic (Claude Sonnet 4)
+  - BYOK (Bring Your Own Key) - API-nøkler lagres kun lokalt
+  - Meldinger tilpasses automatisk til tidsperiode, ukedag og tid på døgnet
+  - Regenerer-knapp for å få ny melding med ett klikk
+  - Caching av meldinger per tidsperiode for å spare API-kall
+  - Tilpassbar kontekst, tone og språk
+
+---
+
 ## [1.0.0] - 2025-12-01
 
 ### Nytt

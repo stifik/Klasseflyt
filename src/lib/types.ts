@@ -241,6 +241,27 @@ export type MorningDisplaySettings = {
   showPointsList?: boolean; // Show points list on display
   showProgressBar?: boolean; // Show progress bar on display
   showSecretAgent?: boolean; // Show secret agent page on display
+  aiMessageSettings?: AIMessageSettings; // AI-generated message settings
+};
+
+// AI-generated message settings (BYOK - Bring Your Own Key)
+export type AIMessageSettings = {
+  enabled: boolean;
+  provider: 'openai' | 'anthropic';
+  messageContext: string; // Essensen av meldingen, f.eks. "Vennlig velkomst til 5. klasse"
+  tone: 'friendly' | 'formal' | 'humorous' | 'motivational';
+  language: 'norwegian' | 'english';
+  includeTimeOfDay: boolean; // Inkluder tid på dagen i meldingen
+  includeDayOfWeek: boolean; // Inkluder ukedag i meldingen
+};
+
+// Cache for AI-generated messages (én per tidsperiode per dag)
+export type AIMessageCache = {
+  id?: number;
+  date: string; // YYYY-MM-DD format
+  timePeriodId: number; // Referanse til TimePeriod
+  message: string; // Den genererte meldingen
+  generatedAt: Date;
 };
 
 // Time-based message system types
