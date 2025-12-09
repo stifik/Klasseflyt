@@ -62,6 +62,12 @@ Toast-meldinger når man sjekker inn (og andre meldinger i samme kategori, som f
 
 ---
 
+Når man får opp varsel om at det er på tide å ta backup, så er det en knapp som sier "ta backup nå" eller lignende, og tar brukeren til innstillinger. Men den burde ta brukeren direkte til backup-biten av innstillinger, ikke bare generelt til innstillinger. Helst med accordion-komponenetet åpnet også, så det er minst mulig friksjon for å ta backup. 
+
+---
+
+Det er ingen lyd når timeren (/classroom/stopwatch) er ferdig, det ønsker jeg.
+
 ## 🔧 Tekniske ting
 
 <!-- 
