@@ -16,6 +16,8 @@ Beskriv problemet så detaljert som mulig:
 - Hvilken side/komponent gjelder det?
 -->
 
+Når jeg åpner "Morning display" er skriften (morgenmelding eller hva det heter) veldig liten. Når jeg justerer størrelsen på vinduet, blir skriften stor slik den skal være.
+
 *(Ingen åpne bugs)*
 
 <!-- 
@@ -23,6 +25,12 @@ FIKSET 2025-12-08: NFC-leser referanseproblem
 Problemet var at reader-objektet ble sammenlignet med referanse (===) 
 istedenfor navn. Ved reconnect ble ny referanse ikke oppdatert.
 Løsning: Endret til navnesammenligning + oppdatering av referanser ved reconnect.
+
+FIKSET 2025-12-09: NFC-leser sluttet å lese etter reader-bytte
+Problemet var at leseren har to identiteter (PICC Reader og 040229-variant).
+Når den ene forsvant, byttet den til den andre, men når originalen kom tilbake
+ble den ikke satt som currentReader igjen.
+Løsning: Les fra HVILKEN SOM HELST leser som detekterer et kort når monitoring er aktivt.
 -->
 
 
@@ -50,7 +58,7 @@ Ting som kan gjøres bedre:
 - Ting som burde være mer synlig
 -->
 
-
+Toast-meldinger når man sjekker inn (og andre meldinger i samme kategori, som fravær registrert) kan godt forsvinne etter 3-5 sekunder, de trenger ikke stå på skjermen til de blir krysset vekk. NB, den "innsjekking starter" meldingen kan godt stå til det skjer noe med den, samme med backup-meldingen.
 
 ---
 
@@ -62,7 +70,7 @@ Tekniske ønsker:
 - Integrasjoner
 - Refaktorering
 -->
-
+Fjerne referanser til Plausible, det brukes ikke lenger. Bruker Vercel Analytics isteden.
 
 
 ---

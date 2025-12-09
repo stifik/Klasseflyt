@@ -83,21 +83,17 @@ pcsc.on('reader', (reader) => {
           timestamp: new Date().toISOString()
         });
       } else if ((changes & reader.SCARD_STATE_PRESENT) && (status.state & reader.SCARD_STATE_PRESENT)) {
-        console.log('📥 Card inserted');
+        console.log('📥 Card inserted on:', reader.name);
 
-        // Automatically read card when inserted (if monitoring is active)
-        // Use name comparison instead of reference comparison to handle reconnects
-        const isCurrentReader = currentReader && currentReader.name === reader.name;
-        if (isMonitoring && isCurrentReader) {
-          console.log('📖 Auto-reading card from:', reader.name);
-          readAndBroadcastCard(reader);
-        } else if (isMonitoring && !currentReader) {
-          // If no current reader is set but we're monitoring, use this reader
-          console.log('📖 No current reader, using:', reader.name);
+        // When monitoring is active, read from ANY available reader that detects a card
+        // This handles cases where the reader identity changes or reconnects
+        if (isMonitoring) {
+          console.log('📖 Reading card from:', reader.name);
+          // Update currentReader to the one that actually has the card
           currentReader = reader;
           readAndBroadcastCard(reader);
         } else {
-          console.log('⏸️ Card detected but not reading (monitoring:', isMonitoring, ', isCurrentReader:', isCurrentReader, ')');
+          console.log('⏸️ Card detected but monitoring is off');
         }
       }
     }
