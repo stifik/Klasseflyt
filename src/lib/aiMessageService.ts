@@ -253,12 +253,11 @@ export async function getOrGenerateMessage(settings: AIMessageSettings): Promise
   }
 
   const timePeriod = await getCurrentTimePeriod();
-  if (!timePeriod || !timePeriod.id) {
-    return { success: false, message: '', fromCache: false, error: 'Ingen tidsperioder konfigurert' };
-  }
+  // Use time period ID if available, otherwise use 0 as fallback for caching
+  const cacheId = timePeriod?.id ?? 0;
 
   // Sjekk cache først
-  const cached = await getCachedMessage(timePeriod.id);
+  const cached = await getCachedMessage(cacheId);
   if (cached) {
     return { success: true, message: cached.message, fromCache: true };
   }
@@ -275,7 +274,7 @@ export async function getOrGenerateMessage(settings: AIMessageSettings): Promise
     }
 
     // Cache meldingen
-    await cacheMessage(timePeriod.id, message);
+    await cacheMessage(cacheId, message);
     
     // Rydd opp gammel cache i bakgrunnen
     cleanupOldCache().catch(console.error);
@@ -307,9 +306,7 @@ export async function forceRegenerate(settings: AIMessageSettings): Promise<Gene
   }
 
   const timePeriod = await getCurrentTimePeriod();
-  if (!timePeriod || !timePeriod.id) {
-    return { success: false, message: '', fromCache: false, error: 'Ingen tidsperioder konfigurert' };
-  }
+  const cacheId = timePeriod?.id ?? 0;
 
   try {
     const prompt = buildPrompt(settings, timePeriod);
@@ -322,7 +319,7 @@ export async function forceRegenerate(settings: AIMessageSettings): Promise<Gene
     }
 
     // Overskriv cache
-    await cacheMessage(timePeriod.id, message);
+    await cacheMessage(cacheId, message);
 
     return { success: true, message, fromCache: false };
   } catch (error) {

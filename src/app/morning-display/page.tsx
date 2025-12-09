@@ -281,6 +281,7 @@ function MorningDisplayContent() {
       const aiSettings = settings?.morningDisplaySettings?.aiMessageSettings;
       const useAI = aiSettings?.enabled === true;
       setAiMessageSettings(aiSettings || null);
+      console.log('[AI Message] Settings check:', { aiSettings, useAI, enabled: aiSettings?.enabled });
 
       // Get current time period for AI messages
       if (useAI) {
@@ -302,7 +303,9 @@ function MorningDisplayContent() {
         setWelcomeMessage(welcomeOverride);
       } else if (useAI && aiSettings) {
         // Use AI-generated message
+        console.log('[AI Message] Attempting to generate...');
         const result = await getOrGenerateMessage(aiSettings);
+        console.log('[AI Message] Result:', result);
         if (result.success && result.message) {
           setWelcomeMessage(result.message);
           console.log('[AI Message]', result.fromCache ? 'Loaded from cache' : 'Generated new');
