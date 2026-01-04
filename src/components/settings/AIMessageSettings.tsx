@@ -48,8 +48,8 @@ export default function AIMessageSettings() {
 
   // Load settings from DB
   useEffect(() => {
-    if (settings?.morningDisplaySettings?.aiMessageSettings) {
-      setAiSettings(settings.morningDisplaySettings.aiMessageSettings);
+    if (settings?.aiMessageSettings) {
+      setAiSettings(settings.aiMessageSettings);
     }
   }, [settings]);
 
@@ -68,16 +68,9 @@ export default function AIMessageSettings() {
       }
 
       // Save settings to DB
-      const current = await db.settings.get('userSettings');
-      if (current && current.morningDisplaySettings) {
-        const updatedSettings = {
-          ...current.morningDisplaySettings,
-          aiMessageSettings: aiSettings,
-        };
-        await db.settings.update('userSettings', {
-          morningDisplaySettings: updatedSettings,
-        });
-      }
+      await db.settings.update('userSettings', {
+        aiMessageSettings: aiSettings,
+      });
 
       setTestResult({ success: true, message: 'Innstillinger lagret!' });
       setTimeout(() => setTestResult(null), 3000);
