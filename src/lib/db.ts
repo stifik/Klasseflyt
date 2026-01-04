@@ -676,6 +676,11 @@ export class MySubClassedDexie extends Dexie {
             aiMessageCache: '++id, [date+timePeriodId], date, timePeriodId',
         });
 
+        // Version 46: Add generatedAt index to aiMessageCache for sorting
+        this.version(46).stores({
+            aiMessageCache: '++id, [date+timePeriodId], date, timePeriodId, generatedAt',
+        });
+
         this.on('populate', async () => {
             await this.settings.add({ id: 'userSettings', ...defaultSettings });
         });

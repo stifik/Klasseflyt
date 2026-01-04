@@ -8,11 +8,19 @@ Formatet er basert på [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Ikke utgitt]
 
+### Forbedret
+- **KI-genererte meldinger** - Intelligent variasjon i velkomstmeldinger
+  - Konsept-ekstraksjon fra tidligere meldinger for å unngå repetisjon
+  - Høyere temperature (1.0) og frequency penalty (1.5) for mer kreativitet
+  - Automatisk sporing av brukte tema, aktiviteter og toner
+  - Claude Haiku/GPT-4o-mini brukes for rask konsept-analyse
+  - Løser problem med repeterende innhold (f.eks. "Thor-fakta", "pizza-oppgaver")
+
 ### Nytt
 - Prishistorikk for belønninger - se hvordan prisene endrer seg over tid
 - PDF-eksport av elevrapporter - profesjonelle rapporter du kan laste ned
 
-### Forbedret
+### Fikset
 - Bedre utskriftsfunksjon for rapporter
 
 ---

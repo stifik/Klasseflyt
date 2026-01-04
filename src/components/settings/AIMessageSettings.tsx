@@ -129,10 +129,12 @@ export default function AIMessageSettings() {
         setPreviewMessage(result.message);
         setPreviewPrompt(result.prompt);
       } else {
+        console.error('Preview generation failed:', result.error);
         setTestResult({ success: false, message: result.error || 'Feil ved generering' });
       }
     } catch (error) {
-      setTestResult({ success: false, message: 'Feil ved generering av forhåndsvisning' });
+      console.error('Error in handleGeneratePreview:', error);
+      setTestResult({ success: false, message: `Feil ved generering av forhåndsvisning: ${error instanceof Error ? error.message : 'Ukjent feil'}` });
     } finally {
       setIsGeneratingPreview(false);
     }
@@ -236,6 +238,18 @@ export default function AIMessageSettings() {
                   )}
                 </Button>
               </div>
+              
+              {/* Test Result - vises rett under Test-knappen */}
+              {testResult && (
+                <Alert variant={testResult.success ? 'default' : 'destructive'} className="mt-2">
+                  {testResult.success ? (
+                    <CheckCircle className="h-4 w-4" />
+                  ) : (
+                    <XCircle className="h-4 w-4" />
+                  )}
+                  <AlertDescription>{testResult.message}</AlertDescription>
+                </Alert>
+              )}
             </div>
 
             {/* Message Context */}
@@ -386,18 +400,6 @@ export default function AIMessageSettings() {
               </AlertDescription>
             </Alert>
           </>
-        )}
-
-        {/* Test Result */}
-        {testResult && (
-          <Alert variant={testResult.success ? 'default' : 'destructive'}>
-            {testResult.success ? (
-              <CheckCircle className="h-4 w-4" />
-            ) : (
-              <XCircle className="h-4 w-4" />
-            )}
-            <AlertDescription>{testResult.message}</AlertDescription>
-          </Alert>
         )}
 
         {/* Save Button */}

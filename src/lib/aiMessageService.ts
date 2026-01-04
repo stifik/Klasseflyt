@@ -6,7 +6,7 @@
  */
 
 import { db } from './db';
-import type { AIMessageSettings, AIMessageCache, TimePeriod } from './types';
+import type { AIMessageSettings, AIMessageCache, TimePeriod, MessageConcepts } from './types';
 import { format } from 'date-fns';
 import { nb } from 'date-fns/locale';
 
@@ -84,9 +84,14 @@ export async function getCachedMessage(timePeriodId: number): Promise<AIMessageC
 }
 
 /**
- * Lagrer generert melding i cache
+ * Lagrer generert melding i cache med konsept-ekstraksjon
  */
-export async function cacheMessage(timePeriodId: number, message: string): Promise<void> {
+export async function cacheMessage(
+  timePeriodId: number, 
+  message: string,
+  provider: 'openai' | 'anthropic',
+  apiKey: string
+): Promise<void> {
   const today = format(new Date(), 'yyyy-MM-dd');
   
   // Slett evt. eksisterende cache for denne dato+periode
@@ -95,12 +100,16 @@ export async function cacheMessage(timePeriodId: number, message: string): Promi
     .equals([today, timePeriodId])
     .delete();
   
-  // Lagre ny cache
+  // Ekstraher konsepter fra meldingen (asynkront, feiler stille)
+  const concepts = await extractConcepts(message, provider, apiKey);
+  
+  // Lagre ny cache med konsepter
   await db.aiMessageCache.add({
     date: today,
     timePeriodId,
     message,
     generatedAt: new Date(),
+    concepts: concepts || undefined,
   });
 }
 
@@ -120,7 +129,35 @@ export async function cleanupOldCache(): Promise<void> {
 
 // --- Prompt Building ---
 
-function buildPrompt(settings: AIMessageSettings, timePeriod: TimePeriod | null): string {
+/**
+ * Henter konsepter fra de siste N meldingene for å unngå repetisjon
+ */
+async function getRecentMessageConcepts(count: number = 5): Promise<string[]> {
+  try {
+    const recentMessages = await db.aiMessageCache
+      .orderBy('generatedAt')
+      .reverse()
+      .limit(count)
+      .toArray();
+    
+    const allConcepts: string[] = [];
+    
+    for (const msg of recentMessages) {
+      if (msg.concepts) {
+        allConcepts.push(...msg.concepts.mainTopics);
+        allConcepts.push(...msg.concepts.activities);
+      }
+    }
+    
+    // Returner unike konsepter
+    return [...new Set(allConcepts)];
+  } catch (error) {
+    console.error('Error fetching recent message concepts:', error);
+    return []; // Returner tom liste ved feil
+  }
+}
+
+async function buildPrompt(settings: AIMessageSettings, timePeriod: TimePeriod | null): Promise<string> {
   const now = new Date();
   
   // Tid på dagen
@@ -168,12 +205,102 @@ function buildPrompt(settings: AIMessageSettings, timePeriod: TimePeriod | null)
     prompt += `\nDette er for tidsperioden "${timePeriod.name}" som starter kl. ${timePeriod.startTime}.`;
   }
   
+  // Legg til tidligere brukte konsepter for å unngå repetisjon
+  const recentConcepts = await getRecentMessageConcepts(5);
+  if (recentConcepts.length > 0) {
+    prompt += `\n\nViktig: Tidligere meldinger har brukt følgende tema og konsepter. UNNGÅ disse og vær kreativ med nye innfallsvinkler:\n${recentConcepts.join(', ')}`;
+  }
+  
   prompt += `\n\nSkriv en kort velkomstmelding (1-2 setninger). Ikke inkluder anførselstegn rundt meldingen.`;
   
   return prompt;
 }
 
 // --- API Calls ---
+
+/**
+ * Ekstraherer konsepter fra en generert melding ved hjelp av AI
+ */
+async function extractConcepts(
+  message: string, 
+  provider: 'openai' | 'anthropic', 
+  apiKey: string
+): Promise<MessageConcepts | null> {
+  const extractionPrompt = `Ekstraher nøkkelkonsepter fra denne velkomstmeldingen:
+"${message}"
+
+Returner BARE en JSON-struktur uten noe annet, i dette formatet:
+{
+  "mainTopics": ["emner nevnt som faktaer, tema, personer, fenomener"],
+  "activities": ["type aktiviteter eller oppgaver nevnt"],
+  "tone": "stemning/tone i meldingen (ett ord)"
+}`;
+
+  try {
+    let result: string;
+    
+    if (provider === 'openai') {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'Du er en assistent som ekstraherer konsepter fra tekst. Returner kun JSON.' },
+            { role: 'user', content: extractionPrompt },
+          ],
+          max_tokens: 100,
+          temperature: 0.3,
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to extract concepts from OpenAI');
+        return null;
+      }
+      
+      const data = await response.json();
+      result = data.choices[0]?.message?.content?.trim() || '';
+    } else {
+      // Anthropic - bruk Haiku for rask/billig ekstraksjon
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-3-5-haiku-20241022',
+          max_tokens: 100,
+          temperature: 0.3,
+          messages: [
+            { role: 'user', content: extractionPrompt },
+          ],
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to extract concepts from Anthropic');
+        return null;
+      }
+      
+      const data = await response.json();
+      result = data.content[0]?.text?.trim() || '';
+    }
+    
+    // Parse JSON-respons
+    const concepts = JSON.parse(result) as MessageConcepts;
+    return concepts;
+  } catch (error) {
+    console.error('Error extracting concepts:', error);
+    return null;
+  }
+}
 
 async function callOpenAI(prompt: string, apiKey: string): Promise<string> {
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -189,7 +316,8 @@ async function callOpenAI(prompt: string, apiKey: string): Promise<string> {
         { role: 'user', content: prompt },
       ],
       max_tokens: 150,
-      temperature: 0.8,
+      temperature: 1.0,
+      frequency_penalty: 1.5,
     }),
   });
 
@@ -264,7 +392,7 @@ export async function getOrGenerateMessage(settings: AIMessageSettings): Promise
 
   // Generer ny melding
   try {
-    const prompt = buildPrompt(settings, timePeriod);
+    const prompt = await buildPrompt(settings, timePeriod);
     let message: string;
 
     if (settings.provider === 'openai') {
@@ -273,8 +401,8 @@ export async function getOrGenerateMessage(settings: AIMessageSettings): Promise
       message = await callAnthropic(prompt, apiKey);
     }
 
-    // Cache meldingen
-    await cacheMessage(cacheId, message);
+    // Cache meldingen med konsept-ekstraksjon
+    await cacheMessage(cacheId, message, settings.provider, apiKey);
     
     // Rydd opp gammel cache i bakgrunnen
     cleanupOldCache().catch(console.error);
@@ -309,7 +437,7 @@ export async function forceRegenerate(settings: AIMessageSettings): Promise<Gene
   const cacheId = timePeriod?.id ?? 0;
 
   try {
-    const prompt = buildPrompt(settings, timePeriod);
+    const prompt = await buildPrompt(settings, timePeriod);
     let message: string;
 
     if (settings.provider === 'openai') {
@@ -318,8 +446,8 @@ export async function forceRegenerate(settings: AIMessageSettings): Promise<Gene
       message = await callAnthropic(prompt, apiKey);
     }
 
-    // Overskriv cache
-    await cacheMessage(cacheId, message);
+    // Overskriv cache med konsept-ekstraksjon
+    await cacheMessage(cacheId, message, settings.provider, apiKey);
 
     return { success: true, message, fromCache: false };
   } catch (error) {
@@ -363,7 +491,7 @@ export async function generatePreview(
   apiKey: string
 ): Promise<{ success: boolean; message: string; prompt: string; error?: string }> {
   const timePeriod = await getCurrentTimePeriod();
-  const prompt = buildPrompt(settings, timePeriod);
+  const prompt = await buildPrompt(settings, timePeriod);
 
   try {
     let message: string;

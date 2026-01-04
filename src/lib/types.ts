@@ -256,12 +256,19 @@ export type AIMessageSettings = {
 };
 
 // Cache for AI-generated messages (én per tidsperiode per dag)
+export type MessageConcepts = {
+  mainTopics: string[]; // Hovedtemaer nevnt (f.eks. ["tor", "pizza", "vinter"])
+  activities: string[]; // Type aktiviteter (f.eks. ["matteoppgave", "faktakveld"])
+  tone: string; // Stemning (f.eks. "motiverende", "morsom", "faktabasert")
+};
+
 export type AIMessageCache = {
   id?: number;
   date: string; // YYYY-MM-DD format
   timePeriodId: number; // Referanse til TimePeriod
   message: string; // Den genererte meldingen
   generatedAt: Date;
+  concepts?: MessageConcepts; // Ekstraherte konsepter fra meldingen (for å unngå repetisjon)
 };
 
 // Time-based message system types

@@ -64,13 +64,13 @@ src/
 2. Legg til Table i `lib/db.ts` klassedefinisjonen
 3. Importer typen i db.ts
 4. Legg til ny versjon med stores() for migrering
-5. Nåværende versjon: **45** (oppdater ved endringer)
+5. Nåværende versjon: **46** (oppdater ved endringer)
 
 **Eksempel på versjonering:**
 ```typescript
 // I db.ts constructor
-this.version(45).stores({
-    aiMessageCache: '++id, [date+timePeriodId], date, timePeriodId',
+this.version(46).stores({
+    aiMessageCache: '++id, [date+timePeriodId], date, timePeriodId, generatedAt',
 });
 ```
 
@@ -332,6 +332,11 @@ Se `architecture.md` for systemdesign og `roadmap.md` for utviklingsplan.
 ---
 
 ## Sist oppdatert
+
+**2026-01-04**: Database v46 - Indeksering av generatedAt
+- Lagt til `generatedAt` indeks på aiMessageCache for effektiv sortering
+- Fikser SchemaError ved henting av nylige meldinger
+- Database versjon: 45 → 46
 
 **2025-12-09**: KI-genererte velkomstmeldinger
 - Lagt til BYOK AI-meldinger for Morning Display

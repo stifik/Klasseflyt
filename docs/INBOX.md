@@ -18,6 +18,8 @@ Beskriv problemet så detaljert som mulig:
 
 Når jeg åpner "Morning display" er skriften (morgenmelding eller hva det heter) veldig liten. Når jeg justerer størrelsen på vinduet, blir skriften stor slik den skal være.
 
+Når jeg tar backup av databasen, og den er kryptert må man skrive inn passord, og så bekrefte passordet. Når jeg har skrevet inn passordet første gang, forventer jeg at TAB skal ta meg til neste rute for å gjennta passordet, men den markerer isteden hele modalen eller hva det heter.
+
 *(Ingen åpne bugs)*
 
 <!-- 
@@ -67,6 +69,10 @@ Når man får opp varsel om at det er på tide å ta backup, så er det en knapp
 ---
 
 Det er ingen lyd når timeren (/classroom/stopwatch) er ferdig, det ønsker jeg.
+
+---
+
+I display-appen er ting som har gått opp i pris grønt, og ting som er billigere i rødt. Det er konterintuitivt, for elevene er det jo negativt at noe er dyrt, og bra at ting er billig. Så fargene burde byttes.
 
 ## 🔧 Tekniske ting
 
