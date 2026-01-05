@@ -60,7 +60,9 @@ function MorningDisplayContent() {
       setShowPointsList(liveSettings.morningDisplaySettings.showPointsList ?? true);
       setShowProgressBar(liveSettings.morningDisplaySettings.showProgressBar ?? true);
       setShowSecretAgent(liveSettings.morningDisplaySettings.showSecretAgent ?? true);
-      setAiMessageSettings(liveSettings.morningDisplaySettings.aiMessageSettings || null);
+    }
+    if (liveSettings?.aiMessageSettings) {
+      setAiMessageSettings(liveSettings.aiMessageSettings);
     }
   }, [liveSettings]);
 
@@ -278,7 +280,7 @@ function MorningDisplayContent() {
       const useTimeBased = await isTimeBasedMessagesEnabled();
 
       // Check if AI messages are enabled
-      const aiSettings = settings?.morningDisplaySettings?.aiMessageSettings;
+      const aiSettings = settings?.aiMessageSettings;
       const useAI = aiSettings?.enabled === true;
       setAiMessageSettings(aiSettings || null);
       console.log('[AI Message] Settings check:', { aiSettings, useAI, enabled: aiSettings?.enabled });
