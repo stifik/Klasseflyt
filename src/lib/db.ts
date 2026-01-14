@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings, WelcomeMessage, InstructionMessage, ScheduleTemplate, ThemeHistory, MorningDisplaySettings, LessonPlan, Theme, UserThemePreference, TimePeriod, TimeBasedMessage, DefaultMessage, CommunityReward, CommunityDonation, PriceHistory } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings, WelcomeMessage, InstructionMessage, ScheduleTemplate, ThemeHistory, MorningDisplaySettings, LessonPlan, Theme, UserThemePreference, TimePeriod, TimeBasedMessage, DefaultMessage, CommunityReward, CommunityDonation, PriceHistory, AutoBackupSettings } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -60,6 +60,7 @@ export class MySubClassedDexie extends Dexie {
     communityRewards!: Table<CommunityReward, number>;
     communityDonations!: Table<CommunityDonation, number>;
     priceHistory!: Table<PriceHistory, number>;
+    backupSettings!: Table<AutoBackupSettings, string>;
 
 
     constructor() {
@@ -668,6 +669,11 @@ export class MySubClassedDexie extends Dexie {
         // Version 44: Add price history tracking for reward store
         this.version(44).stores({
             priceHistory: '++id, rewardId, timestamp',
+        });
+
+        // Version 45: Add automatic backup settings
+        this.version(45).stores({
+            backupSettings: 'id',
         });
 
         this.on('populate', async () => {

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { AlertTriangle, Upload, Download } from "lucide-react";
+import { AlertTriangle, Upload, Download, FolderOpen, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -25,7 +25,8 @@ import { db, resetDatabase, clearDatabase, exportDatabase, importDatabase, isEnc
 import { setLastBackupDate, getLastBackupDescription } from "@/lib/backupReminder";
 import { BackupPasswordDialog } from "@/components/BackupPasswordDialog";
 import { format } from "date-fns";
-import type { AppSettings } from "@/lib/types";
+import type { AppSettings, AutoBackupFrequency } from "@/lib/types";
+import { useAutomaticBackup } from "@/hooks/useAutomaticBackup";
 
 interface DatabaseSettingsProps {
   settings: AppSettings;
@@ -38,8 +39,26 @@ export default function DatabaseSettings({ settings, onSettingsChange }: Databas
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [passwordDialogMode, setPasswordDialogMode] = useState<'export' | 'import'>('export');
   const [pendingImportData, setPendingImportData] = useState<any>(null);
+  const [autoBackupPassword, setAutoBackupPassword] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  
+  // Automatic backup hook
+  const {
+    isSupported,
+    backupSettings,
+    lastError,
+    selectBackupDirectory,
+    performBackup,
+    updateSettings,
+  } = useAutomaticBackup();
+
+  // Sync password from database when backupSettings loads
+  React.useEffect(() => {
+    if (backupSettings?.encryptionPassword) {
+      setAutoBackupPassword(backupSettings.encryptionPassword);
+    }
+  }, [backupSettings?.encryptionPassword]);
 
   const handleResetDatabase = async () => {
     setIsProcessing(true);
@@ -192,6 +211,223 @@ export default function DatabaseSettings({ settings, onSettingsChange }: Databas
         </CardHeader>
         <CardContent>
           <Accordion type="multiple" defaultValue={[]} className="w-full">
+            <AccordionItem value="auto-backup">
+              <AccordionTrigger>Automatisk backup til PC</AccordionTrigger>
+              <AccordionContent className="space-y-4 pt-2">
+                {!isSupported ? (
+                  <div className="p-3 border rounded-lg bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      ⚠️ Automatisk backup til lokal mappe er ikke støttet i denne nettleseren. 
+                      Bruk Chrome eller Edge for å aktivere denne funksjonen.
+                    </p>
+                    <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-2">
+                      Du kan fortsatt bruke manuell backup (eksporter) nedenfor.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Appen kan automatisk lagre backup-filer til en mappe på PC-en din. 
+                      Du velger mappe én gang, og appen lagrer regelmessig sikkerhetskopier der.
+                    </p>
+
+                    {/* Directory selection */}
+                    <div className="p-3 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="font-medium">Backup-mappe</Label>
+                        {backupSettings?.directoryName && (
+                          <span className="text-xs font-mono text-muted-foreground">{backupSettings.directoryName}</span>
+                        )}
+                      </div>
+                      <Button 
+                        onClick={async () => {
+                          const success = await selectBackupDirectory();
+                          if (success) {
+                            toast({
+                              title: "Mappe valgt",
+                              description: "Automatisk backup er konfigurert"
+                            });
+                          }
+                        }}
+                        variant="outline" 
+                        size="sm"
+                        className="w-full"
+                      >
+                        <FolderOpen className="mr-2 h-4 w-4" />
+                        {backupSettings?.directoryName ? 'Endre mappe' : 'Velg mappe'}
+                      </Button>
+                    </div>
+
+                    {/* Settings grid - more compact */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Enable/Disable automatic backup */}
+                      <div className="flex items-center justify-between p-3 border rounded-lg col-span-2">
+                        <Label htmlFor="auto-backup-enabled" className="font-medium cursor-pointer">
+                          Aktiver automatisk backup
+                        </Label>
+                        <Switch
+                          id="auto-backup-enabled"
+                          checked={backupSettings?.enabled ?? false}
+                          disabled={!backupSettings?.directoryName}
+                          onCheckedChange={(checked) => updateSettings({ enabled: checked })}
+                        />
+                      </div>
+
+                      {/* Backup frequency */}
+                      <div className="p-3 border rounded-lg">
+                        <Label htmlFor="auto-backup-frequency" className="text-sm font-medium mb-2 block">
+                          Backup-frekvens
+                        </Label>
+                        <select
+                          id="auto-backup-frequency"
+                          value={backupSettings?.frequency ?? 'daily'}
+                          onChange={(e) => updateSettings({ frequency: e.target.value as AutoBackupFrequency })}
+                          className="w-full px-2 py-1 text-sm border rounded-md dark:bg-gray-800"
+                          disabled={!backupSettings?.directoryName}
+                        >
+                          <option value="hourly">Hver time</option>
+                          <option value="daily">Daglig</option>
+                          <option value="weekly">Ukentlig</option>
+                          <option value="disabled">Bare manuelt</option>
+                        </select>
+                      </div>
+
+                      {/* Max backups to keep */}
+                      <div className="p-3 border rounded-lg">
+                        <Label htmlFor="max-backups" className="text-sm font-medium mb-2 block">
+                          Antall backups å beholde
+                        </Label>
+                        <select
+                          id="max-backups"
+                          value={backupSettings?.maxBackupsToKeep ?? 10}
+                          onChange={(e) => updateSettings({ maxBackupsToKeep: parseInt(e.target.value) })}
+                          className="w-full px-2 py-1 text-sm border rounded-md dark:bg-gray-800"
+                          disabled={!backupSettings?.directoryName}
+                        >
+                          <option value={5}>5 siste</option>
+                          <option value={10}>10 siste</option>
+                          <option value={20}>20 siste</option>
+                          <option value={50}>50 siste</option>
+                          <option value={0}>Ubegrenset</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Encryption settings */}
+                    <div className="p-3 border rounded-lg bg-blue-50 dark:bg-blue-950 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="auto-backup-encrypt" className="font-medium cursor-pointer">
+                          🔒 Krypter automatiske backups
+                        </Label>
+                        <Switch
+                          id="auto-backup-encrypt"
+                          checked={backupSettings?.useEncryption ?? false}
+                          onCheckedChange={(checked) => {
+                            updateSettings({ useEncryption: checked });
+                            if (!checked) {
+                              setAutoBackupPassword('');
+                              updateSettings({ encryptionPassword: undefined });
+                            }
+                          }}
+                          disabled={!backupSettings?.directoryName}
+                        />
+                      </div>
+                      {backupSettings?.useEncryption && (
+                        <div className="space-y-1">
+                          <Label htmlFor="auto-backup-password" className="text-sm">
+                            Krypteringspassord
+                          </Label>
+                          <input
+                            id="auto-backup-password"
+                            type="password"
+                            value={autoBackupPassword}
+                            onChange={(e) => {
+                              setAutoBackupPassword(e.target.value);
+                              updateSettings({ encryptionPassword: e.target.value });
+                            }}
+                            placeholder="Skriv inn passord"
+                            className="w-full px-3 py-2 text-sm border rounded-md dark:bg-gray-800"
+                          />
+                          <p className="text-xs text-blue-800 dark:text-blue-200">
+                            ⚠️ Passordet lagres i nettleseren. Glem det ikke!
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Backup status and test button combined */}
+                    <div className="space-y-2">
+                      {backupSettings?.lastBackupDate && (
+                        <div className="p-2 border rounded-lg">
+                          <div className="flex items-center gap-2 text-sm">
+                            {backupSettings.lastBackupStatus === 'success' ? (
+                              <>
+                                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                <span className="text-xs">Siste backup: {format(new Date(backupSettings.lastBackupDate), 'dd.MM.yyyy HH:mm')}</span>
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="h-4 w-4 text-red-500" />
+                                <span className="text-xs">Feil ved siste backup</span>
+                              </>
+                            )}
+                          </div>
+                          {backupSettings.lastBackupError && (
+                            <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                              {backupSettings.lastBackupError}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Error display */}
+                      {lastError && (
+                        <div className="p-2 border rounded-lg bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800">
+                          <p className="text-xs text-red-800 dark:text-red-200">
+                            ⚠️ {lastError}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Test backup button */}
+                      <Button 
+                        onClick={async () => {
+                          if (backupSettings?.useEncryption && !autoBackupPassword) {
+                            toast({
+                              title: "Passord mangler",
+                              description: "Skriv inn krypteringspassord først",
+                              variant: "destructive"
+                            });
+                            return;
+                          }
+                          const success = await performBackup();
+                          if (success) {
+                            toast({
+                              title: "Backup fullført",
+                              description: "En backup er lagret i den valgte mappen"
+                            });
+                          } else {
+                            toast({
+                              title: "Backup feilet",
+                              description: lastError || "Ukjent feil",
+                              variant: "destructive"
+                            });
+                          }
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled={!backupSettings?.directoryName}
+                      >
+                        <Clock className="mr-2 h-4 w-4" />
+                        Test backup nå
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+
             <AccordionItem value="backup">
               <AccordionTrigger>Backup og Gjenoppretting</AccordionTrigger>
               <AccordionContent className="space-y-3 pt-2">
