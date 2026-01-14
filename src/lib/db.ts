@@ -1,7 +1,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings, WelcomeMessage, InstructionMessage, ScheduleTemplate, ThemeHistory, MorningDisplaySettings, LessonPlan, Theme, UserThemePreference, TimePeriod, TimeBasedMessage, DefaultMessage, CommunityReward, CommunityDonation, PriceHistory, AIMessageCache } from './types';
+import type { Student, Subject, Homework, Submission, DailyCheck, Remark, SeatingChartRecord, SeatingLayout, AppSettings, HomeworkStatus, HourlyCheck, BehaviorType, DashboardToolKey, DashboardConfig, DPIAAnalysis, Test, TestResult, LearningGoal, GoalAchievement, Workstation, StationAssignmentLog, GroupSet, PickerGroup, PickerLog, Absence, SubmissionAttempt, Transaction, PurchasedReward, Reward, RFIDCard, NFCRegistrationSession, BellTime, CheckInLog, CheckInSettings, WelcomeMessage, InstructionMessage, ScheduleTemplate, ThemeHistory, MorningDisplaySettings, LessonPlan, Theme, UserThemePreference, TimePeriod, TimeBasedMessage, DefaultMessage, CommunityReward, CommunityDonation, PriceHistory, AIMessageCache, AutoBackupSettings } from './types';
 import { getWeekNumber } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -61,6 +61,7 @@ export class MySubClassedDexie extends Dexie {
     communityDonations!: Table<CommunityDonation, number>;
     priceHistory!: Table<PriceHistory, number>;
     aiMessageCache!: Table<AIMessageCache, number>;
+    backupSettings!: Table<AutoBackupSettings, string>;
 
 
     constructor() {
@@ -679,6 +680,11 @@ export class MySubClassedDexie extends Dexie {
         // Version 46: Add generatedAt index to aiMessageCache for sorting
         this.version(46).stores({
             aiMessageCache: '++id, [date+timePeriodId], date, timePeriodId, generatedAt',
+        });
+
+        // Version 47: Add automatic backup settings
+        this.version(47).stores({
+            backupSettings: 'id',
         });
 
         this.on('populate', async () => {

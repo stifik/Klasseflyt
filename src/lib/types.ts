@@ -549,6 +549,22 @@ export type RewardSystemSettings = {
   transferFeePercent: number; // Default 10 - kostnad ved overføring av poeng mellom elever
 };
 
+export type AutoBackupFrequency = 'hourly' | 'daily' | 'weekly' | 'disabled';
+
+export type AutoBackupSettings = {
+  id?: string; // 'autoBackupSettings' singleton
+  enabled: boolean;
+  frequency: AutoBackupFrequency;
+  directoryHandle?: any; // FileSystemDirectoryHandle (serialized)
+  directoryName?: string; // For display purposes
+  useEncryption: boolean;
+  encryptionPassword?: string; // Stored only if user chooses to remember it
+  lastBackupDate?: Date;
+  lastBackupStatus?: 'success' | 'error';
+  lastBackupError?: string;
+  maxBackupsToKeep?: number; // Number of backup files to retain (0 = unlimited)
+};
+
 export type AppSettings = {
   tabs: Record<TabKey, boolean>;
   tabOrder: TabKey[];
