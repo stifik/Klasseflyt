@@ -226,6 +226,7 @@
   text-align: center;
   color: white;
   line-height: 1.6;
+  font-size: 2.5rem;
   width: clamp(640px, 92%, 1600px);
   max-width: 98%;
   max-height: 100%;
@@ -250,7 +251,7 @@
   /* allow the main text to take available space */
   flex: 1 1 auto;
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
   justify-content: center;
 }
 

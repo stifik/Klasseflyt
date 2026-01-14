@@ -60,7 +60,16 @@ export default function WelcomeSection({
     const fit = () => {
       // Parent container available height
       const container = el.parentElement ?? el;
-      const availableH = container.clientHeight;
+      let availableH = container.clientHeight;
+
+      // Fallback: if container height is invalid, calculate from viewport
+      if (availableH <= 0) {
+        const viewportHeight = window.innerHeight;
+        const headerHeight = 80; // Approximate header height
+        const progressHeight = 60; // Approximate progress bar
+        const footerHeight = 25;
+        availableH = viewportHeight - headerHeight - progressHeight - footerHeight;
+      }
 
       // Reset to initial size first, so text can grow back when window expands
       el.style.fontSize = `${initialSize}px`;
@@ -75,9 +84,9 @@ export default function WelcomeSection({
       }
     };
 
-    // Use rAF to let layout settle, then fit
+    // Use rAF and setTimeout to let layout fully settle before first fit
     let raf = requestAnimationFrame(() => {
-      fit();
+      setTimeout(() => fit(), 100);
     });
 
     // Re-fit on resize
