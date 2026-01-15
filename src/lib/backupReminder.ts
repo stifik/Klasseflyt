@@ -3,21 +3,50 @@
  *
  * Tracks when the user last backed up their database and shows reminders
  * based on their configured interval.
+ * 
+ * Now also checks automatic backup status from IndexedDB.
  */
+
+import { db } from './db';
 
 const LAST_BACKUP_KEY = 'klasseflyt_last_backup_date';
 const SNOOZE_UNTIL_KEY = 'klasseflyt_backup_snooze_until';
 
 /**
- * Get the date of the last backup
+ * Get the date of the last manual backup
  */
-export function getLastBackupDate(): Date | null {
+export function getLastManualBackupDate(): Date | null {
   if (typeof window === 'undefined') return null;
 
   const timestamp = localStorage.getItem(LAST_BACKUP_KEY);
   if (!timestamp) return null;
 
   return new Date(parseInt(timestamp, 10));
+}
+
+/**
+ * Get the date of the last backup (manual or automatic)
+ */
+export async function getLastBackupDate(): Promise<Date | null> {
+  if (typeof window === 'undefined') return null;
+
+  const manualBackup = getLastManualBackupDate();
+  
+  // Check automatic backup
+  try {
+    const autoBackupSettings = await db.backupSettings.get('autoBackupSettings');
+    const autoBackup = autoBackupSettings?.lastBackupDate ? new Date(autoBackupSettings.lastBackupDate) : null;
+    
+    // Return the most recent backup
+    if (!manualBackup && !autoBackup) return null;
+    if (!manualBackup) return autoBackup;
+    if (!autoBackup) return manualBackup;
+    
+    return manualBackup > autoBackup ? manualBackup : autoBackup;
+  } catch (error) {
+    // If database access fails, fall back to manual backup only
+    return manualBackup;
+  }
 }
 
 /**
@@ -68,7 +97,7 @@ export function clearSnooze(): void {
  * @param intervalDays - Number of days between reminders (0 = disabled)
  * @returns true if a reminder should be shown
  */
-export function shouldShowReminder(intervalDays: number): boolean {
+export async function shouldShowReminder(intervalDays: number): Promise<boolean> {
   if (typeof window === 'undefined') return false;
   if (intervalDays <= 0) return false; // Reminders disabled
 
@@ -78,7 +107,7 @@ export function shouldShowReminder(intervalDays: number): boolean {
     return false; // Still snoozed
   }
 
-  const lastBackup = getLastBackupDate();
+  const lastBackup = await getLastBackupDate();
   if (!lastBackup) {
     // Never backed up - show reminder
     return true;
@@ -94,8 +123,8 @@ export function shouldShowReminder(intervalDays: number): boolean {
 /**
  * Get a human-readable string for when the last backup was made
  */
-export function getLastBackupDescription(): string {
-  const lastBackup = getLastBackupDate();
+export async function getLastBackupDescription(): Promise<string> {
+  const lastBackup = await getLastBackupDate();
   if (!lastBackup) return 'Aldri';
 
   const now = new Date();

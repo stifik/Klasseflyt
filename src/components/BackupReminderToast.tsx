@@ -29,10 +29,10 @@ export function BackupReminderToast() {
     if (!dbSettings.onboardingCompleted) return;
 
     // Wait 60 minutes before showing backup reminder (to avoid collision with first-time setup)
-    const showReminderTimer = setTimeout(() => {
+    const showReminderTimer = setTimeout(async () => {
       // Check if we should show reminder
-      if (shouldShowReminder(backupReminderDays)) {
-        const lastBackupText = getLastBackupDescription();
+      if (await shouldShowReminder(backupReminderDays)) {
+        const lastBackupText = await getLastBackupDescription();
 
         toast({
           title: (

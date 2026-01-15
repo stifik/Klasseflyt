@@ -42,6 +42,7 @@ export default function DatabaseSettings({ settings, onSettingsChange }: Databas
   const [autoBackupPassword, setAutoBackupPassword] = useState('');
   const [autoBackupPasswordConfirm, setAutoBackupPasswordConfirm] = useState('');
   const [showAutoBackupPassword, setShowAutoBackupPassword] = useState(false);
+  const [lastBackupDescription, setLastBackupDescription] = useState('Laster...');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -62,6 +63,11 @@ export default function DatabaseSettings({ settings, onSettingsChange }: Databas
       setAutoBackupPasswordConfirm(backupSettings.encryptionPassword);
     }
   }, [backupSettings?.encryptionPassword]);
+
+  // Load last backup description (includes both manual and automatic backups)
+  React.useEffect(() => {
+    getLastBackupDescription().then(setLastBackupDescription);
+  }, [backupSettings?.lastBackupDate]); // Re-load when auto backup changes
 
   const getPasswordStrength = (pwd: string): { strength: number; label: string; color: string } => {
     let strength = 0;
@@ -149,6 +155,8 @@ export default function DatabaseSettings({ settings, onSettingsChange }: Databas
       URL.revokeObjectURL(url);
 
       setLastBackupDate();
+      // Update the backup description immediately
+      getLastBackupDescription().then(setLastBackupDescription);
 
       const lockIcon = password ? ' 🔒' : '';
       toast({
@@ -566,7 +574,7 @@ export default function DatabaseSettings({ settings, onSettingsChange }: Databas
                     </select>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Siste backup: <strong>{getLastBackupDescription()}</strong>
+                    Siste backup: <strong>{lastBackupDescription}</strong>
                   </p>
                 </div>
 

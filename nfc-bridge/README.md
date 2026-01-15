@@ -25,12 +25,34 @@ En robust Node.js server med **WebSocket-støtte** som fungerer som bro mellom K
 
 ## Installasjon
 
+### Steg 0: Installer Windows Build Tools (kun Windows)
+
+**NFC Bridge krever Visual Studio Build Tools for å kompilere native C++ moduler.**
+
+**Hvis du får feil ved `npm install`, gjør følgende:**
+
+1. Last ned **Visual Studio Build Tools** fra:
+   https://visualstudio.microsoft.com/downloads/ (scroll ned til "Tools for Visual Studio")
+
+2. Kjør installeren og velg **"Desktop development with C++"** workload
+
+3. Klikk Install (dette kan ta 15-30 minutter)
+
+**Alternativ (enklere, men kan være ustabil):**
+```bash
+npm install --global windows-build-tools
+```
+
 ### Steg 1: Installer avhengigheter
 
 ```bash
 cd nfc-bridge
 npm install
 ```
+
+**Hvis du får feil om "Could not find any Visual Studio installation":**
+- Gå tilbake til Steg 0 og installer Build Tools
+- Etter installasjon, slett `node_modules` og kjør `npm install` på nytt
 
 ### Steg 2: Konfigurer miljøvariabler (valgfritt)
 
@@ -217,11 +239,33 @@ Health check endpoint for monitoring.
 
 ## Feilsøking
 
+### Problem: "Module did not self-register" eller "Could not find any Visual Studio installation"
+
+**Symptomer:**
+- Terminalvinduet lukker seg umiddelbart etter start
+- Feilmelding om "pcsclite.node" eller "Visual Studio"
+- `npm install` feiler med "gyp ERR! find VS"
+
+**Løsning:**
+
+1. **Installer Visual Studio Build Tools** (se Steg 0 i Installasjon)
+
+2. **Slett node_modules og reinstaller:**
+   ```bash
+   cd nfc-bridge
+   Remove-Item -Recurse -Force node_modules
+   npm install
+   ```
+
+3. **Hvis problemet vedvarer:**
+   - Sjekk at Node.js versjon er kompatibel (v16-v20 anbefales)
+   - Kjør PowerShell som Administrator
+   - Restart PC etter Build Tools-installasjon
+
 ### Problem: "No readers found"
 - Sjekk at kortleseren er tilkoblet
 - Installer ACS drivere fra: https://www.acs.com.hk/en/driver/3/acr1255u-j1-secure-bluetooth-nfc-reader/
 - Restart serveren
-- På Windows, kan det være nødvendig å installere Visual Studio Build Tools for å kompilere `pcsclite` modulen
 
 ### Problem: "Access denied"
 - Kjør terminal som Administrator
