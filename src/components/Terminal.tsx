@@ -5,11 +5,12 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import type { Reward } from '@/lib/types';
-import { buyReward, givePoints, transferPoints, type RewardResult } from '@/lib/rewardService';
+import { buyReward, givePoints, deductPoints, transferPoints, type RewardResult } from '@/lib/rewardService';
 import { makeDonation } from '@/lib/communityRewardService';
 import { CommunityRewardAchievedModal } from './CommunityRewardAchievedModal';
 import PosView from './PosView';
 import PodView from './PodView';
+import PenView from './PenView';
 import TransferView from './TransferView';
 import ActivityFeed from './ActivityFeed';
 import RewardDashboard from './RewardDashboard';
@@ -25,7 +26,7 @@ import { formatCardUID, setProcessing as setNFCProcessing } from '@/lib/nfcReade
 import { soundEffects } from '@/lib/soundEffects';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 
-type PoengsentralMode = 'idle' | 'pos' | 'pod' | 'transfer';
+type PoengsentralMode = 'idle' | 'pos' | 'pod' | 'pen' | 'transfer';
 type PaymentMode = 'manual' | 'nfc';
 type NFCStatus = 'idle' | 'waiting' | 'processing' | 'success' | 'error';
 
@@ -36,6 +37,10 @@ type ActiveTransaction = {
   cost: number;
 } | {
   type: 'points';
+  amount: number;
+  description: string;
+} | {
+  type: 'deduction';
   amount: number;
   description: string;
 } | {
@@ -66,6 +71,7 @@ const Poengsentral: React.FC = () => {
   const getCurrentMode = (): PoengsentralMode => {
     if (pathname.includes('/poengsentral/pos')) return 'pos';
     if (pathname.includes('/poengsentral/pod')) return 'pod';
+    if (pathname.includes('/poengsentral/pen')) return 'pen';
     if (pathname.includes('/poengsentral/transfer')) return 'transfer';
     return 'idle';
   };
@@ -305,6 +311,9 @@ const Poengsentral: React.FC = () => {
 
       // Buy reward (now handles all NFC metadata internally)
       result = await buyReward(studentId, currentTransaction.id, cardId);
+    } else if (currentTransaction.type === 'deduction') {
+      // Deduct points (allows negative balance)
+      result = await deductPoints(studentId, currentTransaction.amount, currentTransaction.description, cardId, true);
     } else if (currentTransaction.type === 'custom_action') {
       // Give points for custom action (now handles NFC metadata internally)
       result = await givePoints(studentId, currentTransaction.points, currentTransaction.name, cardId);
@@ -555,13 +564,27 @@ const Poengsentral: React.FC = () => {
     }
     
     const points = parseInt(customActionPoints, 10);
-    if (isNaN(points) || points <= 0) {
+    
+    // Støtte for både positive og negative poeng
+    if (isNaN(points) || points === 0) {
       showNotification('Ugyldig tall for poeng', 'error');
       return;
     }
     
-    console.log('🎯 Setter custom_action transaction:', { name: customActionName, points, type: typeof points });
-    setActiveTransaction({ type: 'custom_action', name: customActionName, points });
+    // Hvis vi er i PEN mode, håndter som deduction
+    if (mode === 'pen') {
+      console.log('🎯 Setter deduction transaction:', { description: customActionName, amount: Math.abs(points) });
+      setActiveTransaction({ type: 'deduction', amount: Math.abs(points), description: customActionName });
+    } else {
+      // Standard positiv handling
+      if (points <= 0) {
+        showNotification('Antall poeng må være større enn 0', 'error');
+        return;
+      }
+      console.log('🎯 Setter custom_action transaction:', { name: customActionName, points, type: typeof points });
+      setActiveTransaction({ type: 'custom_action', name: customActionName, points });
+    }
+    
     setShowCustomDialog(false);
     setCustomActionName('');
     setCustomActionPoints('');
@@ -577,6 +600,20 @@ const Poengsentral: React.FC = () => {
         type: 'points', 
         amount: points, 
         description: actionName // Bruk bare handlingsnavnet som beskrivelse
+      });
+    }
+  };
+
+  const handleSelectPenalty = (penaltyId: number, penaltyName: string, points: number, description: string) => {
+    if (penaltyId === 0) {
+      // Egendefinert straff - trigger custom dialog
+      setShowCustomDialog(true);
+    } else {
+      // Forhåndsdefinert straffehandling
+      setActiveTransaction({ 
+        type: 'deduction', 
+        amount: points, 
+        description: penaltyName
       });
     }
   };
@@ -616,7 +653,7 @@ const Poengsentral: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8">
           <div className="text-center mb-6">
             <div className="text-6xl mb-4">
-              {activeTransaction.type === 'reward' ? '🛒' : activeTransaction.type === 'transfer' ? '💸' : '⭐'}
+              {activeTransaction.type === 'reward' ? '🛒' : activeTransaction.type === 'transfer' ? '💸' : activeTransaction.type === 'deduction' ? '⚠️' : '⭐'}
             </div>
             {activeTransaction.type === 'reward' ? (
               <React.Fragment>
@@ -629,6 +666,23 @@ const Poengsentral: React.FC = () => {
                   </h3>
                   <p className="text-blue-700 dark:text-blue-300 font-medium">
                     {activeTransaction.cost} poeng
+                  </p>
+                </div>
+              </React.Fragment>
+            ) : activeTransaction.type === 'deduction' ? (
+              <React.Fragment>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                  Trekk poeng
+                </h2>
+                <div className="bg-red-100 dark:bg-red-900/30 rounded-lg p-4 mb-4 border-2 border-red-300 dark:border-red-700">
+                  <h3 className="text-xl font-semibold text-red-900 dark:text-red-100">
+                    -{activeTransaction.amount} poeng
+                  </h3>
+                  <p className="text-red-700 dark:text-red-300">
+                    {activeTransaction.description}
+                  </p>
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                    ⚠️ Kan føre til negativ saldo
                   </p>
                 </div>
               </React.Fragment>
@@ -817,6 +871,21 @@ const Poengsentral: React.FC = () => {
         </div>
       </div>
     );
+  } else if (mode === 'pen') {
+    // PEN mode - vis straffehandlinger
+    content = (
+      <div className="max-w-2xl mx-auto">
+        <div className="flex flex-col gap-6">
+          <PenView onSelectPenalty={handleSelectPenalty} />
+          <button
+            className="w-full py-3 px-6 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-semibold text-lg shadow-md transition-colors"
+            onClick={() => router.push('/poengsentral')}
+          >
+            Tilbake til Poengsentral
+          </button>
+        </div>
+      </div>
+    );
   } else if (mode === 'transfer') {
     // Transfer mode - vis overføringsvisning
     content = (
@@ -848,7 +917,7 @@ const Poengsentral: React.FC = () => {
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
           {/* POS-knapp */}
           <button
             onClick={() => router.push('/poengsentral/pos')}
@@ -872,6 +941,19 @@ const Poengsentral: React.FC = () => {
             <p className="text-green-100 mb-3">Point of Deposit (POD)</p>
             <p className="text-sm text-green-200">
               Gi poeng for positive handlinger
+            </p>
+          </button>
+
+          {/* PEN-knapp */}
+          <button
+            onClick={() => router.push('/poengsentral/pen')}
+            className="group bg-red-500 hover:bg-red-600 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+          >
+            <div className="text-6xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold mb-2">Straff</h2>
+            <p className="text-red-100 mb-3">Point ENforcement (PEN)</p>
+            <p className="text-sm text-red-200">
+              Trekk poeng (tillater negativ saldo)
             </p>
           </button>
 
@@ -953,17 +1035,23 @@ const Poengsentral: React.FC = () => {
       <Dialog open={showCustomDialog} onOpenChange={setShowCustomDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Egendefinert poeng-tildeling</DialogTitle>
+            <DialogTitle>
+              {mode === 'pen' ? 'Egendefinert straff' : 'Egendefinert poeng-tildeling'}
+            </DialogTitle>
             <DialogDescription>
-              Gi poeng for en spesiell handling som ikke er på listen
+              {mode === 'pen' 
+                ? 'Trekk poeng for en handling som ikke er på listen' 
+                : 'Gi poeng for en spesiell handling som ikke er på listen'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="action-name">Beskriv handlingen</Label>
+              <Label htmlFor="action-name">
+                {mode === 'pen' ? 'Beskriv hva som skjedde' : 'Beskriv handlingen'}
+              </Label>
               <Input
                 id="action-name"
-                placeholder="f.eks. Ryddet klasserommet"
+                placeholder={mode === 'pen' ? 'f.eks. Spiste i timen' : 'f.eks. Ryddet klasserommet'}
                 value={customActionName}
                 onChange={(e) => setCustomActionName(e.target.value)}
                 onKeyDown={(e) => {
@@ -974,7 +1062,9 @@ const Poengsentral: React.FC = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="action-points">Antall poeng</Label>
+              <Label htmlFor="action-points">
+                {mode === 'pen' ? 'Antall poeng å trekke' : 'Antall poeng'}
+              </Label>
               <Input
                 id="action-points"
                 type="number"

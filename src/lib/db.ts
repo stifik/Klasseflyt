@@ -10,7 +10,7 @@ export type PositiveAction = {
   id: number;
   name: string;
   points: number;
-  type: 'system' | 'manual';
+  type: 'system' | 'manual' | 'penalty';
   actionKey?: 'IPAD_CHARGED' | 'HOMEWORK_APPROVED' | 'SECRET_AGENT_PASSED';
   emoji?: string;
 };

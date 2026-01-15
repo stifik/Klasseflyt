@@ -321,6 +321,65 @@ export async function givePoints(
   }
 }
 
+// Funksjon for å trekke poeng fra en elev (tillater negativ saldo)
+export async function deductPoints(
+  studentId: number,
+  amount: number,
+  description: string,
+  cardId?: string,
+  allowNegativeBalance: boolean = true
+): Promise<RewardResult> {
+  try {
+    const student = await db.students.get(studentId);
+    if (!student) {
+      return { success: false, message: `Student med ID ${studentId} ikke funnet` };
+    }
+
+    const currentPoints = student.points || 0;
+    
+    // Sjekk saldo hvis negativ saldo ikke er tillatt
+    if (!allowNegativeBalance && currentPoints < amount) {
+      const missing = amount - currentPoints;
+      return {
+        success: false,
+        message: `Ikke nok poeng. ${student.name} har ${currentPoints} poeng, mangler ${missing} poeng.`
+      };
+    }
+
+    // Trekk poeng (kan bli negativt)
+    const newPoints = currentPoints - amount;
+    await db.students.update(studentId, { points: newPoints });
+
+    // Legg til transaksjon med negativt beløp
+    await db.transactions.add({
+      studentId: studentId,
+      date: new Date(),
+      pointsChange: -amount,
+      description: description,
+      paymentMethod: cardId ? 'nfc' : 'manual',
+      cardId: cardId,
+    });
+
+    // Oppdater kort sist brukt hvis NFC
+    if (cardId) {
+      const rfidCard = await db.rfidCards.where('cardId').equals(cardId).first();
+      if (rfidCard?.id) {
+        await db.rfidCards.update(rfidCard.id, { lastUsed: new Date() });
+      }
+    }
+
+    return { 
+      success: true, 
+      message: newPoints < 0 
+        ? `Poeng trukket. ${student.name} har nå ${newPoints} poeng (negativ saldo).`
+        : 'Poeng trukket!'
+    };
+  } catch (error) {
+    console.error('Feil ved å trekke poeng:', error);
+    return { success: false, message: 'Teknisk feil ved trekking av poeng' };
+  }
+}
+
 // Funksjon for å bruke poeng på en belønning (direkte kjøp, ikke gavekort)
 export async function buyReward(
   studentId: number,
