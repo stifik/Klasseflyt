@@ -18,12 +18,18 @@ export default function ActionsSettings() {
   // Load actions from database
   const allActions = useLiveQuery(() => db.actions.toArray()) || [];
   const manualActions = allActions.filter(action => action.type === 'manual');
+  const penaltyActions = allActions.filter(action => action.type === 'penalty');
   const systemActions = allActions.filter(action => action.type === 'system');
   
   // Form states for new action
   const [newActionName, setNewActionName] = useState('');
   const [newActionPoints, setNewActionPoints] = useState('');
   const [newActionEmoji, setNewActionEmoji] = useState('⭐');
+  
+  // Form states for new penalty
+  const [newPenaltyName, setNewPenaltyName] = useState('');
+  const [newPenaltyPoints, setNewPenaltyPoints] = useState('');
+  const [newPenaltyEmoji, setNewPenaltyEmoji] = useState('⚠️');
   
   // Edit states
   const [editingActionId, setEditingActionId] = useState<number | null>(null);
@@ -33,6 +39,7 @@ export default function ActionsSettings() {
   
   // Common emojis for actions
   const commonEmojis = ['⭐', '💪', '🤝', '⏰', '🙋', '👍', '🎯', '✨', '🔥', '🏆', '📚', '✅', '💯', '🎉'];
+  const penaltyEmojis = ['⚠️', '❌', '🚫', '⛔', '🔴', '📵', '🙅', '💢', '⏱️', '🍔', '📱', '😴'];
 
   const handleAddAction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +84,55 @@ export default function ActionsSettings() {
       toast({
         title: "Feil",
         description: "Kunne ikke legge til handling",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddPenalty = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newPenaltyName.trim() || !newPenaltyPoints) {
+      toast({
+        title: "Feil",
+        description: "Fyll inn både navn og poeng",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const points = parseInt(newPenaltyPoints);
+    if (isNaN(points) || points <= 0) {
+      toast({
+        title: "Feil",
+        description: "Poeng må være et positivt tall",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Store penalty with positive points value (will be negated when used)
+      await db.actions.add({
+        name: newPenaltyName.trim(),
+        points: points,
+        type: 'penalty',
+        emoji: newPenaltyEmoji,
+      } as any);
+      
+      setNewPenaltyName('');
+      setNewPenaltyPoints('');
+      setNewPenaltyEmoji('⚠️');
+      
+      toast({
+        title: "Lagt til",
+        description: `${newPenaltyEmoji} ${newPenaltyName} (-${points} poeng)`,
+      });
+    } catch (error) {
+      console.error('Error adding penalty:', error);
+      toast({
+        title: "Feil",
+        description: "Kunne ikke legge til straffehandling",
         variant: "destructive",
       });
     }
@@ -298,6 +354,152 @@ export default function ActionsSettings() {
                               <div>
                                 <p className="font-medium">{action.name}</p>
                                 <p className="text-sm text-green-600 dark:text-green-400">+{action.points} poeng</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => handleEditAction(action)}>
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => handleDeleteAction(action.id, action.name)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Penalty Actions - Editable */}
+          <AccordionItem value="penalty" className="border-b-0">
+            <AccordionTrigger className="text-red-600 dark:text-red-400">
+              ⚠️ Straffehandlinger ({penaltyActions.length})
+            </AccordionTrigger>
+            <AccordionContent className="space-y-4 pt-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Disse handlingene kan du velge i PEN-terminalen for å trekke poeng (tillater negativ saldo).
+              </p>
+              
+              {/* Add new penalty form */}
+              <form onSubmit={handleAddPenalty} className="space-y-3 p-4 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-200 dark:border-red-800">
+                <div className="space-y-2">
+                  <Label>Emoji</Label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="text-3xl hover:scale-110 transition-transform p-2 border rounded"
+                      onClick={() => {
+                        const newEmoji = prompt('Skriv inn emoji:', newPenaltyEmoji);
+                        if (newEmoji && newEmoji.trim()) {
+                          setNewPenaltyEmoji(newEmoji.trim());
+                        }
+                      }}
+                    >
+                      {newPenaltyEmoji}
+                    </button>
+                    <div className="flex flex-wrap gap-1 flex-1">
+                      {penaltyEmojis.map(emoji => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          className="text-xl hover:scale-110 transition-transform p-1"
+                          onClick={() => setNewPenaltyEmoji(emoji)}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Straffehandling (f.eks. 'Spiste i timen')"
+                    value={newPenaltyName}
+                    onChange={(e) => setNewPenaltyName(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Poeng"
+                    value={newPenaltyPoints}
+                    onChange={(e) => setNewPenaltyPoints(e.target.value)}
+                    className="w-28"
+                    min="1"
+                  />
+                  <Button type="submit" className="bg-red-600 hover:bg-red-700">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Legg til
+                  </Button>
+                </div>
+              </form>
+
+              {/* Penalty actions list */}
+              <div className="space-y-2">
+                {penaltyActions.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                    Ingen straffehandlinger lagt til ennå
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {penaltyActions.map((action) => (
+                      <li key={action.id} className="p-3 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700">
+                        {editingActionId === action.id ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                className="text-2xl hover:scale-110 transition-transform p-1 border rounded"
+                                onClick={() => {
+                                  const newEmoji = prompt('Velg emoji:', editingActionEmoji);
+                                  if (newEmoji && newEmoji.trim()) {
+                                    setEditingActionEmoji(newEmoji.trim());
+                                  }
+                                }}
+                              >
+                                {editingActionEmoji}
+                              </button>
+                              <Input
+                                value={editingActionName}
+                                onChange={(e) => setEditingActionName(e.target.value)}
+                                placeholder="Handlingsnavn..."
+                                className="flex-1"
+                              />
+                              <Input
+                                type="number"
+                                value={editingActionPoints}
+                                onChange={(e) => setEditingActionPoints(e.target.value)}
+                                placeholder="Poeng"
+                                className="w-24"
+                                min="1"
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={handleSaveAction} className="flex-1">
+                                <Check className="w-4 h-4 mr-2" />
+                                Lagre
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={handleCancelEdit} className="flex-1">
+                                <X className="w-4 h-4 mr-2" />
+                                Avbryt
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">{action.emoji || '⚠️'}</span>
+                              <div>
+                                <p className="font-medium">{action.name}</p>
+                                <p className="text-sm text-red-600 dark:text-red-400">-{action.points} poeng</p>
                               </div>
                             </div>
                             <div className="flex gap-1">
