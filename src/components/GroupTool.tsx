@@ -270,6 +270,7 @@ export default function GroupTool({ students, appSettings, onAppSettingsChange, 
   const [activeDragItem, setActiveDragItem] = useState<any | null>(null);
   
   const [editingGroup, setEditingGroup] = useState<GroupWithId | null>(null);
+  const [pendingDeleteGroupSetId, setPendingDeleteGroupSetId] = useState<string | null>(null);
 
 
   const { toast } = useToast();
@@ -671,16 +672,28 @@ export default function GroupTool({ students, appSettings, onAppSettingsChange, 
     }
   };
   
-  const handleDeleteGroupSet = async (id: string) => {
-      try {
-          await db.groupSets.delete(id);
-          if (activeGroupSet?.id === id) {
-              setActiveGroupSet(null);
-              setUnassignedGroups([]);
+  const handleDeleteGroupSet = async (id: string, name: string) => {
+      if (pendingDeleteGroupSetId === id) {
+          // Second click - actually delete
+          try {
+              await db.groupSets.delete(id);
+              if (activeGroupSet?.id === id) {
+                  setActiveGroupSet(null);
+                  setUnassignedGroups([]);
+              }
+              setPendingDeleteGroupSetId(null);
+              toast({ title: `Slettet gruppesett: ${name}`, variant: "destructive"});
+          } catch (e) {
+              toast({ title: "Feil", description: "Kunne ikke slette gruppesett.", variant: "destructive" });
+              setPendingDeleteGroupSetId(null);
           }
-          toast({ title: "Gruppesett slettet", variant: "destructive"});
-      } catch (e) {
-          toast({ title: "Feil", description: "Kunne ikke slette gruppesett.", variant: "destructive" });
+      } else {
+          // First click - mark as pending
+          setPendingDeleteGroupSetId(id);
+          // Reset after 3 seconds if no second click
+          setTimeout(() => {
+              setPendingDeleteGroupSetId(null);
+          }, 3000);
       }
   };
   
@@ -816,6 +829,13 @@ export default function GroupTool({ students, appSettings, onAppSettingsChange, 
                                     <div className="flex gap-1">
                                         <Button size="sm" variant="outline" onClick={() => handleLoadGroupSet(gs)}>
                                             <FolderOpen className="mr-2" /> Last inn
+                                        </Button>
+                                        <Button 
+                                            size="sm" 
+                                            variant={pendingDeleteGroupSetId === gs.id ? "destructive" : "ghost"}
+                                            onClick={() => handleDeleteGroupSet(gs.id!, gs.name)}
+                                        >
+                                            {pendingDeleteGroupSetId === gs.id ? "Slette?" : <Trash2 className="w-4 h-4" />}
                                         </Button>
                                     </div>
                                 </div>
