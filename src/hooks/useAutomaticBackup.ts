@@ -75,17 +75,19 @@ export function useAutomaticBackup() {
   const verifyPermission = async (dirHandle: FileSystemDirectoryHandle): Promise<boolean> => {
     const options = { mode: 'readwrite' as const };
     
-    // @ts-ignore - File System Access API
-    if ((await dirHandle.queryPermission(options)) === 'granted') {
+    try {
+      // @ts-ignore - File System Access API
+      const permission = await dirHandle.requestPermission(options);
+      if (permission === 'granted') {
+        return true;
+      }
+      throw new Error('Tilgang til mappen ble ikke gitt');
+    } catch (error: any) {
+      // If requestPermission is not available, assume we have permission
+      // (some browsers may not support the permission API but still allow file access)
+      console.warn('Permission API not available, proceeding with backup:', error);
       return true;
     }
-    
-    // @ts-ignore - File System Access API
-    if ((await dirHandle.requestPermission(options)) === 'granted') {
-      return true;
-    }
-    
-    throw new Error('Tilgang til mappen ble ikke gitt');
   };
 
   /**

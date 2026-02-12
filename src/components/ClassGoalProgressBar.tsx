@@ -10,6 +10,7 @@ interface ClassGoalProgressBarProps {
   onReset?: () => void;
   showReset?: boolean;
   fullBleed?: boolean;
+  contrastColor?: string; // Dynamic color for better contrast
 }
 
 const ClassGoalProgressBar: React.FC<ClassGoalProgressBarProps> = ({
@@ -19,9 +20,22 @@ const ClassGoalProgressBar: React.FC<ClassGoalProgressBarProps> = ({
   onReset,
   showReset = false,
   fullBleed = false,
+  contrastColor,
 }) => {
   const percentage = Math.min(100, Math.round((current / (goal || 1)) * 100));
   const isFull = !!fullBleed;
+  
+  // Use contrast color if provided, otherwise use default dark colors
+  const textColor = contrastColor || 'text-gray-900 dark:text-gray-100';
+  
+  // Create semi-transparent background for better visibility
+  const progressContainerStyle = contrastColor ? {
+    backgroundColor: contrastColor === '#ffffff' ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.25)'
+  } : undefined;
+  
+  const progressIndicatorStyle = contrastColor ? {
+    backgroundColor: contrastColor
+  } : undefined;
 
   return (
     <div className="w-full py-0">
@@ -29,16 +43,26 @@ const ClassGoalProgressBar: React.FC<ClassGoalProgressBarProps> = ({
       <div>
         {isFull ? (
           <div className="-mx-4 sm:-mx-6 lg:-mx-8">
-            <Progress value={percentage} className="h-2 rounded-none" />
+            <Progress 
+              value={percentage} 
+              className="h-3 rounded-none" 
+              containerStyle={progressContainerStyle}
+              indicatorStyle={progressIndicatorStyle}
+            />
           </div>
         ) : (
-          <Progress value={percentage} className="h-2 rounded-none" />
+          <Progress 
+            value={percentage} 
+            className="h-3 rounded-none" 
+            containerStyle={progressContainerStyle}
+            indicatorStyle={progressIndicatorStyle}
+          />
         )}
       </div>
       
       {/* Tekst under baren */}
-      <div className="flex items-center justify-between gap-3 mt-1">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">{title}</span>
+      <div className="flex items-center justify-between gap-3 mt-2">
+        <span className={`text-sm font-semibold ${contrastColor ? '' : textColor} truncate`} style={contrastColor ? { color: contrastColor } : undefined}>{title}</span>
         {showReset && onReset && (
           <button
             onClick={onReset}
@@ -48,9 +72,9 @@ const ClassGoalProgressBar: React.FC<ClassGoalProgressBarProps> = ({
           </button>
         )}
       </div>
-      <div className="flex justify-between items-center text-xs text-gray-600 dark:text-gray-400">
-        <span>{current} poeng</span>
-        <span>Mål: {goal} poeng</span>
+      <div className="flex justify-between items-center text-xs font-medium" style={contrastColor ? { color: contrastColor } : undefined}>
+        <span className={contrastColor ? '' : textColor}>{current} poeng</span>
+        <span className={contrastColor ? '' : textColor}>Mål: {goal} poeng</span>
       </div>
       
       {showReset && (

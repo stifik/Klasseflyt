@@ -93,3 +93,49 @@ export function getThemeGradient(theme: Theme | null): string {
   const colorString = [...theme.colors, theme.colors[0]].join(', ');
   return `linear-gradient(45deg, ${colorString})`;
 }
+
+/**
+ * Calculate luminance of a color (0-1, where 0 is darkest)
+ */
+function getLuminance(hex: string): number {
+  // Remove # if present
+  hex = hex.replace('#', '');
+  
+  // Parse RGB
+  const r = parseInt(hex.slice(0, 2), 16) / 255;
+  const g = parseInt(hex.slice(2, 4), 16) / 255;
+  const b = parseInt(hex.slice(4, 6), 16) / 255;
+  
+  // Apply sRGB gamma correction
+  const [rs, gs, bs] = [r, g, b].map(c => {
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  
+  // Calculate relative luminance
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+}
+
+/**
+ * Get average color from theme colors
+ */
+function getAverageThemeColor(theme: Theme | null): string {
+  if (!theme || !theme.colors || theme.colors.length === 0) {
+    return '#667eea'; // Fallback
+  }
+  
+  // Use first color as representative (usually the dominant color)
+  return theme.colors[0];
+}
+
+/**
+ * Get a high-contrast color (black or white) based on theme background
+ * Returns a color that will stand out against the theme gradient
+ */
+export function getContrastColor(theme: Theme | null): string {
+  const avgColor = getAverageThemeColor(theme);
+  const luminance = getLuminance(avgColor);
+  
+  // If background is light (luminance > 0.5), use dark text
+  // If background is dark (luminance <= 0.5), use light text
+  return luminance > 0.5 ? '#1f2937' : '#ffffff';
+}

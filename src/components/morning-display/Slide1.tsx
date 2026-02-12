@@ -35,6 +35,7 @@ type Slide1Props = {
   isAIEnabled?: boolean;
   isRegeneratingAI?: boolean;
   onRegenerateAI?: () => void;
+  contrastColor?: string; // Color for progress bar contrast
 };
 
 type ClockColor = 'green' | 'yellow' | 'orange' | 'red';
@@ -59,6 +60,7 @@ export default function Slide1({
   isAIEnabled = false,
   isRegeneratingAI = false,
   onRegenerateAI,
+  contrastColor,
 }: Slide1Props) {
   const [classTotal, setClassTotal] = useState<number>(0);
   const [goal, setGoal] = useState<{ target: number; lastAchieved?: string }>({ target: 200 });
@@ -218,6 +220,7 @@ export default function Slide1({
             showReset={showReset}
             onReset={handleReset}
             fullBleed={true}
+            contrastColor={contrastColor}
           />
         </div>
       )}

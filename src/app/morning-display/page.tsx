@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getTodayTheme, getThemeGradient } from '@/lib/themes';
+import { getTodayTheme, getThemeGradient, getContrastColor } from '@/lib/themes';
 import { getTimeBasedMessage, isTimeBasedMessagesEnabled } from '@/lib/timeBasedMessages';
 import { getCurrentTime } from '@/lib/autoCheckInService';
 import { getOrGenerateMessage, getCurrentTimePeriod, forceRegenerate } from '@/lib/aiMessageService';
@@ -39,6 +39,8 @@ function MorningDisplayContent() {
   const [bellTimeId, setBellTimeId] = useState<number | undefined>();
   const [checkInSettings, setCheckInSettings] = useState<any>();
   const [themeGradient, setThemeGradient] = useState<string>('');
+  const [todayTheme, setTodayTheme] = useState<any>(null);
+  const [contrastColor, setContrastColor] = useState<string | undefined>(undefined);
   const [showAllSessions, setShowAllSessions] = useState(false);
   const [initialDate, setInitialDate] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
@@ -269,10 +271,14 @@ function MorningDisplayContent() {
         // Load today's theme
         const theme = await getTodayTheme();
         if (theme) {
+          setTodayTheme(theme);
           setThemeGradient(getThemeGradient(theme));
+          setContrastColor(getContrastColor(theme));
         } else {
           // Fallback gradient if no themes
+          setTodayTheme(null);
           setThemeGradient('linear-gradient(45deg, #667eea, #764ba2, #f093fb, #667eea)');
+          setContrastColor('#ffffff'); // White for default gradient
         }
       }
 
@@ -553,6 +559,7 @@ function MorningDisplayContent() {
             isAIEnabled={aiMessageSettings?.enabled ?? false}
             isRegeneratingAI={isRegeneratingAI}
             onRegenerateAI={handleRegenerateAIMessage}
+            contrastColor={contrastColor}
           />
         )}
 
